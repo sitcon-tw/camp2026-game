@@ -7,18 +7,19 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	drivermongo "go.mongodb.org/mongo-driver/v2/mongo"
 
 	"github.com/sitcon-tw/camp2026-game/internal/config"
 	httpserver "github.com/sitcon-tw/camp2026-game/internal/http"
-	"github.com/sitcon-tw/camp2026-game/internal/postgres"
+	"github.com/sitcon-tw/camp2026-game/internal/mongodb"
 )
 
 type Application struct {
-	Config     config.Config
-	Log        *slog.Logger
-	HTTPServer *http.Server
-	DBPool     *pgxpool.Pool
+	Config      config.Config
+	Log         *slog.Logger
+	HTTPServer  *http.Server
+	MongoClient *drivermongo.Client
+	MongoDB     *drivermongo.Database
 }
 
 func New(ctx context.Context) (*Application, error) {
@@ -31,21 +32,23 @@ func New(ctx context.Context) (*Application, error) {
 		Level: cfg.LogLevel,
 	}))
 
-	dbPool, err := postgres.NewPool(ctx, cfg.DatabaseURL)
+	mongoClient, err := mongodb.NewClient(ctx, cfg.MongoURI)
 	if err != nil {
 		return nil, err
 	}
+	mongoDB := mongoClient.Database(cfg.MongoDatabase)
 
 	handler := httpserver.NewRouter(httpserver.Dependencies{
 		Log:            log,
 		RequestTimeout: cfg.HTTP.RequestTimeout,
-		ReadinessCheck: postgres.ReadinessCheck(dbPool),
+		MongoClient:    mongoClient,
 	})
 
 	return &Application{
-		Config:     cfg,
-		Log:        log,
-		HTTPServer: httpserver.NewServer(cfg.HTTP, handler),
-		DBPool:     dbPool,
+		Config:      cfg,
+		Log:         log,
+		HTTPServer:  httpserver.NewServer(cfg.HTTP, handler),
+		MongoClient: mongoClient,
+		MongoDB:     mongoDB,
 	}, nil
 }

@@ -1,7 +1,6 @@
 package httpserver
 
 import (
-	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	authhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/auth"
 	bingohandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/bingo"
@@ -26,7 +26,7 @@ import (
 type Dependencies struct {
 	Log            *slog.Logger
 	RequestTimeout time.Duration
-	ReadinessCheck func(context.Context) error
+	MongoClient    *mongo.Client
 }
 
 func NewRouter(dep Dependencies) http.Handler {
@@ -61,7 +61,7 @@ func NewRouter(dep Dependencies) http.Handler {
 
 func registerRoutes(api chi.Router, dep Dependencies) {
 	systemhandler.New(systemhandler.Dependencies{
-		ReadinessCheck: dep.ReadinessCheck,
+		MongoClient: dep.MongoClient,
 	}).RegisterRoutes(api)
 	authhandler.New().RegisterRoutes(api)
 	homehandler.New().RegisterRoutes(api)

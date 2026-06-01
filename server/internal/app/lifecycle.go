@@ -46,8 +46,10 @@ func (a *Application) shutdown(ctx context.Context) error {
 		}
 	}
 
-	if a.DBPool != nil {
-		a.DBPool.Close()
+	if a.MongoClient != nil {
+		if err := a.MongoClient.Disconnect(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("disconnect mongodb: %w", err))
+		}
 	}
 
 	if err := errors.Join(errs...); err != nil {

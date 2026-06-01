@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 )
 
 type StatusResponse struct {
@@ -22,7 +23,7 @@ type StatusResponse struct {
 // @Failure 503 {object} httpx.ProblemDetails
 // @Router /healthz [get]
 func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
-	if h.readinessCheck == nil {
+	if h.mongoClient == nil {
 		httpx.WriteJSON(w, http.StatusOK, StatusResponse{Status: "ok"})
 		return
 	}
@@ -30,7 +31,7 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 
-	if err := h.readinessCheck(ctx); err != nil {
+	if err := h.mongoClient.Ping(ctx, readpref.Primary()); err != nil {
 		httpx.WriteProblem(w, r, httpx.ServiceUnavailable("database check failed"))
 		return
 	}

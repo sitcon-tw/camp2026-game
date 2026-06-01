@@ -6,7 +6,6 @@ Minimal Go backend template for fast iteration.
 
 ```sh
 make generate
-make migrate
 make test
 make dev
 ```
@@ -14,10 +13,7 @@ make dev
 `make dev` runs Air hot reload. Use `make run` to run `go run ./cmd/api`
 without file watching.
 
-`make migrate` applies pending migrations from `db/migrations` using
-`DATABASE_URL`. Use `make migrate-status` to inspect applied migrations,
-`make migrate-down` to revert the latest migration, and
-`make migrate-new name=add_players` to create the next migration file.
+MongoDB is configured through `MONGODB_URI` and `MONGODB_DATABASE`.
 
 ## Design Docs
 
@@ -84,19 +80,19 @@ internal/http/apimodel/
 ```
 
 These structs describe request and response shapes for Swagger and handler
-binding. Do not use generated sqlc row types as public responses unless that
-shape is intentionally part of the API.
+binding. Keep transport DTOs separate from MongoDB documents unless that shape
+is intentionally part of the public API.
 
 ## Local Config
 
-Copy `.env.example` to `.env` and adjust `DATABASE_URL` when needed.
+Copy `.env.example` to `.env` and adjust `MONGODB_URI` or
+`MONGODB_DATABASE` when needed.
 Runtime settings and secrets stay in env. Game content definitions such as
 sitones, items, crafting recipes, bingo boards, bingo missions, and world boss
 definitions should be loaded from JSON files, not env.
 
-The app does not run migrations automatically. Add migration files under
-`db/migrations`, apply them with `make migrate`, add sqlc queries under
-`db/query`, then run `make generate`.
+The app opens and pings MongoDB during startup. Collection indexes and seed data
+should be managed explicitly by setup scripts when those schemas are introduced.
 
 ## Handler Structure
 

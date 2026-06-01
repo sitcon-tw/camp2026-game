@@ -1,41 +1,42 @@
 package httpserver
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func TestHealth(t *testing.T) {
-	called := false
-	router := NewRouter(Dependencies{
-		ReadinessCheck: func(context.Context) error {
-			called = true
-			return nil
-		},
-	})
+	router := NewRouter(Dependencies{})
 
 	res := performRequest(router, http.MethodGet, "/api/healthz", nil)
 	if res.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, res.Code)
 	}
-	if !called {
-		t.Fatalf("expected health check to call readiness check")
-	}
-	if !strings.Contains(res.Body.String(), `"database":"ok"`) {
-		t.Fatalf("expected health response to include database check, got %s", res.Body.String())
+	if strings.Contains(res.Body.String(), `"database"`) {
+		t.Fatalf("expected health response without database check, got %s", res.Body.String())
 	}
 }
 
 func TestHealthWhenDatabaseUnavailable(t *testing.T) {
+	client, err := mongo.Connect(options.Client().
+		ApplyURI("mongodb://127.0.0.1:1").
+		SetServerSelectionTimeout(time.Millisecond))
+	if err != nil {
+		t.Fatalf("connect mongo client: %v", err)
+	}
+	defer func() {
+		_ = client.Disconnect(t.Context())
+	}()
+
 	router := NewRouter(Dependencies{
-		ReadinessCheck: func(context.Context) error {
-			return errors.New("database down")
-		},
+		MongoClient: client,
 	})
 
 	res := performRequest(router, http.MethodGet, "/api/healthz", nil)

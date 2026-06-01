@@ -17,7 +17,8 @@ const (
 	defaultAppVersion      = "0.1.0"
 	defaultLogLevel        = "info"
 	defaultHTTPAddr        = ":8080"
-	defaultDatabaseURL     = "postgres://camp2026:camp2026@localhost:5432/camp2026?sslmode=disable"
+	defaultMongoURI        = "mongodb://camp2026:camp2026@localhost:27017/camp2026?authSource=admin"
+	defaultMongoDatabase   = "camp2026"
 	defaultRequestTimeout  = 10 * time.Second
 	defaultShutdownTimeout = 10 * time.Second
 )
@@ -29,7 +30,8 @@ type Config struct {
 	LogLevel        slog.Level
 	ShutdownTimeout time.Duration
 	HTTP            HTTPConfig
-	DatabaseURL     string
+	MongoURI        string
+	MongoDatabase   string
 }
 
 type HTTPConfig struct {
@@ -57,7 +59,8 @@ func Load() (Config, error) {
 			WriteTimeout:      durationValue("HTTP_WRITE_TIMEOUT", 15*time.Second),
 			IdleTimeout:       durationValue("HTTP_IDLE_TIMEOUT", 60*time.Second),
 		},
-		DatabaseURL: stringValue("DATABASE_URL", defaultDatabaseURL),
+		MongoURI:      stringValue("MONGODB_URI", defaultMongoURI),
+		MongoDatabase: stringValue("MONGODB_DATABASE", defaultMongoDatabase),
 	}
 
 	level, err := parseLogLevel(stringValue("LOG_LEVEL", defaultLogLevel))
@@ -87,8 +90,11 @@ func (cfg Config) validate() error {
 	if strings.TrimSpace(cfg.HTTP.Addr) == "" {
 		errs = append(errs, errors.New("HTTP_ADDR is required"))
 	}
-	if strings.TrimSpace(cfg.DatabaseURL) == "" {
-		errs = append(errs, errors.New("DATABASE_URL is required"))
+	if strings.TrimSpace(cfg.MongoURI) == "" {
+		errs = append(errs, errors.New("MONGODB_URI is required"))
+	}
+	if strings.TrimSpace(cfg.MongoDatabase) == "" {
+		errs = append(errs, errors.New("MONGODB_DATABASE is required"))
 	}
 	if cfg.HTTP.RequestTimeout <= 0 {
 		errs = append(errs, errors.New("REQUEST_TIMEOUT must be positive"))

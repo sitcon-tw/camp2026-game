@@ -1,21 +1,29 @@
 services:
-  postgresql:
-    image: postgres:16-alpine
-    container_name: camp2026-postgresql
+  mongodb:
+    image: mongo:8.0
+    container_name: camp2026-mongodb
     restart: unless-stopped
     environment:
-      POSTGRES_USER: camp2026
-      POSTGRES_PASSWORD: camp2026
-      POSTGRES_DB: camp2026
+      MONGO_INITDB_ROOT_USERNAME: camp2026
+      MONGO_INITDB_ROOT_PASSWORD: camp2026
+      MONGO_INITDB_DATABASE: camp2026
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - postgresql-data:/var/lib/postgresql/data
+      - mongodb-data:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U camp2026 -d camp2026"]
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "mongodb://camp2026:camp2026@localhost:27017/admin",
+          "--eval",
+          "db.adminCommand({ ping: 1 }).ok",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
-  postgresql-data:
+  mongodb-data:

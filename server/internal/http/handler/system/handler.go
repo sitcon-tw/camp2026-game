@@ -1,22 +1,21 @@
 package system
 
 import (
-	"context"
-
 	"github.com/go-chi/chi/v5"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type Dependencies struct {
-	ReadinessCheck func(context.Context) error
+	MongoClient *mongo.Client
 }
 
 type Handler struct {
-	readinessCheck func(context.Context) error
+	mongoClient *mongo.Client
 }
 
 func New(dep Dependencies) *Handler {
 	return &Handler{
-		readinessCheck: dep.ReadinessCheck,
+		mongoClient: dep.MongoClient,
 	}
 }
 
