@@ -55,6 +55,17 @@ func TestRemovedRoutes(t *testing.T) {
 	}{
 		{method: http.MethodGet, path: "/api/"},
 		{method: http.MethodGet, path: "/api/me/home"},
+		{method: http.MethodGet, path: "/api/users/state"},
+		{method: http.MethodGet, path: "/api/bingo/boards"},
+		{method: http.MethodPost, path: "/api/bingo/missions/mission_daily_match_3/complete"},
+		{method: http.MethodGet, path: "/api/qrcode/me"},
+		{method: http.MethodGet, path: "/api/world-bosses"},
+		{method: http.MethodPost, path: "/api/match-pairings"},
+		{method: http.MethodGet, path: "/api/matches/M8RXP2/ws"},
+		{method: http.MethodGet, path: "/api/storage"},
+		{method: http.MethodGet, path: "/api/storage/sitones"},
+		{method: http.MethodGet, path: "/api/storage/recipes"},
+		{method: http.MethodGet, path: "/api/catalog/recipes"},
 		{method: http.MethodGet, path: "/api/readyz"},
 		{method: http.MethodGet, path: "/api/ping"},
 		{method: http.MethodPost, path: "/api/examples/validation"},
@@ -81,16 +92,21 @@ func TestSwaggerJSON(t *testing.T) {
 	for _, want := range []string{
 		"/auth/login",
 		"/auth/logout",
-		"/users/state",
-		"/bingo/boards",
+		"/me",
+		"/me/state",
+		"/me/qrcode",
+		"/me/sitones",
+		"/me/items",
+		"/me/open-power",
+		"/activities",
 		"/matches",
-		"/match-pairings",
-		"/qrcode/me",
-		"/world-bosses",
-		"/storage",
-		"/storage/sitones",
-		"/storage/recipes",
+		"/qrcode/scans",
+		"/shop/items",
+		"/shop/purchases",
+		"/crafting",
+		"/crafting/recipes",
 		"/catalog/sitones",
+		"/catalog/crafting-recipes",
 		"/staff/rewards",
 		"/staff/activity-verifications",
 		"AuthCookieAuth",
@@ -109,7 +125,25 @@ func TestSwaggerJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &spec); err != nil {
 		t.Fatalf("decode swagger json: %v", err)
 	}
-	for _, path := range []string{"/", "/readyz", "/ping", "/examples/validation", "/me/home", "/quiz/pairings", "/quiz/sessions", "/world-bosses/challenges/{challengeID}/answers"} {
+	for _, path := range []string{
+		"/",
+		"/readyz",
+		"/ping",
+		"/examples/validation",
+		"/me/home",
+		"/users/state",
+		"/bingo/boards",
+		"/match-pairings",
+		"/qrcode/me",
+		"/world-bosses",
+		"/storage",
+		"/storage/sitones",
+		"/storage/recipes",
+		"/catalog/recipes",
+		"/quiz/pairings",
+		"/quiz/sessions",
+		"/world-bosses/challenges/{challengeID}/answers",
+	} {
 		if _, ok := spec.Paths[path]; ok {
 			t.Fatalf("expected swagger json not to contain path %q", path)
 		}
@@ -120,7 +154,9 @@ func TestSwaggerJSON(t *testing.T) {
 		path   string
 		method string
 	}{
-		{path: "/users/state", method: http.MethodGet},
+		{path: "/me", method: http.MethodGet},
+		{path: "/me/state", method: http.MethodGet},
+		{path: "/me/qrcode", method: http.MethodGet},
 		{path: "/auth/logout", method: http.MethodPost},
 		{path: "/staff/rewards", method: http.MethodPost},
 		{path: "/staff/activity-verifications", method: http.MethodPost},
@@ -158,20 +194,26 @@ func TestGameDesignGetRoutes(t *testing.T) {
 	router := NewRouter(Dependencies{})
 
 	for _, path := range []string{
-		"/api/users/state",
-		"/api/bingo/boards",
+		"/api/me",
+		"/api/me/state",
+		"/api/me/qrcode",
+		"/api/me/sitones",
+		"/api/me/sitones/S9K2QA",
+		"/api/me/items",
+		"/api/me/items/I8M4RX",
+		"/api/me/open-power",
+		"/api/me/open-power/records",
+		"/api/activities",
+		"/api/activities/booth-linux-101",
 		"/api/matches",
-		"/api/matches/match_01HR9Z7E2Z2VJ2QZ4P4Z",
-		"/api/qrcode/me",
-		"/api/world-bosses",
-		"/api/world-bosses/boss_layer_1",
-		"/api/storage",
-		"/api/storage/sitones",
-		"/api/storage/items",
-		"/api/storage/recipes",
+		"/api/matches/M8RXP2",
+		"/api/shop/items",
+		"/api/shop/items/item-upgrade-stone",
+		"/api/crafting/recipes",
+		"/api/crafting/recipes/recipe_engineering_skin",
 		"/api/catalog/sitones",
 		"/api/catalog/items",
-		"/api/catalog/recipes",
+		"/api/catalog/crafting-recipes",
 	} {
 		res := performRequest(router, http.MethodGet, path, nil)
 		if res.Code != http.StatusOK {
@@ -186,7 +228,7 @@ func TestGameDesignGetRoutes(t *testing.T) {
 func TestRecipeListContractUsesSingularRequirements(t *testing.T) {
 	router := NewRouter(Dependencies{})
 
-	for _, path := range []string{"/api/storage/recipes", "/api/catalog/recipes"} {
+	for _, path := range []string{"/api/crafting/recipes", "/api/catalog/crafting-recipes"} {
 		res := performRequest(router, http.MethodGet, path, nil)
 		if res.Code != http.StatusOK {
 			t.Fatalf("%s: expected status %d, got %d: %s", path, http.StatusOK, res.Code, res.Body.String())
@@ -219,24 +261,24 @@ func TestGameDesignPostRoutesAreContractStubs(t *testing.T) {
 		body string
 	}{
 		{
-			name: "complete bingo mission",
-			path: "/api/bingo/missions/mission_daily_match_3/complete",
-			body: `{"flag":"CAMP2026-HELLO"}`,
-		},
-		{
-			name: "create match pairing",
-			path: "/api/match-pairings",
-			body: `{"targetQrCodeToken":"player_qr_token"}`,
+			name: "claim activity reward",
+			path: "/api/activities/booth-linux-101/claims",
+			body: `{}`,
 		},
 		{
 			name: "create match",
 			path: "/api/matches",
-			body: `{"mode":"qr_duel","pairingId":"pair_01HR9Z7E2Z2VJ2QZ4P4Z","sitoneIds":["sitone_01HR9Z7E2Z2VJ2QZ4P4Z"]}`,
+			body: `{"opponentQRCodeToken":"qr_opponent_token","sitoneIds":["S9K2QA"]}`,
 		},
 		{
 			name: "submit match answer",
-			path: "/api/matches/match_01HR9Z7E2Z2VJ2QZ4P4Z/answers",
+			path: "/api/matches/M8RXP2/answers",
 			body: `{"questionId":"question_001","choiceId":"A"}`,
+		},
+		{
+			name: "finish match",
+			path: "/api/matches/M8RXP2/finish",
+			body: `{}`,
 		},
 		{
 			name: "scan qrcode",
@@ -244,19 +286,14 @@ func TestGameDesignPostRoutesAreContractStubs(t *testing.T) {
 			body: `{"token":"player_qr_token","context":"match_pairing"}`,
 		},
 		{
-			name: "create world boss match",
-			path: "/api/world-bosses/boss_layer_1/matches",
-			body: `{"sitoneIds":["sitone_01HR9Z7E2Z2VJ2QZ4P4Z"]}`,
+			name: "purchase shop item",
+			path: "/api/shop/purchases",
+			body: `{"itemId":"item-upgrade-stone","quantity":1}`,
 		},
 		{
 			name: "craft sitone",
-			path: "/api/storage/crafting",
-			body: `{"recipeId":"recipe_engineering_skin","sitoneId":"sitone_01HR9Z7E2Z2VJ2QZ4P4Z","itemIds":["pit_01HR9Z7E2Z2VJ2QZ4P4Z"]}`,
-		},
-		{
-			name: "claim bingo line reward",
-			path: "/api/bingo/line-rewards/line_reward_row_0/claim",
-			body: `{}`,
+			path: "/api/crafting",
+			body: `{"recipeId":"recipe_engineering_skin","sitoneIds":["S9K2QA"],"itemIds":["I8M4RX"]}`,
 		},
 		{
 			name: "grant staff reward",

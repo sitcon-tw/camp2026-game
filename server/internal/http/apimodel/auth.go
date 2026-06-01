@@ -9,7 +9,7 @@ type AuthLoginResponse struct {
 }
 
 type AuthPlayerSummary struct {
-	PlayerID  string          `json:"playerId" example:"player_01HR9Z7E2Z2VJ2QZ4P4Z"`
+	PlayerID  string          `json:"playerId" example:"7H9K2Q"`
 	Nickname  string          `json:"nickname" example:"Alice"`
 	Team      AuthTeamSummary `json:"team"`
 	OpenPower int             `json:"openPower" example:"1280"`
@@ -17,6 +17,6 @@ type AuthPlayerSummary struct {
 }
 
 type AuthTeamSummary struct {
-	TeamID string `json:"teamId" example:"team_blue"`
+	TeamID string `json:"teamId" example:"8M4RXP"`
 	Name   string `json:"name" example:"Blue Team"`
 }

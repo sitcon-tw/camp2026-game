@@ -11,5 +11,5 @@ func New() *Handler {
 func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/catalog/sitones", h.ListSitones)
 	api.Get("/catalog/items", h.ListItems)
-	api.Get("/catalog/recipes", h.ListRecipes)
+	api.Get("/catalog/crafting-recipes", h.ListRecipes)
 }

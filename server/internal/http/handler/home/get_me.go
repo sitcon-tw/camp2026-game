@@ -7,30 +7,27 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 )
 
-// GetUserState godoc
-// @Summary Get current user state
-// @Description Returns the current authenticated player's gameplay loop summary for the home page.
+// GetMe godoc
+// @Summary Get current player
+// @Description Returns the current authenticated player's profile, team, and open power balance.
 // @Tags Me
 // @Produce json
 // @Security AuthCookieAuth
-// @Success 200 {object} apimodel.UserStateResponse
+// @Success 200 {object} apimodel.MeResponse
 // @Failure 401 {object} httpx.ProblemDetails
 // @Failure 500 {object} httpx.ProblemDetails
-// @Router /me/state [get]
-func (h *Handler) GetUserState(w http.ResponseWriter, _ *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, apimodel.UserStateResponse{
-		Player: apimodel.UserStatePlayer{
+// @Router /me [get]
+func (h *Handler) GetMe(w http.ResponseWriter, _ *http.Request) {
+	httpx.WriteJSON(w, http.StatusOK, apimodel.MeResponse{
+		Player: apimodel.AuthPlayerSummary{
 			PlayerID:  "7H9K2Q",
 			Nickname:  "Alice",
+			OpenPower: 1280,
 			AvatarURL: "https://example.test/avatar/alice.png",
 			Team: apimodel.AuthTeamSummary{
 				TeamID: "8M4RXP",
 				Name:   "Blue Team",
 			},
 		},
-		OpenPower:        1280,
-		SitoneCount:      5,
-		ItemCount:        3,
-		ActiveMatchCount: 0,
 	})
 }

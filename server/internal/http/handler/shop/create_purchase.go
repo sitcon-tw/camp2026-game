@@ -1,4 +1,4 @@
-package matches
+package shop
 
 import (
 	"net/http"
@@ -7,22 +7,22 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 )
 
-// CreatePairing godoc
-// @Summary Create match QRCode pairing
-// @Description Creates a match pairing after scanning another player's QRCode.
-// @Tags Matches
+// CreatePurchase godoc
+// @Summary Purchase shop item
+// @Description Purchases an item with open power and adds it to the current player's inventory.
+// @Tags Shop
 // @Accept json
 // @Produce json
 // @Security AuthCookieAuth
-// @Param request body apimodel.MatchPairingRequest true "QRCode pairing request"
-// @Success 201 {object} apimodel.MatchPairingResponse
+// @Param request body apimodel.ShopPurchaseRequest true "Shop purchase request"
+// @Success 201 {object} apimodel.ShopPurchaseResponse
 // @Failure 400 {object} httpx.ProblemDetails
 // @Failure 401 {object} httpx.ProblemDetails
 // @Failure 422 {object} httpx.ProblemDetails
 // @Failure 501 {object} httpx.ProblemDetails
-// @Router /match-pairings [post]
-func (h *Handler) CreatePairing(w http.ResponseWriter, r *http.Request) {
-	var body apimodel.MatchPairingRequest
+// @Router /shop/purchases [post]
+func (h *Handler) CreatePurchase(w http.ResponseWriter, r *http.Request) {
+	var body apimodel.ShopPurchaseRequest
 	if err := httpx.DecodeJSON(r, &body); err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
@@ -32,5 +32,5 @@ func (h *Handler) CreatePairing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteProblem(w, r, httpx.NotImplemented("match pairing is not implemented yet"))
+	httpx.WriteProblem(w, r, httpx.NotImplemented("shop purchases are not implemented yet"))
 }

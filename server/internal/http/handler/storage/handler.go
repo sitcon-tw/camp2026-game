@@ -9,9 +9,11 @@ func New() *Handler {
 }
 
 func (h *Handler) RegisterRoutes(api chi.Router) {
-	api.Get("/storage", h.GetStorage)
-	api.Get("/storage/sitones", h.ListSitones)
-	api.Get("/storage/items", h.ListItems)
-	api.Get("/storage/recipes", h.ListRecipes)
-	api.Post("/storage/crafting", h.CraftSitone)
+	api.Get("/me/sitones", h.ListSitones)
+	api.Get("/me/sitones/{sitoneID}", h.GetSitone)
+	api.Get("/me/items", h.ListItems)
+	api.Get("/me/items/{itemInstanceID}", h.GetItem)
+	api.Get("/crafting/recipes", h.ListRecipes)
+	api.Get("/crafting/recipes/{recipeID}", h.GetRecipe)
+	api.Post("/crafting", h.CraftSitone)
 }

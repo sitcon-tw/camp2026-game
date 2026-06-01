@@ -24,7 +24,7 @@ func (h *Handler) ListItems(w http.ResponseWriter, _ *http.Request) {
 				DefinitionID:    "item-camp-sticker",
 				Name:            "Camp Sticker",
 				ItemType:        "craft_material",
-				AcquisitionHint: "Complete bingo missions.",
+				AcquisitionHint: "Buy from the shop with open power.",
 			},
 		},
 	})

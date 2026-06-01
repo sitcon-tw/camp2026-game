@@ -16,7 +16,7 @@ import (
 // @Success 200 {object} apimodel.QRCodeResponse
 // @Failure 401 {object} httpx.ProblemDetails
 // @Failure 500 {object} httpx.ProblemDetails
-// @Router /qrcode/me [get]
+// @Router /me/qrcode [get]
 func (h *Handler) GetMyQRCode(w http.ResponseWriter, _ *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, apimodel.QRCodeResponse{
 		Token:    "player_qr_token",

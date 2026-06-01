@@ -51,18 +51,18 @@ type CatalogItemSummary struct {
 	DefinitionID    string `json:"definitionId" example:"item-camp-sticker"`
 	Name            string `json:"name" example:"Camp Sticker"`
 	ItemType        string `json:"itemType" example:"craft_material"`
-	AcquisitionHint string `json:"acquisitionHint" example:"Complete bingo missions."`
+	AcquisitionHint string `json:"acquisitionHint" example:"Buy from the shop with open power."`
 }
 
 type CraftRequest struct {
-	RecipeID string   `json:"recipeId" validate:"required" example:"recipe_engineering_skin"`
-	SitoneID string   `json:"sitoneId" validate:"required" example:"sitone_01HR9Z7E2Z2VJ2QZ4P4Z"`
-	ItemIDs  []string `json:"itemIds" validate:"required,min=1,dive,required" example:"pit_01HR9Z7E2Z2VJ2QZ4P4Z"`
+	RecipeID  string   `json:"recipeId" validate:"required" example:"recipe_engineering_skin"`
+	SitoneIDs []string `json:"sitoneIds" validate:"required,min=1,dive,required" example:"S9K2QA"`
+	ItemIDs   []string `json:"itemIds" validate:"required,min=1,dive,required" example:"pit_01HR9Z7E2Z2VJ2QZ4P4Z"`
 }
 
 type CraftResponse struct {
-	ConsumedSitoneID string         `json:"consumedSitoneId" example:"sitone_01HR9Z7E2Z2VJ2QZ4P4Z"`
-	ConsumedItemIDs  []string       `json:"consumedItemIds" example:"pit_01HR9Z7E2Z2VJ2QZ4P4Z"`
-	CreatedSitone    *SitoneSummary `json:"createdSitone,omitempty"`
-	CreatedItem      *ItemSummary   `json:"createdItem,omitempty"`
+	ConsumedSitoneIDs []string       `json:"consumedSitoneIds" example:"S9K2QA"`
+	ConsumedItemIDs   []string       `json:"consumedItemIds" example:"pit_01HR9Z7E2Z2VJ2QZ4P4Z"`
+	CreatedSitone     *SitoneSummary `json:"createdSitone,omitempty"`
+	CreatedItem       *ItemSummary   `json:"createdItem,omitempty"`
 }

@@ -16,7 +16,7 @@ import (
 // @Success 200 {object} apimodel.RecipeListResponse
 // @Failure 401 {object} httpx.ProblemDetails
 // @Failure 500 {object} httpx.ProblemDetails
-// @Router /catalog/recipes [get]
+// @Router /catalog/crafting-recipes [get]
 func (h *Handler) ListRecipes(w http.ResponseWriter, _ *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, apimodel.RecipeListResponse{
 		Recipes: []apimodel.RecipeSummary{

@@ -9,5 +9,8 @@ func New() *Handler {
 }
 
 func (h *Handler) RegisterRoutes(api chi.Router) {
-	api.Get("/users/state", h.GetUserState)
+	api.Get("/me", h.GetMe)
+	api.Get("/me/state", h.GetUserState)
+	api.Get("/me/open-power", h.GetOpenPower)
+	api.Get("/me/open-power/records", h.ListOpenPowerRecords)
 }

@@ -10,16 +10,16 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
+	activitieshandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/activities"
 	authhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/auth"
-	bingohandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/bingo"
 	cataloghandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/catalog"
 	homehandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/home"
 	matcheshandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/matches"
 	qrcodehandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/qrcode"
+	shophandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/shop"
 	staffhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/staff"
 	storagehandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/storage"
 	systemhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/system"
-	worldbosshandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/worldboss"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 )
 
@@ -27,6 +27,7 @@ type Dependencies struct {
 	Log            *slog.Logger
 	RequestTimeout time.Duration
 	MongoClient    *mongo.Client
+	MongoDB        *mongo.Database
 }
 
 func NewRouter(dep Dependencies) http.Handler {
@@ -63,13 +64,15 @@ func registerRoutes(api chi.Router, dep Dependencies) {
 	systemhandler.New(systemhandler.Dependencies{
 		MongoClient: dep.MongoClient,
 	}).RegisterRoutes(api)
-	authhandler.New().RegisterRoutes(api)
+	authhandler.New(authhandler.Dependencies{
+		MongoDB: dep.MongoDB,
+	}).RegisterRoutes(api)
 	homehandler.New().RegisterRoutes(api)
-	bingohandler.New().RegisterRoutes(api)
+	activitieshandler.New().RegisterRoutes(api)
 	matcheshandler.New().RegisterRoutes(api)
 	qrcodehandler.New().RegisterRoutes(api)
-	worldbosshandler.New().RegisterRoutes(api)
 	storagehandler.New().RegisterRoutes(api)
+	shophandler.New().RegisterRoutes(api)
 	cataloghandler.New().RegisterRoutes(api)
 	staffhandler.New().RegisterRoutes(api)
 

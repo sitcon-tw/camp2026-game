@@ -1,4 +1,4 @@
-package qrcode
+package shop
 
 import "github.com/go-chi/chi/v5"
 
@@ -9,6 +9,7 @@ func New() *Handler {
 }
 
 func (h *Handler) RegisterRoutes(api chi.Router) {
-	api.Get("/me/qrcode", h.GetMyQRCode)
-	api.Post("/qrcode/scans", h.ScanQRCode)
+	api.Get("/shop/items", h.ListItems)
+	api.Get("/shop/items/{itemID}", h.GetItem)
+	api.Post("/shop/purchases", h.CreatePurchase)
 }

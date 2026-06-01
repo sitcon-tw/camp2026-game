@@ -1,5 +1,41 @@
 basePath: /api
 definitions:
+  apimodel.ActivityClaimResponse:
+    properties:
+      activity:
+        $ref: '#/definitions/apimodel.ActivitySummary'
+      reward:
+        $ref: '#/definitions/apimodel.Reward'
+    type: object
+  apimodel.ActivityDetailResponse:
+    properties:
+      activity:
+        $ref: '#/definitions/apimodel.ActivitySummary'
+    type: object
+  apimodel.ActivityListResponse:
+    properties:
+      activities:
+        items:
+          $ref: '#/definitions/apimodel.ActivitySummary'
+        type: array
+    type: object
+  apimodel.ActivitySummary:
+    properties:
+      activityId:
+        example: booth-linux-101
+        type: string
+      description:
+        example: Complete the booth challenge to receive a sitone.
+        type: string
+      name:
+        example: Linux 101 Booth
+        type: string
+      reward:
+        $ref: '#/definitions/apimodel.Reward'
+      status:
+        example: claimable
+        type: string
+    type: object
   apimodel.AuthLoginRequest:
     properties:
       token:
@@ -27,7 +63,7 @@ definitions:
         example: 1280
         type: integer
       playerId:
-        example: player_01HR9Z7E2Z2VJ2QZ4P4Z
+        example: 7H9K2Q
         type: string
       team:
         $ref: '#/definitions/apimodel.AuthTeamSummary'
@@ -38,73 +74,7 @@ definitions:
         example: Blue Team
         type: string
       teamId:
-        example: team_blue
-        type: string
-    type: object
-  apimodel.BingoBoardListResponse:
-    properties:
-      boards:
-        items:
-          $ref: '#/definitions/apimodel.BingoBoardSummary'
-        type: array
-    type: object
-  apimodel.BingoBoardSummary:
-    properties:
-      boardId:
-        example: board_day_1
-        type: string
-      category:
-        example: daily
-        type: string
-      cells:
-        items:
-          $ref: '#/definitions/apimodel.BingoCell'
-        type: array
-      rewards:
-        items:
-          $ref: '#/definitions/apimodel.BingoReward'
-        type: array
-      status:
-        example: active
-        type: string
-      title:
-        example: Day 1 Bingo
-        type: string
-    type: object
-  apimodel.BingoCell:
-    properties:
-      column:
-        example: 0
-        type: integer
-      mission:
-        $ref: '#/definitions/apimodel.MissionSummary'
-      row:
-        example: 0
-        type: integer
-    type: object
-  apimodel.BingoLineRewardClaimResponse:
-    properties:
-      lineRewardId:
-        example: line_reward_row_0
-        type: string
-      reward:
-        $ref: '#/definitions/apimodel.Reward'
-      status:
-        example: claimed
-        type: string
-    type: object
-  apimodel.BingoReward:
-    properties:
-      lineKey:
-        example: row_0
-        type: string
-      lineRewardId:
-        example: line_reward_row_0
-        type: string
-      reward:
-        $ref: '#/definitions/apimodel.Reward'
-      status:
-        example: claimable
+        example: 8M4RXP
         type: string
     type: object
   apimodel.CatalogItemListResponse:
@@ -117,7 +87,7 @@ definitions:
   apimodel.CatalogItemSummary:
     properties:
       acquisitionHint:
-        example: Complete bingo missions.
+        example: Buy from the shop with open power.
         type: string
       definitionId:
         example: item-camp-sticker
@@ -166,13 +136,17 @@ definitions:
       recipeId:
         example: recipe_engineering_skin
         type: string
-      sitoneId:
-        example: sitone_01HR9Z7E2Z2VJ2QZ4P4Z
-        type: string
+      sitoneIds:
+        example:
+        - S9K2QA
+        items:
+          type: string
+        minItems: 1
+        type: array
     required:
     - itemIds
     - recipeId
-    - sitoneId
+    - sitoneIds
     type: object
   apimodel.CraftResponse:
     properties:
@@ -182,9 +156,12 @@ definitions:
         items:
           type: string
         type: array
-      consumedSitoneId:
-        example: sitone_01HR9Z7E2Z2VJ2QZ4P4Z
-        type: string
+      consumedSitoneIds:
+        example:
+        - S9K2QA
+        items:
+          type: string
+        type: array
       createdItem:
         $ref: '#/definitions/apimodel.ItemSummary'
       createdSitone:
@@ -278,32 +255,37 @@ definitions:
     type: object
   apimodel.MatchCreateRequest:
     properties:
-      mode:
-        enum:
-        - qr_duel
-        - offline_duel
-        - world_boss
-        example: qr_duel
-        type: string
-      opponentPlayerId:
-        example: player_01HR9Z7E2Z2VJ2QZ4P4Z
-        type: string
-      pairingId:
-        example: pair_01HR9Z7E2Z2VJ2QZ4P4Z
+      opponentQRCodeToken:
+        example: qr_opponent_token
+        maxLength: 200
+        minLength: 8
         type: string
       sitoneIds:
         example:
-        - sitone_01HR9Z7E2Z2VJ2QZ4P4Z
+        - S9K2QA
         items:
           type: string
         maxItems: 5
+        minItems: 1
         type: array
-      worldBossId:
-        example: boss_layer_1
-        type: string
     required:
-    - mode
+    - opponentQRCodeToken
     - sitoneIds
+    type: object
+  apimodel.MatchFinishResponse:
+    properties:
+      matchId:
+        example: M8RXP2
+        type: string
+      openPower:
+        example: 1400
+        type: integer
+      openPowerGained:
+        example: 120
+        type: integer
+      result:
+        example: win
+        type: string
     type: object
   apimodel.MatchListResponse:
     properties:
@@ -311,25 +293,6 @@ definitions:
         items:
           $ref: '#/definitions/apimodel.MatchSummary'
         type: array
-    type: object
-  apimodel.MatchPairingRequest:
-    properties:
-      targetQrCodeToken:
-        example: player_qr_token
-        maxLength: 200
-        minLength: 8
-        type: string
-    required:
-    - targetQrCodeToken
-    type: object
-  apimodel.MatchPairingResponse:
-    properties:
-      pairingId:
-        example: pair_01HR9Z7E2Z2VJ2QZ4P4Z
-        type: string
-      status:
-        example: matched
-        type: string
     type: object
   apimodel.MatchParticipant:
     properties:
@@ -385,9 +348,6 @@ definitions:
       completedAt:
         example: "2026-07-24T10:35:00+08:00"
         type: string
-      damageDealt:
-        example: 320
-        type: integer
       matchId:
         example: match_01HR9Z7E2Z2VJ2QZ4P4Z
         type: string
@@ -409,73 +369,41 @@ definitions:
       status:
         example: completed
         type: string
-      worldBossId:
-        example: boss_layer_1
-        type: string
     type: object
-  apimodel.MatchWebSocketInfoResponse:
+  apimodel.MeResponse:
     properties:
-      events:
-        example:
-        - match.snapshot
-        - answer.submit
-        - answer.result
-        - match.completed
-        - error
+      player:
+        $ref: '#/definitions/apimodel.AuthPlayerSummary'
+    type: object
+  apimodel.OpenPowerBalanceResponse:
+    properties:
+      balance:
+        example: 1280
+        type: integer
+    type: object
+  apimodel.OpenPowerRecordListResponse:
+    properties:
+      records:
         items:
-          type: string
+          $ref: '#/definitions/apimodel.OpenPowerRecordSummary'
         type: array
-      matchId:
-        example: match_01HR9Z7E2Z2VJ2QZ4P4Z
-        type: string
     type: object
-  apimodel.MissionCompleteRequest:
+  apimodel.OpenPowerRecordSummary:
     properties:
-      clientCompletedAt:
-        example: "2026-07-24T10:30:00+08:00"
-        type: string
-      flag:
-        example: CAMP2026-HELLO
-        maxLength: 80
-        minLength: 3
-        type: string
-    type: object
-  apimodel.MissionCompleteResponse:
-    properties:
-      mission:
-        $ref: '#/definitions/apimodel.MissionSummary'
-      reward:
-        $ref: '#/definitions/apimodel.Reward'
-    type: object
-  apimodel.MissionProgress:
-    properties:
-      current:
-        example: 3
+      amount:
+        example: 120
         type: integer
-      target:
-        example: 3
-        type: integer
-    type: object
-  apimodel.MissionSummary:
-    properties:
-      description:
-        example: Complete three Knowledge King questions today.
+      createdAt:
+        example: "2026-07-24T10:35:00+08:00"
         type: string
-      id:
-        example: mission_daily_match_3
+      reason:
+        example: match_win
         type: string
-      progress:
-        $ref: '#/definitions/apimodel.MissionProgress'
-      rewards:
-        $ref: '#/definitions/apimodel.Reward'
-      status:
-        example: claimable
+      recordId:
+        example: N6T3ZA9K
         type: string
-      tab:
-        example: daily
-        type: string
-      title:
-        example: Answer three match questions
+      source:
+        example: match
         type: string
     type: object
   apimodel.QRCodeResponse:
@@ -581,6 +509,64 @@ definitions:
         items:
           $ref: '#/definitions/apimodel.SitoneGrant'
         type: array
+    type: object
+  apimodel.ShopItemDetailResponse:
+    properties:
+      item:
+        $ref: '#/definitions/apimodel.ShopItemSummary'
+    type: object
+  apimodel.ShopItemListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/apimodel.ShopItemSummary'
+        type: array
+    type: object
+  apimodel.ShopItemSummary:
+    properties:
+      description:
+        example: Used to craft advanced sitones.
+        type: string
+      itemId:
+        example: item-upgrade-stone
+        type: string
+      itemType:
+        example: craft_material
+        type: string
+      name:
+        example: Upgrade Stone
+        type: string
+      priceOpenPower:
+        example: 300
+        type: integer
+    type: object
+  apimodel.ShopPurchaseRequest:
+    properties:
+      itemId:
+        example: item-upgrade-stone
+        type: string
+      quantity:
+        example: 1
+        maximum: 99
+        minimum: 1
+        type: integer
+    required:
+    - itemId
+    - quantity
+    type: object
+  apimodel.ShopPurchaseResponse:
+    properties:
+      item:
+        $ref: '#/definitions/apimodel.ItemSummary'
+      openPower:
+        example: 980
+        type: integer
+      openPowerSpent:
+        example: 300
+        type: integer
+      purchaseId:
+        example: P9K2QA
+        type: string
     type: object
   apimodel.SitoneGrant:
     properties:
@@ -696,233 +682,36 @@ definitions:
       reward:
         $ref: '#/definitions/apimodel.Reward'
     type: object
-  apimodel.StorageSummaryResponse:
+  apimodel.UserStatePlayer:
     properties:
-      craftableRecipes:
-        example: 1
-        type: integer
-      items:
-        items:
-          $ref: '#/definitions/apimodel.ItemSummary'
-        type: array
-      sitones:
-        items:
-          $ref: '#/definitions/apimodel.SitoneSummary'
-        type: array
+      avatarUrl:
+        example: https://example.test/avatar/alice.png
+        type: string
+      nickname:
+        example: Alice
+        type: string
+      playerId:
+        example: 7H9K2Q
+        type: string
+      team:
+        $ref: '#/definitions/apimodel.AuthTeamSummary'
     type: object
-  apimodel.UserBingoState:
-    properties:
-      activeMissionCount:
-        example: 4
-        type: integer
-      claimableRewardCount:
-        example: 2
-        type: integer
-      completedMissionCount:
-        example: 7
-        type: integer
-      enabled:
-        example: true
-        type: boolean
-    type: object
-  apimodel.UserFeatureStates:
-    properties:
-      bingo:
-        $ref: '#/definitions/apimodel.UserBingoState'
-      matches:
-        $ref: '#/definitions/apimodel.UserMatchState'
-      qrCode:
-        $ref: '#/definitions/apimodel.UserQRCodeState'
-      storage:
-        $ref: '#/definitions/apimodel.UserStorageState'
-      worldBoss:
-        $ref: '#/definitions/apimodel.UserWorldBossState'
-    type: object
-  apimodel.UserMatchState:
+  apimodel.UserStateResponse:
     properties:
       activeMatchCount:
         example: 0
         type: integer
-      completedMatchCount:
-        example: 12
-        type: integer
-      enabled:
-        example: true
-        type: boolean
-      pendingPairingCount:
-        example: 1
-        type: integer
-      winCount:
-        example: 8
-        type: integer
-    type: object
-  apimodel.UserQRCodeState:
-    properties:
-      enabled:
-        example: true
-        type: boolean
-      hasActiveToken:
-        example: true
-        type: boolean
-    type: object
-  apimodel.UserStatePlayer:
-    properties:
-      nickname:
-        example: Alice
-        type: string
-      openPower:
-        example: 1280
-        type: integer
-      playerId:
-        example: player_01HR9Z7E2Z2VJ2QZ4P4Z
-        type: string
-      teamId:
-        example: team_blue
-        type: string
-    type: object
-  apimodel.UserStateResponse:
-    properties:
-      features:
-        $ref: '#/definitions/apimodel.UserFeatureStates'
-      loadout:
-        items:
-          $ref: '#/definitions/apimodel.SitoneSummary'
-        type: array
-      player:
-        $ref: '#/definitions/apimodel.UserStatePlayer'
-      stats:
-        $ref: '#/definitions/apimodel.UserStateStats'
-    type: object
-  apimodel.UserStateStats:
-    properties:
-      claimableMissionRewardCount:
-        example: 2
-        type: integer
-      completedMissionCount:
-        example: 7
-        type: integer
-      matchCount:
-        example: 12
-        type: integer
-      matchWinCount:
-        example: 8
-        type: integer
-      openPower:
-        example: 1280
-        type: integer
-      ownedItemCount:
-        example: 3
-        type: integer
-      ownedSitoneCount:
-        example: 5
-        type: integer
-    type: object
-  apimodel.UserStorageState:
-    properties:
-      craftableRecipeCount:
-        example: 1
-        type: integer
-      enabled:
-        example: true
-        type: boolean
       itemCount:
         example: 3
         type: integer
+      openPower:
+        example: 1280
+        type: integer
+      player:
+        $ref: '#/definitions/apimodel.UserStatePlayer'
       sitoneCount:
         example: 5
         type: integer
-    type: object
-  apimodel.UserWorldBossState:
-    properties:
-      activeBossId:
-        example: boss_layer_1
-        type: string
-      claimableRewardCount:
-        example: 0
-        type: integer
-      enabled:
-        example: true
-        type: boolean
-      remainingAttemptCount:
-        example: 3
-        type: integer
-    type: object
-  apimodel.WorldBossDetailResponse:
-    properties:
-      boss:
-        $ref: '#/definitions/apimodel.WorldBossSummary'
-      rewards:
-        items:
-          $ref: '#/definitions/apimodel.WorldBossReward'
-        type: array
-    type: object
-  apimodel.WorldBossListResponse:
-    properties:
-      bosses:
-        items:
-          $ref: '#/definitions/apimodel.WorldBossSummary'
-        type: array
-    type: object
-  apimodel.WorldBossMatchCreateRequest:
-    properties:
-      sitoneIds:
-        example:
-        - sitone_01HR9Z7E2Z2VJ2QZ4P4Z
-        items:
-          type: string
-        maxItems: 5
-        type: array
-    required:
-    - sitoneIds
-    type: object
-  apimodel.WorldBossMatchResponse:
-    properties:
-      bossId:
-        example: boss_layer_1
-        type: string
-      matchId:
-        example: match_01HR9Z7E2Z2VJ2QZ4P4Z
-        type: string
-      question:
-        $ref: '#/definitions/apimodel.MatchQuestion'
-      remainingAttempts:
-        example: 1
-        type: integer
-    type: object
-  apimodel.WorldBossReward:
-    properties:
-      reward:
-        $ref: '#/definitions/apimodel.Reward'
-      rewardId:
-        example: wb_reward_layer_1
-        type: string
-      status:
-        example: locked
-        type: string
-    type: object
-  apimodel.WorldBossSummary:
-    properties:
-      bossId:
-        example: boss_layer_1
-        type: string
-      hp:
-        example: 4500
-        type: integer
-      layer:
-        example: 1
-        type: integer
-      maxHp:
-        example: 10000
-        type: integer
-      name:
-        example: Knowledge Core
-        type: string
-      remainingAttempts:
-        example: 2
-        type: integer
-      status:
-        example: active
-        type: string
     type: object
   httpx.ErrorDetail:
     properties:
@@ -966,6 +755,99 @@ info:
   title: Camp 2026 Game API
   version: 0.1.0
 paths:
+  /activities:
+    get:
+      description: Lists activities that can grant sitones to the current player.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.ActivityListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: List activities
+      tags:
+      - Activities
+  /activities/{activityID}:
+    get:
+      description: Returns one activity and its sitone reward information.
+      parameters:
+      - description: Activity ID
+        in: path
+        name: activityID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.ActivityDetailResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get activity
+      tags:
+      - Activities
+  /activities/{activityID}/claims:
+    post:
+      description: Claims a sitone reward from an activity when the player is eligible.
+      parameters:
+      - description: Activity ID
+        in: path
+        name: activityID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/apimodel.ActivityClaimResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Claim activity reward
+      tags:
+      - Activities
   /auth/login:
     post:
       consumes:
@@ -1002,8 +884,12 @@ paths:
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
-        "501":
-          description: Not Implemented
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
       summary: User login with auth token
@@ -1031,26 +917,16 @@ paths:
       summary: User logout
       tags:
       - User Authentication
-  /bingo/boards:
+  /catalog/crafting-recipes:
     get:
-      description: Lists the current player's bingo boards, cells, mission progress,
-        and line reward state.
-      parameters:
-      - description: Board category
-        enum:
-        - daily
-        - persistent
-        - event
-        in: query
-        name: category
-        type: string
+      description: Lists public crafting recipes and acquisition hints.
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apimodel.BingoBoardListResponse'
+            $ref: '#/definitions/apimodel.RecipeListResponse'
         "401":
           description: Unauthorized
           schema:
@@ -1061,92 +937,9 @@ paths:
             $ref: '#/definitions/httpx.ProblemDetails'
       security:
       - AuthCookieAuth: []
-      summary: List bingo boards
+      summary: List recipe catalog
       tags:
-      - Bingo
-  /bingo/line-rewards/{lineRewardID}/claim:
-    post:
-      description: Claims a bingo line reward after the required line is completed.
-      parameters:
-      - description: Line reward ID
-        in: path
-        name: lineRewardID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apimodel.BingoLineRewardClaimResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "501":
-          description: Not Implemented
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: Claim bingo line reward
-      tags:
-      - Bingo
-  /bingo/missions/{missionID}/complete:
-    post:
-      consumes:
-      - application/json
-      description: Attempts to complete a mission by player-submitted flag or server-side
-        condition detection.
-      parameters:
-      - description: Mission ID
-        in: path
-        name: missionID
-        required: true
-        type: string
-      - description: Mission completion request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/apimodel.MissionCompleteRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apimodel.MissionCompleteResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "501":
-          description: Not Implemented
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: Complete a bingo mission
-      tags:
-      - Bingo
+      - Catalog
   /catalog/items:
     get:
       description: Lists all collectible item definitions and acquisition hints.
@@ -1168,29 +961,6 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: List item catalog
-      tags:
-      - Catalog
-  /catalog/recipes:
-    get:
-      description: Lists public crafting recipes and acquisition hints.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apimodel.RecipeListResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: List recipe catalog
       tags:
       - Catalog
   /catalog/sitones:
@@ -1216,42 +986,25 @@ paths:
       summary: List sitone catalog
       tags:
       - Catalog
-  /healthz:
-    get:
-      description: Confirms the HTTP process is alive and the database is reachable.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/system.StatusResponse'
-        "503":
-          description: Service Unavailable
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      summary: Health check
-      tags:
-      - system
-  /match-pairings:
+  /crafting:
     post:
       consumes:
       - application/json
-      description: Creates a match pairing after scanning another player's QRCode.
+      description: Uses sitones and items to craft a new sitone.
       parameters:
-      - description: QRCode pairing request
+      - description: Craft request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/apimodel.MatchPairingRequest'
+          $ref: '#/definitions/apimodel.CraftRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/apimodel.MatchPairingResponse'
+            $ref: '#/definitions/apimodel.CraftResponse'
         "400":
           description: Bad Request
           schema:
@@ -1270,9 +1023,83 @@ paths:
             $ref: '#/definitions/httpx.ProblemDetails'
       security:
       - AuthCookieAuth: []
-      summary: Create match QRCode pairing
+      summary: Craft sitone
       tags:
-      - Matches
+      - Crafting
+  /crafting/recipes:
+    get:
+      description: Lists crafting recipes visible to the current player, including
+        whether each recipe is currently craftable.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.RecipeListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: List visible crafting recipes
+      tags:
+      - Crafting
+  /crafting/recipes/{recipeID}:
+    get:
+      description: Returns one crafting recipe visible to the current player.
+      parameters:
+      - description: Recipe ID
+        in: path
+        name: recipeID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.RecipeSummary'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get crafting recipe
+      tags:
+      - Crafting
+  /healthz:
+    get:
+      description: Confirms the HTTP process is alive and the database is reachable.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/system.StatusResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Health check
+      tags:
+      - system
   /matches:
     get:
       description: Lists the current player's match history. Results can be filtered
@@ -1318,8 +1145,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Starts a match through QRCode pairing, offline duel mode, or world
-        boss mode.
+      description: Starts a Knowledge King player match with selected sitones.
       parameters:
       - description: Match creation request
         in: body
@@ -1435,10 +1261,9 @@ paths:
       summary: Submit match answer
       tags:
       - Matches
-  /matches/{matchID}/ws:
-    get:
-      description: Upgrades to the shared real-time match WebSocket. The event contract
-        is shared by QR duel, offline duel, and world boss matches.
+  /matches/{matchID}/finish:
+    post:
+      description: Finalizes a match and grants open power from the result.
       parameters:
       - description: Match ID
         in: path
@@ -1451,7 +1276,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apimodel.MatchWebSocketInfoResponse'
+            $ref: '#/definitions/apimodel.MatchFinishResponse'
         "401":
           description: Unauthorized
           schema:
@@ -1466,10 +1291,137 @@ paths:
             $ref: '#/definitions/httpx.ProblemDetails'
       security:
       - AuthCookieAuth: []
-      summary: Match WebSocket endpoint
+      summary: Finish match
       tags:
       - Matches
-  /qrcode/me:
+  /me:
+    get:
+      description: Returns the current authenticated player's profile, team, and open
+        power balance.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.MeResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get current player
+      tags:
+      - Me
+  /me/items:
+    get:
+      description: Lists items owned by the current player. Items are bought with
+        open power and used for crafting.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.ItemListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: List owned items
+      tags:
+      - Me
+  /me/items/{itemInstanceID}:
+    get:
+      description: Returns one item stack owned by the current player.
+      parameters:
+      - description: Item instance ID
+        in: path
+        name: itemInstanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.ItemSummary'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get owned item
+      tags:
+      - Me
+  /me/open-power:
+    get:
+      description: Returns the current player's spendable open power balance.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.OpenPowerBalanceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get open power balance
+      tags:
+      - Me
+  /me/open-power/records:
+    get:
+      description: Lists the current player's open power ledger records.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.OpenPowerRecordListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: List open power records
+      tags:
+      - Me
+  /me/qrcode:
     get:
       description: Returns the current player's QRCode token metadata for identity
         and match pairing.
@@ -1493,6 +1445,87 @@ paths:
       summary: Get my QRCode
       tags:
       - QRCode
+  /me/sitones:
+    get:
+      description: Lists sitones owned by the current player. Sitones are gained from
+        activities and used in matches or crafting.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.SitoneListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: List owned sitones
+      tags:
+      - Me
+  /me/sitones/{sitoneID}:
+    get:
+      description: Returns one sitone owned by the current player.
+      parameters:
+      - description: Sitone ID
+        in: path
+        name: sitoneID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.SitoneSummary'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get owned sitone
+      tags:
+      - Me
+  /me/state:
+    get:
+      description: Returns the current authenticated player's gameplay loop summary
+        for the home page.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.UserStateResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get current user state
+      tags:
+      - Me
   /qrcode/scans:
     post:
       consumes:
@@ -1534,6 +1567,103 @@ paths:
       summary: Scan QRCode
       tags:
       - QRCode
+  /shop/items:
+    get:
+      description: Lists items that can be purchased with open power.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.ShopItemListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: List shop items
+      tags:
+      - Shop
+  /shop/items/{itemID}:
+    get:
+      description: Returns one purchasable shop item.
+      parameters:
+      - description: Item ID
+        in: path
+        name: itemID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodel.ShopItemDetailResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get shop item
+      tags:
+      - Shop
+  /shop/purchases:
+    post:
+      consumes:
+      - application/json
+      description: Purchases an item with open power and adds it to the current player's
+        inventory.
+      parameters:
+      - description: Shop purchase request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/apimodel.ShopPurchaseRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/apimodel.ShopPurchaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Purchase shop item
+      tags:
+      - Shop
   /staff/activity-verifications:
     post:
       consumes:
@@ -1616,271 +1746,6 @@ paths:
       summary: Grant staff reward
       tags:
       - Staff
-  /storage:
-    get:
-      description: Returns the current player's collection summary, including owned
-        sitones, items, and craftable recipe count.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apimodel.StorageSummaryResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: Get storage summary
-      tags:
-      - Storage
-  /storage/crafting:
-    post:
-      consumes:
-      - application/json
-      description: Crafts a cosmetic sitone variant or collectible using a sitone
-        and required items.
-      parameters:
-      - description: Craft request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/apimodel.CraftRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/apimodel.CraftResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "501":
-          description: Not Implemented
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: Craft collectible
-      tags:
-      - Storage
-  /storage/items:
-    get:
-      description: Lists items owned by the current player. Items are mainly used
-        for crafting and event collection.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apimodel.ItemListResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: List owned items
-      tags:
-      - Storage
-  /storage/recipes:
-    get:
-      description: Lists crafting recipes visible to the current player, including
-        whether each recipe is currently craftable.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apimodel.RecipeListResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: List visible crafting recipes
-      tags:
-      - Storage
-  /storage/sitones:
-    get:
-      description: Lists sitones owned by the current player. Sitones can be assigned
-        to loadout or used in crafting.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apimodel.SitoneListResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: List owned sitones
-      tags:
-      - Storage
-  /users/state:
-    get:
-      description: Returns the current authenticated user's aggregate state for the
-        homepage and feature pages. This response uses explicit counters instead of
-        frontend route paths or presentation metadata.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apimodel.UserStateResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: Get current user state
-      tags:
-      - Users
-  /world-bosses:
-    get:
-      description: Lists active world bosses, shared progress, and the current player's
-        remaining challenge attempts.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apimodel.WorldBossListResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: List world bosses
-      tags:
-      - WorldBoss
-  /world-bosses/{bossID}:
-    get:
-      description: Returns a single world boss, current stage progress, remaining
-        attempts, and reward state.
-      parameters:
-      - description: World boss ID
-        in: path
-        name: bossID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apimodel.WorldBossDetailResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: Get world boss
-      tags:
-      - WorldBoss
-  /world-bosses/{bossID}/matches:
-    post:
-      consumes:
-      - application/json
-      description: Starts a world boss match and consumes one player attempt if accepted.
-      parameters:
-      - description: World boss ID
-        in: path
-        name: bossID
-        required: true
-        type: string
-      - description: World boss match request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/apimodel.WorldBossMatchCreateRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/apimodel.WorldBossMatchResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "501":
-          description: Not Implemented
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: Create world boss match
-      tags:
-      - WorldBoss
 schemes:
 - http
 - https

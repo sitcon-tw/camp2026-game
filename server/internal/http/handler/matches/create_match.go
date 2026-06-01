@@ -9,7 +9,7 @@ import (
 
 // CreateMatch godoc
 // @Summary Create match
-// @Description Starts a match through QRCode pairing, offline duel mode, or world boss mode.
+// @Description Starts a Knowledge King player match with selected sitones.
 // @Tags Matches
 // @Accept json
 // @Produce json

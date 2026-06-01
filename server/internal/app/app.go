@@ -42,6 +42,7 @@ func New(ctx context.Context) (*Application, error) {
 		Log:            log,
 		RequestTimeout: cfg.HTTP.RequestTimeout,
 		MongoClient:    mongoClient,
+		MongoDB:        mongoDB,
 	})
 
 	return &Application{

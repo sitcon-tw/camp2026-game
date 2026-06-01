@@ -15,6 +15,153 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/activities": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Lists activities that can grant sitones to the current player.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Activities"
+                ],
+                "summary": "List activities",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.ActivityListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/activities/{activityID}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns one activity and its sitone reward information.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Activities"
+                ],
+                "summary": "Get activity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Activity ID",
+                        "name": "activityID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.ActivityDetailResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/activities/{activityID}/claims": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Claims a sitone reward from an activity when the player is eligible.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Activities"
+                ],
+                "summary": "Claim activity reward",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Activity ID",
+                        "name": "activityID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.ActivityClaimResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "User-facing endpoint. Validates the stable auth token from the issued game URL and writes it to the camp2026_auth cookie.",
@@ -70,8 +217,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
                     },
-                    "501": {
-                        "description": "Not Implemented",
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
@@ -113,39 +266,26 @@ const docTemplate = `{
                 }
             }
         },
-        "/bingo/boards": {
+        "/catalog/crafting-recipes": {
             "get": {
                 "security": [
                     {
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Lists the current player's bingo boards, cells, mission progress, and line reward state.",
+                "description": "Lists public crafting recipes and acquisition hints.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Bingo"
+                    "Catalog"
                 ],
-                "summary": "List bingo boards",
-                "parameters": [
-                    {
-                        "enum": [
-                            "daily",
-                            "persistent",
-                            "event"
-                        ],
-                        "type": "string",
-                        "description": "Board category",
-                        "name": "category",
-                        "in": "query"
-                    }
-                ],
+                "summary": "List recipe catalog",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apimodel.BingoBoardListResponse"
+                            "$ref": "#/definitions/apimodel.RecipeListResponse"
                         }
                     },
                     "401": {
@@ -156,134 +296,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/bingo/line-rewards/{lineRewardID}/claim": {
-            "post": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Claims a bingo line reward after the required line is completed.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bingo"
-                ],
-                "summary": "Claim bingo line reward",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Line reward ID",
-                        "name": "lineRewardID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.BingoLineRewardClaimResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "501": {
-                        "description": "Not Implemented",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/bingo/missions/{missionID}/complete": {
-            "post": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Attempts to complete a mission by player-submitted flag or server-side condition detection.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bingo"
-                ],
-                "summary": "Complete a bingo mission",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Mission ID",
-                        "name": "missionID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Mission completion request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.MissionCompleteRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.MissionCompleteResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "501": {
-                        "description": "Not Implemented",
                         "schema": {
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
@@ -311,43 +323,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodel.CatalogItemListResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/catalog/recipes": {
-            "get": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Lists public crafting recipes and acquisition hints.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog"
-                ],
-                "summary": "List recipe catalog",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.RecipeListResponse"
                         }
                     },
                     "401": {
@@ -402,40 +377,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/healthz": {
-            "get": {
-                "description": "Confirms the HTTP process is alive and the database is reachable.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "system"
-                ],
-                "summary": "Health check",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/system.StatusResponse"
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/match-pairings": {
+        "/crafting": {
             "post": {
                 "security": [
                     {
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Creates a match pairing after scanning another player's QRCode.",
+                "description": "Uses sitones and items to craft a new sitone.",
                 "consumes": [
                     "application/json"
                 ],
@@ -443,17 +392,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Matches"
+                    "Crafting"
                 ],
-                "summary": "Create match QRCode pairing",
+                "summary": "Craft sitone",
                 "parameters": [
                     {
-                        "description": "QRCode pairing request",
+                        "description": "Craft request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apimodel.MatchPairingRequest"
+                            "$ref": "#/definitions/apimodel.CraftRequest"
                         }
                     }
                 ],
@@ -461,7 +410,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/apimodel.MatchPairingResponse"
+                            "$ref": "#/definitions/apimodel.CraftResponse"
                         }
                     },
                     "400": {
@@ -484,6 +433,121 @@ const docTemplate = `{
                     },
                     "501": {
                         "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/crafting/recipes": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Lists crafting recipes visible to the current player, including whether each recipe is currently craftable.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Crafting"
+                ],
+                "summary": "List visible crafting recipes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.RecipeListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/crafting/recipes/{recipeID}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns one crafting recipe visible to the current player.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Crafting"
+                ],
+                "summary": "Get crafting recipe",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Recipe ID",
+                        "name": "recipeID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.RecipeSummary"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/healthz": {
+            "get": {
+                "description": "Confirms the HTTP process is alive and the database is reachable.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/system.StatusResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
@@ -558,7 +622,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Starts a match through QRCode pairing, offline duel mode, or world boss mode.",
+                "description": "Starts a Knowledge King player match with selected sitones.",
                 "consumes": [
                     "application/json"
                 ],
@@ -736,21 +800,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/matches/{matchID}/ws": {
-            "get": {
+        "/matches/{matchID}/finish": {
+            "post": {
                 "security": [
                     {
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Upgrades to the shared real-time match WebSocket. The event contract is shared by QR duel, offline duel, and world boss matches.",
+                "description": "Finalizes a match and grants open power from the result.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Matches"
                 ],
-                "summary": "Match WebSocket endpoint",
+                "summary": "Finish match",
                 "parameters": [
                     {
                         "type": "string",
@@ -764,7 +828,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apimodel.MatchWebSocketInfoResponse"
+                            "$ref": "#/definitions/apimodel.MatchFinishResponse"
                         }
                     },
                     "401": {
@@ -788,7 +852,207 @@ const docTemplate = `{
                 }
             }
         },
-        "/qrcode/me": {
+        "/me": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns the current authenticated player's profile, team, and open power balance.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Get current player",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.MeResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/items": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Lists items owned by the current player. Items are bought with open power and used for crafting.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "List owned items",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.ItemListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/items/{itemInstanceID}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns one item stack owned by the current player.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Get owned item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Item instance ID",
+                        "name": "itemInstanceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.ItemSummary"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/open-power": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns the current player's spendable open power balance.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Get open power balance",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.OpenPowerBalanceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/open-power/records": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Lists the current player's open power ledger records.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "List open power records",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.OpenPowerRecordListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/qrcode": {
             "get": {
                 "security": [
                     {
@@ -808,6 +1072,132 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodel.QRCodeResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/sitones": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Lists sitones owned by the current player. Sitones are gained from activities and used in matches or crafting.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "List owned sitones",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.SitoneListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/sitones/{sitoneID}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns one sitone owned by the current player.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Get owned sitone",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sitone ID",
+                        "name": "sitoneID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.SitoneSummary"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/state": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns the current authenticated player's gameplay loop summary for the home page.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Get current user state",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.UserStateResponse"
                         }
                     },
                     "401": {
@@ -859,6 +1249,158 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodel.QRCodeScanResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/shop/items": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Lists items that can be purchased with open power.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shop"
+                ],
+                "summary": "List shop items",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.ShopItemListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/shop/items/{itemID}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns one purchasable shop item.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shop"
+                ],
+                "summary": "Get shop item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Item ID",
+                        "name": "itemID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.ShopItemDetailResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/shop/purchases": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Purchases an item with open power and adds it to the current player's inventory.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shop"
+                ],
+                "summary": "Purchase shop item",
+                "parameters": [
+                    {
+                        "description": "Shop purchase request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.ShopPurchaseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/apimodel.ShopPurchaseResponse"
                         }
                     },
                     "400": {
@@ -1013,416 +1555,63 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/storage": {
-            "get": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Returns the current player's collection summary, including owned sitones, items, and craftable recipe count.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Storage"
-                ],
-                "summary": "Get storage summary",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.StorageSummaryResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/storage/crafting": {
-            "post": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Crafts a cosmetic sitone variant or collectible using a sitone and required items.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Storage"
-                ],
-                "summary": "Craft collectible",
-                "parameters": [
-                    {
-                        "description": "Craft request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.CraftRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.CraftResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "501": {
-                        "description": "Not Implemented",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/storage/items": {
-            "get": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Lists items owned by the current player. Items are mainly used for crafting and event collection.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Storage"
-                ],
-                "summary": "List owned items",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.ItemListResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/storage/recipes": {
-            "get": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Lists crafting recipes visible to the current player, including whether each recipe is currently craftable.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Storage"
-                ],
-                "summary": "List visible crafting recipes",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.RecipeListResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/storage/sitones": {
-            "get": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Lists sitones owned by the current player. Sitones can be assigned to loadout or used in crafting.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Storage"
-                ],
-                "summary": "List owned sitones",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.SitoneListResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/users/state": {
-            "get": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Returns the current authenticated user's aggregate state for the homepage and feature pages. This response uses explicit counters instead of frontend route paths or presentation metadata.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Get current user state",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.UserStateResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/world-bosses": {
-            "get": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Lists active world bosses, shared progress, and the current player's remaining challenge attempts.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "WorldBoss"
-                ],
-                "summary": "List world bosses",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.WorldBossListResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/world-bosses/{bossID}": {
-            "get": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Returns a single world boss, current stage progress, remaining attempts, and reward state.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "WorldBoss"
-                ],
-                "summary": "Get world boss",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "World boss ID",
-                        "name": "bossID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.WorldBossDetailResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/world-bosses/{bossID}/matches": {
-            "post": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Starts a world boss match and consumes one player attempt if accepted.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "WorldBoss"
-                ],
-                "summary": "Create world boss match",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "World boss ID",
-                        "name": "bossID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "World boss match request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.WorldBossMatchCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/apimodel.WorldBossMatchResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "501": {
-                        "description": "Not Implemented",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
+        "apimodel.ActivityClaimResponse": {
+            "type": "object",
+            "properties": {
+                "activity": {
+                    "$ref": "#/definitions/apimodel.ActivitySummary"
+                },
+                "reward": {
+                    "$ref": "#/definitions/apimodel.Reward"
+                }
+            }
+        },
+        "apimodel.ActivityDetailResponse": {
+            "type": "object",
+            "properties": {
+                "activity": {
+                    "$ref": "#/definitions/apimodel.ActivitySummary"
+                }
+            }
+        },
+        "apimodel.ActivityListResponse": {
+            "type": "object",
+            "properties": {
+                "activities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/apimodel.ActivitySummary"
+                    }
+                }
+            }
+        },
+        "apimodel.ActivitySummary": {
+            "type": "object",
+            "properties": {
+                "activityId": {
+                    "type": "string",
+                    "example": "booth-linux-101"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Complete the booth challenge to receive a sitone."
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Linux 101 Booth"
+                },
+                "reward": {
+                    "$ref": "#/definitions/apimodel.Reward"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "claimable"
+                }
+            }
+        },
         "apimodel.AuthLoginRequest": {
             "type": "object",
             "required": [
@@ -1462,7 +1651,7 @@ const docTemplate = `{
                 },
                 "playerId": {
                     "type": "string",
-                    "example": "player_01HR9Z7E2Z2VJ2QZ4P4Z"
+                    "example": "7H9K2Q"
                 },
                 "team": {
                     "$ref": "#/definitions/apimodel.AuthTeamSummary"
@@ -1478,103 +1667,7 @@ const docTemplate = `{
                 },
                 "teamId": {
                     "type": "string",
-                    "example": "team_blue"
-                }
-            }
-        },
-        "apimodel.BingoBoardListResponse": {
-            "type": "object",
-            "properties": {
-                "boards": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/apimodel.BingoBoardSummary"
-                    }
-                }
-            }
-        },
-        "apimodel.BingoBoardSummary": {
-            "type": "object",
-            "properties": {
-                "boardId": {
-                    "type": "string",
-                    "example": "board_day_1"
-                },
-                "category": {
-                    "type": "string",
-                    "example": "daily"
-                },
-                "cells": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/apimodel.BingoCell"
-                    }
-                },
-                "rewards": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/apimodel.BingoReward"
-                    }
-                },
-                "status": {
-                    "type": "string",
-                    "example": "active"
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Day 1 Bingo"
-                }
-            }
-        },
-        "apimodel.BingoCell": {
-            "type": "object",
-            "properties": {
-                "column": {
-                    "type": "integer",
-                    "example": 0
-                },
-                "mission": {
-                    "$ref": "#/definitions/apimodel.MissionSummary"
-                },
-                "row": {
-                    "type": "integer",
-                    "example": 0
-                }
-            }
-        },
-        "apimodel.BingoLineRewardClaimResponse": {
-            "type": "object",
-            "properties": {
-                "lineRewardId": {
-                    "type": "string",
-                    "example": "line_reward_row_0"
-                },
-                "reward": {
-                    "$ref": "#/definitions/apimodel.Reward"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "claimed"
-                }
-            }
-        },
-        "apimodel.BingoReward": {
-            "type": "object",
-            "properties": {
-                "lineKey": {
-                    "type": "string",
-                    "example": "row_0"
-                },
-                "lineRewardId": {
-                    "type": "string",
-                    "example": "line_reward_row_0"
-                },
-                "reward": {
-                    "$ref": "#/definitions/apimodel.Reward"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "claimable"
+                    "example": "8M4RXP"
                 }
             }
         },
@@ -1594,7 +1687,7 @@ const docTemplate = `{
             "properties": {
                 "acquisitionHint": {
                     "type": "string",
-                    "example": "Complete bingo missions."
+                    "example": "Buy from the shop with open power."
                 },
                 "definitionId": {
                     "type": "string",
@@ -1651,7 +1744,7 @@ const docTemplate = `{
             "required": [
                 "itemIds",
                 "recipeId",
-                "sitoneId"
+                "sitoneIds"
             ],
             "properties": {
                 "itemIds": {
@@ -1668,9 +1761,15 @@ const docTemplate = `{
                     "type": "string",
                     "example": "recipe_engineering_skin"
                 },
-                "sitoneId": {
-                    "type": "string",
-                    "example": "sitone_01HR9Z7E2Z2VJ2QZ4P4Z"
+                "sitoneIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "S9K2QA"
+                    ]
                 }
             }
         },
@@ -1686,9 +1785,14 @@ const docTemplate = `{
                         "pit_01HR9Z7E2Z2VJ2QZ4P4Z"
                     ]
                 },
-                "consumedSitoneId": {
-                    "type": "string",
-                    "example": "sitone_01HR9Z7E2Z2VJ2QZ4P4Z"
+                "consumedSitoneIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "S9K2QA"
+                    ]
                 },
                 "createdItem": {
                     "$ref": "#/definitions/apimodel.ItemSummary"
@@ -1824,40 +1928,47 @@ const docTemplate = `{
         "apimodel.MatchCreateRequest": {
             "type": "object",
             "required": [
-                "mode",
+                "opponentQRCodeToken",
                 "sitoneIds"
             ],
             "properties": {
-                "mode": {
+                "opponentQRCodeToken": {
                     "type": "string",
-                    "enum": [
-                        "qr_duel",
-                        "offline_duel",
-                        "world_boss"
-                    ],
-                    "example": "qr_duel"
-                },
-                "opponentPlayerId": {
-                    "type": "string",
-                    "example": "player_01HR9Z7E2Z2VJ2QZ4P4Z"
-                },
-                "pairingId": {
-                    "type": "string",
-                    "example": "pair_01HR9Z7E2Z2VJ2QZ4P4Z"
+                    "maxLength": 200,
+                    "minLength": 8,
+                    "example": "qr_opponent_token"
                 },
                 "sitoneIds": {
                     "type": "array",
                     "maxItems": 5,
+                    "minItems": 1,
                     "items": {
                         "type": "string"
                     },
                     "example": [
-                        "sitone_01HR9Z7E2Z2VJ2QZ4P4Z"
+                        "S9K2QA"
                     ]
-                },
-                "worldBossId": {
+                }
+            }
+        },
+        "apimodel.MatchFinishResponse": {
+            "type": "object",
+            "properties": {
+                "matchId": {
                     "type": "string",
-                    "example": "boss_layer_1"
+                    "example": "M8RXP2"
+                },
+                "openPower": {
+                    "type": "integer",
+                    "example": 1400
+                },
+                "openPowerGained": {
+                    "type": "integer",
+                    "example": 120
+                },
+                "result": {
+                    "type": "string",
+                    "example": "win"
                 }
             }
         },
@@ -1869,33 +1980,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/apimodel.MatchSummary"
                     }
-                }
-            }
-        },
-        "apimodel.MatchPairingRequest": {
-            "type": "object",
-            "required": [
-                "targetQrCodeToken"
-            ],
-            "properties": {
-                "targetQrCodeToken": {
-                    "type": "string",
-                    "maxLength": 200,
-                    "minLength": 8,
-                    "example": "player_qr_token"
-                }
-            }
-        },
-        "apimodel.MatchPairingResponse": {
-            "type": "object",
-            "properties": {
-                "pairingId": {
-                    "type": "string",
-                    "example": "pair_01HR9Z7E2Z2VJ2QZ4P4Z"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "matched"
                 }
             }
         },
@@ -1976,10 +2060,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "2026-07-24T10:35:00+08:00"
                 },
-                "damageDealt": {
-                    "type": "integer",
-                    "example": 320
-                },
                 "matchId": {
                     "type": "string",
                     "example": "match_01HR9Z7E2Z2VJ2QZ4P4Z"
@@ -2007,102 +2087,59 @@ const docTemplate = `{
                 "status": {
                     "type": "string",
                     "example": "completed"
-                },
-                "worldBossId": {
-                    "type": "string",
-                    "example": "boss_layer_1"
                 }
             }
         },
-        "apimodel.MatchWebSocketInfoResponse": {
+        "apimodel.MeResponse": {
             "type": "object",
             "properties": {
-                "events": {
+                "player": {
+                    "$ref": "#/definitions/apimodel.AuthPlayerSummary"
+                }
+            }
+        },
+        "apimodel.OpenPowerBalanceResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "integer",
+                    "example": 1280
+                }
+            }
+        },
+        "apimodel.OpenPowerRecordListResponse": {
+            "type": "object",
+            "properties": {
+                "records": {
                     "type": "array",
                     "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "match.snapshot",
-                        "answer.submit",
-                        "answer.result",
-                        "match.completed",
-                        "error"
-                    ]
-                },
-                "matchId": {
-                    "type": "string",
-                    "example": "match_01HR9Z7E2Z2VJ2QZ4P4Z"
+                        "$ref": "#/definitions/apimodel.OpenPowerRecordSummary"
+                    }
                 }
             }
         },
-        "apimodel.MissionCompleteRequest": {
+        "apimodel.OpenPowerRecordSummary": {
             "type": "object",
             "properties": {
-                "clientCompletedAt": {
-                    "type": "string",
-                    "example": "2026-07-24T10:30:00+08:00"
-                },
-                "flag": {
-                    "type": "string",
-                    "maxLength": 80,
-                    "minLength": 3,
-                    "example": "CAMP2026-HELLO"
-                }
-            }
-        },
-        "apimodel.MissionCompleteResponse": {
-            "type": "object",
-            "properties": {
-                "mission": {
-                    "$ref": "#/definitions/apimodel.MissionSummary"
-                },
-                "reward": {
-                    "$ref": "#/definitions/apimodel.Reward"
-                }
-            }
-        },
-        "apimodel.MissionProgress": {
-            "type": "object",
-            "properties": {
-                "current": {
+                "amount": {
                     "type": "integer",
-                    "example": 3
+                    "example": 120
                 },
-                "target": {
-                    "type": "integer",
-                    "example": 3
-                }
-            }
-        },
-        "apimodel.MissionSummary": {
-            "type": "object",
-            "properties": {
-                "description": {
+                "createdAt": {
                     "type": "string",
-                    "example": "Complete three Knowledge King questions today."
+                    "example": "2026-07-24T10:35:00+08:00"
                 },
-                "id": {
+                "reason": {
                     "type": "string",
-                    "example": "mission_daily_match_3"
+                    "example": "match_win"
                 },
-                "progress": {
-                    "$ref": "#/definitions/apimodel.MissionProgress"
-                },
-                "rewards": {
-                    "$ref": "#/definitions/apimodel.Reward"
-                },
-                "status": {
+                "recordId": {
                     "type": "string",
-                    "example": "claimable"
+                    "example": "N6T3ZA9K"
                 },
-                "tab": {
+                "source": {
                     "type": "string",
-                    "example": "daily"
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Answer three match questions"
+                    "example": "match"
                 }
             }
         },
@@ -2251,6 +2288,89 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/apimodel.SitoneGrant"
                     }
+                }
+            }
+        },
+        "apimodel.ShopItemDetailResponse": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/apimodel.ShopItemSummary"
+                }
+            }
+        },
+        "apimodel.ShopItemListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/apimodel.ShopItemSummary"
+                    }
+                }
+            }
+        },
+        "apimodel.ShopItemSummary": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Used to craft advanced sitones."
+                },
+                "itemId": {
+                    "type": "string",
+                    "example": "item-upgrade-stone"
+                },
+                "itemType": {
+                    "type": "string",
+                    "example": "craft_material"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Upgrade Stone"
+                },
+                "priceOpenPower": {
+                    "type": "integer",
+                    "example": 300
+                }
+            }
+        },
+        "apimodel.ShopPurchaseRequest": {
+            "type": "object",
+            "required": [
+                "itemId",
+                "quantity"
+            ],
+            "properties": {
+                "itemId": {
+                    "type": "string",
+                    "example": "item-upgrade-stone"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "maximum": 99,
+                    "minimum": 1,
+                    "example": 1
+                }
+            }
+        },
+        "apimodel.ShopPurchaseResponse": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/apimodel.ItemSummary"
+                },
+                "openPower": {
+                    "type": "integer",
+                    "example": 980
+                },
+                "openPowerSpent": {
+                    "type": "integer",
+                    "example": 300
+                },
+                "purchaseId": {
+                    "type": "string",
+                    "example": "P9K2QA"
                 }
             }
         },
@@ -2413,331 +2533,47 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodel.StorageSummaryResponse": {
-            "type": "object",
-            "properties": {
-                "craftableRecipes": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/apimodel.ItemSummary"
-                    }
-                },
-                "sitones": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/apimodel.SitoneSummary"
-                    }
-                }
-            }
-        },
-        "apimodel.UserBingoState": {
-            "type": "object",
-            "properties": {
-                "activeMissionCount": {
-                    "type": "integer",
-                    "example": 4
-                },
-                "claimableRewardCount": {
-                    "type": "integer",
-                    "example": 2
-                },
-                "completedMissionCount": {
-                    "type": "integer",
-                    "example": 7
-                },
-                "enabled": {
-                    "type": "boolean",
-                    "example": true
-                }
-            }
-        },
-        "apimodel.UserFeatureStates": {
-            "type": "object",
-            "properties": {
-                "bingo": {
-                    "$ref": "#/definitions/apimodel.UserBingoState"
-                },
-                "matches": {
-                    "$ref": "#/definitions/apimodel.UserMatchState"
-                },
-                "qrCode": {
-                    "$ref": "#/definitions/apimodel.UserQRCodeState"
-                },
-                "storage": {
-                    "$ref": "#/definitions/apimodel.UserStorageState"
-                },
-                "worldBoss": {
-                    "$ref": "#/definitions/apimodel.UserWorldBossState"
-                }
-            }
-        },
-        "apimodel.UserMatchState": {
-            "type": "object",
-            "properties": {
-                "activeMatchCount": {
-                    "type": "integer",
-                    "example": 0
-                },
-                "completedMatchCount": {
-                    "type": "integer",
-                    "example": 12
-                },
-                "enabled": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "pendingPairingCount": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "winCount": {
-                    "type": "integer",
-                    "example": 8
-                }
-            }
-        },
-        "apimodel.UserQRCodeState": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "hasActiveToken": {
-                    "type": "boolean",
-                    "example": true
-                }
-            }
-        },
         "apimodel.UserStatePlayer": {
             "type": "object",
             "properties": {
+                "avatarUrl": {
+                    "type": "string",
+                    "example": "https://example.test/avatar/alice.png"
+                },
                 "nickname": {
                     "type": "string",
                     "example": "Alice"
                 },
-                "openPower": {
-                    "type": "integer",
-                    "example": 1280
-                },
                 "playerId": {
                     "type": "string",
-                    "example": "player_01HR9Z7E2Z2VJ2QZ4P4Z"
+                    "example": "7H9K2Q"
                 },
-                "teamId": {
-                    "type": "string",
-                    "example": "team_blue"
+                "team": {
+                    "$ref": "#/definitions/apimodel.AuthTeamSummary"
                 }
             }
         },
         "apimodel.UserStateResponse": {
             "type": "object",
             "properties": {
-                "features": {
-                    "$ref": "#/definitions/apimodel.UserFeatureStates"
-                },
-                "loadout": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/apimodel.SitoneSummary"
-                    }
-                },
-                "player": {
-                    "$ref": "#/definitions/apimodel.UserStatePlayer"
-                },
-                "stats": {
-                    "$ref": "#/definitions/apimodel.UserStateStats"
-                }
-            }
-        },
-        "apimodel.UserStateStats": {
-            "type": "object",
-            "properties": {
-                "claimableMissionRewardCount": {
+                "activeMatchCount": {
                     "type": "integer",
-                    "example": 2
-                },
-                "completedMissionCount": {
-                    "type": "integer",
-                    "example": 7
-                },
-                "matchCount": {
-                    "type": "integer",
-                    "example": 12
-                },
-                "matchWinCount": {
-                    "type": "integer",
-                    "example": 8
-                },
-                "openPower": {
-                    "type": "integer",
-                    "example": 1280
-                },
-                "ownedItemCount": {
-                    "type": "integer",
-                    "example": 3
-                },
-                "ownedSitoneCount": {
-                    "type": "integer",
-                    "example": 5
-                }
-            }
-        },
-        "apimodel.UserStorageState": {
-            "type": "object",
-            "properties": {
-                "craftableRecipeCount": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "enabled": {
-                    "type": "boolean",
-                    "example": true
+                    "example": 0
                 },
                 "itemCount": {
                     "type": "integer",
                     "example": 3
                 },
+                "openPower": {
+                    "type": "integer",
+                    "example": 1280
+                },
+                "player": {
+                    "$ref": "#/definitions/apimodel.UserStatePlayer"
+                },
                 "sitoneCount": {
                     "type": "integer",
                     "example": 5
-                }
-            }
-        },
-        "apimodel.UserWorldBossState": {
-            "type": "object",
-            "properties": {
-                "activeBossId": {
-                    "type": "string",
-                    "example": "boss_layer_1"
-                },
-                "claimableRewardCount": {
-                    "type": "integer",
-                    "example": 0
-                },
-                "enabled": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "remainingAttemptCount": {
-                    "type": "integer",
-                    "example": 3
-                }
-            }
-        },
-        "apimodel.WorldBossDetailResponse": {
-            "type": "object",
-            "properties": {
-                "boss": {
-                    "$ref": "#/definitions/apimodel.WorldBossSummary"
-                },
-                "rewards": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/apimodel.WorldBossReward"
-                    }
-                }
-            }
-        },
-        "apimodel.WorldBossListResponse": {
-            "type": "object",
-            "properties": {
-                "bosses": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/apimodel.WorldBossSummary"
-                    }
-                }
-            }
-        },
-        "apimodel.WorldBossMatchCreateRequest": {
-            "type": "object",
-            "required": [
-                "sitoneIds"
-            ],
-            "properties": {
-                "sitoneIds": {
-                    "type": "array",
-                    "maxItems": 5,
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "sitone_01HR9Z7E2Z2VJ2QZ4P4Z"
-                    ]
-                }
-            }
-        },
-        "apimodel.WorldBossMatchResponse": {
-            "type": "object",
-            "properties": {
-                "bossId": {
-                    "type": "string",
-                    "example": "boss_layer_1"
-                },
-                "matchId": {
-                    "type": "string",
-                    "example": "match_01HR9Z7E2Z2VJ2QZ4P4Z"
-                },
-                "question": {
-                    "$ref": "#/definitions/apimodel.MatchQuestion"
-                },
-                "remainingAttempts": {
-                    "type": "integer",
-                    "example": 1
-                }
-            }
-        },
-        "apimodel.WorldBossReward": {
-            "type": "object",
-            "properties": {
-                "reward": {
-                    "$ref": "#/definitions/apimodel.Reward"
-                },
-                "rewardId": {
-                    "type": "string",
-                    "example": "wb_reward_layer_1"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "locked"
-                }
-            }
-        },
-        "apimodel.WorldBossSummary": {
-            "type": "object",
-            "properties": {
-                "bossId": {
-                    "type": "string",
-                    "example": "boss_layer_1"
-                },
-                "hp": {
-                    "type": "integer",
-                    "example": 4500
-                },
-                "layer": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "maxHp": {
-                    "type": "integer",
-                    "example": 10000
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Knowledge Core"
-                },
-                "remainingAttempts": {
-                    "type": "integer",
-                    "example": 2
-                },
-                "status": {
-                    "type": "string",
-                    "example": "active"
                 }
             }
         },

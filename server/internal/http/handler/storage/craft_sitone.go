@@ -8,9 +8,9 @@ import (
 )
 
 // CraftSitone godoc
-// @Summary Craft collectible
-// @Description Crafts a cosmetic sitone variant or collectible using a sitone and required items.
-// @Tags Storage
+// @Summary Craft sitone
+// @Description Uses sitones and items to craft a new sitone.
+// @Tags Crafting
 // @Accept json
 // @Produce json
 // @Security AuthCookieAuth
@@ -20,7 +20,7 @@ import (
 // @Failure 401 {object} httpx.ProblemDetails
 // @Failure 422 {object} httpx.ProblemDetails
 // @Failure 501 {object} httpx.ProblemDetails
-// @Router /storage/crafting [post]
+// @Router /crafting [post]
 func (h *Handler) CraftSitone(w http.ResponseWriter, r *http.Request) {
 	var body apimodel.CraftRequest
 	if err := httpx.DecodeJSON(r, &body); err != nil {

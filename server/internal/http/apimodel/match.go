@@ -1,20 +1,8 @@
 package apimodel
 
-type MatchPairingRequest struct {
-	TargetQRCodeToken string `json:"targetQrCodeToken" validate:"required,min=8,max=200" example:"player_qr_token"`
-}
-
-type MatchPairingResponse struct {
-	PairingID string `json:"pairingId" example:"pair_01HR9Z7E2Z2VJ2QZ4P4Z"`
-	Status    string `json:"status" example:"matched"`
-}
-
 type MatchCreateRequest struct {
-	Mode             string   `json:"mode" validate:"required,oneof=qr_duel offline_duel world_boss" example:"qr_duel"`
-	PairingID        string   `json:"pairingId,omitempty" example:"pair_01HR9Z7E2Z2VJ2QZ4P4Z"`
-	OpponentPlayerID string   `json:"opponentPlayerId,omitempty" example:"player_01HR9Z7E2Z2VJ2QZ4P4Z"`
-	WorldBossID      string   `json:"worldBossId,omitempty" example:"boss_layer_1"`
-	SitoneIDs        []string `json:"sitoneIds" validate:"max=5,dive,required" example:"sitone_01HR9Z7E2Z2VJ2QZ4P4Z"`
+	OpponentQRCodeToken string   `json:"opponentQRCodeToken" validate:"required,min=8,max=200" example:"qr_opponent_token"`
+	SitoneIDs           []string `json:"sitoneIds" validate:"required,min=1,max=5,dive,required" example:"S9K2QA"`
 }
 
 type MatchResponse struct {
@@ -38,8 +26,6 @@ type MatchSummary struct {
 	PlayerScore     int    `json:"playerScore" example:"320"`
 	OpponentScore   int    `json:"opponentScore" example:"280"`
 	CompletedAt     string `json:"completedAt,omitempty" example:"2026-07-24T10:35:00+08:00"`
-	WorldBossID     string `json:"worldBossId,omitempty" example:"boss_layer_1"`
-	DamageDealt     int    `json:"damageDealt,omitempty" example:"320"`
 	OpenPowerGained int    `json:"openPowerGained" example:"80"`
 }
 
@@ -75,6 +61,13 @@ type MatchAnswerSubmitResponse struct {
 	OpenPowerGained int              `json:"openPowerGained" example:"80"`
 	Battle          MatchBattleState `json:"battle"`
 	NextQuestion    *MatchQuestion   `json:"nextQuestion,omitempty"`
+}
+
+type MatchFinishResponse struct {
+	MatchID         string `json:"matchId" example:"M8RXP2"`
+	Result          string `json:"result" example:"win"`
+	OpenPowerGained int    `json:"openPowerGained" example:"120"`
+	OpenPower       int    `json:"openPower" example:"1400"`
 }
 
 type MatchBattleState struct {
