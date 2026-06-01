@@ -19,7 +19,7 @@ type ShopItemDialogProps = {
 
 function buyItem(itemId: number) {
   // TODO: 串接 API
-  console.log('buy')
+  console.log("buy")
 
   // TODO: 針對購買成功與失敗，呼叫不同的 callout notify
   // ;)

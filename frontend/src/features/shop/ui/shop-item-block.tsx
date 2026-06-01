@@ -20,9 +20,13 @@ export function ShopItemBlock({ item, onSelect }: ShopItemBlockProps) {
           alt={item.name}
           className="relative top-0 left-0 rounded-lg"
         />
-        <div className="from-foreground from-10% absolute bottom-0 h-full w-full rounded-lg bg-linear-to-t to-transparent to-50%">
-          <p className="text-background absolute bottom-2 left-4 text-lg">{item.name}</p>
-          <p className="text-background absolute right-4 bottom-2 text-lg">{item.price} 元</p>
+        <div className="from-foreground absolute bottom-0 h-full w-full rounded-lg bg-linear-to-t from-10% to-transparent to-50%">
+          <p className="text-background absolute bottom-2 left-4 text-lg">
+            {item.name}
+          </p>
+          <p className="text-background absolute right-4 bottom-2 text-lg">
+            {item.price} 元
+          </p>
         </div>
       </div>
     </Button>
