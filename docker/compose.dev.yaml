@@ -1,6 +1,6 @@
 services:
   mongodb:
-    image: mongo:8.0
+    image: mongo:7.0
     container_name: camp2026-mongodb
     restart: unless-stopped
     environment:
