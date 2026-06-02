@@ -37,23 +37,29 @@ const teamStones: CombatStone[] = [
 
 export function CombactTeamManager() {
   return (
-    <div className="flex w-full min-w-0 gap-2">
+    <div className="flex w-full flex-col gap-4">
       {teamStones.map((stone) => {
         return (
-          <div
-            key={stone.id}
-            className="aspect-square min-w-0 flex-1 basis-0 border"
-          >
+          <div key={stone.id} className="">
             <Button
               type="button"
-              variant="ghost"
-              className="border-primary size-full rounded-none border p-0"
+              variant="secondary"
+              className="flex h-fit w-full p-2"
             >
               <img
                 src={stone.pictureSrc}
                 alt={stone.name}
-                className="size-full object-contain"
+                className="aspect-square rounded-lg object-contain"
               />
+              <div className="flex flex-1 flex-col">
+                <div>
+                  <span className="text-lg">{stone.name}</span>{" "}
+                  <span className="text-muted-foreground text-sm">
+                    #{stone.id}
+                  </span>
+                </div>
+                <span>{stone.type} 型小石</span>
+              </div>
             </Button>
           </div>
         )
