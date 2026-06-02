@@ -26,17 +26,23 @@ export function CombactPage() {
       {/* 動作按鈕  */}
       <div className="flex items-center gap-x-4">
         {/* 返回首頁 */}
-        <Button variant="secondary" size="icon" onClick={toHome}>
+        <Button variant="outline" onClick={toHome} className="w-full flex-1">
           <House />
+          返回首頁
         </Button>
         {/* 準備完成 */}
-        <Button className="flex-1" onClick={toQuiz}>
+        <Button className="flex-2" onClick={toQuiz}>
           <Swords />
           開始戰鬥
         </Button>
         {/* 查看背包 */}
-        <Button variant="secondary" size="icon" onClick={toBackpack}>
+        <Button
+          variant="outline"
+          onClick={toBackpack}
+          className="w-full flex-1"
+        >
           <Backpack />
+          背包道具
         </Button>
       </div>
     </div>
