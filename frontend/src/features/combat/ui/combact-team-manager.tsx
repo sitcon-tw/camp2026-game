@@ -6,31 +6,31 @@ const teamStones: CombatStone[] = [
   {
     id: "aaa",
     name: "A 小石",
-    type: "explore",
+    type: "探索",
     pictureSrc: "https://placehold.co/65x65/svg",
   },
   {
     id: "bbb",
     name: "A 小石",
-    type: "wise",
+    type: "靈光",
     pictureSrc: "https://placehold.co/65x65/svg",
   },
   {
     id: "ccc",
     name: "A 小石",
-    type: "collab",
+    type: "共鳴",
     pictureSrc: "https://placehold.co/65x65/svg",
   },
   {
     id: "ddd",
     name: "A 小石",
-    type: "engine",
+    type: "工程",
     pictureSrc: "https://placehold.co/65x65/svg",
   },
   {
     id: "eee",
     name: "A 小石",
-    type: "entertain",
+    type: "娛樂",
     pictureSrc: "https://placehold.co/65x65/svg",
   },
 ]
@@ -58,7 +58,7 @@ export function CombactTeamManager() {
                     #{stone.id}
                   </span>
                 </div>
-                <span>{stone.type} 型小石</span>
+                <span>{stone.type}型小石</span>
               </div>
             </Button>
           </div>
