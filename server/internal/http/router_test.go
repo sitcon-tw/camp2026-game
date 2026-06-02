@@ -54,18 +54,47 @@ func TestRemovedRoutes(t *testing.T) {
 		path   string
 	}{
 		{method: http.MethodGet, path: "/api/"},
+		{method: http.MethodGet, path: "/api/me"},
+		{method: http.MethodGet, path: "/api/me/state"},
 		{method: http.MethodGet, path: "/api/me/home"},
+		{method: http.MethodGet, path: "/api/me/qrcode"},
+		{method: http.MethodGet, path: "/api/me/sitones"},
+		{method: http.MethodGet, path: "/api/me/sitones/S9K2QA"},
+		{method: http.MethodGet, path: "/api/me/items"},
+		{method: http.MethodGet, path: "/api/me/items/I8M4RX"},
+		{method: http.MethodGet, path: "/api/me/open-power"},
+		{method: http.MethodGet, path: "/api/me/open-power/records"},
 		{method: http.MethodGet, path: "/api/users/state"},
+		{method: http.MethodPost, path: "/api/qrcode/scans"},
+		{method: http.MethodGet, path: "/api/activities"},
+		{method: http.MethodGet, path: "/api/activities/booth-linux-101"},
+		{method: http.MethodPost, path: "/api/activities/booth-linux-101/claims"},
 		{method: http.MethodGet, path: "/api/bingo/boards"},
 		{method: http.MethodPost, path: "/api/bingo/missions/mission_daily_match_3/complete"},
 		{method: http.MethodGet, path: "/api/qrcode/me"},
 		{method: http.MethodGet, path: "/api/world-bosses"},
 		{method: http.MethodPost, path: "/api/match-pairings"},
+		{method: http.MethodGet, path: "/api/matches"},
+		{method: http.MethodPost, path: "/api/matches"},
+		{method: http.MethodGet, path: "/api/matches/M8RXP2"},
+		{method: http.MethodPost, path: "/api/matches/M8RXP2/answers"},
+		{method: http.MethodPost, path: "/api/matches/M8RXP2/finish"},
 		{method: http.MethodGet, path: "/api/matches/M8RXP2/ws"},
+		{method: http.MethodGet, path: "/api/shop/items"},
+		{method: http.MethodGet, path: "/api/shop/items/item-upgrade-stone"},
+		{method: http.MethodPost, path: "/api/shop/purchases"},
 		{method: http.MethodGet, path: "/api/storage"},
 		{method: http.MethodGet, path: "/api/storage/sitones"},
 		{method: http.MethodGet, path: "/api/storage/recipes"},
+		{method: http.MethodGet, path: "/api/crafting/recipes"},
+		{method: http.MethodGet, path: "/api/crafting/recipes/recipe_engineering_skin"},
+		{method: http.MethodPost, path: "/api/crafting"},
+		{method: http.MethodGet, path: "/api/catalog/sitones"},
+		{method: http.MethodGet, path: "/api/catalog/items"},
+		{method: http.MethodGet, path: "/api/catalog/crafting-recipes"},
 		{method: http.MethodGet, path: "/api/catalog/recipes"},
+		{method: http.MethodPost, path: "/api/staff/rewards"},
+		{method: http.MethodPost, path: "/api/staff/activity-verifications"},
 		{method: http.MethodGet, path: "/api/readyz"},
 		{method: http.MethodGet, path: "/api/ping"},
 		{method: http.MethodPost, path: "/api/examples/validation"},
@@ -92,23 +121,7 @@ func TestSwaggerJSON(t *testing.T) {
 	for _, want := range []string{
 		"/auth/login",
 		"/auth/logout",
-		"/me",
-		"/me/state",
-		"/me/qrcode",
-		"/me/sitones",
-		"/me/items",
-		"/me/open-power",
-		"/activities",
-		"/matches",
-		"/qrcode/scans",
-		"/shop/items",
-		"/shop/purchases",
-		"/crafting",
-		"/crafting/recipes",
-		"/catalog/sitones",
-		"/catalog/crafting-recipes",
-		"/staff/rewards",
-		"/staff/activity-verifications",
+		"/healthz",
 		"AuthCookieAuth",
 		"camp2026_auth",
 	} {
@@ -130,16 +143,41 @@ func TestSwaggerJSON(t *testing.T) {
 		"/readyz",
 		"/ping",
 		"/examples/validation",
+		"/me",
+		"/me/state",
+		"/me/qrcode",
+		"/me/sitones",
+		"/me/items",
+		"/me/open-power",
 		"/me/home",
 		"/users/state",
+		"/activities",
+		"/activities/{activityID}",
+		"/activities/{activityID}/claims",
 		"/bingo/boards",
 		"/match-pairings",
+		"/matches",
+		"/matches/{matchID}",
+		"/matches/{matchID}/answers",
+		"/matches/{matchID}/finish",
 		"/qrcode/me",
+		"/qrcode/scans",
+		"/shop/items",
+		"/shop/items/{itemID}",
+		"/shop/purchases",
 		"/world-bosses",
+		"/crafting",
+		"/crafting/recipes",
+		"/crafting/recipes/{recipeID}",
 		"/storage",
 		"/storage/sitones",
 		"/storage/recipes",
+		"/catalog/sitones",
+		"/catalog/items",
+		"/catalog/crafting-recipes",
 		"/catalog/recipes",
+		"/staff/rewards",
+		"/staff/activity-verifications",
 		"/quiz/pairings",
 		"/quiz/sessions",
 		"/world-bosses/challenges/{challengeID}/answers",
@@ -150,19 +188,7 @@ func TestSwaggerJSON(t *testing.T) {
 	}
 	assertSwaggerSecurity(t, spec.Paths, "/healthz", http.MethodGet, false)
 	assertSwaggerSecurity(t, spec.Paths, "/auth/login", http.MethodPost, false)
-	for _, route := range []struct {
-		path   string
-		method string
-	}{
-		{path: "/me", method: http.MethodGet},
-		{path: "/me/state", method: http.MethodGet},
-		{path: "/me/qrcode", method: http.MethodGet},
-		{path: "/auth/logout", method: http.MethodPost},
-		{path: "/staff/rewards", method: http.MethodPost},
-		{path: "/staff/activity-verifications", method: http.MethodPost},
-	} {
-		assertSwaggerSecurity(t, spec.Paths, route.path, route.method, true)
-	}
+	assertSwaggerSecurity(t, spec.Paths, "/auth/logout", http.MethodPost, true)
 }
 
 func TestScalarDocs(t *testing.T) {
@@ -187,131 +213,6 @@ func TestScalarDocs(t *testing.T) {
 				t.Fatalf("%s: expected docs html to contain %q", path, want)
 			}
 		}
-	}
-}
-
-func TestGameDesignGetRoutes(t *testing.T) {
-	router := NewRouter(Dependencies{})
-
-	for _, path := range []string{
-		"/api/me",
-		"/api/me/state",
-		"/api/me/qrcode",
-		"/api/me/sitones",
-		"/api/me/sitones/S9K2QA",
-		"/api/me/items",
-		"/api/me/items/I8M4RX",
-		"/api/me/open-power",
-		"/api/me/open-power/records",
-		"/api/activities",
-		"/api/activities/booth-linux-101",
-		"/api/matches",
-		"/api/matches/M8RXP2",
-		"/api/shop/items",
-		"/api/shop/items/item-upgrade-stone",
-		"/api/crafting/recipes",
-		"/api/crafting/recipes/recipe_engineering_skin",
-		"/api/catalog/sitones",
-		"/api/catalog/items",
-		"/api/catalog/crafting-recipes",
-	} {
-		res := performRequest(router, http.MethodGet, path, nil)
-		if res.Code != http.StatusOK {
-			t.Fatalf("%s: expected status %d, got %d: %s", path, http.StatusOK, res.Code, res.Body.String())
-		}
-		if contentType := res.Header().Get("Content-Type"); contentType != "application/json" {
-			t.Fatalf("%s: expected json content type, got %q", path, contentType)
-		}
-	}
-}
-
-func TestRecipeListContractUsesSingularRequirements(t *testing.T) {
-	router := NewRouter(Dependencies{})
-
-	for _, path := range []string{"/api/crafting/recipes", "/api/catalog/crafting-recipes"} {
-		res := performRequest(router, http.MethodGet, path, nil)
-		if res.Code != http.StatusOK {
-			t.Fatalf("%s: expected status %d, got %d: %s", path, http.StatusOK, res.Code, res.Body.String())
-		}
-
-		body := res.Body.String()
-		for _, want := range []string{
-			`"requiredSitoneType":"engineering"`,
-			`"requiredItemId":"item-camp-sticker"`,
-			`"requiredItemQuantity":1`,
-		} {
-			if !strings.Contains(body, want) {
-				t.Fatalf("%s: expected body to contain %s: %s", path, want, body)
-			}
-		}
-		for _, removed := range []string{"requiredSitoneTypes", "requiredItemIds"} {
-			if strings.Contains(body, removed) {
-				t.Fatalf("%s: expected body not to contain %q: %s", path, removed, body)
-			}
-		}
-	}
-}
-
-func TestGameDesignPostRoutesAreContractStubs(t *testing.T) {
-	router := NewRouter(Dependencies{})
-
-	tests := []struct {
-		name string
-		path string
-		body string
-	}{
-		{
-			name: "claim activity reward",
-			path: "/api/activities/booth-linux-101/claims",
-			body: `{}`,
-		},
-		{
-			name: "create match",
-			path: "/api/matches",
-			body: `{"opponentQRCodeToken":"qr_opponent_token","sitoneIds":["S9K2QA"]}`,
-		},
-		{
-			name: "submit match answer",
-			path: "/api/matches/M8RXP2/answers",
-			body: `{"questionId":"question_001","choiceId":"A"}`,
-		},
-		{
-			name: "finish match",
-			path: "/api/matches/M8RXP2/finish",
-			body: `{}`,
-		},
-		{
-			name: "scan qrcode",
-			path: "/api/qrcode/scans",
-			body: `{"token":"player_qr_token","context":"match_pairing"}`,
-		},
-		{
-			name: "purchase shop item",
-			path: "/api/shop/purchases",
-			body: `{"itemId":"item-upgrade-stone","quantity":1}`,
-		},
-		{
-			name: "craft sitone",
-			path: "/api/crafting",
-			body: `{"recipeId":"recipe_engineering_skin","sitoneIds":["S9K2QA"],"itemIds":["I8M4RX"]}`,
-		},
-		{
-			name: "grant staff reward",
-			path: "/api/staff/rewards",
-			body: `{"targetQrCodeToken":"player_qr_token","reason":"camp_activity_reward","openPower":100}`,
-		},
-		{
-			name: "verify staff activity",
-			path: "/api/staff/activity-verifications",
-			body: `{"targetQrCodeToken":"player_qr_token","activityCode":"booth-linux-101","missionId":"mission_activity_linux_101"}`,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			res := performRequest(router, http.MethodPost, tt.path, strings.NewReader(tt.body))
-			assertProblem(t, res, http.StatusNotImplemented, "")
-		})
 	}
 }
 

@@ -30,35 +30,6 @@ routes.
 GET /api/healthz
 POST /api/auth/login
 POST /api/auth/logout
-GET /api/me
-GET /api/me/state
-GET /api/me/qrcode
-GET /api/me/sitones
-GET /api/me/sitones/{sitoneID}
-GET /api/me/items
-GET /api/me/items/{itemInstanceID}
-GET /api/me/open-power
-GET /api/me/open-power/records
-POST /api/qrcode/scans
-GET /api/activities
-GET /api/activities/{activityID}
-POST /api/activities/{activityID}/claims
-GET /api/matches
-POST /api/matches
-GET /api/matches/{matchID}
-POST /api/matches/{matchID}/answers
-POST /api/matches/{matchID}/finish
-GET /api/shop/items
-GET /api/shop/items/{itemID}
-POST /api/shop/purchases
-GET /api/crafting/recipes
-GET /api/crafting/recipes/{recipeID}
-POST /api/crafting
-GET /api/catalog/sitones
-GET /api/catalog/items
-GET /api/catalog/crafting-recipes
-POST /api/staff/rewards
-POST /api/staff/activity-verifications
 GET /api/swagger.json
 GET /api/docs
 GET /api/docs/index.html
@@ -70,10 +41,6 @@ Swagger is generated with `swaggo/swag` from Go handler annotations:
 ```sh
 make swagger
 ```
-
-The game feature endpoints are currently contract stubs for API review. GET
-routes return example JSON. POST action routes decode and validate the request,
-then return `501 Not Implemented` until the business logic is built.
 
 ## API DTOs
 

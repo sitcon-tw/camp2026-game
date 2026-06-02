@@ -44,10 +44,6 @@ func NotFound(detail string) error {
 	return NewError(http.StatusNotFound, detail)
 }
 
-func NotImplemented(detail string) error {
-	return NewError(http.StatusNotImplemented, detail)
-}
-
 func UnprocessableEntity(detail string, details ...ErrorDetail) error {
 	return &Error{Status: http.StatusUnprocessableEntity, Detail: detail, Details: details}
 }
