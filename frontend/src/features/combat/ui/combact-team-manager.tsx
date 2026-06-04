@@ -40,7 +40,7 @@ export function CombactTeamManager() {
     <div className="flex w-full flex-col gap-4">
       {teamStones.map((stone) => {
         return (
-          <div key={stone.id} className="">
+          <div key={stone.id}>
             <Button
               type="button"
               variant="secondary"
