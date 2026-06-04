@@ -73,7 +73,7 @@ export function QuizPage() {
   return (
     <div className="relative h-dvh w-dvw">
       {/* 對手 */}
-      <div className="relative top-4 left-0 w-dvw grid grid-cols-1 gap-4">
+      <div className="relative top-4 left-0 grid w-dvw grid-cols-1 gap-4">
         <QuizUserCard
           userName="四十二號混凝土"
           userPower={2}
@@ -82,11 +82,20 @@ export function QuizPage() {
           sitoneType="工程"
           className="mx-auto"
         />
-        <QuizTeamList team={enemySitones} highlight={1} reverse className="w-fit mx-auto" />
+        <QuizTeamList
+          team={enemySitones}
+          highlight={1}
+          reverse
+          className="mx-auto w-fit"
+        />
       </div>
       {/* 玩家 */}
-      <div className="absolute bottom-4 left-0 w-dvw grid grid-cols-1 gap-4">
-        <QuizTeamList team={playerSitones} highlight={1} className="w-fit mx-auto" />
+      <div className="absolute bottom-4 left-0 grid w-dvw grid-cols-1 gap-4">
+        <QuizTeamList
+          team={playerSitones}
+          highlight={1}
+          className="mx-auto w-fit"
+        />
         <QuizUserCard
           userName="義大利麵"
           userPower={0}

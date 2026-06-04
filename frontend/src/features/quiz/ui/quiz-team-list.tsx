@@ -1,5 +1,5 @@
 import { cn } from "@/shared/utils/cn"
-import MinimapArrowA from '../assets/minimap_arrow_a.svg'
+import MinimapArrowA from "../assets/minimap_arrow_a.svg"
 
 type SitoneAttribute = {
   id: string
@@ -15,14 +15,29 @@ type QuizTeamListType = {
   className?: string
 }
 
-export function QuizTeamList({ team, highlight, reverse = false, className }: QuizTeamListType) {
+export function QuizTeamList({
+  team,
+  highlight,
+  reverse = false,
+  className,
+}: QuizTeamListType) {
   return (
     <div className={cn("flex gap-2", className)}>
       {team.map((sitone, index) => {
         return (
-          <div className={cn("flex gap-2", reverse ? "flex-col-reverse" : "flex-col")}>
+          <div
+            className={cn(
+              "flex gap-2",
+              reverse ? "flex-col-reverse" : "flex-col",
+            )}
+          >
             <img src={sitone.pictureSrc} />
-            {(highlight === index) && <img src={MinimapArrowA} className={cn("w-full h-8", reverse && "-scale-y-100")} /> }
+            {highlight === index && (
+              <img
+                src={MinimapArrowA}
+                className={cn("h-8 w-full", reverse && "-scale-y-100")}
+              />
+            )}
           </div>
         )
       })}
