@@ -16,12 +16,12 @@ export function QuizUserCard({
   sitoneType,
 }: QuizUserCardProps) {
   return (
-    <div className="relative">
+    <div className="relative aspect-3/1 h-25">
       <img
         src={ButtonSuqareHeader}
-        className="absolute top-0 left-0 -z-10 h-fit w-full -scale-x-100"
+        className="absolute top-0 left-0 -z-10 aspect-3/1 h-25 -scale-x-100"
       />
-      <div className="grid grid-cols-2 gap-4 border py-4 text-center text-xl">
+      <div className="grid aspect-3/1 h-25 grid-cols-2 gap-y-4 py-4 text-center text-xl">
         <div className="flex items-center justify-center gap-2">
           <span className="font-bold">{sitoneName}</span>
           <span className="text-sm">#{sitconId}</span>
