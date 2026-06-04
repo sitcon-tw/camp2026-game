@@ -1,4 +1,5 @@
 import { QuizQuestionType } from "@/features/quiz/model/quiz.schema"
+import { QuizExplainCard } from "@/features/quiz/ui/quiz-explain-card"
 import { QuizQuestionCard } from "@/features/quiz/ui/quiz-question-card"
 import { QuizTeamList } from "@/features/quiz/ui/quiz-team-list"
 import { QuizUserCard } from "@/features/quiz/ui/quiz-user-card"
@@ -127,6 +128,11 @@ export function QuizPage() {
       </>
 
       {/* 顯示解析畫面 */}
+      <>
+        <div className="absolute top-0 left-0 z-20 h-dvh w-dvw bg-foreground/50 flex items-center px-4">
+          <QuizExplainCard quizData={quizData} className="w-full" />
+        </div>
+      </>
     </div>
   )
 }
