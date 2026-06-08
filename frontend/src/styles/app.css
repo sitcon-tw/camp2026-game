@@ -197,3 +197,173 @@
       sans-serif;
   }
 }
+
+@layer components {
+  .login-mobile-stage {
+    position: relative;
+    isolation: isolate;
+    margin-inline: auto;
+    display: flex;
+    min-height: 100svh;
+    width: min(100vw, 430px);
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    background: var(--paper);
+    padding: 16px 18px 18px;
+    color: var(--foreground);
+  }
+
+  .login-map-lines {
+    pointer-events: none;
+    position: absolute;
+    inset: 76px 20px 84px;
+    z-index: -2;
+    border: 2px dashed rgb(53 107 88 / 24%);
+    border-radius: calc(var(--radius) + 18px);
+  }
+
+  .login-map-lines::before,
+  .login-map-lines::after {
+    position: absolute;
+    border-radius: 999px;
+    background: rgb(53 107 88 / 22%);
+    content: "";
+  }
+
+  .login-map-lines::before {
+    top: 14%;
+    left: 34%;
+    height: 72%;
+    width: 2px;
+  }
+
+  .login-map-lines::after {
+    top: 58%;
+    left: 12%;
+    height: 2px;
+    width: 76%;
+  }
+
+  .floating-stone {
+    position: absolute;
+    z-index: -1;
+    opacity: 0.72;
+    filter: saturate(0.96);
+  }
+
+  .login-screen-topbar {
+    display: flex;
+    min-height: 30px;
+    align-items: center;
+    justify-content: space-between;
+    color: rgb(23 35 58 / 76%);
+    font-size: 0.8rem;
+    font-weight: 900;
+  }
+
+  .signal-dots {
+    display: inline-flex;
+    align-items: end;
+    gap: 4px;
+  }
+
+  .signal-dots i {
+    display: block;
+    width: 5px;
+    border-radius: 999px;
+    background: var(--ink);
+  }
+
+  .signal-dots i:nth-child(1) {
+    height: 6px;
+    opacity: 0.55;
+  }
+
+  .signal-dots i:nth-child(2) {
+    height: 9px;
+    opacity: 0.72;
+  }
+
+  .signal-dots i:nth-child(3) {
+    height: 12px;
+  }
+
+  .game-mark {
+    position: relative;
+    display: grid;
+    height: 62px;
+    width: 88px;
+    flex-shrink: 0;
+    place-items: center;
+  }
+
+  .game-mark .stone-glyph:first-of-type {
+    transform: translate(-8px, 6px) rotate(-8deg);
+  }
+
+  .game-mark .stone-glyph:last-of-type {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    transform: rotate(14deg);
+  }
+
+  .game-mark-base {
+    position: absolute;
+    bottom: 3px;
+    height: 30px;
+    width: 68px;
+    border: 2px solid var(--moss);
+    border-top: 0;
+    border-radius: 0 0 22px 22px;
+  }
+
+  .stone-glyph {
+    position: relative;
+    display: inline-block;
+    height: 42px;
+    width: 48px;
+    border: 2px solid var(--stone-ink);
+    border-radius: 42% 58% 44% 56% / 54% 38% 62% 46%;
+    background: var(--stone);
+    box-shadow: inset 0 -5px 0 rgb(23 35 58 / 10%);
+  }
+
+  .stone-glyph-tiny {
+    height: 30px;
+    width: 34px;
+  }
+
+  .stone-cut {
+    position: absolute;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--stone-ink);
+    opacity: 0.42;
+  }
+
+  .stone-cut-a {
+    top: 12px;
+    left: 9px;
+    width: 17px;
+    transform: rotate(-24deg);
+  }
+
+  .stone-cut-b {
+    right: 7px;
+    bottom: 11px;
+    width: 14px;
+    transform: rotate(30deg);
+  }
+
+  .login-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 16px;
+    color: rgb(23 35 58 / 62%);
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+}
