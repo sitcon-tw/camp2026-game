@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { Check, ShoppingCart } from "lucide-react"
+import { Check } from "lucide-react"
 
 import { ShopPurchaseConfirmButton } from "@/features/shop-index/ui/shop-purchase-confirm-button"
 import { gameApi } from "@/shared/api/game"
@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { GameIcon } from "@/shared/ui/game-icon"
 import { PageHeader } from "@/shared/ui/page-header"
@@ -56,7 +57,7 @@ export function ShopItemDetailPage({ itemID }: ShopItemDetailPageProps) {
             <GameIcon
               iconPath={item.iconPath}
               imageClassName="p-3"
-              fallback={<ShoppingCart className="size-14" />}
+              fallback={<GameFeatureIcon name="shop" className="size-14" />}
             />
           </div>
 

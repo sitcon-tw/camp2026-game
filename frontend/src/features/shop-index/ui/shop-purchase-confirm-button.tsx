@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ShoppingCart } from "lucide-react"
 import { toast } from "sonner"
 import type { ComponentProps } from "react"
 
@@ -17,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/shared/ui/alert-dialog"
 import { Button } from "@/shared/ui/button"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 
 type ShopPurchaseConfirmButtonProps = {
   item: ShopItem
@@ -59,14 +59,14 @@ export function ShopPurchaseConfirmButton({
           size={size}
           disabled={purchaseMutation.isPending}
         >
-          <ShoppingCart />
+          <GameFeatureIcon name="shop" className="size-4" />
           {purchaseMutation.isPending ? "購買中" : label}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogMedia>
-            <ShoppingCart />
+            <GameFeatureIcon name="shop" className="size-10" />
           </AlertDialogMedia>
           <AlertDialogTitle>確認購買</AlertDialogTitle>
           <AlertDialogDescription>
@@ -89,7 +89,7 @@ export function ShopPurchaseConfirmButton({
             disabled={!canAfford || purchaseMutation.isPending}
             onClick={() => purchaseMutation.mutate(item.id)}
           >
-            <ShoppingCart />
+            <GameFeatureIcon name="shop" className="size-4" />
             {purchaseMutation.isPending ? "購買中" : "確認購買"}
           </AlertDialogAction>
         </AlertDialogFooter>

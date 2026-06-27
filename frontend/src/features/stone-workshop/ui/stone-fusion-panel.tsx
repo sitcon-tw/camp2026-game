@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
-import { Check, Hammer, X } from "lucide-react"
+import { Check, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { gameApi, type FusionRecipe } from "@/shared/api/game"
@@ -11,6 +11,7 @@ import {
 } from "@/shared/lib/game-labels"
 import { Button } from "@/shared/ui/button"
 import { Card } from "@/shared/ui/card"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GameIcon } from "@/shared/ui/game-icon"
 import {
   Dialog,
@@ -154,7 +155,7 @@ function RecipeListItem({
           <GameIcon
             iconPath={output?.iconPath}
             imageClassName="p-1.5"
-            fallback={<Hammer className="size-7" />}
+            fallback={<GameFeatureIcon name="forge" className="size-12" />}
           />
         </div>
         <div className="min-w-0">
@@ -246,7 +247,7 @@ function FusionConfirmDialog({
               <GameIcon
                 iconPath={recipe.outputs[0]?.iconPath}
                 imageClassName="p-1.5"
-                fallback={<Hammer className="size-8" />}
+                fallback={<GameFeatureIcon name="forge" className="size-14" />}
               />
             </div>
             <div className="min-w-0">

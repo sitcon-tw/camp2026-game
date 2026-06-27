@@ -19,25 +19,26 @@ export function PageHeader({
 }: PageHeaderType) {
   const backClassName =
     "border-ink bg-card text-ink focus-visible:outline-power grid size-11 shrink-0 cursor-pointer place-items-center rounded-2xl border-2 transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
-  const backControl = onBack && !backTo ? (
-    <button
-      type="button"
-      aria-label="返回"
-      onClick={onBack}
-      className={backClassName}
-    >
-      <ArrowLeft className="size-5" aria-hidden />
-    </button>
-  ) : (
-    <Link
-      to={backTo ?? "/"}
-      aria-label="返回"
-      onClick={onBack}
-      className={backClassName}
-    >
-      <ArrowLeft className="size-5" aria-hidden />
-    </Link>
-  )
+  const backControl =
+    onBack && !backTo ? (
+      <button
+        type="button"
+        aria-label="返回"
+        onClick={onBack}
+        className={backClassName}
+      >
+        <ArrowLeft className="size-5" aria-hidden />
+      </button>
+    ) : (
+      <Link
+        to={backTo ?? "/"}
+        aria-label="返回"
+        onClick={onBack}
+        className={backClassName}
+      >
+        <ArrowLeft className="size-5" aria-hidden />
+      </Link>
+    )
 
   return (
     <div className="flex items-start gap-x-4 py-2">

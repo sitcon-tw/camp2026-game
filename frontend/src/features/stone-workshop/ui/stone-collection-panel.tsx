@@ -406,7 +406,7 @@ function StoneShape({
           alt=""
           className={cn(
             "relative z-10 size-[54px] object-contain drop-shadow-[0_2px_0_rgba(23,35,58,0.18)]",
-            !owned && "opacity-45 grayscale brightness-0",
+            !owned && "opacity-45 brightness-0 grayscale",
           )}
           loading="lazy"
           draggable={false}

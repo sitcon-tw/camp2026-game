@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router"
-import { Check, Info, ShoppingCart } from "lucide-react"
+import { Check, Info } from "lucide-react"
 
 import { type ShopItem } from "@/shared/api/game"
 import {
@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GameIcon } from "@/shared/ui/game-icon"
 
 import { ShopPurchaseConfirmButton } from "./shop-purchase-confirm-button"
@@ -38,7 +39,7 @@ export function ShopItemCard({ item, currentOpenPower }: ShopItemCardType) {
               <GameIcon
                 iconPath={item.iconPath}
                 imageClassName="p-2"
-                fallback={<ShoppingCart className="size-8" />}
+                fallback={<GameFeatureIcon name="shop" className="size-8" />}
               />
             </div>
           </div>

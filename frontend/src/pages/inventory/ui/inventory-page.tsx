@@ -10,6 +10,7 @@ import {
 } from "@/shared/lib/game-labels"
 import { Button } from "@/shared/ui/button"
 import { Card } from "@/shared/ui/card"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { GameIcon } from "@/shared/ui/game-icon"
 import { PageHeader } from "@/shared/ui/page-header"
@@ -77,7 +78,7 @@ function EmptyBag({ message }: { message: string }) {
       aria-label="空背包狀態"
     >
       <div className="bg-surface-raised border-ink mb-3 grid size-[54px] place-items-center rounded-[18px] border-2 text-[28px] font-black">
-        +
+        <GameFeatureIcon name="backpack" className="size-9" />
       </div>
       <h3 className="mb-1 text-[17px] font-black">{message}</h3>
       <p className="text-muted-foreground mb-3.5 leading-[1.65]">

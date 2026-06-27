@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router"
-import { ChevronRight, Home, LibraryBig, SearchX, Sparkles } from "lucide-react"
+import { ChevronRight, SearchX } from "lucide-react"
 
 import { Button } from "@/shared/ui/button"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GameIcon } from "@/shared/ui/game-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 
@@ -64,7 +65,7 @@ export function NotFoundPage() {
                 iconPath={stone.iconPath}
                 alt=""
                 imageClassName="drop-shadow-sm"
-                fallback={<Sparkles className="size-6" aria-hidden />}
+                fallback={<GameFeatureIcon name="stones" className="size-8" />}
               />
             </span>
           ))}
@@ -76,7 +77,7 @@ export function NotFoundPage() {
             <GameIcon
               iconPath="/game-icons/stones/stone_2026_camp_explorer.png"
               alt=""
-              fallback={<Sparkles className="size-12" aria-hidden />}
+              fallback={<GameFeatureIcon name="home" className="size-24" />}
             />
           </div>
         </div>
@@ -114,7 +115,7 @@ export function NotFoundPage() {
         <div className="grid gap-2">
           <Button asChild className="min-h-12 rounded-[14px]">
             <Link to="/">
-              <Home className="size-5" aria-hidden />
+              <GameFeatureIcon name="home" className="size-7" />
               回到基地
               <ChevronRight className="size-5" aria-hidden />
             </Link>
@@ -125,7 +126,7 @@ export function NotFoundPage() {
             className="min-h-12 rounded-[14px]"
           >
             <Link to="/stones">
-              <LibraryBig className="size-5" aria-hidden />
+              <GameFeatureIcon name="stones" className="size-7" />
               查看小石圖鑑
             </Link>
           </Button>

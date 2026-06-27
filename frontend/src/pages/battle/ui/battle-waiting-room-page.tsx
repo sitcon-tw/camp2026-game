@@ -350,7 +350,7 @@ export function BattleWaitingRoomPage() {
                 })}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {ownedSitones.map((record) => {
                   const meta = sitoneMeta(record.sitone.type)
                   const selectedCount = countSelectedSitone(
@@ -369,7 +369,7 @@ export function BattleWaitingRoomPage() {
                       key={record.id}
                       type="button"
                       variant={selected ? "default" : "outline"}
-                      className="h-auto justify-start rounded-2xl px-3 py-2"
+                      className="h-auto w-full min-w-0 items-start justify-start rounded-2xl px-3 py-2 text-left whitespace-normal"
                       disabled={!canAddSitone}
                       onClick={() => addSitone(record)}
                       aria-pressed={selected}
@@ -382,14 +382,14 @@ export function BattleWaitingRoomPage() {
                       >
                         {meta.short}
                       </span>
-                      <span className="min-w-0 text-left">
+                      <span className="min-w-0 flex-1 text-left">
                         <strong className="block truncate">
                           {record.sitone.name}
                         </strong>
                         <span className="block text-xs leading-none opacity-80">
                           已放 {selectedCount}/{ownedQuantity}
                         </span>
-                        <span className="mt-1 block text-xs leading-snug opacity-80">
+                        <span className="mt-1 line-clamp-2 text-xs leading-snug break-words opacity-80">
                           {record.sitone.abilityName}：
                           {record.sitone.abilityDescription}
                         </span>
@@ -455,7 +455,7 @@ export function BattleWaitingRoomPage() {
             name={player.nickname}
             team={
               player.kind === "computer"
-                ? "電腦對手"
+                ? "賽博小石"
                 : player.playerId === match?.hostPlayerId
                   ? "房主"
                   : "挑戰者"

@@ -1,4 +1,4 @@
-import type { ComponentType } from "react"
+import type { ReactNode } from "react"
 
 import {
   statusToneClassNames,
@@ -12,20 +12,17 @@ type MetricCardProps = {
   label: string
   value: string
   tone: StatusTone
-  icon: ComponentType<{ className?: string }>
+  icon: ReactNode
 }
 
-export function MetricCard({
-  label,
-  value,
-  tone,
-  icon: Icon,
-}: MetricCardProps) {
+export function MetricCard({ label, value, tone, icon }: MetricCardProps) {
   return (
     <Card className="shadow-none">
       <CardContent className="p-3">
         <div className="flex items-center gap-2">
-          <Icon className={cn("size-4", statusToneClassNames[tone].icon)} />
+          <span className={cn("size-5", statusToneClassNames[tone].icon)}>
+            {icon}
+          </span>
           <span className="text-muted-foreground text-xs">{label}</span>
         </div>
         <div className="mt-2 flex items-center gap-2 text-xl font-semibold">

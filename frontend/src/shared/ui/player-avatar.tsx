@@ -5,6 +5,8 @@ import * as React from "react"
 import { Avatar } from "@/shared/ui/avatar"
 import { cn } from "@/shared/utils"
 
+const COMPUTER_AVATAR_SRC = "/game-icons/avatars/computer-opponent.png"
+
 function avatarSeed(playerId?: string, nickname?: string) {
   const id = playerId?.trim()
   if (id) return id
@@ -21,21 +23,24 @@ type PlayerAvatarProps = Omit<
 > & {
   playerId?: string
   nickname?: string
+  kind?: "human" | "computer"
   svgClassName?: string
 }
 
 export function PlayerAvatar({
   playerId,
   nickname,
+  kind,
   className,
   svgClassName,
   "aria-label": ariaLabel,
   ...props
 }: PlayerAvatarProps) {
   const seed = avatarSeed(playerId, nickname)
+  const isComputer = kind === "computer" || playerId === "computer"
   const svg = React.useMemo(
-    () => createAvatar(thumbs, { seed }).toString(),
-    [seed],
+    () => (isComputer ? "" : createAvatar(thumbs, { seed }).toString()),
+    [isComputer, seed],
   )
 
   return (
@@ -46,13 +51,22 @@ export function PlayerAvatar({
       className={cn("bg-surface-raised", className)}
       {...props}
     >
-      <span
-        className={cn(
-          "block size-full overflow-hidden [&>svg]:block [&>svg]:size-full",
-          svgClassName,
-        )}
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
+      {isComputer ? (
+        <img
+          src={COMPUTER_AVATAR_SRC}
+          alt=""
+          draggable={false}
+          className="block size-full object-cover"
+        />
+      ) : (
+        <span
+          className={cn(
+            "block size-full overflow-hidden [&>svg]:block [&>svg]:size-full",
+            svgClassName,
+          )}
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      )}
     </Avatar>
   )
 }

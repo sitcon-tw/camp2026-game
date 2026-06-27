@@ -8,9 +8,10 @@ import {
   CardTitle,
 } from "@/shared/ui/card"
 import { Field } from "@/shared/ui/field"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { Input } from "@/shared/ui/input"
 import { PageHeader } from "@/shared/ui/page-header"
-import { Play, ArrowRight, DoorOpen, ScanQrCode } from "lucide-react"
+import { ArrowRight, DoorOpen, ScanQrCode } from "lucide-react"
 
 export function BattleIndexPage() {
   return (
@@ -27,7 +28,7 @@ export function BattleIndexPage() {
         </CardContent>
         <CardFooter>
           <Button className="w-full">
-            <Play />
+            <GameFeatureIcon name="battle" className="size-5" />
             開始遊戲
           </Button>
         </CardFooter>

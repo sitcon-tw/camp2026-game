@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   CheckCircle2Icon,
   MinusIcon,
-  PackagePlusIcon,
   PlusIcon,
   ScanLineIcon,
   SearchIcon,
@@ -29,6 +28,7 @@ import {
 } from "@/shared/lib/game-labels"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { Input } from "@/shared/ui/input"
 import { PlayerAvatar } from "@/shared/ui/player-avatar"
 import {
@@ -372,7 +372,7 @@ export function StaffRewardsPanel() {
           <Card className="border-ink rounded-[22px] border-2">
             <CardHeader className="gap-3 px-5">
               <CardTitle className="flex items-center gap-2 text-xl font-black">
-                <PackagePlusIcon className="size-5" aria-hidden />
+                <GameFeatureIcon name="pass" className="size-5" />
                 選擇發放內容
               </CardTitle>
               <Tabs

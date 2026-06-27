@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { ArrowRight, Clock, Home, Swords, Trophy } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 
 import { gameApi, type CompletedMatch } from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/ui/card"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { PageHeader } from "@/shared/ui/page-header"
 import { PlayerAvatar } from "@/shared/ui/player-avatar"
@@ -78,12 +79,12 @@ export function BattleHistoryPage() {
           <CardFooter className="grid grid-cols-2 gap-2">
             <Button asChild variant="secondary">
               <Link to="/">
-                <Home /> 首頁
+                <GameFeatureIcon name="home" className="size-5" /> 首頁
               </Link>
             </Button>
             <Button asChild>
               <Link to="/battle">
-                <Swords /> 開始對戰
+                <GameFeatureIcon name="battle" className="size-5" /> 開始對戰
               </Link>
             </Button>
           </CardFooter>
@@ -101,12 +102,18 @@ export function BattleHistoryPage() {
                       <div className="grid grid-cols-[1fr_auto] items-start gap-3">
                         <div className="grid gap-y-1">
                           <CardTitle className="flex items-center gap-2 text-lg">
-                            <Trophy className="size-5" />
+                            <GameFeatureIcon
+                              name="leaderboard"
+                              className="size-5"
+                            />
                             {winnerName(match)}
                           </CardTitle>
                           <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                             <span className="flex items-center gap-1">
-                              <Clock className="size-4" />
+                              <GameFeatureIcon
+                                name="history"
+                                className="size-4"
+                              />
                               {formatDateTime(
                                 match.completedAt ??
                                   match.startedAt ??
@@ -161,7 +168,7 @@ export function BattleHistoryPage() {
 
           <Button asChild variant="secondary">
             <Link to="/">
-              <Home /> 返回首頁
+              <GameFeatureIcon name="home" className="size-5" /> 返回首頁
             </Link>
           </Button>
         </div>

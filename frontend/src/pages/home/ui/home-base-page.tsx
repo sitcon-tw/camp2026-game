@@ -1,26 +1,13 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useEffect } from "react"
-import {
-  Backpack,
-  BookOpenText,
-  ChevronRight,
-  Crown,
-  Hammer,
-  History,
-  LibraryBig,
-  LogOut,
-  PackageOpen,
-  QrCode,
-  ScanLine,
-  ShieldCheck,
-  ShoppingBag,
-  Swords,
-  Trophy,
-  type LucideIcon,
-} from "lucide-react"
+import { ChevronRight, LogOut } from "lucide-react"
 import { AppError } from "@/shared/api/error"
 import { gameApi } from "@/shared/api/game"
+import {
+  GameFeatureIcon,
+  type GameFeatureIconName,
+} from "@/shared/ui/game-feature-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { Button } from "@/shared/ui/button"
 import { apiClient } from "@/shared/api/client"
@@ -29,31 +16,27 @@ import { PlayerAvatar } from "@/shared/ui/player-avatar"
 const ACTIONS: {
   label: string
   desc: string
-  colorClass: string
-  icon: LucideIcon
+  icon: GameFeatureIconName
   to: string
   primary?: boolean
 }[] = [
   {
     label: "知識王試煉",
     desc: "召開戰局或掃描戰碼進場",
-    colorClass: "bg-primary",
-    icon: Swords,
+    icon: "battle",
     primary: true,
     to: "/battle",
   },
   {
     label: "冒險者通行證",
     desc: "讓關主驗證你的玩家身份",
-    colorClass: "bg-moss",
-    icon: QrCode,
+    icon: "pass",
     to: "/profile/qr",
   },
   {
     label: "補給商店",
     desc: "消耗開源力兌換素材與外觀",
-    colorClass: "bg-pebble-spark",
-    icon: ShoppingBag,
+    icon: "shop",
     to: "/shop",
   },
 ]
@@ -61,58 +44,50 @@ const ACTIONS: {
 const STAFF_ACTION: (typeof ACTIONS)[number] = {
   label: "關主發放台",
   desc: "掃描通行證發放小石與戰利品",
-  colorClass: "bg-secondary",
-  icon: ScanLine,
+  icon: "pass",
   to: "/staff",
 }
 
 const COLLECTIONS: {
   label: string
   count: (input: { sitones: number; items: number; rank?: number }) => string
-  colorClass: string
-  icon: LucideIcon
+  icon: GameFeatureIconName
   to: string
 }[] = [
   {
     label: "小石圖鑑",
     count: ({ sitones }) => `已收 ${sitones} 顆`,
-    colorClass: "bg-pebble-explore",
-    icon: BookOpenText,
+    icon: "stones",
     to: "/stones",
   },
   {
     label: "戰利品背包",
     count: ({ items }) => `持有 ${items} 件`,
-    colorClass: "bg-pebble-engineer",
-    icon: Backpack,
+    icon: "backpack",
     to: "/inventory",
   },
   {
     label: "鍛造工坊",
     count: () => "合成開放",
-    colorClass: "bg-pebble-play",
-    icon: Hammer,
+    icon: "forge",
     to: "/stones/fusion",
   },
   {
     label: "公會排行",
     count: ({ rank }) => (rank ? `第 ${rank} 名` : "未入榜"),
-    colorClass: "bg-pebble-resonate",
-    icon: Trophy,
+    icon: "leaderboard",
     to: "/leaderboard",
   },
   {
     label: "戰鬥回放",
     count: () => "最近戰局",
-    colorClass: "bg-primary",
-    icon: History,
+    icon: "history",
     to: "/battle/history",
   },
   {
     label: "全服圖鑑",
     count: () => "偵查資料",
-    colorClass: "bg-moss/60",
-    icon: LibraryBig,
+    icon: "codex",
     to: "/codex",
   },
 ]
@@ -205,10 +180,10 @@ export function HomeBasePage() {
           aria-label="主線任務"
         >
           <div
-            className="border-primary/70 absolute top-3 right-3 grid size-12 place-items-center border-2 bg-white/5"
+            className="absolute top-3 right-3 grid size-14 place-items-center"
             aria-hidden
           >
-            <Crown className="text-secondary size-7" />
+            <GameFeatureIcon name="leaderboard" className="size-14" />
           </div>
           <div
             className="border-primary/35 pointer-events-none absolute inset-x-4 bottom-4 h-3 border-x-2 border-b-2"
@@ -228,40 +203,42 @@ export function HomeBasePage() {
             className="border-ink bg-primary text-primary-foreground focus-visible:outline-power relative z-10 flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[14px] border-2 text-base font-black no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
             style={{ boxShadow: "3px 3px 0 rgba(0,0,0,.18)" }}
           >
-            <Swords className="size-5" aria-hidden />
+            <GameFeatureIcon name="battle" className="size-7" />
             進入競技場
             <ChevronRight className="size-5" aria-hidden />
           </Link>
         </section>
 
         <section className="grid grid-cols-3 gap-[9px]" aria-label="戰力摘要">
-          {[
-            {
-              label: "小石隊伍",
-              value: sitoneCount,
-              to: "/stones",
-              icon: ShieldCheck,
-            },
-            {
-              label: "戰利品",
-              value: itemCount,
-              to: "/inventory",
-              icon: PackageOpen,
-            },
-            {
-              label: "名次",
-              value: rank ? `#${rank}` : "-",
-              to: "/leaderboard",
-              icon: Crown,
-            },
-          ].map(({ label, value, to, icon: SummaryIcon }) => (
+          {(
+            [
+              {
+                label: "小石隊伍",
+                value: sitoneCount,
+                to: "/stones",
+                icon: "stones",
+              },
+              {
+                label: "戰利品",
+                value: itemCount,
+                to: "/inventory",
+                icon: "backpack",
+              },
+              {
+                label: "名次",
+                value: rank ? `#${rank}` : "-",
+                to: "/leaderboard",
+                icon: "leaderboard",
+              },
+            ] as const
+          ).map(({ label, value, to, icon }) => (
             <Link
               key={label}
               to={to}
               aria-label={`查看${label}`}
               className="bg-surface-raised border-border focus-visible:outline-power grid min-h-[84px] justify-items-center rounded-[16px] border-2 px-2 py-3 text-center text-inherit no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
             >
-              <SummaryIcon className="text-muted-foreground mb-1 size-4" />
+              <GameFeatureIcon name={icon} className="mb-1 size-10" />
               <span className="text-muted-foreground block text-xs font-black">
                 {label}
               </span>
@@ -342,42 +319,38 @@ export function HomeBasePage() {
         </section>
 
         <section className="grid gap-[10px]" aria-label="任務入口">
-          {actions.map((action) => {
-            const ActionIcon = action.icon
-
-            return (
-              <article
-                key={action.label}
-                className={[
-                  "bg-card border-ink grid grid-cols-[46px_1fr_78px] items-center gap-[10px] rounded-[18px] border-2 p-[13px]",
-                  action.primary ? "bg-surface-raised" : "",
-                ].join(" ")}
+          {actions.map((action) => (
+            <article
+              key={action.label}
+              className={[
+                "bg-card border-ink grid grid-cols-[52px_1fr_78px] items-center gap-[10px] rounded-[18px] border-2 p-[13px]",
+                action.primary ? "bg-surface-raised" : "",
+              ].join(" ")}
+            >
+              <div
+                className="grid size-[52px] -rotate-[4deg] place-items-center"
+                aria-hidden
               >
-                <div
-                  className={`border-ink grid size-[46px] -rotate-[4deg] place-items-center rounded-[14px] border-2 ${action.colorClass}`}
-                  aria-hidden
-                >
-                  <ActionIcon className="size-6" />
-                </div>
-                <div>
-                  <h3 className="mb-[3px] text-[18px] font-black">
-                    {action.label}
-                  </h3>
-                  <p className="text-muted-foreground m-0 text-[13px] leading-[1.45]">
-                    {action.desc}
-                  </p>
-                </div>
-                <Link
-                  to={action.to}
-                  className="bg-card border-ink focus-visible:outline-power flex min-h-[40px] items-center justify-center gap-1 rounded-[13px] border-2 text-sm font-black no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
-                  style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
-                >
-                  出發
-                  <ChevronRight className="size-4" aria-hidden />
-                </Link>
-              </article>
-            )
-          })}
+                <GameFeatureIcon name={action.icon} className="size-[52px]" />
+              </div>
+              <div>
+                <h3 className="mb-[3px] text-[18px] font-black">
+                  {action.label}
+                </h3>
+                <p className="text-muted-foreground m-0 text-[13px] leading-[1.45]">
+                  {action.desc}
+                </p>
+              </div>
+              <Link
+                to={action.to}
+                className="bg-card border-ink focus-visible:outline-power flex min-h-[40px] items-center justify-center gap-1 rounded-[13px] border-2 text-sm font-black no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
+                style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
+              >
+                出發
+                <ChevronRight className="size-4" aria-hidden />
+              </Link>
+            </article>
+          ))}
         </section>
 
         <section
@@ -392,19 +365,17 @@ export function HomeBasePage() {
           </h2>
           <div className="grid grid-cols-2 gap-[9px]">
             {COLLECTIONS.map((item) => {
-              const CollectionIcon = item.icon
-
               return (
                 <Link
                   key={item.label}
                   to={item.to}
-                  className="bg-surface-raised border-ink grid min-h-[72px] grid-cols-[30px_1fr] items-center gap-[8px] rounded-[15px] border-2 px-[10px] py-[10px] text-inherit no-underline transition-transform active:translate-y-px"
+                  className="bg-surface-raised border-ink grid min-h-[72px] grid-cols-[62px_1fr] items-center gap-[8px] rounded-[15px] border-2 px-[10px] py-[10px] text-inherit no-underline transition-transform active:translate-y-px"
                 >
                   <span
-                    className={`border-ink row-span-2 grid size-7 place-items-center rounded-[10px] border-2 ${item.colorClass}`}
+                    className="row-span-2 grid size-[58px] place-items-center"
                     aria-hidden
                   >
-                    <CollectionIcon className="size-4" />
+                    <GameFeatureIcon name={item.icon} className="size-[58px]" />
                   </span>
                   <strong className="block font-black">{item.label}</strong>
                   <small className="text-muted-foreground block text-xs font-bold">

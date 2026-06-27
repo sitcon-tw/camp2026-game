@@ -11,9 +11,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/shared/ui/collapsible"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { Separator } from "@/shared/ui/separator"
 import { cn } from "@/shared/utils"
-import { Backpack, ChevronDown, Home } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 
 const answerExplain = [
   {
@@ -80,7 +81,7 @@ export function BattleResultPage() {
         </CardHeader>
         <CardContent className="flex gap-x-4">
           <div className="bg-accent border-secondary-foreground rounded-lg border-2 p-2">
-            <Backpack className="size-10 rounded-lg" />
+            <GameFeatureIcon name="backpack" className="size-10" />
           </div>
           <div className="grid grid-cols-2 gap-x-4 text-lg">
             <div className="grid gap-y-2">
@@ -160,7 +161,7 @@ export function BattleResultPage() {
       {/* 動作區 */}
       <Separator className="my-2" />
       <Button>
-        <Home /> 返回首頁
+        <GameFeatureIcon name="home" className="size-5" /> 返回首頁
       </Button>
     </main>
   )

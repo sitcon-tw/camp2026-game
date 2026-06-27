@@ -170,6 +170,7 @@ function PlayerRail({
           <PlayerAvatar
             playerId={player?.playerId}
             nickname={player?.nickname ?? label}
+            kind={player?.kind}
             className={cn(
               "border-ink size-11 rounded-[16px] border-2",
               side === "opponent" ? "bg-pebble-resonate" : "bg-pebble-engineer",

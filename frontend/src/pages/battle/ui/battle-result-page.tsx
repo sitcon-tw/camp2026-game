@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { Backpack, ChevronDown, Home } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 
 import { useMatchEvents } from "@/features/game/use-match-events"
 import { gameApi, type MatchQuestionResult } from "@/shared/api/game"
@@ -20,6 +20,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/shared/ui/collapsible"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { Separator } from "@/shared/ui/separator"
 import { cn } from "@/shared/utils"
 
@@ -139,7 +140,7 @@ export function BattleResultPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-[64px_1fr] gap-x-4">
             <div className="bg-accent border-secondary-foreground rounded-lg border-2 p-2">
-              <Backpack className="size-10 rounded-lg" />
+              <GameFeatureIcon name="backpack" className="size-10" />
             </div>
             <div className="grid gap-y-2 text-lg">
               {rewardedPlayers.map((player) => (
@@ -305,7 +306,7 @@ export function BattleResultPage() {
       <Separator className="my-2" />
       <Button asChild onClick={clearStoredMatchID}>
         <Link to="/">
-          <Home /> 返回首頁
+          <GameFeatureIcon name="home" className="size-5" /> 返回首頁
         </Link>
       </Button>
     </GamePageShell>

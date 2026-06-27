@@ -1,5 +1,3 @@
-import { Icon } from "@iconify/react"
-import { BookOpenCheck, BrainCircuit, RadioTower } from "lucide-react"
 import { Suspense } from "react"
 
 import { HomeStatusPanel } from "@/features/home-status"
@@ -13,6 +11,7 @@ import {
   CardTitle,
 } from "@/shared/ui/card"
 import { IconBadge } from "@/shared/ui/icon-badge"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { MetricCard } from "@/shared/ui/metric-card"
 
 const campMetrics = [
@@ -20,46 +19,46 @@ const campMetrics = [
     label: "今日任務",
     value: "12",
     tone: "success",
-    icon: BookOpenCheck,
+    icon: <GameFeatureIcon name="stones" className="size-5" />,
   },
   {
     label: "知識王戰",
     value: "5",
     tone: "info",
-    icon: BrainCircuit,
+    icon: <GameFeatureIcon name="battle" className="size-5" />,
   },
   {
     label: "世界魔王",
     value: "68%",
     tone: "magic",
-    icon: RadioTower,
+    icon: <GameFeatureIcon name="leaderboard" className="size-5" />,
   },
 ] as const
 
 const pebbleTypes = [
   {
     name: "探索",
-    icon: "solar:map-point-wave-bold-duotone",
+    icon: "stones",
     tone: "explore",
   },
   {
     name: "靈光",
-    icon: "solar:lightbulb-bolt-bold-duotone",
+    icon: "leaderboard",
     tone: "spark",
   },
   {
     name: "共鳴",
-    icon: "solar:hand-heart-bold-duotone",
+    icon: "team",
     tone: "resonate",
   },
   {
     name: "工程",
-    icon: "solar:code-square-bold-duotone",
+    icon: "forge",
     tone: "engineer",
   },
   {
     name: "娛樂",
-    icon: "solar:confetti-minimalistic-bold-duotone",
+    icon: "battle",
     tone: "play",
   },
 ] as const
@@ -105,9 +104,7 @@ export function HomePage() {
                   key={type.name}
                   label={type.name}
                   tone={type.tone}
-                  icon={
-                    <Icon icon={type.icon} className="size-4" aria-hidden />
-                  }
+                  icon={<GameFeatureIcon name={type.icon} className="size-5" />}
                 />
               ))}
             </CardContent>

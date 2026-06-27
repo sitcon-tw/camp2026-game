@@ -2,24 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Activity,
   CheckCircle2,
-  Clock,
-  Coins,
-  FlaskConical,
-  Gem,
-  Gift,
   LogOut,
-  Package,
   Percent,
   RefreshCw,
   Save,
   Settings,
   ShieldCheck,
-  ShoppingCart,
-  Swords,
-  Trophy,
-  Users,
 } from "lucide-react"
-import { type ComponentType, type FormEvent, useState } from "react"
+import { type FormEvent, type ReactNode, useState } from "react"
 import { toast } from "sonner"
 
 import { AppError } from "@/shared/api/error"
@@ -44,6 +34,7 @@ import {
   CardTitle,
 } from "@/shared/ui/card"
 import { Field } from "@/shared/ui/field"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
@@ -62,8 +53,6 @@ import {
 } from "@/shared/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
 import { cn } from "@/shared/utils"
-
-type IconComponent = ComponentType<{ className?: string }>
 
 const numberFormatter = new Intl.NumberFormat("zh-TW")
 const compactNumberFormatter = new Intl.NumberFormat("zh-TW", {
@@ -358,67 +347,67 @@ function AdminDashboardView({ dashboard }: { dashboard: AdminDashboard }) {
       <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
           <MetricTile
-            icon={Users}
+            icon={<GameFeatureIcon name="team" className="size-5" />}
             label="玩家"
             value={formatNumber(summary.playerCount)}
             detail={`${summary.teamCount} 隊 / ${summary.ungroupedPlayerCount} 未分組`}
           />
           <MetricTile
-            icon={Gem}
+            icon={<GameFeatureIcon name="stones" className="size-5" />}
             label="小石總量"
             value={formatNumber(summary.totalSitones)}
             detail={`平均 ${average(summary.totalSitones, summary.playerCount)} 顆`}
           />
           <MetricTile
-            icon={Coins}
+            icon={<GameFeatureIcon name="leaderboard" className="size-5" />}
             label="開源力"
             value={formatCompact(summary.totalOpenPower)}
             detail={`平均 ${average(summary.totalOpenPower, summary.playerCount)} OP`}
           />
           <MetricTile
-            icon={Package}
+            icon={<GameFeatureIcon name="backpack" className="size-5" />}
             label="道具"
             value={formatNumber(summary.totalItems)}
             detail={`掉落 ${summary.droppedItemCount}/${summary.itemDropCount}`}
           />
           <MetricTile
-            icon={Swords}
+            icon={<GameFeatureIcon name="battle" className="size-5" />}
             label="對戰"
             value={formatNumber(summary.totalMatches)}
             detail={`${summary.activeMatches} 進行中 / ${summary.waitingMatches} 等待`}
           />
           <MetricTile
-            icon={CheckCircle2}
+            icon={<CheckCircle2 className="size-4" />}
             label="答題正確率"
             value={formatPercent(summary.answerAccuracy)}
             detail={`${summary.correctAnswerCount}/${summary.answerCount} 題`}
           />
           <MetricTile
-            icon={ShoppingCart}
+            icon={<GameFeatureIcon name="shop" className="size-5" />}
             label="商店購買"
             value={formatNumber(summary.shopPurchaseCount)}
             detail="購買紀錄"
           />
           <MetricTile
-            icon={FlaskConical}
+            icon={<GameFeatureIcon name="forge" className="size-5" />}
             label="合成"
             value={formatNumber(summary.fusionCount)}
             detail="合成紀錄"
           />
           <MetricTile
-            icon={Gift}
+            icon={<GameFeatureIcon name="pass" className="size-5" />}
             label="Staff 發獎"
             value={formatNumber(summary.staffRewardCount)}
             detail={`${summary.staffCount} staff 帳號`}
           />
           <MetricTile
-            icon={Percent}
+            icon={<Percent className="size-4" />}
             label="掉落率"
             value={formatPercent(matches.dropRate)}
             detail={`${matches.dropSuccesses}/${matches.dropAttempts} 次`}
           />
           <MetricTile
-            icon={Trophy}
+            icon={<GameFeatureIcon name="leaderboard" className="size-5" />}
             label="平均得分"
             value={
               matches.averageScore > 0 ? matches.averageScore.toFixed(1) : "-"
@@ -426,7 +415,7 @@ function AdminDashboardView({ dashboard }: { dashboard: AdminDashboard }) {
             detail="每次答題"
           />
           <MetricTile
-            icon={Clock}
+            icon={<GameFeatureIcon name="history" className="size-5" />}
             label="平均作答"
             value={formatSeconds(matches.averageElapsedMillis)}
             detail="每次答題"
@@ -509,18 +498,22 @@ function AdminDashboardView({ dashboard }: { dashboard: AdminDashboard }) {
   )
 }
 
-function MostOwnedPanel({ inventory }: { inventory: AdminDashboard["inventory"] }) {
+function MostOwnedPanel({
+  inventory,
+}: {
+  inventory: AdminDashboard["inventory"]
+}) {
   return (
     <section className="grid gap-3 lg:grid-cols-2">
       <MostOwnedListCard
-        icon={Gem}
+        icon={<GameFeatureIcon name="stones" className="size-6" />}
         title="最多拿到的小石"
         emptyLabel="目前沒有小石持有資料"
         entries={inventory.sitones.slice(0, 6)}
         unit="顆"
       />
       <MostOwnedListCard
-        icon={Package}
+        icon={<GameFeatureIcon name="backpack" className="size-6" />}
         title="最多拿到的道具"
         emptyLabel="目前沒有道具持有資料"
         entries={inventory.items.slice(0, 6)}
@@ -531,13 +524,13 @@ function MostOwnedPanel({ inventory }: { inventory: AdminDashboard["inventory"] 
 }
 
 function MostOwnedListCard({
-  icon: Icon,
+  icon,
   title,
   emptyLabel,
   entries,
   unit,
 }: {
-  icon: IconComponent
+  icon: ReactNode
   title: string
   emptyLabel: string
   entries: AdminDashboardInventoryEntry[]
@@ -547,7 +540,7 @@ function MostOwnedListCard({
     <Card className="rounded-[18px] py-5">
       <CardHeader className="px-5">
         <CardTitle className="flex items-center gap-2 text-lg font-black">
-          <Icon className="size-5" />
+          <span className="size-6">{icon}</span>
           {title}
         </CardTitle>
         <CardDescription>依全體非 staff 玩家持有數量統計。</CardDescription>
@@ -586,7 +579,7 @@ function MostOwnedListRow({
       </div>
       <div className="grid min-w-0 gap-1">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <strong className="break-words text-base leading-tight font-black">
+          <strong className="text-base leading-tight font-black break-words">
             {entry.name}
           </strong>
           {entry.catalogMissing ? (
@@ -595,7 +588,7 @@ function MostOwnedListRow({
             <Badge variant="secondary">{catalogLabel(entry)}</Badge>
           )}
         </div>
-        <span className="text-muted-foreground break-all text-xs font-bold">
+        <span className="text-muted-foreground text-xs font-bold break-all">
           {entry.id}
         </span>
       </div>
@@ -624,12 +617,12 @@ function MostOwnedListRow({
 }
 
 function MetricTile({
-  icon: Icon,
+  icon,
   label,
   value,
   detail,
 }: {
-  icon: IconComponent
+  icon: ReactNode
   label: string
   value: string
   detail: string
@@ -637,7 +630,7 @@ function MetricTile({
   return (
     <div className="border-ink bg-card grid min-h-[104px] gap-2 rounded-[18px] border-2 p-3 shadow-[2px_2px_0_rgba(23,35,58,0.1)]">
       <div className="text-muted-foreground flex items-center gap-2 text-xs font-black uppercase">
-        <Icon className="size-4" />
+        <span className="size-5">{icon}</span>
         <span>{label}</span>
       </div>
       <strong className="text-2xl leading-none font-black">{value}</strong>
@@ -727,7 +720,7 @@ function TopPlayersPanel({
     <Card className="rounded-[18px] py-5">
       <CardHeader className="px-5">
         <CardTitle className="flex items-center gap-2 text-lg font-black">
-          <Trophy className="size-5" />
+          <GameFeatureIcon name="leaderboard" className="size-6" />
           玩家排行
         </CardTitle>
         <CardDescription>
@@ -806,7 +799,7 @@ function TeamsPanel({ teams }: { teams: AdminDashboardTeam[] }) {
     <Card className="rounded-[18px] py-5">
       <CardHeader className="px-5">
         <CardTitle className="flex items-center gap-2 text-lg font-black">
-          <Users className="size-5" />
+          <GameFeatureIcon name="team" className="size-6" />
           團隊狀態
         </CardTitle>
         <CardDescription>
@@ -1004,7 +997,7 @@ function MatchesPanel({ matches }: { matches: AdminDashboard["matches"] }) {
       <Card className="rounded-[18px] py-5">
         <CardHeader className="px-5">
           <CardTitle className="flex items-center gap-2 text-lg font-black">
-            <Swords className="size-5" />
+            <GameFeatureIcon name="battle" className="size-6" />
             對戰摘要
           </CardTitle>
         </CardHeader>

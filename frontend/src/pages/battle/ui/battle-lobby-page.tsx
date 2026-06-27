@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { ArrowRight, Bot, Play, ScanQrCode } from "lucide-react"
+import { ArrowRight, ScanQrCode } from "lucide-react"
 import { type ReactNode, useState } from "react"
 import { toast } from "sonner"
 
@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/ui/card"
+import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { Input } from "@/shared/ui/input"
 import { PageHeader } from "@/shared/ui/page-header"
@@ -111,7 +112,7 @@ export function BattleLobbyPage() {
       <PageHeader title="知識王" headline="Battle Lobby" />
       <LobbyActionCard
         title="電腦對戰"
-        description="和系統控制的電腦對手進行知識王戰"
+        description="和系統控制的賽博小石進行知識王戰"
         action={
           <Button
             type="button"
@@ -124,7 +125,7 @@ export function BattleLobbyPage() {
             }
             onClick={() => createComputerMutation.mutate()}
           >
-            <Bot />
+            <GameFeatureIcon name="battle" className="size-5" />
             {computerSettingsQuery.isPending
               ? "同步中"
               : computerSettingsQuery.data?.enabled
@@ -148,7 +149,7 @@ export function BattleLobbyPage() {
             disabled={createMutation.isPending}
             onClick={() => createMutation.mutate()}
           >
-            <Play />
+            <GameFeatureIcon name="battle" className="size-5" />
             {createMutation.isPending ? "建立中" : "建立房間"}
           </Button>
         }

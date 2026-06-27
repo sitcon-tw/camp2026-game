@@ -11,7 +11,7 @@ import (
 
 const (
 	computerPlayerID      = "computer"
-	computerNickname      = "電腦對手"
+	computerNickname      = "賽博小石"
 	computerDefaultSitone = "stone_engineering_base"
 )
 
