@@ -59,19 +59,16 @@ func (h *Handler) Answer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	match, events, err := h.advanceMatch(r.Context(), match, now)
-	if err != nil {
-		httpx.WriteProblem(w, r, httpx.InternalServerError("answer failed", "match_answer_advance_before_failed", err))
-		return
-	}
-	for _, event := range events {
-		h.publishState(r.Context(), match, event)
-	}
+
 	if match.Status != mongomodel.MatchStatusActive {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "match is not active"))
 		return
 	}
 	if activeMatchPhase(match) != mongomodel.MatchPhaseAnswering {
+		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "round is not accepting answers"))
+		return
+	}
+	if !match.RoundEndsAt.IsZero() && !now.Before(match.RoundEndsAt) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "round is not accepting answers"))
 		return
 	}
@@ -142,6 +139,7 @@ func (h *Handler) Answer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.publishState(r.Context(), match, "player_answered")
+	var events []string
 	match, events, err = h.advanceMatch(r.Context(), match, now)
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("answer failed", "match_answer_advance_after_failed", err))
