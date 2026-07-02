@@ -261,36 +261,45 @@ func (h *Handler) advanceMatchOnce(ctx context.Context, match mongomodel.Match, 
 				return match, events, nil
 			}
 
-			if match.CurrentQuestionIndex >= len(match.QuestionIDs)-1 {
-				match.Status = mongomodel.MatchStatusCompleted
-				match.Phase = ""
-				match.CompletedAt = revealEndsAt
+			event := applyRevealDeadlineTransition(&match, revealEndsAt)
+			if event == "match_completed" {
 				if err := h.saveMatch(ctx, &match); err != nil {
 					return match, events, err
 				}
 				if err := h.writeMatchRewards(ctx, match); err != nil {
 					return match, events, err
 				}
-				events = append(events, "match_completed")
+				events = append(events, event)
 				return match, events, nil
 			}
 
-			match.CurrentQuestionIndex++
-			match.Phase = mongomodel.MatchPhaseAnswering
-			match.RoundStartedAt = revealEndsAt
-			match.RoundEndsAt = revealEndsAt.Add(roundDuration * time.Second)
-			match.RevealEndsAt = time.Time{}
 			if err := h.ensureCurrentRoundEliminations(ctx, &match); err != nil {
 				return match, events, err
 			}
 			if err := h.saveMatch(ctx, &match); err != nil {
 				return match, events, err
 			}
-			events = append(events, "round_started")
+			events = append(events, event)
 		}
 	}
 
 	return match, events, nil
+}
+
+func applyRevealDeadlineTransition(match *mongomodel.Match, revealEndsAt time.Time) string {
+	if match.CurrentQuestionIndex >= len(match.QuestionIDs)-1 {
+		match.Status = mongomodel.MatchStatusCompleted
+		match.Phase = ""
+		match.CompletedAt = revealEndsAt
+		return "match_completed"
+	}
+
+	match.CurrentQuestionIndex++
+	match.Phase = mongomodel.MatchPhaseAnswering
+	match.RoundStartedAt = revealEndsAt
+	match.RoundEndsAt = revealEndsAt.Add(roundDuration * time.Second)
+	match.RevealEndsAt = time.Time{}
+	return "round_started"
 }
 
 func (h *Handler) shouldRevealRound(ctx context.Context, match mongomodel.Match, now time.Time) (bool, error) {

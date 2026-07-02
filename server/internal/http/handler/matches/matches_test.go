@@ -431,6 +431,59 @@ func TestActiveMatchPhaseDefaultsToAnswering(t *testing.T) {
 	}
 }
 
+func TestApplyRevealDeadlineTransitionStartsNextRound(t *testing.T) {
+	revealEndsAt := time.Date(2026, 6, 2, 10, 0, 4, 0, time.UTC)
+	match := mongomodel.Match{
+		Status:               mongomodel.MatchStatusActive,
+		Phase:                mongomodel.MatchPhaseRevealing,
+		QuestionIDs:          []string{"quiz-001", "quiz-002"},
+		CurrentQuestionIndex: 0,
+		RevealEndsAt:         revealEndsAt,
+	}
+
+	event := applyRevealDeadlineTransition(&match, revealEndsAt)
+	if event != "round_started" {
+		t.Fatalf("expected round_started event, got %q", event)
+	}
+	if match.Status != mongomodel.MatchStatusActive || match.Phase != mongomodel.MatchPhaseAnswering {
+		t.Fatalf("expected active answering phase, got status=%q phase=%q", match.Status, match.Phase)
+	}
+	if match.CurrentQuestionIndex != 1 {
+		t.Fatalf("expected question index 1, got %d", match.CurrentQuestionIndex)
+	}
+	if !match.RoundStartedAt.Equal(revealEndsAt) {
+		t.Fatalf("expected round start at reveal end, got %s", match.RoundStartedAt)
+	}
+	if !match.RoundEndsAt.Equal(revealEndsAt.Add(roundDuration * time.Second)) {
+		t.Fatalf("expected round end at reveal end plus duration, got %s", match.RoundEndsAt)
+	}
+	if !match.RevealEndsAt.IsZero() {
+		t.Fatalf("expected reveal end to be cleared, got %s", match.RevealEndsAt)
+	}
+}
+
+func TestApplyRevealDeadlineTransitionCompletesLastRound(t *testing.T) {
+	revealEndsAt := time.Date(2026, 6, 2, 10, 0, 4, 0, time.UTC)
+	match := mongomodel.Match{
+		Status:               mongomodel.MatchStatusActive,
+		Phase:                mongomodel.MatchPhaseRevealing,
+		QuestionIDs:          []string{"quiz-001", "quiz-002"},
+		CurrentQuestionIndex: 1,
+		RevealEndsAt:         revealEndsAt,
+	}
+
+	event := applyRevealDeadlineTransition(&match, revealEndsAt)
+	if event != "match_completed" {
+		t.Fatalf("expected match_completed event, got %q", event)
+	}
+	if match.Status != mongomodel.MatchStatusCompleted || match.Phase != "" {
+		t.Fatalf("expected completed match without active phase, got status=%q phase=%q", match.Status, match.Phase)
+	}
+	if !match.CompletedAt.Equal(revealEndsAt) {
+		t.Fatalf("expected completed at reveal end, got %s", match.CompletedAt)
+	}
+}
+
 func TestMatchModeAndPlayerKindDefaults(t *testing.T) {
 	match := mongomodel.Match{}
 	if got := matchMode(match); got != mongomodel.MatchModePVP {
