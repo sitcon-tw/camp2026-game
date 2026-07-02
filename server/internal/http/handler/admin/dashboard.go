@@ -217,7 +217,6 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 		}
 		if player.Role == authctx.PlayerRoleStaff {
 			staffCount++
-			continue
 		}
 		team := dashboardTeamForPlayer(player, teamsByID)
 		statsByPlayer[player.ID] = &dashboardPlayerStats{

@@ -33,6 +33,7 @@ type Match struct {
 	Status               string                  `bson:"status"`
 	Phase                string                  `bson:"phase,omitempty"`
 	HostPlayerID         string                  `bson:"host_player_id"`
+	OpenHostLock         string                  `bson:"open_host_lock,omitempty"`
 	Players              []MatchPlayer           `bson:"players"`
 	QuestionIDs          []string                `bson:"question_ids,omitempty"`
 	CurrentQuestionIndex int                     `bson:"current_question_index,omitempty"`

@@ -707,6 +707,11 @@ export const gameApi = {
     return MatchStateSchema.parse(json)
   },
 
+  async openMatch() {
+    const json = await apiClient.get("/api/matches/open")
+    return MatchStateSchema.parse(json)
+  },
+
   async getMatch(matchID: string) {
     const json = await apiClient.get(`/api/matches/${matchID}`)
     return MatchStateSchema.parse(json)

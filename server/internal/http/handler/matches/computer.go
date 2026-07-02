@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"time"
 
+	"go.mongodb.org/mongo-driver/v2/mongo"
+
 	"github.com/sitcon-tw/camp2026-game/internal/gamecontrol"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
@@ -69,6 +71,10 @@ func (h *Handler) CreateComputer(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "computer battles are disabled"))
 		return
 	}
+	if err := h.ensureNoOpenHostedMatch(r.Context(), player.ID); err != nil {
+		writeCreateMatchProblem(w, r, err)
+		return
+	}
 
 	matchID, err := newID("match")
 	if err != nil {
@@ -87,6 +93,7 @@ func (h *Handler) CreateComputer(w http.ResponseWriter, r *http.Request) {
 		Mode:         mongomodel.MatchModeComputer,
 		Status:       mongomodel.MatchStatusWaiting,
 		HostPlayerID: player.ID,
+		OpenHostLock: player.ID,
 		Players: []mongomodel.MatchPlayer{
 			{
 				PlayerID:  player.ID,
@@ -109,6 +116,10 @@ func (h *Handler) CreateComputer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := h.db.Collection(mongomodel.MatchesCollection).InsertOne(r.Context(), match); err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			writeOpenHostedMatchConflict(w, r)
+			return
+		}
 		httpx.WriteProblem(w, r, httpx.InternalServerError("match creation failed", "match_insert_failed", err))
 		return
 	}

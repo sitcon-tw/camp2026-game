@@ -175,7 +175,7 @@ func TestDashboardPlayerProjectionFetchesOnlyDashboardFields(t *testing.T) {
 	}
 }
 
-func TestBuildDashboardResponseExcludesStaffAndRanksPlayers(t *testing.T) {
+func TestBuildDashboardResponseIncludesStaffWithTeamsAndRanksPlayers(t *testing.T) {
 	now := time.Date(2026, 6, 27, 8, 0, 0, 0, time.UTC)
 	raw := dashboardRawData{
 		Players: []dashboardPlayer{
@@ -249,28 +249,28 @@ func TestBuildDashboardResponseExcludesStaffAndRanksPlayers(t *testing.T) {
 
 	response := buildDashboardResponse(now, nil, raw)
 
-	if response.Summary.PlayerCount != 3 || response.Summary.StaffCount != 1 {
+	if response.Summary.PlayerCount != 4 || response.Summary.StaffCount != 1 {
 		t.Fatalf("unexpected player/staff counts: %#v", response.Summary)
 	}
-	if response.Summary.TotalSitones != 3 || response.Summary.TotalItems != 3 || response.Summary.TotalOpenPower != 60 {
-		t.Fatalf("expected staff inventory and power to be excluded, got %#v", response.Summary)
+	if response.Summary.TotalSitones != 102 || response.Summary.TotalItems != 102 || response.Summary.TotalOpenPower != 1059 {
+		t.Fatalf("expected staff inventory and power to be included, got %#v", response.Summary)
 	}
-	if response.Summary.AnswerCount != 2 || response.Summary.CorrectAnswerCount != 1 || response.Summary.AnswerAccuracy != 50 {
+	if response.Summary.AnswerCount != 3 || response.Summary.CorrectAnswerCount != 2 || response.Summary.AnswerAccuracy != 67 {
 		t.Fatalf("unexpected answer summary: %#v", response.Summary)
 	}
-	if response.Players[0].PlayerID != "player-a" || response.Players[0].Rank != 1 {
-		t.Fatalf("expected player-a to lead sitone ranking, got %#v", response.Players)
+	if response.Players[0].PlayerID != "staff-a" || response.Players[0].Rank != 1 {
+		t.Fatalf("expected staff-a to lead sitone ranking, got %#v", response.Players)
 	}
-	if len(response.Teams) != 1 || response.Teams[0].PlayerCount != 2 || response.Teams[0].SitoneCount != 3 {
+	if len(response.Teams) != 1 || response.Teams[0].PlayerCount != 3 || response.Teams[0].SitoneCount != 102 {
 		t.Fatalf("unexpected team summary: %#v", response.Teams)
 	}
-	if len(response.Inventory.Sitones) != 1 || response.Inventory.Sitones[0].Quantity != 3 || response.Inventory.Sitones[0].OwnerCount != 2 {
+	if len(response.Inventory.Sitones) != 1 || response.Inventory.Sitones[0].Quantity != 102 || response.Inventory.Sitones[0].OwnerCount != 3 {
 		t.Fatalf("unexpected sitone inventory summary: %#v", response.Inventory.Sitones)
 	}
 	if response.Matches.Total != 2 || response.Matches.PVP != 1 || response.Matches.Computer != 1 || response.Matches.DropRate != 50 {
 		t.Fatalf("unexpected match summary: %#v", response.Matches)
 	}
-	if len(response.TopPlayers.ByAccuracy) != 2 || response.TopPlayers.ByAccuracy[0].PlayerID != "player-a" {
+	if len(response.TopPlayers.ByAccuracy) != 3 || response.TopPlayers.ByAccuracy[1].PlayerID != "staff-a" {
 		t.Fatalf("unexpected accuracy ranking: %#v", response.TopPlayers.ByAccuracy)
 	}
 }

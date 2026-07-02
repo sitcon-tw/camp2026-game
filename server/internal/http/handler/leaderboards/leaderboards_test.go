@@ -51,7 +51,7 @@ func TestTeamEntriesRankBySitoneThenOpenPowerThenName(t *testing.T) {
 	entries := teamEntries(teams, players, stats, "team-c")
 	current, gap := currentEntryAndGap(entries)
 
-	wantIDs := []string{"team-b", "team-d", "team-c", "team-a"}
+	wantIDs := []string{"team-d", "team-b", "team-c", "team-a"}
 	if len(entries) != len(wantIDs) {
 		t.Fatalf("expected %d entries, got %#v", len(wantIDs), entries)
 	}
@@ -60,14 +60,14 @@ func TestTeamEntriesRankBySitoneThenOpenPowerThenName(t *testing.T) {
 			t.Fatalf("unexpected entry at %d: got %#v want id %q rank %d", index, entries[index], wantID, index+1)
 		}
 	}
-	if entries[1].SitoneCount != 2 || entries[1].OpenPower != 150 {
-		t.Fatalf("expected staff stats to be excluded from team-d, got %#v", entries[1])
+	if entries[0].SitoneCount != 101 || entries[0].OpenPower != 249 {
+		t.Fatalf("expected staff stats to be included in team-d, got %#v", entries[0])
 	}
 	if current == nil || current.ID != "team-c" || !current.Current {
 		t.Fatalf("expected current team-c entry, got %#v", current)
 	}
-	if gap != 0 {
-		t.Fatalf("expected same sitone-count gap 0, got %d", gap)
+	if gap != 1 {
+		t.Fatalf("expected sitone-count gap 1, got %d", gap)
 	}
 }
 
@@ -94,7 +94,7 @@ func TestPlayerEntriesRankBySitoneThenOpenPowerThenName(t *testing.T) {
 	entries := playerEntries(players, teams, stats, "player-a")
 	current, gap := currentEntryAndGap(entries)
 
-	wantIDs := []string{"player-b", "player-a", "player-c"}
+	wantIDs := []string{"staff-a", "player-b", "player-a", "player-c"}
 	if len(entries) != len(wantIDs) {
 		t.Fatalf("expected %d entries, got %#v", len(wantIDs), entries)
 	}
@@ -103,8 +103,8 @@ func TestPlayerEntriesRankBySitoneThenOpenPowerThenName(t *testing.T) {
 			t.Fatalf("unexpected entry at %d: got %#v want id %q rank %d", index, entries[index], wantID, index+1)
 		}
 	}
-	if entries[0].TeamName != "Beta" {
-		t.Fatalf("expected team name on player entry, got %#v", entries[0])
+	if entries[1].TeamName != "Beta" {
+		t.Fatalf("expected team name on player entry, got %#v", entries[1])
 	}
 	if current == nil || current.ID != "player-a" || !current.Current {
 		t.Fatalf("expected current player-a entry, got %#v", current)
@@ -154,14 +154,17 @@ func TestTeamPlayerSummariesRankBySitoneThenOpenPower(t *testing.T) {
 	}
 
 	responses := teamPlayerSummaries(players, stats, map[string]int{"player-b": 4}, "player-a")
-	if len(responses) != 2 {
-		t.Fatalf("expected 2 player responses, got %#v", responses)
+	if len(responses) != 3 {
+		t.Fatalf("expected 3 player responses, got %#v", responses)
 	}
-	if responses[0].PlayerID != "player-b" || responses[0].ItemCount != 4 {
-		t.Fatalf("expected player-b first with item count, got %#v", responses[0])
+	if responses[0].PlayerID != "staff-a" {
+		t.Fatalf("expected staff-a first, got %#v", responses[0])
 	}
-	if responses[1].PlayerID != "player-a" || !responses[1].Current {
-		t.Fatalf("expected player-a current second, got %#v", responses[1])
+	if responses[1].PlayerID != "player-b" || responses[1].ItemCount != 4 {
+		t.Fatalf("expected player-b second with item count, got %#v", responses[1])
+	}
+	if responses[2].PlayerID != "player-a" || !responses[2].Current {
+		t.Fatalf("expected player-a current third, got %#v", responses[2])
 	}
 }
 

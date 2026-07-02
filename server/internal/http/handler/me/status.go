@@ -8,7 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 	"github.com/sitcon-tw/camp2026-game/internal/openpower"
@@ -63,9 +62,6 @@ func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
 }
 
 func playerTeamID(player mongomodel.Player) string {
-	if player.Role == authctx.PlayerRoleStaff {
-		return ""
-	}
 	return player.TeamID
 }
 
@@ -86,10 +82,7 @@ func (h *Handler) findTeam(ctx context.Context, teamID string) (mongomodel.Team,
 func (h *Handler) findTeamMembers(ctx context.Context, teamID string) ([]mongomodel.Player, error) {
 	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(
 		ctx,
-		bson.M{
-			"team_id": teamID,
-			"role":    bson.M{"$ne": authctx.PlayerRoleStaff},
-		},
+		bson.M{"team_id": teamID},
 		options.Find().
 			SetProjection(bson.D{
 				{Key: "auth_token", Value: 0},
@@ -151,7 +144,7 @@ func statusResponse(player mongomodel.Player, team *mongomodel.Team, openPower i
 func teamMemberResponses(players []mongomodel.Player) []TeamMemberResponse {
 	members := make([]TeamMemberResponse, 0, len(players))
 	for _, player := range players {
-		if player.ID == "" || player.Nickname == "" || player.Role == authctx.PlayerRoleStaff {
+		if player.ID == "" || player.Nickname == "" {
 			continue
 		}
 		members = append(members, TeamMemberResponse{

@@ -2,7 +2,6 @@ package httpserver
 
 import (
 	"encoding/json"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -66,57 +65,6 @@ func TestAdminLoginUsesConfiguredSecureCookie(t *testing.T) {
 	}
 	if cookie := cookies[0]; !cookie.Secure {
 		t.Fatalf("expected router to pass secure admin cookie setting, got %#v", cookie)
-	}
-}
-
-func TestGlobalRateLimitByIP(t *testing.T) {
-	router := NewRouter(Dependencies{})
-	ip := "203.0.113.10"
-
-	for i := 0; i < globalRateLimit.Requests; i++ {
-		res := performRequestFromIP(router, http.MethodGet, "/api/healthz", nil, ip)
-		if res.Code != http.StatusOK {
-			t.Fatalf("request %d: expected status %d, got %d: %s", i+1, http.StatusOK, res.Code, res.Body.String())
-		}
-	}
-
-	res := performRequestFromIP(router, http.MethodGet, "/api/healthz", nil, ip)
-	assertProblem(t, res, http.StatusTooManyRequests, "")
-	if retryAfter := res.Header().Get("Retry-After"); retryAfter == "" {
-		t.Fatal("expected Retry-After header")
-	}
-
-	res = performRequestFromIP(router, http.MethodGet, "/api/healthz", nil, "203.0.113.11")
-	if res.Code != http.StatusOK {
-		t.Fatalf("expected different IP to be allowed with status %d, got %d", http.StatusOK, res.Code)
-	}
-}
-
-func TestAuthLoginRateLimitByIP(t *testing.T) {
-	router := NewRouter(Dependencies{})
-	ip := "203.0.113.20"
-
-	for i := 0; i < authLoginRateLimit.Requests; i++ {
-		res := performRequestFromIP(router, http.MethodPost, "/api/auth/login", strings.NewReader(`{}`), ip)
-		if res.Code == http.StatusTooManyRequests {
-			t.Fatalf("request %d: did not expect login rate limit yet", i+1)
-		}
-	}
-
-	res := performRequestFromIP(router, http.MethodPost, "/api/auth/login", strings.NewReader(`{}`), ip)
-	assertProblem(t, res, http.StatusTooManyRequests, "")
-	if retryAfter := res.Header().Get("Retry-After"); retryAfter == "" {
-		t.Fatal("expected Retry-After header")
-	}
-
-	res = performRequestFromIP(router, http.MethodGet, "/api/healthz", nil, ip)
-	if res.Code != http.StatusOK {
-		t.Fatalf("expected auth limit not to block other routes, got %d", res.Code)
-	}
-
-	res = performRequestFromIP(router, http.MethodPost, "/api/auth/login", strings.NewReader(`{}`), "203.0.113.21")
-	if res.Code == http.StatusTooManyRequests {
-		t.Fatal("expected different IP to be allowed for auth login")
 	}
 }
 
@@ -703,18 +651,10 @@ func loadTestContent(t *testing.T) *content.Store {
 }
 
 func performRequest(handler http.Handler, method, path string, body *strings.Reader) *httptest.ResponseRecorder {
-	return performRequestFromIP(handler, method, path, body, "")
-}
-
-func performRequestFromIP(handler http.Handler, method, path string, body *strings.Reader, ip string) *httptest.ResponseRecorder {
 	if body == nil {
 		body = strings.NewReader("")
 	}
 	req := httptest.NewRequest(method, path, body)
-	if ip != "" {
-		req.RemoteAddr = net.JoinHostPort(ip, "49152")
-		req.Header.Set("X-Forwarded-For", ip)
-	}
 	res := httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
 	return res

@@ -115,14 +115,17 @@ func TestStatusResponse(t *testing.T) {
 	if response.OpenPower != 1280 {
 		t.Fatalf("expected open power 1280, got %d", response.OpenPower)
 	}
-	if len(response.TeamMembers) != 2 {
-		t.Fatalf("expected 2 team members, got %#v", response.TeamMembers)
+	if len(response.TeamMembers) != 3 {
+		t.Fatalf("expected 3 team members, got %#v", response.TeamMembers)
 	}
 	if response.TeamMembers[0].PlayerID != "7H9K2Q" || response.TeamMembers[0].Nickname != "Alice" {
 		t.Fatalf("unexpected first team member: %#v", response.TeamMembers[0])
 	}
 	if response.TeamMembers[1].PlayerID != "2QK9H7" || response.TeamMembers[1].Nickname != "Bob" {
 		t.Fatalf("unexpected second team member: %#v", response.TeamMembers[1])
+	}
+	if response.TeamMembers[2].PlayerID != "staff-token-1" || response.TeamMembers[2].Role != "staff" {
+		t.Fatalf("unexpected third team member: %#v", response.TeamMembers[2])
 	}
 	if response.AvatarURL == "" {
 		t.Fatalf("expected avatar url")
@@ -132,7 +135,7 @@ func TestStatusResponse(t *testing.T) {
 	}
 }
 
-func TestStaffStatusResponseOmitsTeam(t *testing.T) {
+func TestStaffStatusResponseKeepsStaffRoleWhenNoTeamIsLoaded(t *testing.T) {
 	response := statusResponse(
 		mongomodel.Player{
 			ID:       "staff-token-1",
@@ -164,11 +167,14 @@ func TestTeamMemberResponsesSkipsInvalidPlayers(t *testing.T) {
 		{ID: "staff-token-1", Nickname: "Staff", Role: "staff"},
 	})
 
-	if len(members) != 1 {
-		t.Fatalf("expected 1 team member, got %#v", members)
+	if len(members) != 2 {
+		t.Fatalf("expected 2 team members, got %#v", members)
 	}
 	if members[0].PlayerID != "7H9K2Q" || members[0].Nickname != "Alice" {
 		t.Fatalf("unexpected team member: %#v", members[0])
+	}
+	if members[1].PlayerID != "staff-token-1" || members[1].Role != "staff" {
+		t.Fatalf("unexpected staff team member: %#v", members[1])
 	}
 }
 
@@ -235,7 +241,7 @@ func TestTeamRankEntriesRankBySitoneThenOpenPower(t *testing.T) {
 	rows := teamRankEntries(teams, players, stats)
 	current := currentTeamRank(rows, "team-a")
 
-	wantIDs := []string{"team-b", "team-c", "team-a"}
+	wantIDs := []string{"team-a", "team-b", "team-c"}
 	if len(rows) != len(wantIDs) {
 		t.Fatalf("expected %d rows, got %#v", len(wantIDs), rows)
 	}
@@ -247,8 +253,8 @@ func TestTeamRankEntriesRankBySitoneThenOpenPower(t *testing.T) {
 	if current == nil || current.TeamID != "team-a" {
 		t.Fatalf("expected current team-a rank, got %#v", current)
 	}
-	if current.SitoneCount != 2 || current.OpenPower != 500 {
-		t.Fatalf("expected staff stats to be excluded, got %#v", current)
+	if current.SitoneCount != 101 || current.OpenPower != 599 {
+		t.Fatalf("expected staff stats to be included, got %#v", current)
 	}
 	if current.GapToPrevious != 0 {
 		t.Fatalf("expected same sitone-count gap 0, got %d", current.GapToPrevious)

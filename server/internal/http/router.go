@@ -52,8 +52,6 @@ func NewRouter(dep Dependencies) http.Handler {
 	r.Use(chimw.Timeout(dep.RequestTimeout))
 	r.Use(recoverer(dep.Log))
 	r.Use(requestLogger(dep.Log))
-	r.Use(rateLimitByIP(newIPRateLimiter(globalRateLimit)))
-	r.Use(rateLimitRoute(http.MethodPost, "/api/auth/login", newIPRateLimiter(authLoginRateLimit)))
 
 	r.Route("/api", func(api chi.Router) {
 		api.Use(sameOriginUnsafeRequestGuard())

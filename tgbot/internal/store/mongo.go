@@ -31,13 +31,41 @@ func (s *MongoStore) EnsureIndexes(ctx context.Context) error {
 	}
 
 	players := s.db.Collection(domain.PlayersCollection)
-	if _, err := players.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: bson.D{{Key: "telegram_user_id", Value: 1}},
-		Options: options.Index().
-			SetUnique(true).
-			SetPartialFilterExpression(bson.M{"telegram_user_id": bson.M{"$exists": true}}),
+	if _, err := players.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "telegram_user_id", Value: 1}},
+			Options: options.Index().
+				SetName("telegram_user_id_1").
+				SetUnique(true).
+				SetPartialFilterExpression(bson.M{"telegram_user_id": bson.M{"$exists": true}}),
+		},
+		{
+			Keys: bson.D{{Key: "auth_token", Value: 1}},
+			Options: options.Index().
+				SetName("players_auth_token").
+				SetUnique(true).
+				SetPartialFilterExpression(bson.M{"auth_token": bson.M{"$gt": ""}}),
+		},
+		{
+			Keys: bson.D{{Key: "qrcode_token", Value: 1}},
+			Options: options.Index().
+				SetName("players_qrcode_token").
+				SetUnique(true).
+				SetPartialFilterExpression(bson.M{"qrcode_token": bson.M{"$gt": ""}}),
+		},
 	}); err != nil {
-		return fmt.Errorf("create %s telegram_user_id index: %w", players.Name(), err)
+		return fmt.Errorf("create %s token indexes: %w", players.Name(), err)
+	}
+
+	playerSitones := s.db.Collection(domain.PlayerSitonesCollection)
+	if _, err := playerSitones.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "player_id", Value: 1},
+			{Key: "sitone_id", Value: 1},
+		},
+		Options: options.Index().SetName("player_sitones_player_sitone").SetUnique(true),
+	}); err != nil {
+		return fmt.Errorf("create %s player sitone index: %w", playerSitones.Name(), err)
 	}
 	return nil
 }

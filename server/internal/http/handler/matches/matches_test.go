@@ -295,6 +295,42 @@ func TestMatchRevisionFilterGuardsInitialAndExistingRevisions(t *testing.T) {
 	}
 }
 
+func TestOpenHostedMatchFilterMatchesWaitingAndActiveHost(t *testing.T) {
+	filter := openHostedMatchFilter("P1")
+	if filter["host_player_id"] != "P1" {
+		t.Fatalf("expected host player filter, got %#v", filter)
+	}
+
+	status, ok := filter["status"].(bson.M)
+	if !ok {
+		t.Fatalf("expected status filter, got %#v", filter)
+	}
+	values, ok := status["$in"].(bson.A)
+	if !ok || len(values) != 2 {
+		t.Fatalf("expected status $in filter, got %#v", status)
+	}
+	if values[0] != mongomodel.MatchStatusWaiting || values[1] != mongomodel.MatchStatusActive {
+		t.Fatalf("expected waiting and active statuses, got %#v", values)
+	}
+}
+
+func TestReleaseOpenHostLockOnCompletion(t *testing.T) {
+	match := mongomodel.Match{
+		Status:       mongomodel.MatchStatusActive,
+		OpenHostLock: "P1",
+	}
+	releaseOpenHostLockOnCompletion(&match)
+	if match.OpenHostLock != "P1" {
+		t.Fatalf("expected active match to keep open host lock, got %q", match.OpenHostLock)
+	}
+
+	match.Status = mongomodel.MatchStatusCompleted
+	releaseOpenHostLockOnCompletion(&match)
+	if match.OpenHostLock != "" {
+		t.Fatalf("expected completed match to release open host lock, got %q", match.OpenHostLock)
+	}
+}
+
 func TestMatchAnswerRecordIDUsesMatchPlayerAndQuestion(t *testing.T) {
 	got := matchAnswerRecordID("match_123", "P1", "quiz-001")
 	if got != "answer_match_123_P1_quiz-001" {

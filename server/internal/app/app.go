@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	drivermongo "go.mongodb.org/mongo-driver/v2/mongo"
 
@@ -44,6 +45,13 @@ func New(ctx context.Context) (*Application, error) {
 		return nil, err
 	}
 	mongoDB := mongoClient.Database(cfg.MongoDatabase)
+	if err := mongodb.EnsureIndexes(ctx, mongoDB); err != nil {
+		disconnectCtx, disconnectCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer disconnectCancel()
+		_ = mongoClient.Disconnect(disconnectCtx)
+
+		return nil, err
+	}
 
 	handler := httpserver.NewRouter(httpserver.Dependencies{
 		Log:               log,

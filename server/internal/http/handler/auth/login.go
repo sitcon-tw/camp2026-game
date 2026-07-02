@@ -97,9 +97,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func playerTeamID(player mongomodel.Player) string {
-	if player.Role == authctx.PlayerRoleStaff {
-		return ""
-	}
 	return player.TeamID
 }
 

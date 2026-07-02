@@ -4,6 +4,7 @@ import "time"
 
 type CreateMatchResponse = MatchStateResponse
 type JoinMatchResponse = MatchStateResponse
+type OpenMatchResponse = MatchStateResponse
 type ReadyMatchResponse = MatchStateResponse
 type UpdateLoadoutResponse = MatchStateResponse
 

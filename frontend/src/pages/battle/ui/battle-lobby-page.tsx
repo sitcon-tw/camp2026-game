@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { ArrowRight, ScanQrCode } from "lucide-react"
 import { type ReactNode, useState } from "react"
@@ -8,6 +8,7 @@ import {
   MatchCodeScannerDialog,
   normalizeMatchCode,
 } from "@/features/battle-qr"
+import { AppError } from "@/shared/api/error"
 import { gameApi, type MatchState } from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
 import {
@@ -62,16 +63,40 @@ function LobbyActionCard({
 
 export function BattleLobbyPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [code, setCode] = useState("")
   const [scannerOpen, setScannerOpen] = useState(false)
   const onMatchReady = (match: MatchState) => {
     storeMatch(match)
     navigate({ to: "/battle/room" })
   }
+  const openMatchQuery = useQuery({
+    queryKey: ["matches", "open"],
+    queryFn: async () => {
+      try {
+        return await gameApi.openMatch()
+      } catch (error) {
+        if (error instanceof AppError && error.status === 404) return null
+        throw error
+      }
+    },
+    retry: (failureCount, error) =>
+      !(error instanceof AppError && error.status < 500) && failureCount < 2,
+  })
+  const openMatch =
+    openMatchQuery.data?.status === "waiting" ||
+    openMatchQuery.data?.status === "active"
+      ? openMatchQuery.data
+      : null
   const createMutation = useMutation({
     mutationFn: gameApi.createMatch,
     onSuccess: onMatchReady,
     onError: (error) => {
+      if (error instanceof AppError && error.status === 409) {
+        queryClient.invalidateQueries({ queryKey: ["matches", "open"] })
+        toast.error("已有進行中的對戰，請重新加入")
+        return
+      }
       toast.error(error instanceof Error ? error.message : "建立房間失敗")
     },
   })
@@ -105,6 +130,14 @@ export function BattleLobbyPage() {
 
   function handleJoin() {
     handleJoinCode(code)
+  }
+
+  function handleQuickStart() {
+    if (openMatch) {
+      onMatchReady(openMatch)
+      return
+    }
+    createMutation.mutate()
   }
 
   return (
@@ -141,25 +174,35 @@ export function BattleLobbyPage() {
 
       <LobbyActionCard
         title="快速開始"
-        description="建立一個雙人知識王房間"
+        description={
+          openMatch ? "回到尚未結束的知識王對戰" : "建立一個雙人知識王房間"
+        }
         action={
           <Button
             type="button"
             className={actionButtonClassName}
-            disabled={createMutation.isPending}
-            onClick={() => createMutation.mutate()}
+            disabled={openMatchQuery.isPending || createMutation.isPending}
+            onClick={handleQuickStart}
           >
             <GameFeatureIcon name="battle" className="size-4" />
-            {createMutation.isPending ? "建立中" : "建立房間"}
+            {openMatchQuery.isPending
+              ? "同步中"
+              : openMatch
+                ? "重新加入對戰"
+                : createMutation.isPending
+                  ? "建立中"
+                  : "建立房間"}
           </Button>
         }
       >
-        建立房間後，把房號分享給另一位學員加入對戰。
+        {openMatch
+          ? "對戰已經開始或仍在等待房，可以直接回到原本的對戰。"
+          : "建立房間後，把房號分享給另一位學員加入對戰。"}
       </LobbyActionCard>
 
       <LobbyActionCard
         title="多人連線"
-        description="使用房號加入等待中的對戰"
+        description="使用房號加入或回到對戰"
         action={
           <div className="grid w-full grid-cols-[minmax(0,1fr)_44px_minmax(104px,1fr)] items-center gap-2">
             <Input

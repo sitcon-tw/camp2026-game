@@ -2,7 +2,6 @@ package matches
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -37,19 +36,5 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, events, err := h.advanceMatch(r.Context(), match, time.Now())
-	if err != nil {
-		httpx.WriteProblem(w, r, httpx.InternalServerError("match state unavailable", "match_state_advance_failed", err))
-		return
-	}
-	for _, event := range events {
-		h.publishState(r.Context(), match, event)
-	}
-
-	state, err := h.buildMatchState(r.Context(), match, player.ID)
-	if err != nil {
-		httpx.WriteProblem(w, r, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, state)
+	h.writeAdvancedMatchState(w, r, match, player.ID)
 }

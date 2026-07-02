@@ -9,7 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
@@ -21,7 +20,7 @@ const (
 
 // ListPlayers godoc
 // @Summary Search players as staff
-// @Description Staff-only endpoint. Searches non-staff players by nickname or player ID for reward targeting.
+// @Description Staff-only endpoint. Searches players by nickname or player ID for reward targeting.
 // @Tags staff
 // @Produce json
 // @Security AuthCookieAuth
@@ -107,7 +106,6 @@ func (h *Handler) searchPlayers(ctx context.Context, query string) ([]mongomodel
 func playerSearchFilter(query string) bson.M {
 	regex := bson.Regex{Pattern: regexp.QuoteMeta(query), Options: "i"}
 	return bson.M{
-		"role": bson.M{"$ne": authctx.PlayerRoleStaff},
 		"$or": bson.A{
 			bson.M{"nickname": regex},
 			bson.M{"_id": regex},
@@ -165,7 +163,7 @@ func (h *Handler) findTeamsByID(ctx context.Context, teamIDs []string) (map[stri
 func staffPlayerResponses(players []mongomodel.Player, teams map[string]mongomodel.Team) []StaffPlayerResponse {
 	responses := make([]StaffPlayerResponse, 0, len(players))
 	for _, player := range players {
-		if player.ID == "" || player.Nickname == "" || player.Role == authctx.PlayerRoleStaff {
+		if player.ID == "" || player.Nickname == "" {
 			continue
 		}
 

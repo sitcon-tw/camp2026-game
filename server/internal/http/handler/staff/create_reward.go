@@ -11,7 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
@@ -154,10 +153,7 @@ func (h *Handler) findRewardRecipient(ctx context.Context, body CreateRewardRequ
 func (h *Handler) findPlayerByID(ctx context.Context, playerID string) (mongomodel.Player, error) {
 	var player mongomodel.Player
 	err := h.db.Collection(mongomodel.PlayersCollection).
-		FindOne(ctx, bson.M{
-			"_id":  playerID,
-			"role": bson.M{"$ne": authctx.PlayerRoleStaff},
-		}).
+		FindOne(ctx, bson.M{"_id": playerID}).
 		Decode(&player)
 	return player, err
 }

@@ -10,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
@@ -134,10 +133,7 @@ func (h *Handler) findTeams(ctx context.Context) ([]mongomodel.Team, error) {
 func (h *Handler) findLeaderboardPlayers(ctx context.Context) ([]mongomodel.Player, error) {
 	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(
 		ctx,
-		bson.M{
-			"team_id": bson.M{"$exists": true, "$ne": ""},
-			"role":    bson.M{"$ne": authctx.PlayerRoleStaff},
-		},
+		bson.M{"team_id": bson.M{"$exists": true, "$ne": ""}},
 		options.Find().
 			SetProjection(nonSensitivePlayerProjection()).
 			SetSort(bson.D{
@@ -304,7 +300,7 @@ func teamNamesByID(teams []mongomodel.Team) map[string]string {
 }
 
 func isLeaderboardPlayer(player mongomodel.Player) bool {
-	return player.ID != "" && player.TeamID != "" && player.Role != authctx.PlayerRoleStaff
+	return player.ID != "" && player.TeamID != ""
 }
 
 func sortRankEntries(entries []RankEntryResponse) {
@@ -342,8 +338,5 @@ func currentEntryAndGap(entries []RankEntryResponse) (*RankEntryResponse, int) {
 }
 
 func currentPlayerTeamID(player mongomodel.Player) string {
-	if player.Role == authctx.PlayerRoleStaff {
-		return ""
-	}
 	return player.TeamID
 }

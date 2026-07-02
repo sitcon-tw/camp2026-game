@@ -76,11 +76,11 @@ func TestRewardDefinitionRejectsMissingContent(t *testing.T) {
 	}
 }
 
-func TestPlayerSearchFilterMatchesNicknameAndIDButExcludesStaff(t *testing.T) {
+func TestPlayerSearchFilterMatchesNicknameAndID(t *testing.T) {
 	filter := playerSearchFilter("Alice.1")
 
-	if got := filter["role"]; got == nil {
-		t.Fatal("expected role filter")
+	if got := filter["role"]; got != nil {
+		t.Fatalf("expected no role filter, got %#v", got)
 	}
 	branches, ok := filter["$or"].(bson.A)
 	if !ok || len(branches) != 2 {
@@ -103,7 +103,7 @@ func TestPlayerSearchFilterMatchesNicknameAndIDButExcludesStaff(t *testing.T) {
 	}
 }
 
-func TestStaffPlayerResponsesIncludesTeamAndSkipsStaff(t *testing.T) {
+func TestStaffPlayerResponsesIncludesStaffTargets(t *testing.T) {
 	responses := staffPlayerResponses(
 		[]mongomodel.Player{
 			{ID: "P1", Nickname: "Alice", TeamID: "T1"},
@@ -115,14 +115,17 @@ func TestStaffPlayerResponsesIncludesTeamAndSkipsStaff(t *testing.T) {
 		},
 	)
 
-	if len(responses) != 1 {
-		t.Fatalf("expected one player response, got %#v", responses)
+	if len(responses) != 2 {
+		t.Fatalf("expected two player responses, got %#v", responses)
 	}
 	if responses[0].PlayerID != "P1" || responses[0].Nickname != "Alice" {
 		t.Fatalf("unexpected player response: %#v", responses[0])
 	}
 	if responses[0].Team == nil || responses[0].Team.TeamID != "T1" || responses[0].Team.Name != "Blue Team" {
 		t.Fatalf("expected team in response, got %#v", responses[0].Team)
+	}
+	if responses[1].PlayerID != "S1" || responses[1].Nickname != "Staff" {
+		t.Fatalf("unexpected staff response: %#v", responses[1])
 	}
 }
 

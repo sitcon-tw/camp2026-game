@@ -13,7 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/sitcon-tw/camp2026-game/internal/content"
-	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
@@ -22,7 +21,7 @@ var errLeaderboardNotFound = errors.New("leaderboard resource not found")
 
 // TeamPlayers godoc
 // @Summary List leaderboard team players
-// @Description Lists non-staff players in a ranked team with their inventory totals.
+// @Description Lists players in a ranked team with their inventory totals.
 // @Tags leaderboards
 // @Produce json
 // @Security AuthCookieAuth
@@ -74,7 +73,7 @@ func (h *Handler) TeamPlayers(w http.ResponseWriter, r *http.Request) {
 
 // PlayerInventory godoc
 // @Summary Get leaderboard player inventory
-// @Description Returns read-only item and sitone inventory for a non-staff leaderboard player.
+// @Description Returns read-only item and sitone inventory for a leaderboard player.
 // @Tags leaderboards
 // @Produce json
 // @Security AuthCookieAuth
@@ -165,10 +164,7 @@ func (h *Handler) findTeamByID(ctx context.Context, teamID string) (mongomodel.T
 func (h *Handler) findTeamPlayers(ctx context.Context, teamID string) ([]mongomodel.Player, error) {
 	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(
 		ctx,
-		bson.M{
-			"team_id": teamID,
-			"role":    bson.M{"$ne": authctx.PlayerRoleStaff},
-		},
+		bson.M{"team_id": teamID},
 		options.Find().
 			SetProjection(nonSensitivePlayerProjection()).
 			SetSort(bson.D{
@@ -203,7 +199,6 @@ func (h *Handler) findLeaderboardPlayerByID(ctx context.Context, playerID string
 		bson.M{
 			"_id":     playerID,
 			"team_id": bson.M{"$exists": true, "$ne": ""},
-			"role":    bson.M{"$ne": authctx.PlayerRoleStaff},
 		},
 		options.FindOne().SetProjection(nonSensitivePlayerProjection()),
 	).Decode(&player)

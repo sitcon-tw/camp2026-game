@@ -9,7 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
@@ -160,10 +159,7 @@ func (h *Handler) findTeams(ctx context.Context) ([]mongomodel.Team, error) {
 func (h *Handler) findLeaderboardPlayers(ctx context.Context) ([]mongomodel.Player, error) {
 	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(
 		ctx,
-		bson.M{
-			"team_id": bson.M{"$exists": true, "$ne": ""},
-			"role":    bson.M{"$ne": authctx.PlayerRoleStaff},
-		},
+		bson.M{"team_id": bson.M{"$exists": true, "$ne": ""}},
 		options.Find().
 			SetProjection(bson.D{
 				{Key: "auth_token", Value: 0},
@@ -269,7 +265,7 @@ func scoreMapFromCursor(ctx context.Context, cursor *mongo.Cursor) (map[string]i
 func teamRankEntries(teams []mongomodel.Team, players []mongomodel.Player, stats map[string]teamRankStats) []TeamRankResponse {
 	statsByTeam := make(map[string]teamRankStats, len(teams))
 	for _, player := range players {
-		if player.ID == "" || player.TeamID == "" || player.Role == authctx.PlayerRoleStaff {
+		if player.ID == "" || player.TeamID == "" {
 			continue
 		}
 		current := statsByTeam[player.TeamID]

@@ -1248,6 +1248,57 @@ definitions:
         example: active
         type: string
     type: object
+  matches.OpenMatchResponse:
+    properties:
+      code:
+        example: ABC123
+        type: string
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      currentQuestion:
+        $ref: '#/definitions/matches.MatchQuestionResponse'
+      currentQuestionIndex:
+        example: 0
+        type: integer
+      currentQuestionResult:
+        $ref: '#/definitions/matches.MatchQuestionResult'
+      hostPlayerId:
+        example: 7H9K2Q
+        type: string
+      matchId:
+        example: match_7H9K2Q
+        type: string
+      mode:
+        example: pvp
+        type: string
+      phase:
+        example: answering
+        type: string
+      players:
+        items:
+          $ref: '#/definitions/matches.MatchPlayerResponse'
+        type: array
+      questionCount:
+        example: 10
+        type: integer
+      results:
+        items:
+          $ref: '#/definitions/matches.MatchQuestionResult'
+        type: array
+      revealEndsAt:
+        type: string
+      roundEndsAt:
+        type: string
+      roundStartedAt:
+        type: string
+      startedAt:
+        type: string
+      status:
+        example: active
+        type: string
+    type: object
   matches.ReadyMatchResponse:
     properties:
       code:
@@ -1748,6 +1799,9 @@ definitions:
       id:
         example: item_adventure_backpack
         type: string
+      locked:
+        example: false
+        type: boolean
       name:
         example: 冒險背包
         type: string
@@ -2257,8 +2311,7 @@ paths:
       - leaderboards
   /leaderboards/players/{playerID}/inventory:
     get:
-      description: Returns read-only item and sitone inventory for a non-staff leaderboard
-        player.
+      description: Returns read-only item and sitone inventory for a leaderboard player.
       parameters:
       - description: Player ID
         in: path
@@ -2295,7 +2348,7 @@ paths:
       - leaderboards
   /leaderboards/teams/{teamID}/players:
     get:
-      description: Lists non-staff players in a ranked team with their inventory totals.
+      description: Lists players in a ranked team with their inventory totals.
       parameters:
       - description: Team ID
         in: path
@@ -2342,6 +2395,10 @@ paths:
             $ref: '#/definitions/matches.CreateMatchResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
         "500":
@@ -2671,6 +2728,38 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Join match room
+      tags:
+      - matches
+  /matches/open:
+    get:
+      description: Returns the current waiting or active match for the authenticated
+        participant.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/matches.OpenMatchResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get current open match
       tags:
       - matches
   /me/home:
@@ -3070,8 +3159,8 @@ paths:
       - shop
   /staff/players:
     get:
-      description: Staff-only endpoint. Searches non-staff players by nickname or
-        player ID for reward targeting.
+      description: Staff-only endpoint. Searches players by nickname or player ID
+        for reward targeting.
       parameters:
       - description: Nickname or player ID keyword
         in: query

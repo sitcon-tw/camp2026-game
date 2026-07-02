@@ -74,12 +74,12 @@ func (h *Handler) joinMatch(w http.ResponseWriter, r *http.Request, match mongom
 			}
 		}
 
-		if match.Status != mongomodel.MatchStatusWaiting {
-			httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "match is not joinable"))
+		if isParticipant(match, player.ID) {
+			h.writeAdvancedMatchState(w, r, match, player.ID)
 			return
 		}
-		if isParticipant(match, player.ID) {
-			httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "player already joined match"))
+		if match.Status != mongomodel.MatchStatusWaiting {
+			httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "match is not joinable"))
 			return
 		}
 		if len(match.Players) >= 2 {

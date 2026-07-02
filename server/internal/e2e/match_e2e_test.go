@@ -31,8 +31,10 @@ import (
 const (
 	playerAID    = "player-a"
 	playerBID    = "player-b"
+	playerCID    = "player-c"
 	playerAToken = "auth-token-player-a-123456"
 	playerBToken = "auth-token-player-b-123456"
+	playerCToken = "auth-token-player-c-123456"
 )
 
 func TestMatchFlowE2E(t *testing.T) {
@@ -45,6 +47,7 @@ func TestMatchFlowE2E(t *testing.T) {
 
 	playerACookie := login(t, server.URL, playerAToken)
 	playerBCookie := login(t, server.URL, playerBToken)
+	playerCCookie := login(t, server.URL, playerCToken)
 
 	assertShopPurchaseFlow(t, ctx, db, server.URL, playerACookie)
 
@@ -95,6 +98,33 @@ func TestMatchFlowE2E(t *testing.T) {
 		t.Fatalf("active state must not reveal answers, got %s", string(body))
 	}
 
+	body = getJSON(t, server.URL+"/api/matches/open", []*http.Cookie{playerACookie}, http.StatusOK)
+	var openA matchState
+	decodeJSON(t, body, &openA)
+	if openA.MatchID != created.MatchID || openA.Status != "active" {
+		t.Fatalf("expected player A open match to be active %s, got %#v", created.MatchID, openA)
+	}
+
+	body = getJSON(t, server.URL+"/api/matches/open", []*http.Cookie{playerBCookie}, http.StatusOK)
+	var openB matchState
+	decodeJSON(t, body, &openB)
+	if openB.MatchID != created.MatchID || openB.Status != "active" {
+		t.Fatalf("expected player B open match to be active %s, got %#v", created.MatchID, openB)
+	}
+
+	body = postJSON(t, server.URL+"/api/matches/join", map[string]string{
+		"code": created.Code,
+	}, []*http.Cookie{playerBCookie}, http.StatusOK)
+	var rejoined matchState
+	decodeJSON(t, body, &rejoined)
+	if rejoined.MatchID != created.MatchID || rejoined.Status != "active" || len(rejoined.Players) != 2 {
+		t.Fatalf("expected participant to rejoin active match, got %#v", rejoined)
+	}
+
+	postJSON(t, server.URL+"/api/matches/join", map[string]string{
+		"code": created.Code,
+	}, []*http.Cookie{playerCCookie}, http.StatusConflict)
+
 	for i := 0; i < 10; i++ {
 		var state matchState
 		body = getJSON(t, server.URL+"/api/matches/"+created.MatchID, []*http.Cookie{playerACookie}, http.StatusOK)
@@ -143,6 +173,8 @@ func TestMatchFlowE2E(t *testing.T) {
 			t.Fatalf("expected two answer rows, got %#v", result)
 		}
 	}
+
+	getJSON(t, server.URL+"/api/matches/open", []*http.Cookie{playerACookie}, http.StatusNotFound)
 
 	assertDatabaseState(t, ctx, db, created.MatchID, completed)
 }
@@ -212,6 +244,14 @@ func seedPlayersAndTeams(t *testing.T, ctx context.Context, db *mongo.Database) 
 			Nickname:    "Bob",
 			TeamID:      "team-b",
 			AvatarURL:   "https://example.test/avatar/bob.png",
+		},
+		mongomodel.Player{
+			ID:          playerCID,
+			AuthToken:   playerCToken,
+			QRCodeToken: "qr-token-player-c",
+			Nickname:    "Carol",
+			TeamID:      "team-b",
+			AvatarURL:   "https://example.test/avatar/carol.png",
 		},
 	})
 	if err != nil {
