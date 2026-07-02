@@ -12,7 +12,6 @@ import {
 } from "@/features/game/use-match-events"
 import { AppError } from "@/shared/api/error"
 import { gameApi, type PlayerSitone } from "@/shared/api/game"
-import { sitoneMeta } from "@/shared/lib/game-labels"
 import { Button } from "@/shared/ui/button"
 import {
   Card,
@@ -23,6 +22,7 @@ import {
 } from "@/shared/ui/card"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { PageHeader } from "@/shared/ui/page-header"
+import { SitoneIcon } from "@/shared/ui/sitone-icon"
 import { cn } from "@/shared/utils"
 
 function getStoredMatchID() {
@@ -328,7 +328,6 @@ export function BattleWaitingRoomPage() {
               <div className="grid grid-cols-5 gap-2" aria-label="本場小石欄位">
                 {loadoutSlots.map((sitoneID, index) => {
                   const record = ownedSitoneByID.get(sitoneID)
-                  const meta = record ? sitoneMeta(record.sitone.type) : null
                   return (
                     <button
                       key={`${index}-${sitoneID || "empty"}`}
@@ -350,7 +349,7 @@ export function BattleWaitingRoomPage() {
                           : `第 ${index + 1} 格空位`
                       }
                     >
-                      {record && meta ? (
+                      {record ? (
                         <span className="grid justify-items-center gap-1">
                           {!loadoutLocked ? (
                             <span
@@ -360,14 +359,10 @@ export function BattleWaitingRoomPage() {
                               <X className="size-3" />
                             </span>
                           ) : null}
-                          <span
-                            className={cn(
-                              "border-ink grid size-9 place-items-center rounded-[12px] border-2 text-[10px] font-black",
-                              meta.bgClassName,
-                            )}
-                          >
-                            {meta.short}
-                          </span>
+                          <SitoneIcon
+                            type={record.sitone.type}
+                            iconPath={record.sitone.iconPath}
+                          />
                           <span className="text-[11px] leading-none font-black">
                             第 {index + 1} 格
                           </span>
@@ -385,7 +380,6 @@ export function BattleWaitingRoomPage() {
 
               <div className="grid grid-cols-2 gap-2">
                 {ownedSitones.map((record) => {
-                  const meta = sitoneMeta(record.sitone.type)
                   const selectedCount = countSelectedSitone(
                     selectedSitoneIDs,
                     record.sitoneId,
@@ -407,14 +401,11 @@ export function BattleWaitingRoomPage() {
                       onClick={() => addSitone(record)}
                       aria-pressed={selected}
                     >
-                      <span
-                        className={[
-                          "border-ink grid size-8 place-items-center rounded-[12px] border-2 text-[10px]",
-                          meta.bgClassName,
-                        ].join(" ")}
-                      >
-                        {meta.short}
-                      </span>
+                      <SitoneIcon
+                        type={record.sitone.type}
+                        iconPath={record.sitone.iconPath}
+                        className="size-8"
+                      />
                       <span className="min-w-0 flex-1 text-left">
                         <strong className="block truncate">
                           {record.sitone.name}

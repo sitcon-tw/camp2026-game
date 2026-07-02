@@ -1,10 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { ChevronDown } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useMatchEvents } from "@/features/game/use-match-events"
-import { gameApi, type MatchQuestionResult } from "@/shared/api/game"
+import {
+  gameApi,
+  type MatchQuestionResult,
+  type Sitone,
+} from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
 import {
   Card,
@@ -23,6 +27,7 @@ import {
   CollapsibleTrigger,
 } from "@/shared/ui/collapsible"
 import { Separator } from "@/shared/ui/separator"
+import { SitoneIcon } from "@/shared/ui/sitone-icon"
 import { cn } from "@/shared/utils"
 
 function getStoredMatchID() {
@@ -51,6 +56,10 @@ function choiceText(result: MatchQuestionResult, choice?: string) {
   }
 }
 
+function isSitone(sitone: Sitone | undefined): sitone is Sitone {
+  return Boolean(sitone)
+}
+
 export function BattleResultPage() {
   const [matchID] = useState(getStoredMatchID)
   const { data: match, isPending } = useQuery({
@@ -58,9 +67,18 @@ export function BattleResultPage() {
     queryFn: () => gameApi.getMatch(matchID),
     enabled: matchID.length > 0,
   })
+  const { data: catalogSitones = [] } = useQuery({
+    queryKey: ["catalog", "sitones"],
+    queryFn: gameApi.catalogSitones,
+    enabled: matchID.length > 0,
+  })
   useMatchEvents(matchID, {
     enabled: matchID.length > 0 && match?.status !== "completed",
   })
+  const sitonesByID = useMemo(
+    () => new Map(catalogSitones.map((sitone) => [sitone.id, sitone])),
+    [catalogSitones],
+  )
   const players = match?.players ?? []
   const sortedPlayers = [...players].sort(
     (a, b) => (b.score ?? 0) - (a.score ?? 0),
@@ -104,38 +122,59 @@ export function BattleResultPage() {
                 : "對戰尚未結束"}
           </span>
           <div className="flex items-center gap-x-4">
-            {players.slice(0, 2).map((player) => (
-              <Card
-                key={player.playerId}
-                className={cn(
-                  "bg-accent flex-1",
-                  winner?.playerId === player.playerId
-                    ? "text-status-success"
-                    : "text-muted-foreground",
-                )}
-              >
-                <CardContent className="grid gap-y-2">
-                  <PlayerAvatar
-                    playerId={player.playerId}
-                    nickname={player.nickname}
-                    kind={player.kind}
-                    className="border-ink mx-auto size-14 rounded-[20px] border-2"
-                  />
-                  <span className="text-center">{player.nickname}</span>
-                  <span className="text-center text-4xl font-bold">
-                    {player.score ?? 0}
-                  </span>
-                  <span className="text-center text-xs font-bold">
-                    {player.sitoneIds.length} 顆小石
-                  </span>
-                  {(player.answerScoreBonusPercent ?? 0) > 0 ? (
-                    <span className="text-center text-xs font-bold">
-                      答題加成 +{player.answerScoreBonusPercent}%
+            {players.slice(0, 2).map((player) => {
+              const playerSitones = player.sitoneIds
+                .map((sitoneID) => sitonesByID.get(sitoneID))
+                .filter(isSitone)
+
+              return (
+                <Card
+                  key={player.playerId}
+                  className={cn(
+                    "bg-accent flex-1",
+                    winner?.playerId === player.playerId
+                      ? "text-status-success"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  <CardContent className="grid gap-y-2">
+                    <PlayerAvatar
+                      playerId={player.playerId}
+                      nickname={player.nickname}
+                      kind={player.kind}
+                      className="border-ink mx-auto size-14 rounded-[20px] border-2"
+                    />
+                    <span className="text-center">{player.nickname}</span>
+                    <span className="text-center text-4xl font-bold">
+                      {player.score ?? 0}
                     </span>
-                  ) : null}
-                </CardContent>
-              </Card>
-            ))}
+                    <span className="text-center text-xs font-bold">
+                      {player.sitoneIds.length} 顆小石
+                    </span>
+                    {playerSitones.length > 0 ? (
+                      <div
+                        className="flex justify-center gap-1 overflow-hidden"
+                        aria-label={`${player.nickname} 本場小石`}
+                      >
+                        {playerSitones.map((sitone, index) => (
+                          <SitoneIcon
+                            key={`${sitone.id}-${index}`}
+                            type={sitone.type}
+                            iconPath={sitone.iconPath}
+                            className="size-8 rounded-[11px]"
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                    {(player.answerScoreBonusPercent ?? 0) > 0 ? (
+                      <span className="text-center text-xs font-bold">
+                        答題加成 +{player.answerScoreBonusPercent}%
+                      </span>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         </CardContent>
       </Card>

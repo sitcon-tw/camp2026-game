@@ -15,12 +15,12 @@ import {
   useMatchEvents,
 } from "@/features/game/use-match-events"
 import { AppError } from "@/shared/api/error"
-import { sitoneMeta } from "@/shared/lib/game-labels"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { PlayerAvatar } from "@/shared/ui/player-avatar"
 import { Separator } from "@/shared/ui/separator"
+import { SitoneIcon } from "@/shared/ui/sitone-icon"
 import { cn } from "@/shared/utils"
 
 function getStoredMatchID() {
@@ -91,17 +91,9 @@ function ScoreMeter({
 }
 
 function SitoneChip({ sitone }: { sitone: Sitone }) {
-  const meta = sitoneMeta(sitone.type)
   return (
     <div className="grid min-w-16 justify-items-center gap-1 text-center">
-      <span
-        className={cn(
-          "border-ink grid size-9 place-items-center rounded-[12px] border-2 text-[10px] font-black",
-          meta.bgClassName,
-        )}
-      >
-        {meta.short}
-      </span>
+      <SitoneIcon type={sitone.type} iconPath={sitone.iconPath} />
       <span className="max-w-16 truncate text-[11px] leading-tight font-black">
         {sitone.name}
       </span>
