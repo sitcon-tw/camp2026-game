@@ -9,6 +9,7 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
+	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
 
@@ -16,12 +17,14 @@ type Dependencies struct {
 	Content     *content.Store
 	MongoClient *mongo.Client
 	MongoDB     *mongo.Database
+	Broker      *playerevents.Broker
 }
 
 type Handler struct {
 	content *content.Store
 	client  *mongo.Client
 	db      *mongo.Database
+	broker  *playerevents.Broker
 }
 
 func New(dep Dependencies) *Handler {
@@ -29,6 +32,7 @@ func New(dep Dependencies) *Handler {
 		content: dep.Content,
 		client:  dep.MongoClient,
 		db:      dep.MongoDB,
+		broker:  dep.Broker,
 	}
 }
 

@@ -9,6 +9,7 @@ import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { Spinner } from "@/shared/ui/spinner"
+import { RewardAlertCenter } from "@/features/reward-alert/ui/reward-alert-center"
 
 const publicPathPrefixes = ["/login", "/codex", "/admin"] as const
 
@@ -73,5 +74,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
     )
   }
 
-  return children
+  return (
+    <>
+      <RewardAlertCenter />
+      {children}
+    </>
+  )
 }

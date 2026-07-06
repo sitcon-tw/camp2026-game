@@ -16,9 +16,80 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
+	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 	"github.com/sitcon-tw/camp2026-game/internal/testcontent"
 )
+
+func TestEventsRequiresPlayerContext(t *testing.T) {
+	handler := New(Dependencies{Broker: playerevents.NewBroker()})
+	req := httptest.NewRequest(http.MethodGet, "/api/me/events", nil)
+	res := httptest.NewRecorder()
+
+	handler.Events(res, req)
+
+	assertProblem(t, res, http.StatusUnauthorized)
+}
+
+func TestEventsRequiresBroker(t *testing.T) {
+	handler := New(Dependencies{})
+	req := authenticatedRequest(mongomodel.Player{ID: "7H9K2Q"})
+	res := httptest.NewRecorder()
+
+	handler.Events(res, req)
+
+	assertProblem(t, res, http.StatusInternalServerError)
+}
+
+func TestEventsStreamsRewardGrantedEvent(t *testing.T) {
+	broker := playerevents.NewBroker()
+	handler := New(Dependencies{Broker: broker})
+	req := authenticatedRequest(mongomodel.Player{ID: "7H9K2Q"})
+	ctx, cancel := context.WithCancel(req.Context())
+	req = req.WithContext(ctx)
+	res := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		handler.Events(res, req)
+	}()
+
+	time.Sleep(20 * time.Millisecond)
+	broker.Publish("7H9K2Q", playerevents.Event{
+		Name: "reward_granted",
+		Reward: &playerevents.RewardGrantedEvent{
+			Kind:       "item",
+			RefID:      "item_adventure_backpack",
+			Name:       "冒險背包",
+			Quantity:   1,
+			ItemType:   "material",
+			IconPath:   "/game-icons/items/item_adventure_backpack.png",
+			Source:     "shop_purchase",
+			OccurredAt: time.Now().UTC().Format(time.RFC3339Nano),
+		},
+	})
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for {
+		if strings.Contains(res.Body.String(), "event: reward_granted") {
+			break
+		}
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+
+	body := res.Body.String()
+	if !strings.Contains(body, "event: reward_granted") {
+		t.Fatalf("expected reward event, got %q", body)
+	}
+	if !strings.Contains(body, `"name":"冒險背包"`) {
+		t.Fatalf("expected reward payload, got %q", body)
+	}
+}
 
 func TestQRCodeResponse(t *testing.T) {
 	handler := New(Dependencies{})

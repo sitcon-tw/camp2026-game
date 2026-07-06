@@ -13,6 +13,7 @@ import (
 
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
+	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 	"github.com/sitcon-tw/camp2026-game/internal/openpower"
 )
@@ -81,6 +82,7 @@ func (h *Handler) Purchase(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("purchase failed", "shop_purchase_failed", err))
 		return
 	}
+	h.publishPurchaseEvent(player.ID, item)
 
 	httpx.WriteJSON(w, http.StatusCreated, PurchaseResponse{
 		PurchaseID:     result.purchaseID,
@@ -89,6 +91,25 @@ func (h *Handler) Purchase(w http.ResponseWriter, r *http.Request) {
 		PriceOpenPower: item.PriceOpenPower,
 		OpenPower:      result.openPower,
 		Item:           shopItemResponse(item, true),
+	})
+}
+
+func (h *Handler) publishPurchaseEvent(playerID string, item content.Item) {
+	if h.broker == nil {
+		return
+	}
+	h.broker.Publish(playerID, playerevents.Event{
+		Name: "reward_granted",
+		Reward: &playerevents.RewardGrantedEvent{
+			Kind:       "item",
+			RefID:      item.ID,
+			Name:       item.Name,
+			Quantity:   purchaseQuantity,
+			ItemType:   item.Type,
+			IconPath:   item.IconPath,
+			Source:     "shop_purchase",
+			OccurredAt: time.Now().UTC().Format(time.RFC3339Nano),
+		},
 	})
 }
 
