@@ -469,7 +469,7 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 			continue
 		}
 		teamStatsByID[team.ID] = &dashboardTeamStats{
-			Team:      DashboardTeamSummaryResponse{TeamID: team.ID, Name: team.Name},
+			Team:      DashboardTeamSummaryResponse{TeamID: team.ID, Name: team.Name, AvatarURL: team.AvatarURL},
 			PlayerIDs: map[string]struct{}{},
 		}
 	}
@@ -630,7 +630,7 @@ func dashboardTeamForPlayer(player dashboardPlayer, teamsByID map[string]mongomo
 		return nil
 	}
 	if team, ok := teamsByID[player.TeamID]; ok {
-		return &DashboardTeamSummaryResponse{TeamID: team.ID, Name: team.Name}
+		return &DashboardTeamSummaryResponse{TeamID: team.ID, Name: team.Name, AvatarURL: team.AvatarURL}
 	}
 	return &DashboardTeamSummaryResponse{TeamID: player.TeamID, Name: player.TeamID}
 }
@@ -817,6 +817,7 @@ func dashboardTeamResponses(teamStatsByID map[string]*dashboardTeamStats, player
 		team := DashboardTeamResponse{
 			TeamID:           stats.Team.TeamID,
 			Name:             stats.Team.Name,
+			AvatarURL:        stats.Team.AvatarURL,
 			PlayerCount:      playerCount,
 			SitoneCount:      stats.SitoneCount,
 			ItemCount:        stats.ItemCount,

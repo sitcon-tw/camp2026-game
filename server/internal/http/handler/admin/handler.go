@@ -52,6 +52,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/admin/history", h.History)
 	api.Get("/admin/settings", h.GetSettings)
 	api.Put("/admin/settings", h.UpdateSettings)
+	api.Put("/admin/teams/{teamID}", h.UpdateTeam)
 }
 
 type LoginRequest struct {

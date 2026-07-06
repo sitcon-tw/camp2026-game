@@ -59,8 +59,9 @@ type DashboardTopPlayersResponse struct {
 }
 
 type DashboardTeamSummaryResponse struct {
-	TeamID string `json:"teamId" example:"8M4RXP"`
-	Name   string `json:"name" example:"Blue Team"`
+	TeamID    string `json:"teamId" example:"8M4RXP"`
+	Name      string `json:"name" example:"Blue Team"`
+	AvatarURL string `json:"avatarUrl,omitempty" example:"https://example.test/avatar/blue.png"`
 }
 
 type DashboardPlayerResponse struct {
@@ -104,6 +105,7 @@ type DashboardTeamResponse struct {
 	Rank             int                          `json:"rank" example:"1"`
 	TeamID           string                       `json:"teamId" example:"8M4RXP"`
 	Name             string                       `json:"name" example:"Blue Team"`
+	AvatarURL        string                       `json:"avatarUrl,omitempty" example:"https://example.test/avatar/blue.png"`
 	PlayerCount      int                          `json:"playerCount" example:"10"`
 	SitoneCount      int                          `json:"sitoneCount" example:"120"`
 	ItemCount        int                          `json:"itemCount" example:"44"`

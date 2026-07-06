@@ -28,6 +28,7 @@ type StaffPlayerResponse struct {
 type StaffTeamResponse struct {
 	TeamID      string `json:"teamId" example:"8M4RXP"`
 	Name        string `json:"name" example:"Blue Team"`
+	AvatarURL   string `json:"avatarUrl,omitempty" example:"https://example.test/avatar/blue.png"`
 	MemberCount int    `json:"memberCount" example:"12"`
 }
 

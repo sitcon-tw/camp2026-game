@@ -3,12 +3,15 @@ import {
   Activity,
   CheckCircle2,
   Clock,
+  ImageIcon,
   LogOut,
+  Pencil,
   Percent,
   RefreshCw,
   Save,
   Settings,
   ShieldCheck,
+  X,
 } from "lucide-react"
 import { type FormEvent, type ReactNode, useState } from "react"
 import {
@@ -31,6 +34,7 @@ import {
   type AdminDashboardTeam,
   type AdminSettings,
 } from "@/shared/api/game"
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import {
@@ -142,8 +146,19 @@ function formatSeconds(milliseconds: number) {
   return `${(milliseconds / 1000).toFixed(1)}s`
 }
 
+type TeamAvatarModel = {
+  teamId: string
+  name: string
+  avatarUrl?: string
+}
+
 function teamLabel(player: Pick<AdminDashboardPlayer, "team">) {
   return player.team?.name ?? "未分組"
+}
+
+function teamAvatarFallback(team: TeamAvatarModel) {
+  const label = team.name.trim() || team.teamId.trim() || "Team"
+  return label.slice(0, 2).toUpperCase()
 }
 
 function catalogLabel(entry: AdminDashboardInventoryEntry) {
@@ -1053,11 +1068,14 @@ function TeamsPanel({ teams }: { teams: AdminDashboardTeam[] }) {
               <TableRow key={team.teamId}>
                 <TableCell className="font-black">#{team.rank}</TableCell>
                 <TableCell>
-                  <div className="grid">
-                    <strong>{team.name}</strong>
-                    <span className="text-muted-foreground text-xs">
-                      {team.teamId}
-                    </span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <TeamAvatar team={team} className="size-9" />
+                    <div className="grid min-w-0">
+                      <strong className="break-words">{team.name}</strong>
+                      <span className="text-muted-foreground text-xs break-all">
+                        {team.teamId}
+                      </span>
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
@@ -1300,13 +1318,63 @@ function MiniMetric({ label, value }: { label: string; value: number }) {
   )
 }
 
+type TeamEditDraft = {
+  teamId: string
+  name: string
+  avatarUrl: string
+}
+
 function TeamsDetailTable({ teams }: { teams: AdminDashboardTeam[] }) {
+  const queryClient = useQueryClient()
+  const [draft, setDraft] = useState<TeamEditDraft | null>(null)
+
+  const updateTeamMutation = useMutation({
+    mutationFn: (input: TeamEditDraft) =>
+      gameApi.updateAdminTeam(input.teamId, {
+        name: input.name.trim(),
+        avatarUrl: input.avatarUrl.trim(),
+      }),
+    onSuccess: (team) => {
+      setDraft(null)
+      void queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] })
+      void queryClient.invalidateQueries({ queryKey: ["leaderboards"] })
+      void queryClient.invalidateQueries({ queryKey: ["me"] })
+      void queryClient.invalidateQueries({ queryKey: ["staff", "teams"] })
+      toast.success(`${team.name} 已更新`)
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "隊伍更新失敗"))
+    },
+  })
+
+  function startEdit(team: AdminDashboardTeam) {
+    setDraft({
+      teamId: team.teamId,
+      name: team.name,
+      avatarUrl: team.avatarUrl ?? "",
+    })
+  }
+
+  function updateDraft(patch: Partial<Omit<TeamEditDraft, "teamId">>) {
+    setDraft((current) => (current ? { ...current, ...patch } : current))
+  }
+
+  function saveDraft() {
+    if (!draft || updateTeamMutation.isPending) return
+    if (!draft.name.trim()) return
+    updateTeamMutation.mutate({
+      ...draft,
+      name: draft.name.trim(),
+      avatarUrl: draft.avatarUrl.trim(),
+    })
+  }
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>#</TableHead>
-          <TableHead>隊伍</TableHead>
+          <TableHead className="min-w-[320px]">隊伍</TableHead>
           <TableHead className="text-right">人數</TableHead>
           <TableHead className="text-right">小石</TableHead>
           <TableHead className="text-right">平均小石</TableHead>
@@ -1315,46 +1383,162 @@ function TeamsDetailTable({ teams }: { teams: AdminDashboardTeam[] }) {
           <TableHead className="text-right">道具</TableHead>
           <TableHead className="text-right">平均道具</TableHead>
           <TableHead>Top Player</TableHead>
+          <TableHead className="w-[112px] text-right">操作</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {teams.map((team) => (
-          <TableRow key={team.teamId}>
-            <TableCell className="font-black">#{team.rank}</TableCell>
-            <TableCell>
-              <div className="grid">
-                <strong>{team.name}</strong>
-                <span className="text-muted-foreground text-xs">
-                  {team.teamId}
-                </span>
-              </div>
-            </TableCell>
-            <TableCell className="text-right">
-              {formatNumber(team.playerCount)}
-            </TableCell>
-            <TableCell className="text-right font-black">
-              {formatNumber(team.sitoneCount)}
-            </TableCell>
-            <TableCell className="text-right">
-              {team.averageSitones.toFixed(1)}
-            </TableCell>
-            <TableCell className="text-right">
-              {formatNumber(team.openPower)}
-            </TableCell>
-            <TableCell className="text-right">
-              {team.averageOpenPower.toFixed(1)}
-            </TableCell>
-            <TableCell className="text-right">
-              {formatNumber(team.itemCount)}
-            </TableCell>
-            <TableCell className="text-right">
-              {team.averageItems.toFixed(1)}
-            </TableCell>
-            <TableCell>{team.topPlayer?.nickname ?? "-"}</TableCell>
-          </TableRow>
-        ))}
+        {teams.map((team) => {
+          const currentDraft = draft?.teamId === team.teamId ? draft : null
+          const previewTeam = currentDraft
+            ? {
+                ...team,
+                name: currentDraft.name,
+                avatarUrl: currentDraft.avatarUrl.trim() || undefined,
+              }
+            : team
+          const isSaving =
+            updateTeamMutation.isPending &&
+            updateTeamMutation.variables?.teamId === team.teamId
+
+          return (
+            <TableRow key={team.teamId}>
+              <TableCell className="font-black">#{team.rank}</TableCell>
+              <TableCell>
+                {currentDraft ? (
+                  <div className="grid min-w-[280px] gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <TeamAvatar team={previewTeam} className="size-10" />
+                      <Input
+                        aria-label={`${team.name} 隊伍名稱`}
+                        value={currentDraft.name}
+                        onChange={(event) =>
+                          updateDraft({ name: event.target.value })
+                        }
+                        className="h-9 font-bold"
+                        maxLength={64}
+                      />
+                    </div>
+                    <div className="relative">
+                      <ImageIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+                      <Input
+                        aria-label={`${team.name} 隊伍頭貼 URL`}
+                        value={currentDraft.avatarUrl}
+                        onChange={(event) =>
+                          updateDraft({ avatarUrl: event.target.value })
+                        }
+                        placeholder="https://... 或 /game-icons/..."
+                        className="h-9 pl-9 text-xs"
+                        maxLength={512}
+                      />
+                    </div>
+                    <span className="text-muted-foreground text-xs font-bold break-all">
+                      {team.teamId}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <TeamAvatar team={team} className="size-10" />
+                    <div className="grid min-w-0">
+                      <strong className="break-words">{team.name}</strong>
+                      <span className="text-muted-foreground text-xs break-all">
+                        {team.teamId}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatNumber(team.playerCount)}
+              </TableCell>
+              <TableCell className="text-right font-black">
+                {formatNumber(team.sitoneCount)}
+              </TableCell>
+              <TableCell className="text-right">
+                {team.averageSitones.toFixed(1)}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatNumber(team.openPower)}
+              </TableCell>
+              <TableCell className="text-right">
+                {team.averageOpenPower.toFixed(1)}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatNumber(team.itemCount)}
+              </TableCell>
+              <TableCell className="text-right">
+                {team.averageItems.toFixed(1)}
+              </TableCell>
+              <TableCell>{team.topPlayer?.nickname ?? "-"}</TableCell>
+              <TableCell>
+                {currentDraft ? (
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label={`取消編輯 ${team.name}`}
+                      disabled={isSaving}
+                      onClick={() => setDraft(null)}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      aria-label={`儲存 ${team.name}`}
+                      disabled={!currentDraft.name.trim() || isSaving}
+                      onClick={saveDraft}
+                    >
+                      {isSaving ? (
+                        <Spinner className="size-4" />
+                      ) : (
+                        <Save className="size-4" />
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label={`編輯 ${team.name}`}
+                    disabled={updateTeamMutation.isPending}
+                    onClick={() => startEdit(team)}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                )}
+              </TableCell>
+            </TableRow>
+          )
+        })}
       </TableBody>
     </Table>
+  )
+}
+
+function TeamAvatar({
+  team,
+  className,
+}: {
+  team: TeamAvatarModel
+  className?: string
+}) {
+  return (
+    <Avatar className={cn("bg-surface-raised border-ink border", className)}>
+      {team.avatarUrl ? (
+        <AvatarImage
+          src={team.avatarUrl}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          className="block size-full object-cover"
+        />
+      ) : null}
+      <AvatarFallback className="text-xs font-black">
+        {teamAvatarFallback(team)}
+      </AvatarFallback>
+    </Avatar>
   )
 }
 
