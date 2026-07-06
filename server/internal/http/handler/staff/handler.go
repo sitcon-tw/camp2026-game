@@ -31,6 +31,7 @@ func New(dep Dependencies) *Handler {
 
 func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/staff/players", h.ListPlayers)
+	api.Get("/staff/teams", h.ListTeams)
 	api.Post("/staff/rewards", h.CreateReward)
 }
 

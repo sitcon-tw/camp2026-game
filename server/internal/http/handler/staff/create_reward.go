@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -56,20 +57,15 @@ func (h *Handler) CreateReward(w http.ResponseWriter, r *http.Request) {
 	}
 	body.QRCodeToken = strings.TrimSpace(body.QRCodeToken)
 	body.PlayerID = strings.TrimSpace(body.PlayerID)
+	body.TeamID = strings.TrimSpace(body.TeamID)
 	body.Kind = strings.TrimSpace(body.Kind)
 	body.RefID = strings.TrimSpace(body.RefID)
 	if err := httpx.ValidateStruct(body); err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
-	if body.PlayerID == "" && body.QRCodeToken == "" {
-		httpx.WriteProblem(w, r, httpx.UnprocessableEntity(
-			"invalid request body",
-			httpx.ErrorDetail{
-				Location: "body.playerId",
-				Message:  "playerId or qrcodeToken is required",
-			},
-		))
+	if problems := validateRewardTarget(body); len(problems) > 0 {
+		httpx.WriteProblem(w, r, httpx.UnprocessableEntity("invalid request body", problems...))
 		return
 	}
 
@@ -79,49 +75,13 @@ func (h *Handler) CreateReward(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	recipient, err := h.findRewardRecipient(r.Context(), body)
-	if errors.Is(err, mongo.ErrNoDocuments) {
-		if body.PlayerID != "" {
-			httpx.WriteProblem(w, r, httpx.NotFound("player not found"))
-			return
-		}
-		httpx.WriteProblem(w, r, httpx.NotFound("qr code not found"))
-		return
-	}
-	if err != nil {
-		httpx.WriteProblem(w, r, httpx.InternalServerError("reward failed", "reward_player_lookup_failed", err))
+	response, status, problem := h.createRewardResponse(r.Context(), staffPlayer.ID, reward, body)
+	if problem != nil {
+		httpx.WriteProblem(w, r, problem)
 		return
 	}
 
-	team, err := h.findTeam(r.Context(), recipient.TeamID)
-	if err != nil {
-		httpx.WriteProblem(w, r, httpx.InternalServerError("reward failed", "reward_team_lookup_failed", err))
-		return
-	}
-
-	rewardID, err := h.createReward(r.Context(), staffPlayer.ID, recipient.ID, reward, body.Quantity)
-	if err != nil {
-		httpx.WriteProblem(w, r, httpx.InternalServerError("reward failed", "reward_create_failed", err))
-		return
-	}
-
-	httpx.WriteJSON(w, http.StatusCreated, CreateRewardResponse{
-		RewardID: rewardID,
-		Player: RewardPlayerResponse{
-			PlayerID: recipient.ID,
-			Nickname: recipient.Nickname,
-			Team: RewardTeamResponse{
-				TeamID: team.ID,
-				Name:   team.Name,
-			},
-		},
-		Reward: RewardResponse{
-			Kind:     reward.kind,
-			ID:       reward.id,
-			Name:     reward.name,
-			Quantity: body.Quantity,
-		},
-	})
+	httpx.WriteJSON(w, status, response)
 }
 
 func (h *Handler) rewardDefinition(kind string, refID string) (rewardDefinition, bool) {
@@ -172,6 +132,38 @@ func (h *Handler) findTeam(ctx context.Context, teamID string) (mongomodel.Team,
 		FindOne(ctx, bson.M{"_id": teamID}).
 		Decode(&team)
 	return team, err
+}
+
+func (h *Handler) findPlayersByTeamID(ctx context.Context, teamID string) ([]mongomodel.Player, error) {
+	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(
+		ctx,
+		bson.M{"team_id": teamID},
+		options.Find().
+			SetProjection(bson.D{
+				{Key: "auth_token", Value: 0},
+				{Key: "qrcode_token", Value: 0},
+				{Key: "default_sitone_ids", Value: 0},
+			}).
+			SetSort(bson.D{
+				{Key: "nickname", Value: 1},
+				{Key: "_id", Value: 1},
+			}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var players []mongomodel.Player
+	if err := cursor.All(ctx, &players); err != nil {
+		return nil, err
+	}
+	if players == nil {
+		return []mongomodel.Player{}, nil
+	}
+	return players, nil
 }
 
 func (h *Handler) createReward(ctx context.Context, staffPlayerID string, recipientPlayerID string, reward rewardDefinition, quantity int) (string, error) {
@@ -243,4 +235,147 @@ func inventoryCollection(kind string) (collection string, idField string, err er
 
 func newID(prefix string) string {
 	return prefix + "_" + bson.NewObjectID().Hex()
+}
+
+func validateRewardTarget(body CreateRewardRequest) []httpx.ErrorDetail {
+	switch {
+	case body.TeamID != "" && (body.PlayerID != "" || body.QRCodeToken != ""):
+		return []httpx.ErrorDetail{{
+			Location: "body.teamId",
+			Message:  "teamId cannot be combined with playerId or qrcodeToken",
+		}}
+	case body.TeamID == "" && body.PlayerID == "" && body.QRCodeToken == "":
+		return []httpx.ErrorDetail{{
+			Location: "body.playerId",
+			Message:  "playerId, qrcodeToken, or teamId is required",
+		}}
+	default:
+		return nil
+	}
+}
+
+func (h *Handler) createRewardResponse(
+	ctx context.Context,
+	staffPlayerID string,
+	reward rewardDefinition,
+	body CreateRewardRequest,
+) (CreateRewardResponse, int, error) {
+	if body.TeamID != "" {
+		return h.createTeamRewardResponse(ctx, staffPlayerID, reward, body)
+	}
+	return h.createPlayerRewardResponse(ctx, staffPlayerID, reward, body)
+}
+
+func (h *Handler) createPlayerRewardResponse(
+	ctx context.Context,
+	staffPlayerID string,
+	reward rewardDefinition,
+	body CreateRewardRequest,
+) (CreateRewardResponse, int, error) {
+	recipient, err := h.findRewardRecipient(ctx, body)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		if body.PlayerID != "" {
+			return CreateRewardResponse{}, 0, httpx.NotFound("player not found")
+		}
+		return CreateRewardResponse{}, 0, httpx.NotFound("qr code not found")
+	}
+	if err != nil {
+		return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_player_lookup_failed", err)
+	}
+
+	var team *RewardTeamResponse
+	if recipient.TeamID != "" {
+		loadedTeam, err := h.findTeam(ctx, recipient.TeamID)
+		if err != nil {
+			return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_team_lookup_failed", err)
+		}
+		team = &RewardTeamResponse{TeamID: loadedTeam.ID, Name: loadedTeam.Name}
+	}
+
+	rewardID, err := h.createReward(ctx, staffPlayerID, recipient.ID, reward, body.Quantity)
+	if err != nil {
+		return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_create_failed", err)
+	}
+
+	return CreateRewardResponse{
+		RewardIDs:    []string{rewardID},
+		GrantedCount: 1,
+		Player: &RewardPlayerResponse{
+			PlayerID: recipient.ID,
+			Nickname: recipient.Nickname,
+			Team:     team,
+		},
+		Reward: RewardResponse{
+			Kind:     reward.kind,
+			ID:       reward.id,
+			Name:     reward.name,
+			Quantity: body.Quantity,
+		},
+	}, http.StatusCreated, nil
+}
+
+func (h *Handler) createTeamRewardResponse(
+	ctx context.Context,
+	staffPlayerID string,
+	reward rewardDefinition,
+	body CreateRewardRequest,
+) (CreateRewardResponse, int, error) {
+	team, err := h.findTeam(ctx, body.TeamID)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return CreateRewardResponse{}, 0, httpx.NotFound("team not found")
+	}
+	if err != nil {
+		return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_team_lookup_failed", err)
+	}
+
+	recipients, err := h.findPlayersByTeamID(ctx, team.ID)
+	if err != nil {
+		return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_player_lookup_failed", err)
+	}
+	if len(recipients) == 0 {
+		return CreateRewardResponse{}, 0, httpx.UnprocessableEntity(
+			"invalid request body",
+			httpx.ErrorDetail{
+				Location: "body.teamId",
+				Message:  "team has no players",
+			},
+		)
+	}
+
+	rewardIDs := make([]string, 0, len(recipients))
+	for _, recipient := range recipients {
+		if recipient.ID == "" {
+			continue
+		}
+		rewardID, err := h.createReward(ctx, staffPlayerID, recipient.ID, reward, body.Quantity)
+		if err != nil {
+			return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_create_failed", err)
+		}
+		rewardIDs = append(rewardIDs, rewardID)
+	}
+	if len(rewardIDs) == 0 {
+		return CreateRewardResponse{}, 0, httpx.UnprocessableEntity(
+			"invalid request body",
+			httpx.ErrorDetail{
+				Location: "body.teamId",
+				Message:  "team has no players",
+			},
+		)
+	}
+	slices.Sort(rewardIDs)
+
+	return CreateRewardResponse{
+		RewardIDs:    rewardIDs,
+		GrantedCount: len(rewardIDs),
+		Team: &RewardTeamResponse{
+			TeamID: team.ID,
+			Name:   team.Name,
+		},
+		Reward: RewardResponse{
+			Kind:     reward.kind,
+			ID:       reward.id,
+			Name:     reward.name,
+			Quantity: body.Quantity,
+		},
+	}, http.StatusCreated, nil
 }

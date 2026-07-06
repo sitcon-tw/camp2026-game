@@ -367,17 +367,31 @@ const StaffPlayerSchema = z.object({
   team: TeamSchema.optional(),
 })
 
+const StaffTeamSchema = z.object({
+  teamId: z.string(),
+  name: z.string(),
+  memberCount: z.number(),
+})
+
 const StaffPlayersResponseSchema = z.object({
   players: nullableArray(StaffPlayerSchema),
 })
 
+const StaffTeamsResponseSchema = z.object({
+  teams: nullableArray(StaffTeamSchema),
+})
+
 const StaffRewardResponseSchema = z.object({
-  rewardId: z.string(),
-  player: z.object({
-    playerId: z.string(),
-    nickname: z.string(),
-    team: TeamSchema,
-  }),
+  rewardIds: nullableArray(z.string()),
+  grantedCount: z.number(),
+  player: z
+    .object({
+      playerId: z.string(),
+      nickname: z.string(),
+      team: TeamSchema.optional(),
+    })
+    .optional(),
+  team: TeamSchema.optional(),
   reward: z.object({
     kind: StaffRewardKindSchema,
     id: z.string(),
@@ -565,6 +579,7 @@ export type CompletedMatch = z.infer<typeof CompletedMatchSchema>
 export type MatchChoice = "A" | "B" | "C" | "D"
 export type StaffRewardKind = z.infer<typeof StaffRewardKindSchema>
 export type StaffPlayer = z.infer<typeof StaffPlayerSchema>
+export type StaffTeam = z.infer<typeof StaffTeamSchema>
 export type StaffRewardResponse = z.infer<typeof StaffRewardResponseSchema>
 export type AdminSettings = z.infer<typeof AdminSettingsSchema>
 export type AdminDashboard = z.infer<typeof AdminDashboardSchema>
@@ -763,6 +778,7 @@ export const gameApi = {
   async createStaffReward(input: {
     playerId?: string
     qrcodeToken?: string
+    teamId?: string
     kind: StaffRewardKind
     refId: string
     quantity: number
@@ -778,6 +794,13 @@ export const gameApi = {
       searchParams: { query },
     })
     return StaffPlayersResponseSchema.parse(json).players
+  },
+
+  async staffTeams(query?: string) {
+    const json = await apiClient.get("/api/staff/teams", {
+      searchParams: query ? { query } : undefined,
+    })
+    return StaffTeamsResponseSchema.parse(json).teams
   },
 
   async adminLogin(password: string) {

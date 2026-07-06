@@ -125,6 +125,7 @@ func TestStaffRoutesRequireAuthentication(t *testing.T) {
 		path   string
 		body   *strings.Reader
 	}{
+		{method: http.MethodGet, path: "/api/staff/teams"},
 		{method: http.MethodGet, path: "/api/staff/players?query=Alice"},
 		{method: http.MethodPost, path: "/api/staff/rewards", body: strings.NewReader(`{"qrcodeToken":"qr-token-player-a","kind":"sitone","refId":"stone_engineering_base","quantity":1}`)},
 		{method: http.MethodPost, path: "/api/qr/resolve", body: strings.NewReader(`{"qrcodeToken":"qr-token-player-a"}`)},
@@ -147,6 +148,7 @@ func TestStaffRoutesRequireDatabase(t *testing.T) {
 		path   string
 		body   *strings.Reader
 	}{
+		{method: http.MethodGet, path: "/api/staff/teams"},
 		{method: http.MethodGet, path: "/api/staff/players?query=Alice"},
 		{method: http.MethodPost, path: "/api/staff/rewards", body: strings.NewReader(`{"qrcodeToken":"qr-token-player-a","kind":"sitone","refId":"stone_engineering_base","quantity":1}`)},
 		{method: http.MethodPost, path: "/api/qr/resolve", body: strings.NewReader(`{"qrcodeToken":"qr-token-player-a"}`)},
@@ -461,6 +463,7 @@ func TestSwaggerJSON(t *testing.T) {
 		"/shop/items/{itemID}",
 		"/shop/purchases",
 		"/staff/players",
+		"/staff/teams",
 		"/staff/rewards",
 		"/qr/resolve",
 		"AuthCookieAuth",
@@ -540,6 +543,7 @@ func TestSwaggerJSON(t *testing.T) {
 	assertSwaggerSecurity(t, spec.Paths, "/shop/items/{itemID}", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/shop/purchases", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/staff/players", http.MethodGet, true)
+	assertSwaggerSecurity(t, spec.Paths, "/staff/teams", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/staff/rewards", http.MethodPost, true)
 }
 
