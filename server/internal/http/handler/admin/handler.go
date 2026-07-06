@@ -65,6 +65,7 @@ type LoginResponse struct {
 
 type SettingsRequest struct {
 	ComputerBattlesEnabled *bool `json:"computerBattlesEnabled" validate:"required"`
+	SameTeamBattlesEnabled *bool `json:"sameTeamBattlesEnabled" validate:"required"`
 	ComputerEasyAccuracy   *int  `json:"computerEasyAccuracy" validate:"required,min=0,max=100"`
 	ComputerNormalAccuracy *int  `json:"computerNormalAccuracy" validate:"required,min=0,max=100"`
 	ComputerHardAccuracy   *int  `json:"computerHardAccuracy" validate:"required,min=0,max=100"`
@@ -72,6 +73,7 @@ type SettingsRequest struct {
 
 type SettingsResponse struct {
 	ComputerBattlesEnabled bool `json:"computerBattlesEnabled"`
+	SameTeamBattlesEnabled bool `json:"sameTeamBattlesEnabled"`
 	ComputerEasyAccuracy   int  `json:"computerEasyAccuracy"`
 	ComputerNormalAccuracy int  `json:"computerNormalAccuracy"`
 	ComputerHardAccuracy   int  `json:"computerHardAccuracy"`
@@ -174,10 +176,11 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	settings, err := gamecontrol.SaveSettings(r.Context(), h.db, gamecontrol.Settings{
-		ComputerBattlesEnabled: *body.ComputerBattlesEnabled,
-		ComputerEasyAccuracy:   *body.ComputerEasyAccuracy,
-		ComputerNormalAccuracy: *body.ComputerNormalAccuracy,
-		ComputerHardAccuracy:   *body.ComputerHardAccuracy,
+		ComputerBattlesEnabled:  *body.ComputerBattlesEnabled,
+		SameTeamBattlesDisabled: !*body.SameTeamBattlesEnabled,
+		ComputerEasyAccuracy:    *body.ComputerEasyAccuracy,
+		ComputerNormalAccuracy:  *body.ComputerNormalAccuracy,
+		ComputerHardAccuracy:    *body.ComputerHardAccuracy,
 	})
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("settings update failed", "admin_settings_update_failed", err))
@@ -241,6 +244,7 @@ func adminSessionValue(password string) string {
 func settingsResponse(settings gamecontrol.Settings) SettingsResponse {
 	return SettingsResponse{
 		ComputerBattlesEnabled: settings.ComputerBattlesEnabled,
+		SameTeamBattlesEnabled: settings.SameTeamBattlesEnabled(),
 		ComputerEasyAccuracy:   settings.ComputerEasyAccuracy,
 		ComputerNormalAccuracy: settings.ComputerNormalAccuracy,
 		ComputerHardAccuracy:   settings.ComputerHardAccuracy,

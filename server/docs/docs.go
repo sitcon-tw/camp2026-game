@@ -265,6 +265,83 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/teams/{teamID}": {
+            "put": {
+                "description": "Admin-only endpoint. Updates the team display name and avatar URL shown in operations dashboards.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Update a team as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team ID",
+                        "name": "teamID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Team update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.UpdateTeamRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.UpdateTeamResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "User-facing endpoint. Validates the issued game URL token and writes it to the camp2026_auth cookie.",
@@ -937,6 +1014,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -1359,6 +1442,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -1379,6 +1468,43 @@ const docTemplate = `{
                     },
                     "503": {
                         "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/events": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Streams player reward notifications with Server-Sent Events.",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "me"
+                ],
+                "summary": "Stream player events",
+                "responses": {
+                    "200": {
+                        "description": "SSE event stream",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
@@ -1748,43 +1874,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/me/events": {
-            "get": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Streams player reward notifications with Server-Sent Events.",
-                "produces": [
-                    "text/event-stream"
-                ],
-                "tags": [
-                    "me"
-                ],
-                "summary": "Stream player events",
-                "responses": {
-                    "200": {
-                        "description": "SSE event stream",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
         "/qr/resolve": {
             "post": {
                 "security": [
@@ -2099,69 +2188,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/staff/teams": {
-            "get": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Staff-only endpoint. Lists teams for reward targeting and supports optional name or team ID filtering.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "staff"
-                ],
-                "summary": "List teams as staff",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Team name or team ID keyword",
-                        "name": "query",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/staff.ListTeamsResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
         "/staff/rewards": {
             "post": {
                 "security": [
@@ -2218,6 +2244,69 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/staff/teams": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Staff-only endpoint. Lists teams for reward targeting and supports optional name or team ID filtering.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "staff"
+                ],
+                "summary": "List teams as staff",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team name or team ID keyword",
+                        "name": "query",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/staff.ListTeamsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
@@ -2712,6 +2801,10 @@ const docTemplate = `{
         "admin.DashboardTeamResponse": {
             "type": "object",
             "properties": {
+                "avatarUrl": {
+                    "type": "string",
+                    "example": "https://example.test/avatar/blue.png"
+                },
                 "averageItems": {
                     "type": "number",
                     "example": 4.4
@@ -2760,6 +2853,10 @@ const docTemplate = `{
         "admin.DashboardTeamSummaryResponse": {
             "type": "object",
             "properties": {
+                "avatarUrl": {
+                    "type": "string",
+                    "example": "https://example.test/avatar/blue.png"
+                },
                 "name": {
                     "type": "string",
                     "example": "Blue Team"
@@ -2831,7 +2928,8 @@ const docTemplate = `{
                 "computerBattlesEnabled",
                 "computerEasyAccuracy",
                 "computerHardAccuracy",
-                "computerNormalAccuracy"
+                "computerNormalAccuracy",
+                "sameTeamBattlesEnabled"
             ],
             "properties": {
                 "computerBattlesEnabled": {
@@ -2851,6 +2949,9 @@ const docTemplate = `{
                     "type": "integer",
                     "maximum": 100,
                     "minimum": 0
+                },
+                "sameTeamBattlesEnabled": {
+                    "type": "boolean"
                 }
             }
         },
@@ -2868,6 +2969,39 @@ const docTemplate = `{
                 },
                 "computerNormalAccuracy": {
                     "type": "integer"
+                },
+                "sameTeamBattlesEnabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "admin.UpdateTeamRequest": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string",
+                    "example": "https://example.test/avatar/blue.png"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Blue Team"
+                }
+            }
+        },
+        "admin.UpdateTeamResponse": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string",
+                    "example": "https://example.test/avatar/blue.png"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Blue Team"
+                },
+                "teamId": {
+                    "type": "string",
+                    "example": "8M4RXP"
                 }
             }
         },
@@ -4873,6 +5007,9 @@ const docTemplate = `{
         },
         "staff.CreateRewardRequest": {
             "type": "object",
+            "required": [
+                "kind"
+            ],
             "properties": {
                 "amount": {
                     "type": "integer",
@@ -4901,12 +5038,6 @@ const docTemplate = `{
                     "minLength": 4,
                     "example": "qr_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok"
                 },
-                "teamId": {
-                    "type": "string",
-                    "maxLength": 128,
-                    "minLength": 1,
-                    "example": "8M4RXP"
-                },
                 "quantity": {
                     "type": "integer",
                     "maximum": 99,
@@ -4918,6 +5049,12 @@ const docTemplate = `{
                     "maxLength": 128,
                     "minLength": 1,
                     "example": "stone_engineering_base"
+                },
+                "teamId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "example": "8M4RXP"
                 }
             }
         },
@@ -4986,6 +5123,10 @@ const docTemplate = `{
         "staff.RewardResponse": {
             "type": "object",
             "properties": {
+                "amount": {
+                    "type": "integer",
+                    "example": 100
+                },
                 "id": {
                     "type": "string",
                     "example": "stone_engineering_base"
@@ -4997,10 +5138,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "工程型小石"
-                },
-                "amount": {
-                    "type": "integer",
-                    "example": 100
                 },
                 "quantity": {
                     "type": "integer",
@@ -5044,6 +5181,10 @@ const docTemplate = `{
         "staff.StaffTeamResponse": {
             "type": "object",
             "properties": {
+                "avatarUrl": {
+                    "type": "string",
+                    "example": "https://example.test/avatar/blue.png"
+                },
                 "memberCount": {
                     "type": "integer",
                     "example": 12

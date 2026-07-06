@@ -16,12 +16,13 @@ const (
 )
 
 type Settings struct {
-	ID                     string    `bson:"_id"`
-	ComputerBattlesEnabled bool      `bson:"computer_battles_enabled"`
-	ComputerEasyAccuracy   int       `bson:"computer_easy_accuracy"`
-	ComputerNormalAccuracy int       `bson:"computer_normal_accuracy"`
-	ComputerHardAccuracy   int       `bson:"computer_hard_accuracy"`
-	UpdatedAt              time.Time `bson:"updated_at,omitempty"`
+	ID                      string    `bson:"_id"`
+	ComputerBattlesEnabled  bool      `bson:"computer_battles_enabled"`
+	SameTeamBattlesDisabled bool      `bson:"same_team_battles_disabled"`
+	ComputerEasyAccuracy    int       `bson:"computer_easy_accuracy"`
+	ComputerNormalAccuracy  int       `bson:"computer_normal_accuracy"`
+	ComputerHardAccuracy    int       `bson:"computer_hard_accuracy"`
+	UpdatedAt               time.Time `bson:"updated_at,omitempty"`
 }
 
 func DefaultSettings() Settings {
@@ -76,6 +77,10 @@ func (settings *Settings) Normalize() {
 	settings.ComputerEasyAccuracy = clampPercent(settings.ComputerEasyAccuracy)
 	settings.ComputerNormalAccuracy = clampPercent(settings.ComputerNormalAccuracy)
 	settings.ComputerHardAccuracy = clampPercent(settings.ComputerHardAccuracy)
+}
+
+func (settings Settings) SameTeamBattlesEnabled() bool {
+	return !settings.SameTeamBattlesDisabled
 }
 
 func clampPercent(value int) int {

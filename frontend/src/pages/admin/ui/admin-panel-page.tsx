@@ -1589,12 +1589,12 @@ function AdminSettingsPanel({
             <Settings className="size-5" />
             管理設定
           </CardTitle>
-          <CardDescription>控制玩家是否能建立電腦對戰。</CardDescription>
+          <CardDescription>控制知識王房間與電腦對戰開關。</CardDescription>
           <CardAction>
             <Badge variant="outline">Admin only</Badge>
           </CardAction>
         </CardHeader>
-        <CardContent className="grid gap-4 px-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <CardContent className="grid gap-4 px-5 xl:grid-cols-[minmax(0,360px)_minmax(0,360px)_minmax(0,1fr)]">
           <div className="bg-surface-raised border-border flex items-center justify-between gap-3 rounded-[18px] border-2 p-3">
             <Label htmlFor="computer-battles-enabled">開放電腦對戰</Label>
             <Switch
@@ -1602,6 +1602,19 @@ function AdminSettingsPanel({
               checked={settings.computerBattlesEnabled}
               onCheckedChange={(checked) =>
                 onUpdate({ computerBattlesEnabled: checked })
+              }
+            />
+          </div>
+
+          <div className="bg-surface-raised border-border flex items-center justify-between gap-3 rounded-[18px] border-2 p-3">
+            <Label htmlFor="same-team-battles-enabled">
+              允許同隊知識王對戰
+            </Label>
+            <Switch
+              id="same-team-battles-enabled"
+              checked={settings.sameTeamBattlesEnabled}
+              onCheckedChange={(checked) =>
+                onUpdate({ sameTeamBattlesEnabled: checked })
               }
             />
           </div>

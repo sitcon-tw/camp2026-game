@@ -22,6 +22,7 @@ import (
 // @Security AuthCookieAuth
 // @Success 200 {object} ReadyMatchResponse
 // @Failure 401 {object} httpx.ProblemDetails
+// @Failure 403 {object} httpx.ProblemDetails
 // @Failure 404 {object} httpx.ProblemDetails
 // @Failure 409 {object} httpx.ProblemDetails
 // @Failure 500 {object} httpx.ProblemDetails

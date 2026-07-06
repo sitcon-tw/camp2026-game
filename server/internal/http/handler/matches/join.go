@@ -22,6 +22,7 @@ import (
 // @Success 200 {object} JoinMatchResponse
 // @Failure 400 {object} httpx.ProblemDetails
 // @Failure 401 {object} httpx.ProblemDetails
+// @Failure 403 {object} httpx.ProblemDetails
 // @Failure 404 {object} httpx.ProblemDetails
 // @Failure 409 {object} httpx.ProblemDetails
 // @Failure 422 {object} httpx.ProblemDetails
