@@ -6,6 +6,7 @@ import {
   ScanLineIcon,
   SearchIcon,
   SendIcon,
+  UsersIcon,
 } from "lucide-react"
 import { type FormEvent, useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -56,6 +57,8 @@ type TargetPlayer = {
   team?: PlayerStatus["team"]
 }
 
+type TargetMode = "player" | "team"
+
 function sitoneOption(sitone: Sitone): RewardOption {
   const meta = sitoneMeta(sitone.type)
   return {
@@ -92,9 +95,12 @@ function clampQuantity(value: number) {
 export function StaffRewardsPanel() {
   const queryClient = useQueryClient()
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [targetMode, setTargetMode] = useState<TargetMode>("player")
   const [manualToken, setManualToken] = useState("")
   const [playerSearch, setPlayerSearch] = useState("")
   const [targetPlayer, setTargetPlayer] = useState<TargetPlayer | null>(null)
+  const [teamSearch, setTeamSearch] = useState("")
+  const [selectedTeamID, setSelectedTeamID] = useState("")
   const [rewardKind, setRewardKind] = useState<StaffRewardKind>("sitone")
   const [selectedRefIDs, setSelectedRefIDs] = useState<
     Record<StaffRewardKind, string>
@@ -108,10 +114,16 @@ export function StaffRewardsPanel() {
   })
   const isStaff = statusQuery.data?.role === "staff"
   const playerSearchKeyword = playerSearch.trim()
+  const teamSearchKeyword = teamSearch.trim()
   const playersQuery = useQuery({
     queryKey: ["staff", "players", playerSearchKeyword],
     queryFn: () => gameApi.staffPlayers(playerSearchKeyword),
     enabled: isStaff && playerSearchKeyword.length > 0,
+  })
+  const teamsQuery = useQuery({
+    queryKey: ["staff", "teams", teamSearchKeyword],
+    queryFn: () => gameApi.staffTeams(teamSearchKeyword || undefined),
+    enabled: isStaff,
   })
   const sitonesQuery = useQuery({
     queryKey: ["catalog", "sitones"],
@@ -132,6 +144,7 @@ export function StaffRewardsPanel() {
   )
   const rewardOptions = rewardKind === "sitone" ? sitoneOptions : itemOptions
   const playerOptions = playersQuery.data ?? []
+  const teamOptions = teamsQuery.data ?? []
   const selectedRefID = rewardOptions.some(
     (option) => option.id === selectedRefIDs[rewardKind],
   )
@@ -158,6 +171,8 @@ export function StaffRewardsPanel() {
     }
     return filtered
   }, [rewardOptions, search, selectedOption])
+  const selectedTeam =
+    teamOptions.find((team) => team.teamId === selectedTeamID) ?? null
 
   const resolveMutation = useMutation({
     mutationFn: gameApi.resolveQRCode,
@@ -174,9 +189,15 @@ export function StaffRewardsPanel() {
   const rewardMutation = useMutation({
     mutationFn: gameApi.createStaffReward,
     onSuccess: (result) => {
-      toast.success(
-        `已發送 ${result.reward.name} x${result.reward.quantity} 給 ${result.player.nickname}`,
-      )
+      if (result.team) {
+        toast.success(
+          `已發送 ${result.reward.name} x${result.reward.quantity} 給 ${result.team.name} 全組 (${result.grantedCount} 人)`,
+        )
+      } else if (result.player) {
+        toast.success(
+          `已發送 ${result.reward.name} x${result.reward.quantity} 給 ${result.player.nickname}`,
+        )
+      }
       queryClient.invalidateQueries({ queryKey: ["me"] })
     },
     onError: (error) => {
@@ -187,7 +208,9 @@ export function StaffRewardsPanel() {
   const catalogsPending = sitonesQuery.isPending || itemsQuery.isPending
   const canSend =
     isStaff &&
-    !!targetPlayer?.playerId &&
+    (targetMode === "player"
+      ? !!targetPlayer?.playerId
+      : !!selectedTeam?.teamId) &&
     !!selectedOption &&
     quantity >= 1 &&
     !rewardMutation.isPending
@@ -202,6 +225,7 @@ export function StaffRewardsPanel() {
 
   function selectTargetPlayer(player: StaffPlayer) {
     setManualToken("")
+    setTargetMode("player")
     setTargetPlayer(player)
   }
 
@@ -212,9 +236,20 @@ export function StaffRewardsPanel() {
 
   function handleRewardSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!targetPlayer || !selectedOption) return
+    if (!selectedOption) return
+    if (targetMode === "player") {
+      if (!targetPlayer) return
+      rewardMutation.mutate({
+        playerId: targetPlayer.playerId,
+        kind: rewardKind,
+        refId: selectedOption.id,
+        quantity,
+      })
+      return
+    }
+    if (!selectedTeam) return
     rewardMutation.mutate({
-      playerId: targetPlayer.playerId,
+      teamId: selectedTeam.teamId,
       kind: rewardKind,
       refId: selectedOption.id,
       quantity,
@@ -241,130 +276,214 @@ export function StaffRewardsPanel() {
           <CardHeader className="gap-3 px-5">
             <div className="flex items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2 text-xl font-black">
-                <ScanLineIcon className="size-5" aria-hidden />
-                掃描學員
+                {targetMode === "player" ? (
+                  <ScanLineIcon className="size-5" aria-hidden />
+                ) : (
+                  <UsersIcon className="size-5" aria-hidden />
+                )}
+                選擇發放對象
               </CardTitle>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setScannerOpen(true)}
-              >
-                <ScanLineIcon className="size-4" aria-hidden />
-                掃描
-              </Button>
             </div>
+            <Tabs
+              value={targetMode}
+              onValueChange={(value) => setTargetMode(value as TargetMode)}
+            >
+              <TabsList className="w-full">
+                <TabsTrigger value="player" className="w-full">
+                  單人
+                </TabsTrigger>
+                <TabsTrigger value="team" className="w-full">
+                  整組
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </CardHeader>
           <CardContent className="grid gap-3 px-5">
-            <form
-              className="grid grid-cols-[1fr_auto] gap-2"
-              onSubmit={handleManualSubmit}
-            >
-              <Input
-                value={manualToken}
-                onChange={(event) => setManualToken(event.target.value)}
-                placeholder="QR 識別碼"
-                autoComplete="off"
-                inputMode="text"
-                aria-label="QR 識別碼"
-              />
-              <Button type="submit" disabled={resolveMutation.isPending}>
-                確認
-              </Button>
-            </form>
-
-            <div className="grid gap-2">
-              <div className="relative">
-                <SearchIcon
-                  className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-                  aria-hidden
-                />
-                <Input
-                  value={playerSearch}
-                  onChange={(event) => setPlayerSearch(event.target.value)}
-                  placeholder="搜尋 nickname 或 ID"
-                  autoComplete="off"
-                  aria-label="搜尋學員 nickname 或 ID"
-                  className="pl-9"
-                />
-              </div>
-              {playerSearchKeyword ? (
-                <div className="grid gap-2" aria-label="學員搜尋結果">
-                  {playersQuery.isPending ? (
-                    <p className="text-muted-foreground px-1 text-sm font-bold">
-                      搜尋中
-                    </p>
-                  ) : playersQuery.isError ? (
-                    <p className="text-destructive px-1 text-sm font-bold">
-                      {errorMessage(playersQuery.error, "搜尋失敗")}
-                    </p>
-                  ) : playerOptions.length > 0 ? (
-                    playerOptions.map((player) => {
-                      const selected =
-                        targetPlayer?.playerId === player.playerId
-                      return (
-                        <Button
-                          key={player.playerId}
-                          type="button"
-                          variant={selected ? "secondary" : "outline"}
-                          className="h-auto w-full justify-start rounded-[16px] px-3 py-2 text-left whitespace-normal shadow-none"
-                          onClick={() => selectTargetPlayer(player)}
-                        >
-                          <span className="flex w-full min-w-0 items-center justify-between gap-2">
-                            <span className="flex min-w-0 items-center gap-2.5">
-                              <PlayerAvatar
-                                playerId={player.playerId}
-                                nickname={player.nickname}
-                                className="border-ink size-9 rounded-[13px] border-2"
-                              />
-                              <span className="min-w-0">
-                                <span className="block truncate text-sm leading-tight font-black">
-                                  {player.nickname}
-                                </span>
-                                <span className="text-muted-foreground mt-1 block truncate text-xs leading-tight font-bold">
-                                  {player.team?.name ?? "未分組"} ·{" "}
-                                  {player.playerId}
-                                </span>
-                              </span>
-                            </span>
-                            {selected ? (
-                              <CheckCircle2Icon
-                                className="size-4"
-                                aria-hidden
-                              />
-                            ) : null}
-                          </span>
-                        </Button>
-                      )
-                    })
-                  ) : (
-                    <p className="text-muted-foreground px-1 text-sm font-bold">
-                      找不到學員
-                    </p>
-                  )}
+            {targetMode === "player" ? (
+              <>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setScannerOpen(true)}
+                  >
+                    <ScanLineIcon className="size-4" aria-hidden />
+                    掃描
+                  </Button>
                 </div>
-              ) : null}
-            </div>
 
-            <div className="bg-surface-raised border-border grid min-h-[88px] grid-cols-[52px_1fr] items-center gap-3 rounded-[18px] border-2 p-3">
-              <PlayerAvatar
-                playerId={targetPlayer?.playerId}
-                nickname={targetPlayer?.nickname}
-                className="border-ink size-[52px] rounded-[18px] border-2"
-              />
-              <div>
-                <p className="text-muted-foreground text-xs font-black">
-                  {resolveMutation.isPending
-                    ? "確認 QR Code 中"
-                    : targetPlayer
-                      ? (targetPlayer.team?.name ?? "未分組")
-                      : "尚未選擇學員"}
-                </p>
-                <strong className="mt-1 block text-[22px] leading-tight font-black">
-                  {targetPlayer?.nickname ?? "等待選擇"}
-                </strong>
-              </div>
-            </div>
+                <form
+                  className="grid grid-cols-[1fr_auto] gap-2"
+                  onSubmit={handleManualSubmit}
+                >
+                  <Input
+                    value={manualToken}
+                    onChange={(event) => setManualToken(event.target.value)}
+                    placeholder="QR 識別碼"
+                    autoComplete="off"
+                    inputMode="text"
+                    aria-label="QR 識別碼"
+                  />
+                  <Button type="submit" disabled={resolveMutation.isPending}>
+                    確認
+                  </Button>
+                </form>
+
+                <div className="grid gap-2">
+                  <div className="relative">
+                    <SearchIcon
+                      className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+                      aria-hidden
+                    />
+                    <Input
+                      value={playerSearch}
+                      onChange={(event) => setPlayerSearch(event.target.value)}
+                      placeholder="搜尋 nickname 或 ID"
+                      autoComplete="off"
+                      aria-label="搜尋學員 nickname 或 ID"
+                      className="pl-9"
+                    />
+                  </div>
+                  {playerSearchKeyword ? (
+                    <div className="grid gap-2" aria-label="學員搜尋結果">
+                      {playersQuery.isPending ? (
+                        <p className="text-muted-foreground px-1 text-sm font-bold">
+                          搜尋中
+                        </p>
+                      ) : playersQuery.isError ? (
+                        <p className="text-destructive px-1 text-sm font-bold">
+                          {errorMessage(playersQuery.error, "搜尋失敗")}
+                        </p>
+                      ) : playerOptions.length > 0 ? (
+                        playerOptions.map((player) => {
+                          const selected =
+                            targetPlayer?.playerId === player.playerId
+                          return (
+                            <Button
+                              key={player.playerId}
+                              type="button"
+                              variant={selected ? "secondary" : "outline"}
+                              className="h-auto w-full justify-start rounded-[16px] px-3 py-2 text-left whitespace-normal shadow-none"
+                              onClick={() => selectTargetPlayer(player)}
+                            >
+                              <span className="flex w-full min-w-0 items-center justify-between gap-2">
+                                <span className="flex min-w-0 items-center gap-2.5">
+                                  <PlayerAvatar
+                                    playerId={player.playerId}
+                                    nickname={player.nickname}
+                                    className="border-ink size-9 rounded-[13px] border-2"
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-sm leading-tight font-black">
+                                      {player.nickname}
+                                    </span>
+                                    <span className="text-muted-foreground mt-1 block truncate text-xs leading-tight font-bold">
+                                      {player.team?.name ?? "未分組"} ·{" "}
+                                      {player.playerId}
+                                    </span>
+                                  </span>
+                                </span>
+                                {selected ? (
+                                  <CheckCircle2Icon
+                                    className="size-4"
+                                    aria-hidden
+                                  />
+                                ) : null}
+                              </span>
+                            </Button>
+                          )
+                        })
+                      ) : (
+                        <p className="text-muted-foreground px-1 text-sm font-bold">
+                          找不到學員
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="bg-surface-raised border-border grid min-h-[88px] grid-cols-[52px_1fr] items-center gap-3 rounded-[18px] border-2 p-3">
+                  <PlayerAvatar
+                    playerId={targetPlayer?.playerId}
+                    nickname={targetPlayer?.nickname}
+                    className="border-ink size-[52px] rounded-[18px] border-2"
+                  />
+                  <div>
+                    <p className="text-muted-foreground text-xs font-black">
+                      {resolveMutation.isPending
+                        ? "確認 QR Code 中"
+                        : targetPlayer
+                          ? (targetPlayer.team?.name ?? "未分組")
+                          : "尚未選擇學員"}
+                    </p>
+                    <strong className="mt-1 block text-[22px] leading-tight font-black">
+                      {targetPlayer?.nickname ?? "等待選擇"}
+                    </strong>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="relative">
+                  <SearchIcon
+                    className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+                    aria-hidden
+                  />
+                  <Input
+                    value={teamSearch}
+                    onChange={(event) => setTeamSearch(event.target.value)}
+                    placeholder="搜尋組別名稱或 ID"
+                    autoComplete="off"
+                    aria-label="搜尋組別名稱或 ID"
+                    className="pl-9"
+                  />
+                </div>
+
+                <Select
+                  value={selectedTeamID}
+                  onValueChange={setSelectedTeamID}
+                  disabled={teamsQuery.isPending || teamOptions.length === 0}
+                >
+                  <SelectTrigger className="h-12 w-full">
+                    <SelectValue
+                      placeholder={
+                        teamsQuery.isPending ? "同步組別中" : "選擇組別"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamOptions.map((team) => (
+                      <SelectItem key={team.teamId} value={team.teamId}>
+                        {team.name} ({team.memberCount} 人)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {teamsQuery.isError ? (
+                  <p className="text-destructive px-1 text-sm font-bold">
+                    {errorMessage(teamsQuery.error, "讀取組別失敗")}
+                  </p>
+                ) : null}
+
+                <div className="bg-surface-raised border-border grid min-h-[88px] grid-cols-[52px_1fr] items-center gap-3 rounded-[18px] border-2 p-3">
+                  <div className="bg-card border-ink flex size-[52px] items-center justify-center rounded-[18px] border-2">
+                    <UsersIcon className="size-6" aria-hidden />
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs font-black">
+                      {selectedTeam
+                        ? `${selectedTeam.memberCount} 人`
+                        : "尚未選擇組別"}
+                    </p>
+                    <strong className="mt-1 block text-[22px] leading-tight font-black">
+                      {selectedTeam?.name ?? "等待選擇"}
+                    </strong>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -516,15 +635,26 @@ export function StaffRewardsPanel() {
                 {rewardMutation.data.reward.quantity}
               </strong>
               <p className="text-muted-foreground text-sm font-bold">
-                <span className="inline-flex items-center gap-2 align-middle">
-                  <PlayerAvatar
-                    playerId={rewardMutation.data.player.playerId}
-                    nickname={rewardMutation.data.player.nickname}
-                    className="border-ink size-6 rounded-[9px] border"
-                  />
-                  {rewardMutation.data.player.nickname}
-                </span>{" "}
-                · {rewardMutation.data.player.team.name}
+                {rewardMutation.data.team ? (
+                  <>
+                    {rewardMutation.data.team.name} ·{" "}
+                    {rewardMutation.data.grantedCount} 人
+                  </>
+                ) : rewardMutation.data.player ? (
+                  <>
+                    <span className="inline-flex items-center gap-2 align-middle">
+                      <PlayerAvatar
+                        playerId={rewardMutation.data.player.playerId}
+                        nickname={rewardMutation.data.player.nickname}
+                        className="border-ink size-6 rounded-[9px] border"
+                      />
+                      {rewardMutation.data.player.nickname}
+                    </span>{" "}
+                    {rewardMutation.data.player.team?.name
+                      ? `· ${rewardMutation.data.player.team.name}`
+                      : ""}
+                  </>
+                ) : null}
               </p>
             </CardContent>
           </Card>

@@ -1766,6 +1766,11 @@ definitions:
         maxLength: 512
         minLength: 4
         type: string
+      teamId:
+        example: 8M4RXP
+        maxLength: 128
+        minLength: 1
+        type: string
     required:
     - qrcodeToken
     type: object
@@ -1891,19 +1896,32 @@ definitions:
     type: object
   staff.CreateRewardResponse:
     properties:
+      grantedCount:
+        example: 1
+        type: integer
       player:
         $ref: '#/definitions/staff.RewardPlayerResponse'
       reward:
         $ref: '#/definitions/staff.RewardResponse'
-      rewardId:
-        example: staff_reward_01HXK2P9ATJ5S2YV8C2J4Q0M
-        type: string
+      rewardIds:
+        items:
+          type: string
+        type: array
+      team:
+        $ref: '#/definitions/staff.RewardTeamResponse'
     type: object
   staff.ListPlayersResponse:
     properties:
       players:
         items:
           $ref: '#/definitions/staff.StaffPlayerResponse'
+        type: array
+    type: object
+  staff.ListTeamsResponse:
+    properties:
+      teams:
+        items:
+          $ref: '#/definitions/staff.StaffTeamResponse'
         type: array
     type: object
   staff.RewardPlayerResponse:
@@ -1954,6 +1972,18 @@ definitions:
         type: string
       team:
         $ref: '#/definitions/staff.RewardTeamResponse'
+    type: object
+  staff.StaffTeamResponse:
+    properties:
+      memberCount:
+        example: 12
+        type: integer
+      name:
+        example: Blue Team
+        type: string
+      teamId:
+        example: 8M4RXP
+        type: string
     type: object
   system.StatusResponse:
     properties:
@@ -3303,12 +3333,54 @@ paths:
       summary: Search players as staff
       tags:
       - staff
+  /staff/teams:
+    get:
+      description: Staff-only endpoint. Lists teams for reward targeting and supports
+        optional name or team ID filtering.
+      parameters:
+      - description: Team name or team ID keyword
+        in: query
+        name: query
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/staff.ListTeamsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: List teams as staff
+      tags:
+      - staff
   /staff/rewards:
     post:
       consumes:
       - application/json
       description: Staff-only endpoint. Grants one sitone or item to a player selected
-        by player ID or QR code identifier, and records the staff grant.
+        by player ID or QR code identifier, or to every player in a team, and
+        records the staff grant.
       parameters:
       - description: Staff reward request
         in: body

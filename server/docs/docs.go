@@ -2062,6 +2062,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/staff/teams": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Staff-only endpoint. Lists teams for reward targeting and supports optional name or team ID filtering.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "staff"
+                ],
+                "summary": "List teams as staff",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team name or team ID keyword",
+                        "name": "query",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/staff.ListTeamsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/staff/rewards": {
             "post": {
                 "security": [
@@ -2069,7 +2132,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Staff-only endpoint. Grants one sitone or item to a player selected by player ID or QR code identifier, and records the staff grant.",
+                "description": "Staff-only endpoint. Grants one sitone or item to a player selected by player ID or QR code identifier, or to every player in a team, and records the staff grant.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4799,6 +4862,12 @@ const docTemplate = `{
                     "minLength": 4,
                     "example": "qr_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok"
                 },
+                "teamId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "example": "8M4RXP"
+                },
                 "quantity": {
                     "type": "integer",
                     "maximum": 99,
@@ -4816,15 +4885,24 @@ const docTemplate = `{
         "staff.CreateRewardResponse": {
             "type": "object",
             "properties": {
+                "grantedCount": {
+                    "type": "integer",
+                    "example": 1
+                },
                 "player": {
                     "$ref": "#/definitions/staff.RewardPlayerResponse"
                 },
                 "reward": {
                     "$ref": "#/definitions/staff.RewardResponse"
                 },
-                "rewardId": {
-                    "type": "string",
-                    "example": "staff_reward_01HXK2P9ATJ5S2YV8C2J4Q0M"
+                "rewardIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "team": {
+                    "$ref": "#/definitions/staff.RewardTeamResponse"
                 }
             }
         },
@@ -4835,6 +4913,17 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/staff.StaffPlayerResponse"
+                    }
+                }
+            }
+        },
+        "staff.ListTeamsResponse": {
+            "type": "object",
+            "properties": {
+                "teams": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/staff.StaffTeamResponse"
                     }
                 }
             }
@@ -4906,6 +4995,23 @@ const docTemplate = `{
                 },
                 "team": {
                     "$ref": "#/definitions/staff.RewardTeamResponse"
+                }
+            }
+        },
+        "staff.StaffTeamResponse": {
+            "type": "object",
+            "properties": {
+                "memberCount": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Blue Team"
+                },
+                "teamId": {
+                    "type": "string",
+                    "example": "8M4RXP"
                 }
             }
         },

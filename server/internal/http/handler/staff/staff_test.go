@@ -103,6 +103,30 @@ func TestPlayerSearchFilterMatchesNicknameAndID(t *testing.T) {
 	}
 }
 
+func TestTeamSearchFilterMatchesNameAndID(t *testing.T) {
+	filter := teamSearchFilter("Blue.1")
+
+	branches, ok := filter["$or"].(bson.A)
+	if !ok || len(branches) != 2 {
+		t.Fatalf("expected name and id search branches, got %#v", filter["$or"])
+	}
+	for _, branch := range branches {
+		condition, ok := branch.(bson.M)
+		if !ok {
+			t.Fatalf("expected branch to be bson.M, got %#v", branch)
+		}
+		for _, value := range condition {
+			regex, ok := value.(bson.Regex)
+			if !ok {
+				t.Fatalf("expected regex condition, got %#v", value)
+			}
+			if regex.Pattern != regexp.QuoteMeta("Blue.1") || regex.Options != "i" {
+				t.Fatalf("unexpected regex: %#v", regex)
+			}
+		}
+	}
+}
+
 func TestStaffPlayerResponsesIncludesStaffTargets(t *testing.T) {
 	responses := staffPlayerResponses(
 		[]mongomodel.Player{
@@ -126,6 +150,60 @@ func TestStaffPlayerResponsesIncludesStaffTargets(t *testing.T) {
 	}
 	if responses[1].PlayerID != "S1" || responses[1].Nickname != "Staff" {
 		t.Fatalf("unexpected staff response: %#v", responses[1])
+	}
+}
+
+func TestStaffTeamResponsesIncludesMemberCount(t *testing.T) {
+	responses := staffTeamResponses(
+		[]mongomodel.Team{
+			{ID: "T1", Name: "Blue Team"},
+			{ID: "", Name: "Missing"},
+		},
+		map[string]int{"T1": 12},
+	)
+
+	if len(responses) != 1 {
+		t.Fatalf("expected one team response, got %#v", responses)
+	}
+	if responses[0].TeamID != "T1" || responses[0].Name != "Blue Team" || responses[0].MemberCount != 12 {
+		t.Fatalf("unexpected team response: %#v", responses[0])
+	}
+}
+
+func TestValidateRewardTarget(t *testing.T) {
+	tests := []struct {
+		name string
+		body CreateRewardRequest
+		want int
+	}{
+		{
+			name: "single player target",
+			body: CreateRewardRequest{PlayerID: "P1"},
+			want: 0,
+		},
+		{
+			name: "team target",
+			body: CreateRewardRequest{TeamID: "T1"},
+			want: 0,
+		},
+		{
+			name: "missing target",
+			body: CreateRewardRequest{},
+			want: 1,
+		},
+		{
+			name: "mixed target modes",
+			body: CreateRewardRequest{PlayerID: "P1", TeamID: "T1"},
+			want: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := len(validateRewardTarget(tt.body)); got != tt.want {
+				t.Fatalf("expected %d validation errors, got %d", tt.want, got)
+			}
+		})
 	}
 }
 
