@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"net/http"
 	"sort"
@@ -44,17 +45,21 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 type dashboardRawData struct {
-	Players          []dashboardPlayer
-	Teams            []mongomodel.Team
-	PlayerSitones    []mongomodel.PlayerSitone
-	PlayerItems      []mongomodel.PlayerItem
-	OpenPowerRecords []mongomodel.OpenPowerRecord
-	Matches          []mongomodel.Match
-	MatchAnswers     []mongomodel.MatchAnswer
-	MatchItemDrops   []mongomodel.MatchItemDrop
-	ShopPurchases    []mongomodel.ShopPurchase
-	FusionRecords    []mongomodel.FusionRecord
-	StaffRewards     []mongomodel.StaffReward
+	Players         []dashboardPlayer
+	Teams           []mongomodel.Team
+	PlayerSitones   []dashboardPlayerQuantityStat
+	PlayerItems     []dashboardPlayerQuantityStat
+	SitoneInventory []dashboardInventoryStat
+	ItemInventory   []dashboardInventoryStat
+	OpenPower       []dashboardPlayerOpenPowerStat
+	MatchSummary    dashboardMatchSummaryStat
+	MatchPlayers    []dashboardMatchPlayerStat
+	MatchAnswers    []dashboardMatchAnswerStat
+	MatchItemDrops  []dashboardMatchItemDropStat
+	RecentMatches   []mongomodel.Match
+	ShopPurchases   []dashboardPlayerActivityStat
+	FusionRecords   []dashboardPlayerActivityStat
+	StaffRewards    []dashboardPlayerActivityStat
 }
 
 type dashboardPlayer struct {
@@ -80,55 +85,77 @@ func (h *Handler) dashboardRawData(ctx context.Context) (dashboardRawData, error
 	if err != nil {
 		return dashboardRawData{}, err
 	}
-	playerSitones, err := findAllDashboard[mongomodel.PlayerSitone](ctx, h.db, mongomodel.PlayerSitonesCollection, bson.M{"quantity": bson.M{"$gt": 0}})
+
+	playerIDs := dashboardPlayerIDs(players)
+	playerSitones, err := aggregateAllDashboard[dashboardPlayerQuantityStat](ctx, h.db, mongomodel.PlayerSitonesCollection, dashboardPlayerQuantityPipeline("player_id", "quantity", playerIDs))
 	if err != nil {
 		return dashboardRawData{}, err
 	}
-	playerItems, err := findAllDashboard[mongomodel.PlayerItem](ctx, h.db, mongomodel.PlayerItemsCollection, bson.M{"quantity": bson.M{"$gt": 0}})
+	playerItems, err := aggregateAllDashboard[dashboardPlayerQuantityStat](ctx, h.db, mongomodel.PlayerItemsCollection, dashboardPlayerQuantityPipeline("player_id", "quantity", playerIDs))
 	if err != nil {
 		return dashboardRawData{}, err
 	}
-	openPowerRecords, err := findAllDashboard[mongomodel.OpenPowerRecord](ctx, h.db, mongomodel.OpenPowerRecordsCollection, bson.M{})
+	sitoneInventory, err := aggregateAllDashboard[dashboardInventoryStat](ctx, h.db, mongomodel.PlayerSitonesCollection, dashboardInventoryPipeline("sitone_id", playerIDs))
 	if err != nil {
 		return dashboardRawData{}, err
 	}
-	matches, err := findAllDashboard[mongomodel.Match](ctx, h.db, mongomodel.MatchesCollection, bson.M{})
+	itemInventory, err := aggregateAllDashboard[dashboardInventoryStat](ctx, h.db, mongomodel.PlayerItemsCollection, dashboardInventoryPipeline("item_id", playerIDs))
 	if err != nil {
 		return dashboardRawData{}, err
 	}
-	matchAnswers, err := findAllDashboard[mongomodel.MatchAnswer](ctx, h.db, mongomodel.MatchAnswersCollection, bson.M{})
+	openPower, err := aggregateAllDashboard[dashboardPlayerOpenPowerStat](ctx, h.db, mongomodel.OpenPowerRecordsCollection, dashboardOpenPowerPipeline(playerIDs))
 	if err != nil {
 		return dashboardRawData{}, err
 	}
-	matchItemDrops, err := findAllDashboard[mongomodel.MatchItemDrop](ctx, h.db, mongomodel.MatchItemDropsCollection, bson.M{})
+	matchSummary, err := aggregateOneDashboard[dashboardMatchSummaryStat](ctx, h.db, mongomodel.MatchesCollection, dashboardMatchSummaryPipeline())
 	if err != nil {
 		return dashboardRawData{}, err
 	}
-	shopPurchases, err := findAllDashboard[mongomodel.ShopPurchase](ctx, h.db, mongomodel.ShopPurchasesCollection, bson.M{})
+	matchPlayers, err := aggregateAllDashboard[dashboardMatchPlayerStat](ctx, h.db, mongomodel.MatchesCollection, dashboardMatchPlayerStatsPipeline(playerIDs))
 	if err != nil {
 		return dashboardRawData{}, err
 	}
-	fusionRecords, err := findAllDashboard[mongomodel.FusionRecord](ctx, h.db, mongomodel.FusionRecordsCollection, bson.M{})
+	matchAnswers, err := aggregateAllDashboard[dashboardMatchAnswerStat](ctx, h.db, mongomodel.MatchAnswersCollection, dashboardMatchAnswerStatsPipeline(playerIDs))
 	if err != nil {
 		return dashboardRawData{}, err
 	}
-	staffRewards, err := findAllDashboard[mongomodel.StaffReward](ctx, h.db, mongomodel.StaffRewardsCollection, bson.M{})
+	matchItemDrops, err := aggregateAllDashboard[dashboardMatchItemDropStat](ctx, h.db, mongomodel.MatchItemDropsCollection, dashboardMatchItemDropStatsPipeline(playerIDs))
+	if err != nil {
+		return dashboardRawData{}, err
+	}
+	recentMatches, err := aggregateAllDashboard[mongomodel.Match](ctx, h.db, mongomodel.MatchesCollection, dashboardRecentMatchesPipeline())
+	if err != nil {
+		return dashboardRawData{}, err
+	}
+	shopPurchases, err := aggregateAllDashboard[dashboardPlayerActivityStat](ctx, h.db, mongomodel.ShopPurchasesCollection, dashboardActivityPipeline("player_id", playerIDs))
+	if err != nil {
+		return dashboardRawData{}, err
+	}
+	fusionRecords, err := aggregateAllDashboard[dashboardPlayerActivityStat](ctx, h.db, mongomodel.FusionRecordsCollection, dashboardActivityPipeline("player_id", playerIDs))
+	if err != nil {
+		return dashboardRawData{}, err
+	}
+	staffRewards, err := aggregateAllDashboard[dashboardPlayerActivityStat](ctx, h.db, mongomodel.StaffRewardsCollection, dashboardActivityPipeline("recipient_player_id", playerIDs))
 	if err != nil {
 		return dashboardRawData{}, err
 	}
 
 	return dashboardRawData{
-		Players:          players,
-		Teams:            teams,
-		PlayerSitones:    playerSitones,
-		PlayerItems:      playerItems,
-		OpenPowerRecords: openPowerRecords,
-		Matches:          matches,
-		MatchAnswers:     matchAnswers,
-		MatchItemDrops:   matchItemDrops,
-		ShopPurchases:    shopPurchases,
-		FusionRecords:    fusionRecords,
-		StaffRewards:     staffRewards,
+		Players:         players,
+		Teams:           teams,
+		PlayerSitones:   playerSitones,
+		PlayerItems:     playerItems,
+		SitoneInventory: sitoneInventory,
+		ItemInventory:   itemInventory,
+		OpenPower:       openPower,
+		MatchSummary:    matchSummary,
+		MatchPlayers:    matchPlayers,
+		MatchAnswers:    matchAnswers,
+		MatchItemDrops:  matchItemDrops,
+		RecentMatches:   recentMatches,
+		ShopPurchases:   shopPurchases,
+		FusionRecords:   fusionRecords,
+		StaffRewards:    staffRewards,
 	}, nil
 }
 
@@ -142,6 +169,206 @@ func dashboardPlayerProjection() bson.D {
 	}
 }
 
+type dashboardPlayerQuantityStat struct {
+	PlayerID string `bson:"_id"`
+	Quantity int    `bson:"quantity"`
+}
+
+type dashboardInventoryStat struct {
+	ID         string `bson:"_id"`
+	Quantity   int    `bson:"quantity"`
+	OwnerCount int    `bson:"owner_count"`
+}
+
+type dashboardPlayerOpenPowerStat struct {
+	PlayerID       string    `bson:"_id"`
+	Amount         int       `bson:"amount"`
+	LastActivityAt time.Time `bson:"last_activity_at"`
+}
+
+type dashboardMatchSummaryStat struct {
+	Total     int `bson:"total"`
+	Waiting   int `bson:"waiting"`
+	Active    int `bson:"active"`
+	Completed int `bson:"completed"`
+	PVP       int `bson:"pvp"`
+	Computer  int `bson:"computer"`
+}
+
+type dashboardMatchPlayerStat struct {
+	PlayerID            string    `bson:"_id"`
+	MatchCount          int       `bson:"match_count"`
+	CompletedMatchCount int       `bson:"completed_match_count"`
+	LastActivityAt      time.Time `bson:"last_activity_at"`
+}
+
+type dashboardMatchAnswerStat struct {
+	PlayerID           string    `bson:"_id"`
+	AnswerCount        int       `bson:"answer_count"`
+	CorrectAnswerCount int       `bson:"correct_answer_count"`
+	Score              int       `bson:"score"`
+	ElapsedMillis      int64     `bson:"elapsed_ms"`
+	LastActivityAt     time.Time `bson:"last_activity_at"`
+}
+
+type dashboardMatchItemDropStat struct {
+	PlayerID       string    `bson:"_id"`
+	DropAttempts   int       `bson:"drop_attempts"`
+	DropSuccesses  int       `bson:"drop_successes"`
+	LastActivityAt time.Time `bson:"last_activity_at"`
+}
+
+type dashboardPlayerActivityStat struct {
+	PlayerID       string    `bson:"_id"`
+	Count          int       `bson:"count"`
+	LastActivityAt time.Time `bson:"last_activity_at"`
+}
+
+func dashboardPlayerIDs(players []dashboardPlayer) []string {
+	ids := make([]string, 0, len(players))
+	for _, player := range players {
+		if player.ID == "" {
+			continue
+		}
+		ids = append(ids, player.ID)
+	}
+	return ids
+}
+
+func dashboardPlayerQuantityPipeline(playerField string, quantityField string, playerIDs []string) mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{
+			{Key: playerField, Value: bson.D{{Key: "$in", Value: playerIDs}}},
+			{Key: quantityField, Value: bson.D{{Key: "$gt", Value: 0}}},
+		}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$" + playerField},
+			{Key: "quantity", Value: bson.D{{Key: "$sum", Value: "$" + quantityField}}},
+		}}},
+	}
+}
+
+func dashboardInventoryPipeline(refField string, playerIDs []string) mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{
+			{Key: "player_id", Value: bson.D{{Key: "$in", Value: playerIDs}}},
+			{Key: "quantity", Value: bson.D{{Key: "$gt", Value: 0}}},
+			{Key: refField, Value: bson.D{{Key: "$exists", Value: true}, {Key: "$ne", Value: ""}}},
+		}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$" + refField},
+			{Key: "quantity", Value: bson.D{{Key: "$sum", Value: "$quantity"}}},
+			{Key: "owners", Value: bson.D{{Key: "$addToSet", Value: "$player_id"}}},
+		}}},
+		{{Key: "$project", Value: bson.D{
+			{Key: "_id", Value: 1},
+			{Key: "quantity", Value: 1},
+			{Key: "owner_count", Value: bson.D{{Key: "$size", Value: "$owners"}}},
+		}}},
+	}
+}
+
+func dashboardOpenPowerPipeline(playerIDs []string) mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: "player_id", Value: bson.D{{Key: "$in", Value: playerIDs}}}}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$player_id"},
+			{Key: "amount", Value: bson.D{{Key: "$sum", Value: "$amount"}}},
+			{Key: "last_activity_at", Value: bson.D{{Key: "$max", Value: "$created_at"}}},
+		}}},
+	}
+}
+
+func dashboardMatchSummaryPipeline() mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: nil},
+			{Key: "total", Value: bson.D{{Key: "$sum", Value: 1}}},
+			{Key: "waiting", Value: dashboardConditionalSum(dashboardFieldEquals("status", mongomodel.MatchStatusWaiting))},
+			{Key: "active", Value: dashboardConditionalSum(dashboardFieldEquals("status", mongomodel.MatchStatusActive))},
+			{Key: "completed", Value: dashboardConditionalSum(dashboardFieldEquals("status", mongomodel.MatchStatusCompleted))},
+			{Key: "pvp", Value: dashboardConditionalSum(bson.D{{Key: "$ne", Value: bson.A{"$mode", mongomodel.MatchModeComputer}}})},
+			{Key: "computer", Value: dashboardConditionalSum(dashboardFieldEquals("mode", mongomodel.MatchModeComputer))},
+		}}},
+	}
+}
+
+func dashboardMatchPlayerStatsPipeline(playerIDs []string) mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$unwind", Value: "$players"}},
+		{{Key: "$match", Value: bson.D{
+			{Key: "players.kind", Value: bson.D{{Key: "$ne", Value: mongomodel.MatchPlayerKindComputer}}},
+			{Key: "players.player_id", Value: bson.D{{Key: "$in", Value: playerIDs}}},
+		}}},
+		{{Key: "$addFields", Value: bson.D{
+			{Key: "dashboard_activity_at", Value: bson.D{{Key: "$max", Value: bson.A{"$created_at", "$started_at", "$completed_at"}}}},
+		}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$players.player_id"},
+			{Key: "match_count", Value: bson.D{{Key: "$sum", Value: 1}}},
+			{Key: "completed_match_count", Value: dashboardConditionalSum(dashboardFieldEquals("status", mongomodel.MatchStatusCompleted))},
+			{Key: "last_activity_at", Value: bson.D{{Key: "$max", Value: "$dashboard_activity_at"}}},
+		}}},
+	}
+}
+
+func dashboardMatchAnswerStatsPipeline(playerIDs []string) mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: "player_id", Value: bson.D{{Key: "$in", Value: playerIDs}}}}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$player_id"},
+			{Key: "answer_count", Value: bson.D{{Key: "$sum", Value: 1}}},
+			{Key: "correct_answer_count", Value: dashboardConditionalSum(dashboardFieldEquals("correct", true))},
+			{Key: "score", Value: bson.D{{Key: "$sum", Value: "$score"}}},
+			{Key: "elapsed_ms", Value: bson.D{{Key: "$sum", Value: "$elapsed_ms"}}},
+			{Key: "last_activity_at", Value: bson.D{{Key: "$max", Value: "$answered_at"}}},
+		}}},
+	}
+}
+
+func dashboardMatchItemDropStatsPipeline(playerIDs []string) mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: "player_id", Value: bson.D{{Key: "$in", Value: playerIDs}}}}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$player_id"},
+			{Key: "drop_attempts", Value: bson.D{{Key: "$sum", Value: 1}}},
+			{Key: "drop_successes", Value: dashboardConditionalSum(dashboardFieldEquals("dropped", true))},
+			{Key: "last_activity_at", Value: bson.D{{Key: "$max", Value: "$created_at"}}},
+		}}},
+	}
+}
+
+func dashboardRecentMatchesPipeline() mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: "status", Value: mongomodel.MatchStatusCompleted}}}},
+		{{Key: "$addFields", Value: bson.D{
+			{Key: "dashboard_sort_time", Value: bson.D{{Key: "$max", Value: bson.A{"$completed_at", "$started_at", "$created_at"}}}},
+		}}},
+		{{Key: "$sort", Value: bson.D{{Key: "dashboard_sort_time", Value: -1}, {Key: "_id", Value: 1}}}},
+		{{Key: "$limit", Value: 12}},
+		{{Key: "$project", Value: bson.D{{Key: "dashboard_sort_time", Value: 0}}}},
+	}
+}
+
+func dashboardActivityPipeline(playerField string, playerIDs []string) mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: playerField, Value: bson.D{{Key: "$in", Value: playerIDs}}}}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$" + playerField},
+			{Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}},
+			{Key: "last_activity_at", Value: bson.D{{Key: "$max", Value: "$created_at"}}},
+		}}},
+	}
+}
+
+func dashboardFieldEquals(field string, value any) bson.D {
+	return bson.D{{Key: "$eq", Value: bson.A{"$" + field, value}}}
+}
+
+func dashboardConditionalSum(condition any) bson.D {
+	return bson.D{{Key: "$sum", Value: bson.D{{Key: "$cond", Value: bson.A{condition, 1, 0}}}}}
+}
+
 func findAllDashboard[T any](
 	ctx context.Context,
 	db *mongo.Database,
@@ -151,7 +378,7 @@ func findAllDashboard[T any](
 ) ([]T, error) {
 	cursor, err := db.Collection(collection).Find(ctx, filter, opts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find %s: %w", collection, err)
 	}
 	defer func() {
 		_ = cursor.Close(ctx)
@@ -159,12 +386,53 @@ func findAllDashboard[T any](
 
 	var out []T
 	if err := cursor.All(ctx, &out); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode %s find: %w", collection, err)
 	}
 	if out == nil {
 		return []T{}, nil
 	}
 	return out, nil
+}
+
+func aggregateAllDashboard[T any](
+	ctx context.Context,
+	db *mongo.Database,
+	collection string,
+	pipeline mongo.Pipeline,
+) ([]T, error) {
+	cursor, err := db.Collection(collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, fmt.Errorf("aggregate %s: %w", collection, err)
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var out []T
+	if err := cursor.All(ctx, &out); err != nil {
+		return nil, fmt.Errorf("decode %s aggregate: %w", collection, err)
+	}
+	if out == nil {
+		return []T{}, nil
+	}
+	return out, nil
+}
+
+func aggregateOneDashboard[T any](
+	ctx context.Context,
+	db *mongo.Database,
+	collection string,
+	pipeline mongo.Pipeline,
+) (T, error) {
+	var zero T
+	rows, err := aggregateAllDashboard[T](ctx, db, collection, pipeline)
+	if err != nil {
+		return zero, err
+	}
+	if len(rows) == 0 {
+		return zero, nil
+	}
+	return rows[0], nil
 }
 
 type dashboardPlayerStats struct {
@@ -187,11 +455,6 @@ type dashboardTeamStats struct {
 	SitoneCount int
 	ItemCount   int
 	OpenPower   int
-}
-
-type dashboardInventoryAccumulator struct {
-	Quantity int
-	Owners   map[string]struct{}
 }
 
 func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRawData) DashboardResponse {
@@ -235,7 +498,6 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 		current.PlayerIDs[player.ID] = struct{}{}
 	}
 
-	sitoneInventory := make(map[string]*dashboardInventoryAccumulator)
 	for _, record := range raw.PlayerSitones {
 		stats, ok := statsByPlayer[record.PlayerID]
 		if !ok || record.Quantity <= 0 {
@@ -245,10 +507,8 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 		if stats.Team != nil {
 			teamStatsByID[stats.Team.TeamID].SitoneCount += record.Quantity
 		}
-		addDashboardInventory(sitoneInventory, record.SitoneID, record.PlayerID, record.Quantity)
 	}
 
-	itemInventory := make(map[string]*dashboardInventoryAccumulator)
 	for _, record := range raw.PlayerItems {
 		stats, ok := statsByPlayer[record.PlayerID]
 		if !ok || record.Quantity <= 0 {
@@ -258,10 +518,9 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 		if stats.Team != nil {
 			teamStatsByID[stats.Team.TeamID].ItemCount += record.Quantity
 		}
-		addDashboardInventory(itemInventory, record.ItemID, record.PlayerID, record.Quantity)
 	}
 
-	for _, record := range raw.OpenPowerRecords {
+	for _, record := range raw.OpenPower {
 		stats, ok := statsByPlayer[record.PlayerID]
 		if !ok {
 			continue
@@ -270,10 +529,17 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 		if stats.Team != nil {
 			teamStatsByID[stats.Team.TeamID].OpenPower += record.Amount
 		}
-		touchDashboardPlayer(stats, record.CreatedAt)
+		touchDashboardPlayer(stats, record.LastActivityAt)
 	}
 
-	matchSummary := buildDashboardMatchSummary(raw.Matches, raw.MatchAnswers, raw.MatchItemDrops, statsByPlayer)
+	matchSummary := buildDashboardMatchSummary(
+		raw.MatchSummary,
+		raw.MatchPlayers,
+		raw.MatchAnswers,
+		raw.MatchItemDrops,
+		raw.RecentMatches,
+		statsByPlayer,
+	)
 
 	shopPurchaseCount := 0
 	for _, record := range raw.ShopPurchases {
@@ -281,8 +547,8 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 		if !ok {
 			continue
 		}
-		shopPurchaseCount++
-		touchDashboardPlayer(stats, record.CreatedAt)
+		shopPurchaseCount += record.Count
+		touchDashboardPlayer(stats, record.LastActivityAt)
 	}
 
 	fusionCount := 0
@@ -291,18 +557,18 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 		if !ok {
 			continue
 		}
-		fusionCount++
-		touchDashboardPlayer(stats, record.CreatedAt)
+		fusionCount += record.Count
+		touchDashboardPlayer(stats, record.LastActivityAt)
 	}
 
 	staffRewardCount := 0
 	for _, record := range raw.StaffRewards {
-		stats, ok := statsByPlayer[record.RecipientPlayerID]
+		stats, ok := statsByPlayer[record.PlayerID]
 		if !ok {
 			continue
 		}
-		staffRewardCount++
-		touchDashboardPlayer(stats, record.CreatedAt)
+		staffRewardCount += record.Count
+		touchDashboardPlayer(stats, record.LastActivityAt)
 	}
 
 	players := dashboardPlayerResponses(statsByPlayer)
@@ -341,8 +607,8 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 		Teams:   teams,
 		Players: players,
 		Inventory: DashboardInventoryResponse{
-			Sitones: dashboardSitoneInventoryResponses(store, sitoneInventory),
-			Items:   dashboardItemInventoryResponses(store, itemInventory),
+			Sitones: dashboardSitoneInventoryResponses(store, raw.SitoneInventory),
+			Items:   dashboardItemInventoryResponses(store, raw.ItemInventory),
 		},
 		Matches: matchSummary,
 	}
@@ -369,19 +635,6 @@ func dashboardTeamForPlayer(player dashboardPlayer, teamsByID map[string]mongomo
 	return &DashboardTeamSummaryResponse{TeamID: player.TeamID, Name: player.TeamID}
 }
 
-func addDashboardInventory(inventory map[string]*dashboardInventoryAccumulator, refID string, playerID string, quantity int) {
-	if refID == "" || playerID == "" || quantity <= 0 {
-		return
-	}
-	current, ok := inventory[refID]
-	if !ok {
-		current = &dashboardInventoryAccumulator{Owners: map[string]struct{}{}}
-		inventory[refID] = current
-	}
-	current.Quantity += quantity
-	current.Owners[playerID] = struct{}{}
-}
-
 func touchDashboardPlayer(stats *dashboardPlayerStats, at time.Time) {
 	if stats == nil || at.IsZero() {
 		return
@@ -392,50 +645,31 @@ func touchDashboardPlayer(stats *dashboardPlayerStats, at time.Time) {
 }
 
 func buildDashboardMatchSummary(
-	matches []mongomodel.Match,
-	answers []mongomodel.MatchAnswer,
-	drops []mongomodel.MatchItemDrop,
+	matchStats dashboardMatchSummaryStat,
+	matchPlayers []dashboardMatchPlayerStat,
+	answers []dashboardMatchAnswerStat,
+	drops []dashboardMatchItemDropStat,
+	recentMatches []mongomodel.Match,
 	statsByPlayer map[string]*dashboardPlayerStats,
 ) DashboardMatchesResponse {
 	summary := DashboardMatchesResponse{
-		Recent: []DashboardRecentMatchResponse{},
+		Total:     matchStats.Total,
+		Waiting:   matchStats.Waiting,
+		Active:    matchStats.Active,
+		Completed: matchStats.Completed,
+		PVP:       matchStats.PVP,
+		Computer:  matchStats.Computer,
+		Recent:    []DashboardRecentMatchResponse{},
 	}
-	completed := make([]mongomodel.Match, 0, len(matches))
-	for _, match := range matches {
-		if match.ID == "" {
+
+	for _, matchPlayer := range matchPlayers {
+		stats, ok := statsByPlayer[matchPlayer.PlayerID]
+		if !ok {
 			continue
 		}
-		summary.Total++
-		switch match.Status {
-		case mongomodel.MatchStatusWaiting:
-			summary.Waiting++
-		case mongomodel.MatchStatusActive:
-			summary.Active++
-		case mongomodel.MatchStatusCompleted:
-			summary.Completed++
-			completed = append(completed, match)
-		}
-		if match.Mode == mongomodel.MatchModeComputer {
-			summary.Computer++
-		} else {
-			summary.PVP++
-		}
-		for _, matchPlayer := range match.Players {
-			if matchPlayer.Kind == mongomodel.MatchPlayerKindComputer {
-				continue
-			}
-			stats, ok := statsByPlayer[matchPlayer.PlayerID]
-			if !ok {
-				continue
-			}
-			stats.MatchCount++
-			if match.Status == mongomodel.MatchStatusCompleted {
-				stats.CompletedMatchCount++
-			}
-			touchDashboardPlayer(stats, match.CreatedAt)
-			touchDashboardPlayer(stats, match.StartedAt)
-			touchDashboardPlayer(stats, match.CompletedAt)
-		}
+		stats.MatchCount += matchPlayer.MatchCount
+		stats.CompletedMatchCount += matchPlayer.CompletedMatchCount
+		touchDashboardPlayer(stats, matchPlayer.LastActivityAt)
 	}
 
 	totalScore := 0
@@ -445,16 +679,14 @@ func buildDashboardMatchSummary(
 		if !ok {
 			continue
 		}
-		stats.AnswerCount++
-		if answer.Correct {
-			stats.CorrectAnswerCount++
-			summary.CorrectAnswerCount++
-		}
+		stats.AnswerCount += answer.AnswerCount
+		stats.CorrectAnswerCount += answer.CorrectAnswerCount
 		stats.Score += answer.Score
-		summary.AnswerCount++
+		summary.AnswerCount += answer.AnswerCount
+		summary.CorrectAnswerCount += answer.CorrectAnswerCount
 		totalScore += answer.Score
 		totalElapsedMillis += answer.ElapsedMillis
-		touchDashboardPlayer(stats, answer.AnsweredAt)
+		touchDashboardPlayer(stats, answer.LastActivityAt)
 	}
 	summary.AnswerAccuracy = dashboardPercent(summary.CorrectAnswerCount, summary.AnswerCount)
 	summary.AverageScore = dashboardAverage(totalScore, summary.AnswerCount)
@@ -465,14 +697,19 @@ func buildDashboardMatchSummary(
 		if !ok {
 			continue
 		}
-		summary.DropAttempts++
-		if drop.Dropped {
-			summary.DropSuccesses++
-		}
-		touchDashboardPlayer(stats, drop.CreatedAt)
+		summary.DropAttempts += drop.DropAttempts
+		summary.DropSuccesses += drop.DropSuccesses
+		touchDashboardPlayer(stats, drop.LastActivityAt)
 	}
 	summary.DropRate = dashboardPercent(summary.DropSuccesses, summary.DropAttempts)
 
+	completed := make([]mongomodel.Match, 0, len(recentMatches))
+	for _, match := range recentMatches {
+		if match.ID == "" || match.Status != mongomodel.MatchStatusCompleted {
+			continue
+		}
+		completed = append(completed, match)
+	}
 	sort.Slice(completed, func(i, j int) bool {
 		return dashboardMatchSortTime(completed[i]).After(dashboardMatchSortTime(completed[j]))
 	})
@@ -741,17 +978,20 @@ func dashboardPlayerNameLess(a DashboardPlayerResponse, b DashboardPlayerRespons
 	return a.PlayerID < b.PlayerID
 }
 
-func dashboardSitoneInventoryResponses(store *content.Store, inventory map[string]*dashboardInventoryAccumulator) []DashboardInventoryEntryResponse {
+func dashboardSitoneInventoryResponses(store *content.Store, inventory []dashboardInventoryStat) []DashboardInventoryEntryResponse {
 	entries := make([]DashboardInventoryEntryResponse, 0, len(inventory))
-	for sitoneID, stats := range inventory {
+	for _, stats := range inventory {
+		if stats.ID == "" || stats.Quantity <= 0 {
+			continue
+		}
 		entry := DashboardInventoryEntryResponse{
-			ID:             sitoneID,
-			Name:           sitoneID,
+			ID:             stats.ID,
+			Name:           stats.ID,
 			Quantity:       stats.Quantity,
-			OwnerCount:     len(stats.Owners),
+			OwnerCount:     stats.OwnerCount,
 			CatalogMissing: true,
 		}
-		if sitone, ok := store.GetSitone(sitoneID); ok {
+		if sitone, ok := store.GetSitone(stats.ID); ok {
 			entry.Name = sitone.Name
 			entry.Type = sitone.Type
 			entry.Rarity = sitone.Rarity
@@ -764,17 +1004,20 @@ func dashboardSitoneInventoryResponses(store *content.Store, inventory map[strin
 	return entries
 }
 
-func dashboardItemInventoryResponses(store *content.Store, inventory map[string]*dashboardInventoryAccumulator) []DashboardInventoryEntryResponse {
+func dashboardItemInventoryResponses(store *content.Store, inventory []dashboardInventoryStat) []DashboardInventoryEntryResponse {
 	entries := make([]DashboardInventoryEntryResponse, 0, len(inventory))
-	for itemID, stats := range inventory {
+	for _, stats := range inventory {
+		if stats.ID == "" || stats.Quantity <= 0 {
+			continue
+		}
 		entry := DashboardInventoryEntryResponse{
-			ID:             itemID,
-			Name:           itemID,
+			ID:             stats.ID,
+			Name:           stats.ID,
 			Quantity:       stats.Quantity,
-			OwnerCount:     len(stats.Owners),
+			OwnerCount:     stats.OwnerCount,
 			CatalogMissing: true,
 		}
-		if item, ok := store.GetItem(itemID); ok {
+		if item, ok := store.GetItem(stats.ID); ok {
 			entry.Name = item.Name
 			entry.Type = item.Type
 			entry.Rarity = item.Rarity

@@ -1,5 +1,40 @@
 basePath: /api
 definitions:
+  admin.DashboardHistoryPointResponse:
+    properties:
+      openPower:
+        example: 98220
+        type: integer
+      openPowerDelta:
+        example: 120
+        type: integer
+      sitoneCount:
+        example: 420
+        type: integer
+      sitoneDelta:
+        example: 3
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  admin.DashboardHistoryResponse:
+    properties:
+      bucket:
+        example: hour
+        type: string
+      generatedAt:
+        type: string
+      openPowerStart:
+        example: 0
+        type: integer
+      points:
+        items:
+          $ref: '#/definitions/admin.DashboardHistoryPointResponse'
+        type: array
+      sitoneBaseline:
+        example: 5
+        type: integer
+    type: object
   admin.DashboardInventoryEntryResponse:
     properties:
       catalogMissing:
@@ -1962,6 +1997,41 @@ paths:
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
       summary: Get admin game dashboard
+      tags:
+      - admin
+  /admin/history:
+    get:
+      description: Returns an admin-only cumulative history of total sitones and open
+        power.
+      parameters:
+      - description: 'History bucket: hour or day'
+        in: query
+        name: bucket
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.DashboardHistoryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Get admin resource history
       tags:
       - admin
   /admin/login:

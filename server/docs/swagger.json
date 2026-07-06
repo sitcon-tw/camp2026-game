@@ -50,6 +50,58 @@
                 }
             }
         },
+        "/admin/history": {
+            "get": {
+                "description": "Returns an admin-only cumulative history of total sitones and open power.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get admin resource history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "History bucket: hour or day",
+                        "name": "bucket",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.DashboardHistoryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/login": {
             "post": {
                 "description": "Uses the ADMIN_PASSWORD environment variable to create an admin session cookie.",
@@ -2090,6 +2142,56 @@
         }
     },
     "definitions": {
+        "admin.DashboardHistoryPointResponse": {
+            "type": "object",
+            "properties": {
+                "openPower": {
+                    "type": "integer",
+                    "example": 98220
+                },
+                "openPowerDelta": {
+                    "type": "integer",
+                    "example": 120
+                },
+                "sitoneCount": {
+                    "type": "integer",
+                    "example": 420
+                },
+                "sitoneDelta": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.DashboardHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "type": "string",
+                    "example": "hour"
+                },
+                "generatedAt": {
+                    "type": "string"
+                },
+                "openPowerStart": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "points": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.DashboardHistoryPointResponse"
+                    }
+                },
+                "sitoneBaseline": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
         "admin.DashboardInventoryEntryResponse": {
             "type": "object",
             "properties": {

@@ -49,6 +49,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Post("/admin/login", h.Login)
 	api.Post("/admin/logout", h.Logout)
 	api.Get("/admin/dashboard", h.Dashboard)
+	api.Get("/admin/history", h.History)
 	api.Get("/admin/settings", h.GetSettings)
 	api.Put("/admin/settings", h.UpdateSettings)
 }

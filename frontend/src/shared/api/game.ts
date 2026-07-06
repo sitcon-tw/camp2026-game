@@ -519,6 +519,22 @@ const AdminDashboardSchema = z.object({
   }),
 })
 
+const AdminDashboardHistoryPointSchema = z.object({
+  timestamp: z.string(),
+  sitoneCount: z.number(),
+  openPower: z.number(),
+  sitoneDelta: z.number(),
+  openPowerDelta: z.number(),
+})
+
+const AdminDashboardHistorySchema = z.object({
+  generatedAt: z.string(),
+  bucket: z.enum(["hour", "day"]),
+  sitoneBaseline: z.number(),
+  openPowerStart: z.number(),
+  points: nullableArray(AdminDashboardHistoryPointSchema),
+})
+
 export type PlayerStatus = z.infer<typeof PlayerStatusSchema>
 export type TeamMember = z.infer<typeof TeamMemberSchema>
 export type HomeResponse = z.infer<typeof HomeResponseSchema>
@@ -562,6 +578,10 @@ export type AdminDashboardInventoryEntry = z.infer<
 >
 export type AdminDashboardRecentMatch = z.infer<
   typeof AdminDashboardRecentMatchSchema
+>
+export type AdminDashboardHistory = z.infer<typeof AdminDashboardHistorySchema>
+export type AdminDashboardHistoryPoint = z.infer<
+  typeof AdminDashboardHistoryPointSchema
 >
 
 export const gameApi = {
@@ -779,6 +799,13 @@ export const gameApi = {
   async adminDashboard() {
     const json = await apiClient.get("/api/admin/dashboard")
     return AdminDashboardSchema.parse(json)
+  },
+
+  async adminHistory(bucket: "hour" | "day" = "hour") {
+    const json = await apiClient.get("/api/admin/history", {
+      searchParams: { bucket },
+    })
+    return AdminDashboardHistorySchema.parse(json)
   },
 
   async updateAdminSettings(settings: AdminSettings) {

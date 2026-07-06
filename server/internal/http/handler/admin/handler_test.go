@@ -3,9 +3,13 @@ package admin
 import (
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
@@ -146,6 +150,31 @@ func TestDashboardRequiresDatabase(t *testing.T) {
 	}
 }
 
+func TestHistoryRequiresAdminCookie(t *testing.T) {
+	handler := New(Dependencies{AdminPassword: "secret"})
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/history", nil)
+	res := httptest.NewRecorder()
+
+	handler.History(res, req)
+
+	if res.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, res.Code)
+	}
+}
+
+func TestHistoryRejectsUnsupportedBucket(t *testing.T) {
+	handler := New(Dependencies{AdminPassword: "secret"})
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/history?bucket=minute", nil)
+	req.AddCookie(&http.Cookie{Name: CookieName, Value: adminSessionValue("secret")})
+	res := httptest.NewRecorder()
+
+	handler.History(res, req)
+
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, res.Code)
+	}
+}
+
 func TestDashboardPlayerProjectionFetchesOnlyDashboardFields(t *testing.T) {
 	projection := dashboardPlayerProjection()
 	included := make(map[string]any, len(projection))
@@ -175,6 +204,77 @@ func TestDashboardPlayerProjectionFetchesOnlyDashboardFields(t *testing.T) {
 	}
 }
 
+func TestDashboardMatchAnswerStatsPipelineAggregatesKnownPlayers(t *testing.T) {
+	playerIDs := []string{"player-a", "player-b"}
+
+	got := dashboardMatchAnswerStatsPipeline(playerIDs)
+	want := mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: "player_id", Value: bson.D{{Key: "$in", Value: playerIDs}}}}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$player_id"},
+			{Key: "answer_count", Value: bson.D{{Key: "$sum", Value: 1}}},
+			{Key: "correct_answer_count", Value: dashboardConditionalSum(dashboardFieldEquals("correct", true))},
+			{Key: "score", Value: bson.D{{Key: "$sum", Value: "$score"}}},
+			{Key: "elapsed_ms", Value: bson.D{{Key: "$sum", Value: "$elapsed_ms"}}},
+			{Key: "last_activity_at", Value: bson.D{{Key: "$max", Value: "$answered_at"}}},
+		}}},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected match answer stats pipeline:\ngot  %#v\nwant %#v", got, want)
+	}
+}
+
+func TestBuildDashboardHistoryResponseUsesBaselineAndCumulativeDeltas(t *testing.T) {
+	now := time.Date(2026, 7, 6, 10, 45, 0, 0, time.UTC)
+	firstHour := time.Date(2026, 7, 6, 8, 0, 0, 0, time.UTC)
+	secondHour := time.Date(2026, 7, 6, 9, 0, 0, 0, time.UTC)
+	currentHour := time.Date(2026, 7, 6, 10, 0, 0, 0, time.UTC)
+
+	got := buildDashboardHistoryResponse(now, dashboardHistoryBucketHour, dashboardHistoryRawData{
+		CurrentSitoneTotal: 10,
+		SitoneDeltas: []dashboardHistoryDeltaStat{
+			{Timestamp: firstHour, Amount: 2},
+			{Timestamp: secondHour, Amount: -1},
+			{Timestamp: secondHour, Amount: 3},
+		},
+		OpenPowerDeltas: []dashboardHistoryDeltaStat{
+			{Timestamp: firstHour, Amount: 100},
+			{Timestamp: secondHour, Amount: -30},
+		},
+	})
+
+	if got.Bucket != dashboardHistoryBucketHour || got.SitoneBaseline != 6 || got.OpenPowerStart != 0 {
+		t.Fatalf("unexpected history metadata: %#v", got)
+	}
+	want := []DashboardHistoryPointResponse{
+		{Timestamp: firstHour, SitoneCount: 8, OpenPower: 100, SitoneDelta: 2, OpenPowerDelta: 100},
+		{Timestamp: secondHour, SitoneCount: 10, OpenPower: 70, SitoneDelta: 2, OpenPowerDelta: -30},
+		{Timestamp: currentHour, SitoneCount: 10, OpenPower: 70},
+	}
+	if !reflect.DeepEqual(got.Points, want) {
+		t.Fatalf("unexpected history points:\ngot  %#v\nwant %#v", got.Points, want)
+	}
+}
+
+func TestDashboardHistoryOpenPowerDeltaPipeline(t *testing.T) {
+	playerIDs := []string{"player-a", "player-b"}
+
+	got := dashboardHistoryOpenPowerDeltaPipeline(dashboardHistoryBucketDay, playerIDs)
+	want := mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: "player_id", Value: bson.D{{Key: "$in", Value: playerIDs}}}}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: dashboardHistoryBucketExpression("created_at", dashboardHistoryBucketDay)},
+			{Key: "amount", Value: bson.D{{Key: "$sum", Value: "$amount"}}},
+		}}},
+		{{Key: "$sort", Value: bson.D{{Key: "_id", Value: 1}}}},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected open power history pipeline:\ngot  %#v\nwant %#v", got, want)
+	}
+}
+
 func TestBuildDashboardResponseIncludesStaffWithTeamsAndRanksPlayers(t *testing.T) {
 	now := time.Date(2026, 6, 27, 8, 0, 0, 0, time.UTC)
 	raw := dashboardRawData{
@@ -187,21 +287,38 @@ func TestBuildDashboardResponseIncludesStaffWithTeamsAndRanksPlayers(t *testing.
 		Teams: []mongomodel.Team{
 			{ID: "team-a", Name: "Alpha"},
 		},
-		PlayerSitones: []mongomodel.PlayerSitone{
-			{PlayerID: "player-a", SitoneID: "stone-a", Quantity: 2},
-			{PlayerID: "player-b", SitoneID: "stone-a", Quantity: 1},
-			{PlayerID: "staff-a", SitoneID: "stone-a", Quantity: 99},
+		PlayerSitones: []dashboardPlayerQuantityStat{
+			{PlayerID: "player-a", Quantity: 2},
+			{PlayerID: "player-b", Quantity: 1},
+			{PlayerID: "staff-a", Quantity: 99},
 		},
-		PlayerItems: []mongomodel.PlayerItem{
-			{PlayerID: "player-b", ItemID: "item-a", Quantity: 3},
-			{PlayerID: "staff-a", ItemID: "item-a", Quantity: 99},
+		PlayerItems: []dashboardPlayerQuantityStat{
+			{PlayerID: "player-b", Quantity: 3},
+			{PlayerID: "staff-a", Quantity: 99},
 		},
-		OpenPowerRecords: []mongomodel.OpenPowerRecord{
-			{PlayerID: "player-a", Amount: 50, CreatedAt: now.Add(-3 * time.Hour)},
-			{PlayerID: "player-b", Amount: 10, CreatedAt: now.Add(-2 * time.Hour)},
-			{PlayerID: "staff-a", Amount: 999, CreatedAt: now.Add(-1 * time.Hour)},
+		SitoneInventory: []dashboardInventoryStat{
+			{ID: "stone-a", Quantity: 102, OwnerCount: 3},
 		},
-		Matches: []mongomodel.Match{
+		ItemInventory: []dashboardInventoryStat{
+			{ID: "item-a", Quantity: 102, OwnerCount: 2},
+		},
+		OpenPower: []dashboardPlayerOpenPowerStat{
+			{PlayerID: "player-a", Amount: 50, LastActivityAt: now.Add(-3 * time.Hour)},
+			{PlayerID: "player-b", Amount: 10, LastActivityAt: now.Add(-2 * time.Hour)},
+			{PlayerID: "staff-a", Amount: 999, LastActivityAt: now.Add(-1 * time.Hour)},
+		},
+		MatchSummary: dashboardMatchSummaryStat{
+			Total:     2,
+			Active:    1,
+			Completed: 1,
+			PVP:       1,
+			Computer:  1,
+		},
+		MatchPlayers: []dashboardMatchPlayerStat{
+			{PlayerID: "player-a", MatchCount: 2, CompletedMatchCount: 1, LastActivityAt: now.Add(-30 * time.Minute)},
+			{PlayerID: "player-b", MatchCount: 1, CompletedMatchCount: 1, LastActivityAt: now.Add(-4 * time.Hour)},
+		},
+		RecentMatches: []mongomodel.Match{
 			{
 				ID:          "match-a",
 				Code:        "123456",
@@ -214,36 +331,26 @@ func TestBuildDashboardResponseIncludesStaffWithTeamsAndRanksPlayers(t *testing.
 					{PlayerID: "player-b", Nickname: "Bob", Score: 80},
 				},
 			},
-			{
-				ID:        "match-b",
-				Mode:      mongomodel.MatchModeComputer,
-				Status:    mongomodel.MatchStatusActive,
-				CreatedAt: now.Add(-30 * time.Minute),
-				Players: []mongomodel.MatchPlayer{
-					{PlayerID: "player-a", Nickname: "Alice"},
-					{PlayerID: "computer", Nickname: "Computer", Kind: mongomodel.MatchPlayerKindComputer},
-				},
-			},
 		},
-		MatchAnswers: []mongomodel.MatchAnswer{
-			{PlayerID: "player-a", Correct: true, Score: 100, ElapsedMillis: 1000, AnsweredAt: now.Add(-4*time.Hour + time.Minute)},
-			{PlayerID: "player-b", Correct: false, Score: 20, ElapsedMillis: 3000, AnsweredAt: now.Add(-4*time.Hour + 2*time.Minute)},
-			{PlayerID: "staff-a", Correct: true, Score: 999, ElapsedMillis: 1, AnsweredAt: now},
+		MatchAnswers: []dashboardMatchAnswerStat{
+			{PlayerID: "player-a", AnswerCount: 1, CorrectAnswerCount: 1, Score: 100, ElapsedMillis: 1000, LastActivityAt: now.Add(-4*time.Hour + time.Minute)},
+			{PlayerID: "player-b", AnswerCount: 1, Score: 20, ElapsedMillis: 3000, LastActivityAt: now.Add(-4*time.Hour + 2*time.Minute)},
+			{PlayerID: "staff-a", AnswerCount: 1, CorrectAnswerCount: 1, Score: 999, ElapsedMillis: 1, LastActivityAt: now},
 		},
-		MatchItemDrops: []mongomodel.MatchItemDrop{
-			{PlayerID: "player-a", Dropped: true, CreatedAt: now.Add(-4 * time.Hour)},
-			{PlayerID: "player-b", Dropped: false, CreatedAt: now.Add(-4 * time.Hour)},
+		MatchItemDrops: []dashboardMatchItemDropStat{
+			{PlayerID: "player-a", DropAttempts: 1, DropSuccesses: 1, LastActivityAt: now.Add(-4 * time.Hour)},
+			{PlayerID: "player-b", DropAttempts: 1, LastActivityAt: now.Add(-4 * time.Hour)},
 		},
-		ShopPurchases: []mongomodel.ShopPurchase{
-			{PlayerID: "player-a", CreatedAt: now.Add(-90 * time.Minute)},
-			{PlayerID: "staff-a", CreatedAt: now},
+		ShopPurchases: []dashboardPlayerActivityStat{
+			{PlayerID: "player-a", Count: 1, LastActivityAt: now.Add(-90 * time.Minute)},
+			{PlayerID: "staff-a", Count: 1, LastActivityAt: now},
 		},
-		FusionRecords: []mongomodel.FusionRecord{
-			{PlayerID: "player-b", CreatedAt: now.Add(-80 * time.Minute)},
+		FusionRecords: []dashboardPlayerActivityStat{
+			{PlayerID: "player-b", Count: 1, LastActivityAt: now.Add(-80 * time.Minute)},
 		},
-		StaffRewards: []mongomodel.StaffReward{
-			{RecipientPlayerID: "player-b", CreatedAt: now.Add(-70 * time.Minute)},
-			{RecipientPlayerID: "staff-a", CreatedAt: now},
+		StaffRewards: []dashboardPlayerActivityStat{
+			{PlayerID: "player-b", Count: 1, LastActivityAt: now.Add(-70 * time.Minute)},
+			{PlayerID: "staff-a", Count: 1, LastActivityAt: now},
 		},
 	}
 

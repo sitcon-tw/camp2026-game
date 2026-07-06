@@ -12,6 +12,22 @@ type DashboardResponse struct {
 	Matches     DashboardMatchesResponse    `json:"matches"`
 }
 
+type DashboardHistoryResponse struct {
+	GeneratedAt    time.Time                       `json:"generatedAt"`
+	Bucket         string                          `json:"bucket" example:"hour"`
+	SitoneBaseline int                             `json:"sitoneBaseline" example:"5"`
+	OpenPowerStart int                             `json:"openPowerStart" example:"0"`
+	Points         []DashboardHistoryPointResponse `json:"points"`
+}
+
+type DashboardHistoryPointResponse struct {
+	Timestamp      time.Time `json:"timestamp"`
+	SitoneCount    int       `json:"sitoneCount" example:"420"`
+	OpenPower      int       `json:"openPower" example:"98220"`
+	SitoneDelta    int       `json:"sitoneDelta" example:"3"`
+	OpenPowerDelta int       `json:"openPowerDelta" example:"120"`
+}
+
 type DashboardSummaryResponse struct {
 	PlayerCount          int `json:"playerCount" example:"120"`
 	StaffCount           int `json:"staffCount" example:"18"`

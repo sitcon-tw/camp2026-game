@@ -11,12 +11,20 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { type FormEvent, type ReactNode, useState } from "react"
+import {
+  CartesianGrid,
+  Line,
+  LineChart as RechartsLineChart,
+  XAxis,
+  YAxis,
+} from "recharts"
 import { toast } from "sonner"
 
 import { AppError } from "@/shared/api/error"
 import {
   gameApi,
   type AdminDashboard,
+  type AdminDashboardHistory,
   type AdminDashboardInventoryEntry,
   type AdminDashboardPlayer,
   type AdminDashboardPlayerRank,
@@ -34,6 +42,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/ui/card"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/shared/ui/chart"
 import { Field } from "@/shared/ui/field"
 import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
@@ -66,6 +80,25 @@ const dateTimeFormatter = new Intl.DateTimeFormat("zh-TW", {
   hour: "2-digit",
   minute: "2-digit",
 })
+const historyHourFormatter = new Intl.DateTimeFormat("zh-TW", {
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+})
+const historyDayFormatter = new Intl.DateTimeFormat("zh-TW", {
+  month: "2-digit",
+  day: "2-digit",
+})
+const historyChartConfig = {
+  sitoneCount: {
+    label: "小石",
+    color: "var(--pebble-engineer)",
+  },
+  openPower: {
+    label: "開源力",
+    color: "var(--primary)",
+  },
+} satisfies ChartConfig
 
 function errorMessage(error: unknown, fallback: string) {
   if (error instanceof AppError) return error.message
@@ -94,6 +127,14 @@ function formatDateTime(value?: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return "-"
   return dateTimeFormatter.format(date)
+}
+
+function formatHistoryTimestamp(value: string, bucket: "hour" | "day") {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "-"
+  return bucket === "day"
+    ? historyDayFormatter.format(date)
+    : historyHourFormatter.format(date)
 }
 
 function formatSeconds(milliseconds: number) {
@@ -128,6 +169,13 @@ export function AdminPanelPage() {
   const dashboardQuery = useQuery({
     queryKey: ["admin", "dashboard"],
     queryFn: gameApi.adminDashboard,
+    enabled: Boolean(settingsQuery.data),
+    retry: false,
+    refetchInterval: 30_000,
+  })
+  const historyQuery = useQuery({
+    queryKey: ["admin", "history", "hour"],
+    queryFn: () => gameApi.adminHistory("hour"),
     enabled: Boolean(settingsQuery.data),
     retry: false,
     refetchInterval: 30_000,
@@ -275,13 +323,17 @@ export function AdminPanelPage() {
               variant="outline"
               size="icon"
               aria-label="重新整理 dashboard"
-              disabled={dashboardQuery.isFetching}
-              onClick={() => dashboardQuery.refetch()}
+              disabled={dashboardQuery.isFetching || historyQuery.isFetching}
+              onClick={() => {
+                void dashboardQuery.refetch()
+                void historyQuery.refetch()
+              }}
             >
               <RefreshCw
                 className={cn(
                   "size-4",
-                  dashboardQuery.isFetching && "animate-spin",
+                  (dashboardQuery.isFetching || historyQuery.isFetching) &&
+                    "animate-spin",
                 )}
               />
             </Button>
@@ -316,7 +368,13 @@ export function AdminPanelPage() {
           </CardFooter>
         </Card>
       ) : dashboardQuery.data ? (
-        <AdminDashboardView dashboard={dashboardQuery.data} />
+        <AdminDashboardView
+          dashboard={dashboardQuery.data}
+          history={historyQuery.data}
+          historyError={historyQuery.error}
+          historyPending={historyQuery.isPending}
+          onRetryHistory={() => historyQuery.refetch()}
+        />
       ) : null}
 
       <AdminSettingsPanel
@@ -340,7 +398,19 @@ function DashboardLoadingCard() {
   )
 }
 
-function AdminDashboardView({ dashboard }: { dashboard: AdminDashboard }) {
+function AdminDashboardView({
+  dashboard,
+  history,
+  historyError,
+  historyPending,
+  onRetryHistory,
+}: {
+  dashboard: AdminDashboard
+  history?: AdminDashboardHistory
+  historyError: unknown
+  historyPending: boolean
+  onRetryHistory: () => void
+}) {
   const { summary, matches } = dashboard
 
   return (
@@ -460,6 +530,13 @@ function AdminDashboardView({ dashboard }: { dashboard: AdminDashboard }) {
         </Card>
       </section>
 
+      <ResourceHistoryPanel
+        history={history}
+        isPending={historyPending}
+        error={historyError}
+        onRetry={onRetryHistory}
+      />
+
       <MostOwnedPanel inventory={dashboard.inventory} />
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
@@ -496,6 +573,158 @@ function AdminDashboardView({ dashboard }: { dashboard: AdminDashboard }) {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+function ResourceHistoryPanel({
+  history,
+  isPending,
+  error,
+  onRetry,
+}: {
+  history?: AdminDashboardHistory
+  isPending: boolean
+  error: unknown
+  onRetry: () => void
+}) {
+  if (isPending) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardContent className="flex items-center gap-3 px-5">
+          <Spinner className="size-5" />
+          <span className="font-black">正在載入歷史曲線</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <Activity className="size-5" />
+            資源曲線
+          </CardTitle>
+          <CardDescription>
+            {errorMessage(error, "歷史資料暫時無法讀取。")}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="px-5">
+          <Button type="button" variant="outline" onClick={onRetry}>
+            重新整理
+          </Button>
+        </CardFooter>
+      </Card>
+    )
+  }
+
+  if (!history || history.points.length === 0) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <Activity className="size-5" />
+            資源曲線
+          </CardTitle>
+          <CardDescription>目前還沒有可顯示的歷史資料。</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  const chartData = history.points.map((point) => ({
+    ...point,
+    label: formatHistoryTimestamp(point.timestamp, history.bucket),
+  }))
+  const latest = history.points[history.points.length - 1]
+
+  return (
+    <Card className="rounded-[18px] py-5">
+      <CardHeader className="gap-3 px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg font-black">
+              <Activity className="size-5" />
+              資源曲線
+            </CardTitle>
+            <CardDescription>
+              每小時累積小石與開源力；初始與匯入小石併入起始基準{" "}
+              {formatNumber(history.sitoneBaseline)} 顆。
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">
+              小石 {formatNumber(latest.sitoneCount)}
+            </Badge>
+            <Badge variant="outline">
+              開源力 {formatNumber(latest.openPower)} OP
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="px-3 sm:px-5">
+        <ChartContainer
+          config={historyChartConfig}
+          className="aspect-auto h-[280px] w-full"
+          initialDimension={{ width: 640, height: 280 }}
+        >
+          <RechartsLineChart
+            data={chartData}
+            margin={{ top: 12, right: 8, bottom: 4, left: 0 }}
+            accessibilityLayer
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              minTickGap={24}
+            />
+            <YAxis
+              yAxisId="sitones"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              width={44}
+              tickFormatter={(value) => formatCompact(Number(value))}
+            />
+            <YAxis
+              yAxisId="openPower"
+              orientation="right"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              width={54}
+              tickFormatter={(value) => formatCompact(Number(value))}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent indicator="line" />}
+            />
+            <Line
+              yAxisId="sitones"
+              dataKey="sitoneCount"
+              type="monotone"
+              stroke="var(--color-sitoneCount)"
+              strokeWidth={3}
+              dot={false}
+              activeDot={{ r: 5 }}
+            />
+            <Line
+              yAxisId="openPower"
+              dataKey="openPower"
+              type="monotone"
+              stroke="var(--color-openPower)"
+              strokeWidth={3}
+              dot={false}
+              activeDot={{ r: 5 }}
+            />
+          </RechartsLineChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
   )
 }
 
