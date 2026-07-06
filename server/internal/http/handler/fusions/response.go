@@ -35,6 +35,8 @@ type FusionComponentResponse struct {
 	AbilityCount       int    `json:"abilityCount,omitempty" example:"0"`
 	AbilityDescription string `json:"abilityDescription,omitempty" example:"答對時分數提高 5%。"`
 	Quantity           int    `json:"quantity" example:"1"`
+	OwnedQuantity      int    `json:"ownedQuantity,omitempty" example:"0"`
+	MissingQuantity    int    `json:"missingQuantity,omitempty" example:"1"`
 }
 
 type CreateRequest struct {
@@ -44,4 +46,26 @@ type CreateRequest struct {
 type CreateResponse struct {
 	FusionID string               `json:"fusionId" example:"fusion_abc123"`
 	Recipe   FusionRecipeResponse `json:"recipe"`
+}
+
+type FillMissingMaterialsResponse struct {
+	Recipe              FusionRecipeResponse  `json:"recipe"`
+	FilledMaterials     []FillMaterialResult  `json:"filledMaterials"`
+	FailedMaterials     []FillMaterialFailure `json:"failedMaterials"`
+	PriceOpenPowerSpent int                   `json:"priceOpenPowerSpent" example:"50"`
+}
+
+type FillMaterialResult struct {
+	Kind     string `json:"kind" example:"item"`
+	ID       string `json:"id" example:"item_adventure_backpack"`
+	Name     string `json:"name" example:"冒險背包"`
+	Quantity int    `json:"quantity" example:"1"`
+}
+
+type FillMaterialFailure struct {
+	Kind     string `json:"kind" example:"item"`
+	ID       string `json:"id" example:"item_adventure_backpack"`
+	Name     string `json:"name" example:"冒險背包"`
+	Quantity int    `json:"quantity" example:"1"`
+	Reason   string `json:"reason" example:"material is not purchasable automatically"`
 }

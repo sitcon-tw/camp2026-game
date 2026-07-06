@@ -175,6 +175,8 @@ const FusionComponentSchema = z.object({
   abilityCount: z.number().optional(),
   abilityDescription: z.string().optional(),
   quantity: z.number(),
+  ownedQuantity: z.number().optional(),
+  missingQuantity: z.number().optional(),
 })
 
 const FusionRecipeSchema = z.object({
@@ -201,6 +203,24 @@ const FusionRecipesResponseSchema = z.object({
 const FusionCreateResponseSchema = z.object({
   fusionId: z.string(),
   recipe: FusionRecipeSchema,
+})
+
+const FusionFillMaterialResultSchema = z.object({
+  kind: z.enum(["item", "sitone"]),
+  id: z.string(),
+  name: z.string(),
+  quantity: z.number(),
+})
+
+const FusionFillMaterialFailureSchema = FusionFillMaterialResultSchema.extend({
+  reason: z.string(),
+})
+
+const FusionFillMissingMaterialsResponseSchema = z.object({
+  recipe: FusionRecipeSchema,
+  filledMaterials: nullableArray(FusionFillMaterialResultSchema),
+  failedMaterials: nullableArray(FusionFillMaterialFailureSchema),
+  priceOpenPowerSpent: z.number(),
 })
 
 const LeaderboardEntrySchema = z.object({
@@ -566,6 +586,9 @@ export type PlayerSitone = z.infer<typeof PlayerSitoneSchema>
 export type PlayerItem = z.infer<typeof PlayerItemSchema>
 export type ShopItem = z.infer<typeof ShopItemSchema>
 export type FusionRecipe = z.infer<typeof FusionRecipeSchema>
+export type FusionFillMissingMaterialsResponse = z.infer<
+  typeof FusionFillMissingMaterialsResponseSchema
+>
 export type LeaderboardScope = z.infer<
   typeof LeaderboardResponseSchema
 >["scope"]
@@ -704,6 +727,13 @@ export const gameApi = {
       json: { recipeId: recipeID },
     })
     return FusionCreateResponseSchema.parse(json)
+  },
+
+  async fillMissingFusionMaterials(recipeID: string) {
+    const json = await apiClient.post(
+      `/api/fusions/${encodeURIComponent(recipeID)}/fill-missing-materials`,
+    )
+    return FusionFillMissingMaterialsResponseSchema.parse(json)
   },
 
   async leaderboard(scope: LeaderboardScope) {

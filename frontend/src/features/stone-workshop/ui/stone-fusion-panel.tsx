@@ -35,6 +35,18 @@ function canFuse(recipe: FusionRecipe) {
   return recipe.enabled && recipe.available
 }
 
+function missingInputs(recipe: FusionRecipe) {
+  return recipe.inputs.filter(
+    (component) => (component.missingQuantity ?? 0) > 0,
+  )
+}
+
+function missingSummary(component: FusionRecipe["inputs"][number]) {
+  const owned = component.ownedQuantity ?? 0
+  const missing = component.missingQuantity ?? 0
+  return `缺少 ${missing} / 需要 ${component.quantity} / 已有 ${owned}`
+}
+
 function ComponentPill({
   component,
 }: {
@@ -62,6 +74,15 @@ function ComponentPill({
         <small className="text-muted-foreground block text-xs font-semibold">
           {component.rarity ? rarityLabel(component.rarity) : component.kind}
         </small>
+        {component.missingQuantity ? (
+          <small className="text-status-warning mt-0.5 block text-[11px] leading-4 font-bold">
+            {missingSummary(component)}
+          </small>
+        ) : component.ownedQuantity ? (
+          <small className="text-muted-foreground mt-0.5 block text-[11px] leading-4 font-semibold">
+            已有 {component.ownedQuantity} / 需要 {component.quantity}
+          </small>
+        ) : null}
         {component.kind === "sitone" && component.abilityDescription ? (
           <small className="text-muted-foreground mt-0.5 block text-[11px] leading-4 font-semibold">
             {component.abilityName}：{component.abilityDescription}
@@ -211,15 +232,20 @@ function RecipeSection({
 function FusionConfirmDialog({
   recipe,
   pending,
+  fillPending,
   onOpenChange,
   onConfirm,
+  onFillMissing,
 }: {
   recipe: FusionRecipe | null
   pending: boolean
+  fillPending: boolean
   onOpenChange: (open: boolean) => void
   onConfirm: (recipeID: string) => void
+  onFillMissing: (recipeID: string) => void
 }) {
   const ready = recipe ? canFuse(recipe) : false
+  const missing = recipe ? missingInputs(recipe) : []
 
   return (
     <Dialog open={Boolean(recipe)} onOpenChange={onOpenChange}>
@@ -275,6 +301,42 @@ function FusionConfirmDialog({
             ))}
           </section>
 
+          {missing.length > 0 ? (
+            <section
+              className="grid gap-2"
+              aria-label={`${recipe.name} 缺少材料`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-[17px] font-extrabold">缺少材料</h3>
+                <span className="text-status-warning text-xs font-bold">
+                  {missing.length} 種不足
+                </span>
+              </div>
+              <div className="bg-surface-raised border-border grid gap-2 rounded-[18px] border-2 p-3">
+                {missing.map((component) => (
+                  <div
+                    key={`missing-${component.kind}-${component.id}`}
+                    className="grid gap-0.5"
+                  >
+                    <span className="text-sm font-black">{component.name}</span>
+                    <span className="text-muted-foreground text-xs font-bold">
+                      {missingSummary(component)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={fillPending}
+                onClick={() => onFillMissing(recipe.id)}
+              >
+                <GameFeatureIcon name="shop" className="size-4" />
+                {fillPending ? "補齊中" : "Fill Missing Materials"}
+              </Button>
+            </section>
+          ) : null}
+
           <section className="grid gap-2" aria-label={`${recipe.name} 產物`}>
             <h3 className="text-[17px] font-extrabold">產物</h3>
             {recipe.outputs.map((component) => (
@@ -295,7 +357,7 @@ function FusionConfirmDialog({
             <Button
               type="button"
               className="w-full"
-              disabled={!ready || pending}
+              disabled={!ready || pending || fillPending}
               onClick={() => onConfirm(recipe.id)}
             >
               <Check />
@@ -346,6 +408,40 @@ export function StoneFusionPanel() {
       toast.error(error instanceof Error ? error.message : "合成失敗")
     },
   })
+  const fillMutation = useMutation({
+    mutationFn: gameApi.fillMissingFusionMaterials,
+    onSuccess: (result, recipeID) => {
+      const filledNames = result.filledMaterials.map(
+        (material) => material.name,
+      )
+      const failedMaterials = result.failedMaterials
+      setSelectedRecipe(result.recipe)
+      queryClient.setQueryData<FusionRecipe[]>(
+        ["fusions", "recipes"],
+        (current) =>
+          (current ?? []).map((recipe) =>
+            recipe.id === recipeID ? result.recipe : recipe,
+          ),
+      )
+      queryClient.invalidateQueries({ queryKey: ["me", "status"] })
+      queryClient.invalidateQueries({ queryKey: ["me", "items"] })
+      queryClient.invalidateQueries({ queryKey: ["me", "home"] })
+      queryClient.invalidateQueries({ queryKey: ["shop", "items"] })
+      if (filledNames.length > 0) {
+        toast.success(`已補齊：${filledNames.join("、")}`)
+      }
+      if (failedMaterials.length > 0) {
+        toast.error(
+          failedMaterials
+            .map((material) => `${material.name}：${material.reason}`)
+            .join("；"),
+        )
+      }
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "補齊材料失敗")
+    },
+  })
 
   return (
     <div className="flex flex-1 flex-col gap-3 pb-3">
@@ -377,10 +473,15 @@ export function StoneFusionPanel() {
               fusionMutation.isPending &&
               fusionMutation.variables === selectedRecipe?.id
             }
+            fillPending={
+              fillMutation.isPending &&
+              fillMutation.variables === selectedRecipe?.id
+            }
             onOpenChange={(open) => {
               if (!open) setSelectedRecipe(null)
             }}
             onConfirm={(recipeID) => fusionMutation.mutate(recipeID)}
+            onFillMissing={(recipeID) => fillMutation.mutate(recipeID)}
           />
         </>
       ) : (

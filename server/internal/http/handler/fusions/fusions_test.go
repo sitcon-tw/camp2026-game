@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/sitcon-tw/camp2026-game/internal/content"
+	"github.com/sitcon-tw/camp2026-game/internal/testcontent"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -68,6 +69,103 @@ func TestCreateFusionRequiresTransactionClient(t *testing.T) {
 	if !errors.Is(err, errFusionTransactionsUnavailable) {
 		t.Fatalf("expected transaction unavailable error, got %v", err)
 	}
+}
+
+func TestBuildFillPlanForCompleteRecipe(t *testing.T) {
+	store := loadTestContent(t)
+	handler := &Handler{content: store}
+	recipe, ok := store.GetFusionRecipe("recipe_explore_2026_backpack_s1_s2")
+	if !ok {
+		t.Fatal("expected recipe")
+	}
+
+	plan, err := handler.buildFillPlan(context.Background(), "player-a", recipe, inventoryCounts{
+		sitones: map[string]int{"stone_explorer_base": 1},
+		items:   map[string]int{"item_adventure_backpack": 1},
+	})
+	if err != nil {
+		t.Fatalf("build plan: %v", err)
+	}
+	if len(plan) != 0 {
+		t.Fatalf("expected no missing materials, got %#v", plan)
+	}
+}
+
+func TestBuildFillPlanForPartiallyMissingMaterials(t *testing.T) {
+	store := loadTestContent(t)
+	handler := &Handler{content: store}
+	recipe, ok := store.GetFusionRecipe("recipe_explore_2026_backpack_s1_s2")
+	if !ok {
+		t.Fatal("expected recipe")
+	}
+
+	plan, err := handler.buildFillPlan(context.Background(), "player-a", recipe, inventoryCounts{
+		sitones: map[string]int{"stone_explorer_base": 1},
+		items:   map[string]int{},
+	})
+	if err != nil {
+		t.Fatalf("build plan: %v", err)
+	}
+	if len(plan) != 1 {
+		t.Fatalf("expected one missing material, got %#v", plan)
+	}
+	if plan[0].component.ID != "item_adventure_backpack" || !plan[0].fillable {
+		t.Fatalf("expected missing backpack to be fillable, got %#v", plan[0])
+	}
+}
+
+func TestBuildFillPlanForFullyMissingMaterials(t *testing.T) {
+	store := loadTestContent(t)
+	handler := &Handler{content: store}
+	recipe, ok := store.GetFusionRecipe("recipe_explore_2026_backpack_s1_s2")
+	if !ok {
+		t.Fatal("expected recipe")
+	}
+
+	plan, err := handler.buildFillPlan(context.Background(), "player-a", recipe, inventoryCounts{})
+	if err != nil {
+		t.Fatalf("build plan: %v", err)
+	}
+	if len(plan) != 2 {
+		t.Fatalf("expected two missing materials, got %#v", plan)
+	}
+	if plan[0].component.Kind != content.FusionKindSitone || plan[0].fillable {
+		t.Fatalf("expected missing sitone to be unfillable, got %#v", plan[0])
+	}
+	if plan[1].component.Kind != content.FusionKindItem || !plan[1].fillable {
+		t.Fatalf("expected missing item to be fillable, got %#v", plan[1])
+	}
+}
+
+func TestBuildFillPlanForUnavailableMaterials(t *testing.T) {
+	store := loadTestContent(t)
+	handler := &Handler{content: store}
+	recipe := content.FusionRecipe{
+		ID:      "recipe-unavailable",
+		Enabled: true,
+		Inputs: []content.FusionComponent{
+			{Kind: content.FusionKindItem, ID: "item_essence_timer", Quantity: 1},
+		},
+	}
+
+	plan, err := handler.buildFillPlan(context.Background(), "player-a", recipe, inventoryCounts{})
+	if err != nil {
+		t.Fatalf("build plan: %v", err)
+	}
+	if len(plan) != 1 {
+		t.Fatalf("expected one missing material, got %#v", plan)
+	}
+	if plan[0].fillable {
+		t.Fatalf("expected locked material to be unfillable, got %#v", plan[0])
+	}
+	if plan[0].reason == "" {
+		t.Fatalf("expected unavailable reason, got %#v", plan[0])
+	}
+}
+
+func loadTestContent(t *testing.T) *content.Store {
+	t.Helper()
+	return testcontent.Load(t)
 }
 
 func TestTransactionUnsupported(t *testing.T) {
