@@ -7,7 +7,8 @@ digraph LittleStoneEvolution {
     pad=0.3,
     bgcolor="white",
     pack=true,
-    packmode="array_u6"
+    packmode="array_u6",
+    forcelabels=true
   ];
 
   node [
@@ -18,7 +19,9 @@ digraph LittleStoneEvolution {
 
   edge [
     fontname="Noto Sans CJK TC",
-    fontsize=11
+    fontsize=11,
+    fontcolor="#4a5568",
+    decorate=true
   ];
   // =========================
   // 活動限定小石
@@ -147,17 +150,41 @@ digraph LittleStoneEvolution {
       </TABLE>>
     ];
 
-    basic_gray -> stone_2022_maze [label="迷宮地圖"];
-    stone_2022_maze -> stone_2022_break_wall_cat [label="貓掌印"];
+    item_label_01 [label="道具：迷宮地圖", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
 
-    basic_gray -> stone_camp_backpack [label="冒險背包"];
-    stone_camp_backpack -> stone_2026_camp_explorer [label="任務地圖"];
+    basic_gray -> item_label_01 [arrowhead=none];
 
-    basic_gray -> stone_booth [label="攤位貼紙"];
-    stone_booth -> stone_star_village_guide [label="星手村路標"];
+    item_label_01 -> stone_2022_maze;
+    item_label_02 [label="道具：貓掌印", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_2022_maze -> item_label_02 [arrowhead=none];
+    item_label_02 -> stone_2022_break_wall_cat;
 
-    basic_gray -> stone_2019_blackbox [label="黑箱貼紙"];
-    stone_2019_blackbox -> stone_2019_unboxed_algorithm [label="工具箱鑰匙"];
+    item_label_03 [label="道具：冒險背包", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_gray -> item_label_03 [arrowhead=none];
+
+    item_label_03 -> stone_camp_backpack;
+    item_label_04 [label="道具：任務地圖", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_camp_backpack -> item_label_04 [arrowhead=none];
+    item_label_04 -> stone_2026_camp_explorer;
+
+    item_label_05 [label="道具：攤位貼紙", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_gray -> item_label_05 [arrowhead=none];
+
+    item_label_05 -> stone_booth;
+    item_label_06 [label="道具：星手村路標", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_booth -> item_label_06 [arrowhead=none];
+    item_label_06 -> stone_star_village_guide;
+
+    item_label_07 [label="道具：黑箱貼紙", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_gray -> item_label_07 [arrowhead=none];
+
+    item_label_07 -> stone_2019_blackbox;
+    item_label_08 [label="道具：工具箱鑰匙", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_2019_blackbox -> item_label_08 [arrowhead=none];
+    item_label_08 -> stone_2019_unboxed_algorithm;
 
     {
       rank=same;
@@ -242,17 +269,41 @@ digraph LittleStoneEvolution {
       </TABLE>>
     ];
 
-    basic_yellow -> stone_2021_abacus [label="木製算珠"];
-    stone_2021_abacus -> stone_2021_abacus_descendant [label="前人筆記"];
+    item_label_09 [label="道具：木製算珠", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
 
-    basic_yellow -> stone_prompt [label="Prompt 卡"];
-    stone_prompt -> stone_human_after_all [label="人類標籤"];
+    basic_yellow -> item_label_09 [arrowhead=none];
 
-    basic_yellow -> stone_sticky_note [label="便利貼"];
-    stone_sticky_note -> stone_course_shared_notes [label="共筆連結"];
+    item_label_09 -> stone_2021_abacus;
+    item_label_10 [label="道具：前人筆記", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_2021_abacus -> item_label_10 [arrowhead=none];
+    item_label_10 -> stone_2021_abacus_descendant;
 
-    basic_yellow -> stone_2024_finite [label="有限標籤"];
-    stone_2024_finite -> stone_2024_infinite_inspiration [label="無限星圖"];
+    item_label_11 [label="道具：Prompt 卡", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_yellow -> item_label_11 [arrowhead=none];
+
+    item_label_11 -> stone_prompt;
+    item_label_12 [label="道具：人類標籤", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_prompt -> item_label_12 [arrowhead=none];
+    item_label_12 -> stone_human_after_all;
+
+    item_label_13 [label="道具：便利貼", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_yellow -> item_label_13 [arrowhead=none];
+
+    item_label_13 -> stone_sticky_note;
+    item_label_14 [label="道具：共筆連結", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_sticky_note -> item_label_14 [arrowhead=none];
+    item_label_14 -> stone_course_shared_notes;
+
+    item_label_15 [label="道具：有限標籤", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_yellow -> item_label_15 [arrowhead=none];
+
+    item_label_15 -> stone_2024_finite;
+    item_label_16 [label="道具：無限星圖", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_2024_finite -> item_label_16 [arrowhead=none];
+    item_label_16 -> stone_2024_infinite_inspiration;
 
     {
       rank=same;
@@ -337,17 +388,41 @@ digraph LittleStoneEvolution {
       </TABLE>>
     ];
 
-    basic_purple -> stone_community_handshake [label="學生社群卡"];
-    stone_community_handshake -> stone_star_village_exchange [label="星手村徽章"];
+    item_label_17 [label="道具：學生社群卡", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
 
-    basic_purple -> stone_consensus_draft [label="章程草稿"];
-    stone_consensus_draft -> stone_student_autonomy [label="透明提案"];
+    basic_purple -> item_label_17 [arrowhead=none];
 
-    basic_purple -> stone_contribution [label="貢獻貼紙"];
-    stone_contribution -> stone_open_source_route [label="開源路線圖"];
+    item_label_17 -> stone_community_handshake;
+    item_label_18 [label="道具：星手村徽章", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_community_handshake -> item_label_18 [arrowhead=none];
+    item_label_18 -> stone_star_village_exchange;
 
-    basic_purple -> stone_2020_tour_flag [label="導遊旗"];
-    stone_2020_tour_flag -> stone_2020_sitcon_tour_group [label="會場路線"];
+    item_label_19 [label="道具：章程草稿", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_purple -> item_label_19 [arrowhead=none];
+
+    item_label_19 -> stone_consensus_draft;
+    item_label_20 [label="道具：透明提案", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_consensus_draft -> item_label_20 [arrowhead=none];
+    item_label_20 -> stone_student_autonomy;
+
+    item_label_21 [label="道具：貢獻貼紙", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_purple -> item_label_21 [arrowhead=none];
+
+    item_label_21 -> stone_contribution;
+    item_label_22 [label="道具：開源路線圖", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_contribution -> item_label_22 [arrowhead=none];
+    item_label_22 -> stone_open_source_route;
+
+    item_label_23 [label="道具：導遊旗", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_purple -> item_label_23 [arrowhead=none];
+
+    item_label_23 -> stone_2020_tour_flag;
+    item_label_24 [label="道具：會場路線", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_2020_tour_flag -> item_label_24 [arrowhead=none];
+    item_label_24 -> stone_2020_sitcon_tour_group;
 
     {
       rank=same;
@@ -432,17 +507,41 @@ digraph LittleStoneEvolution {
       </TABLE>>
     ];
 
-    basic_blue -> stone_docker [label="容器貼紙"];
-    stone_docker -> stone_kubernetes [label="叢集核心"];
+    item_label_25 [label="道具：容器貼紙", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
 
-    basic_blue -> stone_gpg [label="公鑰吊牌"];
-    stone_gpg -> stone_crypto_gatekeeper [label="簽章印泥"];
+    basic_blue -> item_label_25 [arrowhead=none];
 
-    basic_blue -> stone_test [label="測試貼紙"];
-    stone_test -> stone_clean_code [label="整潔規格書"];
+    item_label_25 -> stone_docker;
+    item_label_26 [label="道具：叢集核心", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_docker -> item_label_26 [arrowhead=none];
+    item_label_26 -> stone_kubernetes;
 
-    basic_blue -> stone_terminal [label="終端機游標"];
-    stone_terminal -> stone_system_intern [label="系統文件"];
+    item_label_27 [label="道具：公鑰吊牌", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_blue -> item_label_27 [arrowhead=none];
+
+    item_label_27 -> stone_gpg;
+    item_label_28 [label="道具：簽章印泥", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_gpg -> item_label_28 [arrowhead=none];
+    item_label_28 -> stone_crypto_gatekeeper;
+
+    item_label_29 [label="道具：測試貼紙", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_blue -> item_label_29 [arrowhead=none];
+
+    item_label_29 -> stone_test;
+    item_label_30 [label="道具：整潔規格書", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_test -> item_label_30 [arrowhead=none];
+    item_label_30 -> stone_clean_code;
+
+    item_label_31 [label="道具：終端機游標", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_blue -> item_label_31 [arrowhead=none];
+
+    item_label_31 -> stone_terminal;
+    item_label_32 [label="道具：系統文件", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_terminal -> item_label_32 [arrowhead=none];
+    item_label_32 -> stone_system_intern;
 
     { rank=same; stone_docker; stone_gpg; stone_test; stone_terminal; }
     { rank=same; stone_kubernetes; stone_crypto_gatekeeper; stone_clean_code; stone_system_intern; }
@@ -509,16 +608,38 @@ digraph LittleStoneEvolution {
       </TABLE>>
     ];
 
-    basic_orange -> stone_microphone [label="麥克風"];
-    stone_microphone -> stone_lightning_talk [label="閃電講稿"];
+    item_label_33 [label="道具：麥克風", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
 
-    basic_orange -> stone_p5js [label="畫布程式碼"];
-    stone_p5js -> stone_tech_art [label="像素顏料"];
+    basic_orange -> item_label_33 [arrowhead=none];
 
-    basic_orange -> stone_espresso [label="Espresso 杯"];
+    item_label_33 -> stone_microphone;
+    item_label_34 [label="道具：閃電講稿", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_microphone -> item_label_34 [arrowhead=none];
+    item_label_34 -> stone_lightning_talk;
 
-    basic_orange -> stone_2024_ribbon [label="彩帶"];
-    stone_2024_ribbon -> stone_2024_last_night_polaroid [label="拍立得底片"];
+    item_label_35 [label="道具：畫布程式碼", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_orange -> item_label_35 [arrowhead=none];
+
+    item_label_35 -> stone_p5js;
+    item_label_36 [label="道具：像素顏料", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_p5js -> item_label_36 [arrowhead=none];
+    item_label_36 -> stone_tech_art;
+
+    item_label_37 [label="道具：Espresso 杯", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_orange -> item_label_37 [arrowhead=none];
+
+    item_label_37 -> stone_espresso;
+
+    item_label_38 [label="道具：彩帶", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+
+    basic_orange -> item_label_38 [arrowhead=none];
+
+    item_label_38 -> stone_2024_ribbon;
+    item_label_39 [label="道具：拍立得底片", shape=box, style="rounded,filled", fillcolor="white", color="#cbd5e0", fontcolor="#4a5568", margin="0.05,0.03"];
+    stone_2024_ribbon -> item_label_39 [arrowhead=none];
+    item_label_39 -> stone_2024_last_night_polaroid;
 
     { rank=same; stone_microphone; stone_p5js; stone_espresso; stone_2024_ribbon; }
     { rank=same; stone_lightning_talk; stone_tech_art; stone_2024_last_night_polaroid; }
