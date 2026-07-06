@@ -10,7 +10,7 @@ ability_name = "拾荒直覺"
 ability_kind = "material_drop_rate"
 ability_value = 8
 ability_count = 0
-ability_description = "對戰小石掉落率提高 8%。"
+ability_description = "對戰結束時小石掉落率提高 8%。"
 
 [[sitones]]
 id = "stone_2019_unboxed_algorithm"
@@ -24,7 +24,7 @@ ability_name = "拾荒直覺"
 ability_kind = "material_drop_rate"
 ability_value = 12
 ability_count = 0
-ability_description = "對戰小石掉落率提高 12%。"
+ability_description = "對戰結束時小石掉落率提高 12%。"
 
 [[sitones]]
 id = "stone_2020_sitcon_tour_group"
@@ -94,7 +94,7 @@ ability_name = "拾荒直覺"
 ability_kind = "material_drop_rate"
 ability_value = 12
 ability_count = 0
-ability_description = "對戰小石掉落率提高 12%。"
+ability_description = "對戰結束時小石掉落率提高 12%。"
 
 [[sitones]]
 id = "stone_2022_maze"
@@ -108,7 +108,7 @@ ability_name = "拾荒直覺"
 ability_kind = "material_drop_rate"
 ability_value = 8
 ability_count = 0
-ability_description = "對戰小石掉落率提高 8%。"
+ability_description = "對戰結束時小石掉落率提高 8%。"
 
 [[sitones]]
 id = "stone_2024_finite"
@@ -178,7 +178,7 @@ ability_name = "拾荒直覺"
 ability_kind = "material_drop_rate"
 ability_value = 12
 ability_count = 0
-ability_description = "對戰小石掉落率提高 12%。"
+ability_description = "對戰結束時小石掉落率提高 12%。"
 
 [[sitones]]
 id = "stone_booth"
@@ -192,7 +192,7 @@ ability_name = "拾荒直覺"
 ability_kind = "material_drop_rate"
 ability_value = 8
 ability_count = 0
-ability_description = "對戰小石掉落率提高 8%。"
+ability_description = "對戰結束時小石掉落率提高 8%。"
 
 [[sitones]]
 id = "stone_camp_backpack"
@@ -206,7 +206,7 @@ ability_name = "拾荒直覺"
 ability_kind = "material_drop_rate"
 ability_value = 8
 ability_count = 0
-ability_description = "對戰小石掉落率提高 8%。"
+ability_description = "對戰結束時小石掉落率提高 8%。"
 
 [[sitones]]
 id = "stone_clean_code"
@@ -360,7 +360,7 @@ ability_name = "拾荒直覺"
 ability_kind = "material_drop_rate"
 ability_value = 5
 ability_count = 0
-ability_description = "對戰小石掉落率提高 5%。"
+ability_description = "對戰結束時小石掉落率提高 5%。"
 
 [[sitones]]
 id = "stone_gpg"
@@ -528,7 +528,7 @@ ability_name = "拾荒直覺"
 ability_kind = "material_drop_rate"
 ability_value = 12
 ability_count = 0
-ability_description = "對戰小石掉落率提高 12%。"
+ability_description = "對戰結束時小石掉落率提高 12%。"
 
 [[sitones]]
 id = "stone_sticky_note"
@@ -636,13 +636,13 @@ name = "烏龜小石"
 type = "inspiration"
 rarity = "limited"
 style = "default"
-description = "牠慢慢走，慢慢畫，把每一次轉彎都留成可以回看的線。答案不一定要最快出現，有時候一步一步畫出來，反而更清楚。"
+description = "牠慢慢走，慢慢畫，把每一次轉彎都留成可以回看的線。按部就班完成任務，反而能更精準的完成任務。"
 icon_path = "/game-icons/stones/stone_python_turtle.png"
-ability_name = "靈光一閃"
+ability_name = "慢畫思路"
 ability_kind = "eliminate_wrong_choice"
-ability_value = 35
-ability_count = 2
-ability_description = "題目開始時有 35% 機率刪去 2 個錯誤選項。"
+ability_value = 10
+ability_count = 3
+ability_description = "題目開始時有 5% 機率刪去 3 個錯誤選項。"
 
 [[sitones]]
 id = "stone_fireside"
@@ -670,7 +670,7 @@ ability_name = "穩定輸出"
 ability_kind = "answer_score_bonus"
 ability_value = 20
 ability_count = 0
-ability_description = "答對時分數提高 20%。"
+ability_description = "對時分數提高 20%。"
 
 [[sitones]]
 id = "stone_human_llm"
@@ -680,11 +680,11 @@ rarity = "limited"
 style = "default"
 description = "小石在資料矩陣裡逐字甦醒，用 self-attention 接住前文、KV cache 保存線索；直到句子完成，牠好像也不知道自己在說什麼⋯⋯??"
 icon_path = "/game-icons/stones/stone_human_llm.png"
-ability_name = "靈光一閃"
+ability_name = "語意接龍"
 ability_kind = "eliminate_wrong_choice"
-ability_value = 35
+ability_value = 50
 ability_count = 1
-ability_description = "題目開始時有 35% 機率刪去 1 個錯誤選項。"
+ability_description = "題目開始時有 45% 機率刪去 1 個錯誤選項。"
 
 [[sitones]]
 id = "stone_von_neumann"
@@ -694,11 +694,12 @@ rarity = "limited"
 style = "default"
 description = "牠把輸入、記憶、計算和輸出分成不同位置，再把散落的偏旁重新組回答案。看似混亂的流程，其實有一套安靜運轉的架構。"
 icon_path = "/game-icons/stones/stone_von_neumann.png"
-ability_name = "穩定輸出"
-ability_kind = "answer_score_bonus"
-ability_value = 20
+ability_name = "架構運轉"
+ability_kind = "material_drop_rate"
+ability_value = 30
 ability_count = 0
-ability_description = "答對時分數提高 20%。"
+ability_description = "對戰結束時小石掉落率提高 30%。"
+
 
 [[sitones]]
 id = "stone_packet_rescue"
@@ -708,11 +709,11 @@ rarity = "limited"
 style = "default"
 description = "牠在錯亂與遺失的訊息之間奔跑，把破碎的封包一段一段撿回來。只要隊友還願意重傳，答案就不會真的消失。"
 icon_path = "/game-icons/stones/stone_packet_rescue.png"
-ability_name = "穩定輸出"
+ability_name = "要求重傳"
 ability_kind = "answer_score_bonus"
-ability_value = 20
+ability_value = 25
 ability_count = 0
-ability_description = "答對時分數提高 20%。"
+ability_description = "答對時分數提高 25%。"
 
 [[sitones]]
 id = "stone_prompt_injection"
@@ -722,8 +723,8 @@ rarity = "limited"
 style = "default"
 description = "牠最擅長從看似正常的句子裡找到奇怪的入口。面對被偷走方向的提示詞，牠會先停下來問一句：這真的是我們要回答的問題嗎？"
 icon_path = "/game-icons/stones/stone_prompt_injection.png"
-ability_name = "靈光一閃"
+ability_name = "提示防火牆"
 ability_kind = "eliminate_wrong_choice"
-ability_value = 35
+ability_value = 80
 ability_count = 1
-ability_description = "題目開始時有 35% 機率刪去 1 個錯誤選項。"
+ability_description = "題目開始時有 80% 機率刪去 1 個錯誤選項。"
