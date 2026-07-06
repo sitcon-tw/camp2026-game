@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 
 import { normalizeMatchCode } from "@/features/battle-qr/lib/match-code"
+import {
+  useQrCodeScanner,
+  type QrCodeScannerStatus,
+} from "@/shared/hooks/use-qr-code-scanner"
 import { Button } from "@/shared/ui/button"
 import {
   Dialog,
@@ -12,30 +16,21 @@ import {
 } from "@/shared/ui/dialog"
 import { Input } from "@/shared/ui/input"
 
-type BarcodeDetectorResult = {
-  rawValue?: string
-}
-
-type BarcodeDetectorInstance = {
-  detect(source: HTMLCanvasElement): Promise<BarcodeDetectorResult[]>
-}
-
-type BarcodeDetectorConstructor = new (options: {
-  formats: string[]
-}) => BarcodeDetectorInstance
-
 type MatchCodeScannerDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCode: (code: string) => void
 }
 
-function getBarcodeDetector() {
-  return (
-    window as typeof window & {
-      BarcodeDetector?: BarcodeDetectorConstructor
-    }
-  ).BarcodeDetector
+const statusMessages: Record<QrCodeScannerStatus, string> = {
+  idle: "正在啟動相機",
+  starting: "正在啟動相機",
+  scanning: "對準房號 QR Code",
+  "secure-context-required":
+    "瀏覽器需要 HTTPS 或 localhost 才能開啟相機，請輸入房號。",
+  "camera-unavailable": "這個瀏覽器無法開啟相機，請輸入房號。",
+  "permission-denied": "相機權限未開啟，請輸入房號。",
+  "scan-error": "相機已開啟，但無法讀取 QR Code，請輸入房號。",
 }
 
 export function MatchCodeScannerDialog({
@@ -46,110 +41,53 @@ export function MatchCodeScannerDialog({
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [manualCode, setManualCode] = useState("")
-  const [message, setMessage] = useState("正在啟動相機")
+  const [manualMessage, setManualMessage] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!open) return
+  const updateOpen = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) setManualMessage(null)
+      onOpenChange(nextOpen)
+    },
+    [onOpenChange],
+  )
 
-    let cancelled = false
-    let timer = 0
-    let stream: MediaStream | null = null
-    let activeVideo: HTMLVideoElement | null = null
+  const handleScanResult = useCallback(
+    (value: string) => {
+      const code = normalizeMatchCode(value)
+      if (!code) return
 
-    async function startScanner() {
-      if (
-        typeof window === "undefined" ||
-        !navigator.mediaDevices?.getUserMedia
-      ) {
-        setMessage("這個瀏覽器無法開啟相機，請輸入房號。")
-        return
-      }
+      onCode(code)
+      updateOpen(false)
+    },
+    [onCode, updateOpen],
+  )
+  const scannerStatus = useQrCodeScanner({
+    open,
+    videoRef,
+    canvasRef,
+    onResult: handleScanResult,
+  })
 
-      const BarcodeDetector = getBarcodeDetector()
-      if (!BarcodeDetector) {
-        setMessage("這個瀏覽器不支援 QR 掃描，請輸入房號。")
-        return
-      }
+  const message = manualMessage ?? statusMessages[scannerStatus]
 
-      try {
-        const detector = new BarcodeDetector({ formats: ["qr_code"] })
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: { facingMode: { ideal: "environment" } },
-        })
-        if (cancelled) return
-
-        const video = videoRef.current
-        if (!video) return
-
-        activeVideo = video
-        video.srcObject = stream
-        await video.play()
-        setMessage("對準房號 QR Code")
-
-        const scan = async () => {
-          if (cancelled) return
-
-          const canvas = canvasRef.current
-          const context = canvas?.getContext("2d", {
-            willReadFrequently: true,
-          })
-          if (
-            canvas &&
-            context &&
-            video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
-            video.videoWidth > 0 &&
-            video.videoHeight > 0
-          ) {
-            canvas.width = video.videoWidth
-            canvas.height = video.videoHeight
-            context.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-            const detected = await detector.detect(canvas)
-            const code = normalizeMatchCode(detected[0]?.rawValue ?? "")
-            if (code) {
-              onCode(code)
-              onOpenChange(false)
-              return
-            }
-          }
-
-          timer = window.setTimeout(scan, 350)
-        }
-
-        await scan()
-      } catch {
-        if (!cancelled) {
-          setMessage("相機權限未開啟，請輸入房號。")
-        }
-      }
-    }
-
-    void startScanner()
-
-    return () => {
-      cancelled = true
-      window.clearTimeout(timer)
-      stream?.getTracks().forEach((track) => track.stop())
-      if (activeVideo) {
-        activeVideo.srcObject = null
-      }
-    }
-  }, [onCode, onOpenChange, open])
+  function updateManualCode(value: string) {
+    setManualCode(normalizeMatchCode(value))
+    setManualMessage(null)
+  }
 
   function handleManualSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const code = normalizeMatchCode(manualCode)
     if (!code) {
-      setMessage("請輸入房號。")
+      setManualMessage("請輸入房號。")
       return
     }
     onCode(code)
-    onOpenChange(false)
+    updateOpen(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={updateOpen}>
       <DialogContent className="gap-4">
         <DialogHeader>
           <DialogTitle>掃描房號 QR Code</DialogTitle>
@@ -169,9 +107,7 @@ export function MatchCodeScannerDialog({
         <form className="grid gap-3" onSubmit={handleManualSubmit}>
           <Input
             value={manualCode}
-            onChange={(event) =>
-              setManualCode(normalizeMatchCode(event.target.value))
-            }
+            onChange={(event) => updateManualCode(event.target.value)}
             placeholder="手動輸入房號"
             autoComplete="off"
             inputMode="text"

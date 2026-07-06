@@ -1,5 +1,9 @@
-import { type FormEvent, useEffect, useRef, useState } from "react"
+import { type FormEvent, useCallback, useRef, useState } from "react"
 
+import {
+  useQrCodeScanner,
+  type QrCodeScannerStatus,
+} from "@/shared/hooks/use-qr-code-scanner"
 import { Button } from "@/shared/ui/button"
 import {
   Dialog,
@@ -11,34 +15,25 @@ import {
 } from "@/shared/ui/dialog"
 import { Input } from "@/shared/ui/input"
 
-type BarcodeDetectorResult = {
-  rawValue?: string
-}
-
-type BarcodeDetectorInstance = {
-  detect(source: HTMLCanvasElement): Promise<BarcodeDetectorResult[]>
-}
-
-type BarcodeDetectorConstructor = new (options: {
-  formats: string[]
-}) => BarcodeDetectorInstance
-
 type PlayerQrScannerDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onToken: (token: string) => void
 }
 
-function getBarcodeDetector() {
-  return (
-    window as typeof window & {
-      BarcodeDetector?: BarcodeDetectorConstructor
-    }
-  ).BarcodeDetector
-}
-
 function normalizeToken(value: string) {
   return value.trim()
+}
+
+const statusMessages: Record<QrCodeScannerStatus, string> = {
+  idle: "正在啟動相機",
+  starting: "正在啟動相機",
+  scanning: "對準學員的個人 QR Code",
+  "secure-context-required":
+    "瀏覽器需要 HTTPS 或 localhost 才能開啟相機，請輸入 QR 識別碼。",
+  "camera-unavailable": "這個瀏覽器無法開啟相機，請輸入 QR 識別碼。",
+  "permission-denied": "相機權限未開啟，請輸入 QR 識別碼。",
+  "scan-error": "相機已開啟，但無法讀取 QR Code，請輸入 QR 識別碼。",
 }
 
 export function PlayerQrScannerDialog({
@@ -49,110 +44,53 @@ export function PlayerQrScannerDialog({
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [manualToken, setManualToken] = useState("")
-  const [message, setMessage] = useState("正在啟動相機")
+  const [manualMessage, setManualMessage] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!open) return
+  const updateOpen = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) setManualMessage(null)
+      onOpenChange(nextOpen)
+    },
+    [onOpenChange],
+  )
 
-    let cancelled = false
-    let timer = 0
-    let stream: MediaStream | null = null
-    let activeVideo: HTMLVideoElement | null = null
+  const handleScanResult = useCallback(
+    (value: string) => {
+      const token = normalizeToken(value)
+      if (!token) return
 
-    async function startScanner() {
-      if (
-        typeof window === "undefined" ||
-        !navigator.mediaDevices?.getUserMedia
-      ) {
-        setMessage("這個瀏覽器無法開啟相機，請輸入 QR 識別碼。")
-        return
-      }
+      onToken(token)
+      updateOpen(false)
+    },
+    [onToken, updateOpen],
+  )
+  const scannerStatus = useQrCodeScanner({
+    open,
+    videoRef,
+    canvasRef,
+    onResult: handleScanResult,
+  })
 
-      const BarcodeDetector = getBarcodeDetector()
-      if (!BarcodeDetector) {
-        setMessage("這個瀏覽器不支援 QR 掃描，請輸入 QR 識別碼。")
-        return
-      }
+  const message = manualMessage ?? statusMessages[scannerStatus]
 
-      try {
-        const detector = new BarcodeDetector({ formats: ["qr_code"] })
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: { facingMode: { ideal: "environment" } },
-        })
-        if (cancelled) return
-
-        const video = videoRef.current
-        if (!video) return
-
-        activeVideo = video
-        video.srcObject = stream
-        await video.play()
-        setMessage("對準學員的個人 QR Code")
-
-        const scan = async () => {
-          if (cancelled) return
-
-          const canvas = canvasRef.current
-          const context = canvas?.getContext("2d", {
-            willReadFrequently: true,
-          })
-          if (
-            canvas &&
-            context &&
-            video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
-            video.videoWidth > 0 &&
-            video.videoHeight > 0
-          ) {
-            canvas.width = video.videoWidth
-            canvas.height = video.videoHeight
-            context.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-            const detected = await detector.detect(canvas)
-            const token = normalizeToken(detected[0]?.rawValue ?? "")
-            if (token) {
-              onToken(token)
-              onOpenChange(false)
-              return
-            }
-          }
-
-          timer = window.setTimeout(scan, 350)
-        }
-
-        await scan()
-      } catch {
-        if (!cancelled) {
-          setMessage("相機權限未開啟，請輸入 QR 識別碼。")
-        }
-      }
-    }
-
-    void startScanner()
-
-    return () => {
-      cancelled = true
-      window.clearTimeout(timer)
-      stream?.getTracks().forEach((track) => track.stop())
-      if (activeVideo) {
-        activeVideo.srcObject = null
-      }
-    }
-  }, [onOpenChange, onToken, open])
+  function updateManualToken(value: string) {
+    setManualToken(value)
+    setManualMessage(null)
+  }
 
   function handleManualSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const token = normalizeToken(manualToken)
     if (!token) {
-      setMessage("請輸入 QR 識別碼。")
+      setManualMessage("請輸入 QR 識別碼。")
       return
     }
     onToken(token)
-    onOpenChange(false)
+    updateOpen(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={updateOpen}>
       <DialogContent className="gap-4">
         <DialogHeader>
           <DialogTitle>掃描學員 QR Code</DialogTitle>
@@ -172,7 +110,7 @@ export function PlayerQrScannerDialog({
         <form className="grid gap-3" onSubmit={handleManualSubmit}>
           <Input
             value={manualToken}
-            onChange={(event) => setManualToken(event.target.value)}
+            onChange={(event) => updateManualToken(event.target.value)}
             placeholder="手動輸入 QR 識別碼"
             autoComplete="off"
             inputMode="text"

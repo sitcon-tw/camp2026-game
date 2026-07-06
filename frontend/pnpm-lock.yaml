@@ -52,6 +52,9 @@ importers:
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      jsqr:
+        specifier: ^1.4.0
+        version: 1.4.0
       lucide-react:
         specifier: ^0.553.0
         version: 0.553.0(react@19.2.6)
@@ -300,6 +303,12 @@ packages:
       "@types/react":
         optional: true
 
+  "@date-fns/tz@1.5.0":
+    resolution:
+      {
+        integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==,
+      }
+
   "@dicebear/core@9.4.2":
     resolution:
       {
@@ -315,12 +324,6 @@ packages:
     engines: { node: ">=18.0.0" }
     peerDependencies:
       "@dicebear/core": ^9.0.0
-
-  "@date-fns/tz@1.5.0":
-    resolution:
-      {
-        integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==,
-      }
 
   "@emnapi/core@1.10.0":
     resolution:
@@ -2782,6 +2785,12 @@ packages:
     engines: { node: ">=6" }
     hasBin: true
 
+  jsqr@1.4.0:
+    resolution:
+      {
+        integrity: sha512-dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A==,
+      }
+
   keyv@4.5.4:
     resolution:
       {
@@ -3777,13 +3786,15 @@ snapshots:
     optionalDependencies:
       "@types/react": 19.2.15
 
-  "@dicebear/core@9.4.2": {}
+  "@date-fns/tz@1.5.0": {}
+
+  "@dicebear/core@9.4.2":
+    dependencies:
+      "@types/json-schema": 7.0.15
 
   "@dicebear/thumbs@9.4.2(@dicebear/core@9.4.2)":
     dependencies:
       "@dicebear/core": 9.4.2
-
-  "@date-fns/tz@1.5.0": {}
 
   "@emnapi/core@1.10.0":
     dependencies:
@@ -5416,6 +5427,8 @@ snapshots:
   json-stable-stringify-without-jsonify@1.0.1: {}
 
   json5@2.2.3: {}
+
+  jsqr@1.4.0: {}
 
   keyv@4.5.4:
     dependencies:
