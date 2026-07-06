@@ -125,11 +125,11 @@ func (h *Handler) recipeResponses(recipes []content.FusionRecipe, inventory inve
 }
 
 func (h *Handler) recipeResponse(recipe content.FusionRecipe, inventory inventoryCounts) (FusionRecipeResponse, error) {
-	inputs, err := h.componentResponses(recipe.Inputs)
+	inputs, err := h.componentResponses(recipe.Inputs, inventory)
 	if err != nil {
 		return FusionRecipeResponse{}, err
 	}
-	outputs, err := h.componentResponses(recipe.Outputs)
+	outputs, err := h.componentResponses(recipe.Outputs, inventoryCounts{})
 	if err != nil {
 		return FusionRecipeResponse{}, err
 	}
@@ -151,13 +151,16 @@ func (h *Handler) recipeResponse(recipe content.FusionRecipe, inventory inventor
 	}, nil
 }
 
-func (h *Handler) componentResponses(components []content.FusionComponent) ([]FusionComponentResponse, error) {
+func (h *Handler) componentResponses(components []content.FusionComponent, inventory inventoryCounts) ([]FusionComponentResponse, error) {
 	out := make([]FusionComponentResponse, 0, len(components))
 	for _, component := range components {
+		ownedQuantity := ownedQuantityForComponent(component, inventory)
 		response := FusionComponentResponse{
-			Kind:     component.Kind,
-			ID:       component.ID,
-			Quantity: component.Quantity,
+			Kind:            component.Kind,
+			ID:              component.ID,
+			Quantity:        component.Quantity,
+			OwnedQuantity:   ownedQuantity,
+			MissingQuantity: max(component.Quantity-ownedQuantity, 0),
 		}
 		switch component.Kind {
 		case content.FusionKindItem:
@@ -190,6 +193,17 @@ func (h *Handler) componentResponses(components []content.FusionComponent) ([]Fu
 		out = append(out, response)
 	}
 	return out, nil
+}
+
+func ownedQuantityForComponent(component content.FusionComponent, inventory inventoryCounts) int {
+	switch component.Kind {
+	case content.FusionKindItem:
+		return inventory.items[component.ID]
+	case content.FusionKindSitone:
+		return inventory.sitones[component.ID]
+	default:
+		return 0
+	}
 }
 
 func recipeAvailable(recipe content.FusionRecipe, inventory inventoryCounts) bool {

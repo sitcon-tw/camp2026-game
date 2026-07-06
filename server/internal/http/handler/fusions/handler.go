@@ -39,6 +39,7 @@ func New(dep Dependencies) *Handler {
 func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/fusions/recipes", h.ListRecipes)
 	api.Post("/fusions", h.Create)
+	api.Post("/fusions/{recipeID}/fill-missing-materials", h.FillMissingMaterials)
 }
 
 func currentPlayer(w http.ResponseWriter, r *http.Request) (mongomodel.Player, bool) {
