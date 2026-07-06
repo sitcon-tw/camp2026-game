@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -88,7 +87,7 @@ func TestLogoutRequiresAuthenticatedPlayer(t *testing.T) {
 	}
 }
 
-func TestLogoutRequiresDatabase(t *testing.T) {
+func TestLogoutClearsCookie(t *testing.T) {
 	handler := New(Dependencies{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
@@ -96,9 +95,12 @@ func TestLogoutRequiresDatabase(t *testing.T) {
 	res := httptest.NewRecorder()
 	handler.Logout(res, req)
 
-	problem := assertProblem(t, res, http.StatusServiceUnavailable)
-	if problem.Detail != "database is unavailable" {
-		t.Fatalf("expected database unavailable detail, got %q", problem.Detail)
+	if res.Code != http.StatusNoContent {
+		t.Fatalf("expected logout status %d, got %d", http.StatusNoContent, res.Code)
+	}
+	cookies := res.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != authctx.CookieName || cookies[0].Value != "" || cookies[0].MaxAge != -1 {
+		t.Fatalf("expected logout to clear auth cookie, got %#v", cookies)
 	}
 }
 
@@ -136,48 +138,6 @@ func TestAuthCookieClearsCookie(t *testing.T) {
 	}
 	if !strings.Contains(res.Header().Get("Set-Cookie"), "Max-Age=0") {
 		t.Fatalf("expected Set-Cookie header to clear cookie, got %q", res.Header().Get("Set-Cookie"))
-	}
-}
-
-func TestNewAuthToken(t *testing.T) {
-	token, err := newAuthToken()
-	if err != nil {
-		t.Fatalf("new auth token: %v", err)
-	}
-	if token == "" {
-		t.Fatal("expected auth token")
-	}
-	if strings.ContainsAny(token, "+/=") {
-		t.Fatalf("expected raw URL-safe base64 token, got %q", token)
-	}
-
-	decoded, err := base64.RawURLEncoding.DecodeString(token)
-	if err != nil {
-		t.Fatalf("decode auth token: %v", err)
-	}
-	if len(decoded) != authTokenBytes {
-		t.Fatalf("expected %d random bytes, got %d", authTokenBytes, len(decoded))
-	}
-}
-
-func TestAuthTokenRotationUpdate(t *testing.T) {
-	gotFilter := authTokenRotationFilter("7H9K2Q", "old_token")
-	wantFilter := bson.M{
-		"_id":        "7H9K2Q",
-		"auth_token": "old_token",
-	}
-	if !reflect.DeepEqual(gotFilter, wantFilter) {
-		t.Fatalf("unexpected auth token rotation filter: %#v", gotFilter)
-	}
-
-	gotUpdate := authTokenRotationUpdate("new_token")
-	wantUpdate := bson.M{
-		"$set": bson.M{
-			"auth_token": "new_token",
-		},
-	}
-	if !reflect.DeepEqual(gotUpdate, wantUpdate) {
-		t.Fatalf("unexpected auth token rotation update: %#v", gotUpdate)
 	}
 }
 

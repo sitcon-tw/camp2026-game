@@ -358,6 +358,9 @@ func login(t *testing.T, serverURL string, token string) *http.Cookie {
 
 	for _, cookie := range res.Cookies() {
 		if cookie.Name == "camp2026_auth" {
+			if cookie.Value != token {
+				t.Fatalf("expected login cookie to preserve auth token %q, got %q", token, cookie.Value)
+			}
 			return cookie
 		}
 	}

@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
@@ -22,15 +21,6 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	player, ok := authctx.PlayerFromContext(r.Context())
 	if !ok || player.ID == "" || player.AuthToken == "" {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusUnauthorized, "authentication required"))
-		return
-	}
-	if h.db == nil {
-		httpx.WriteProblem(w, r, httpx.ServiceUnavailable("database is unavailable"))
-		return
-	}
-
-	if _, err := h.rotateAuthToken(r.Context(), player.ID, player.AuthToken); err != nil && !errors.Is(err, errAuthTokenStale) {
-		httpx.WriteProblem(w, r, httpx.InternalServerError("logout failed", "logout_auth_token_rotate_failed", err))
 		return
 	}
 

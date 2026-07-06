@@ -18,7 +18,7 @@ import (
 
 // Login godoc
 // @Summary User login with auth token
-// @Description User-facing endpoint. Validates the issued game URL token, rotates it, and writes the fresh session token to the camp2026_auth cookie.
+// @Description User-facing endpoint. Validates the issued game URL token and writes it to the camp2026_auth cookie.
 // @Tags User Authentication
 // @Accept json
 // @Produce json
@@ -82,17 +82,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionToken, err := h.rotateAuthToken(r.Context(), player.ID, body.Token)
-	if errors.Is(err, errAuthTokenStale) {
-		httpx.WriteProblem(w, r, httpx.NewError(http.StatusUnauthorized, "invalid auth token"))
-		return
-	}
-	if err != nil {
-		httpx.WriteProblem(w, r, httpx.InternalServerError("login failed", "login_auth_token_rotate_failed", err))
-		return
-	}
-
-	setAuthCookie(w, sessionToken)
+	setAuthCookie(w, body.Token)
 	httpx.WriteJSON(w, http.StatusOK, loginResponse(player, team, openPower))
 }
 

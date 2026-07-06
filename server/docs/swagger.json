@@ -264,7 +264,7 @@
         },
         "/auth/login": {
             "post": {
-                "description": "User-facing endpoint. Validates the issued game URL token, rotates it, and writes the fresh session token to the camp2026_auth cookie.",
+                "description": "User-facing endpoint. Validates the issued game URL token and writes it to the camp2026_auth cookie.",
                 "consumes": [
                     "application/json"
                 ],
