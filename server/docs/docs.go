@@ -2132,7 +2132,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Staff-only endpoint. Grants one sitone or item to a player selected by player ID or QR code identifier, or to every player in a team, and records the staff grant.",
+                "description": "Staff-only endpoint. Grants one sitone, item, or open power reward to a player selected by player ID or QR code identifier, or to every player in a team, and records the staff grant.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2142,7 +2142,7 @@ const docTemplate = `{
                 "tags": [
                     "staff"
                 ],
-                "summary": "Grant sitone or item as staff",
+                "summary": "Grant sitone, item, or open power as staff",
                 "parameters": [
                     {
                         "description": "Staff reward request",
@@ -4836,17 +4836,19 @@ const docTemplate = `{
         },
         "staff.CreateRewardRequest": {
             "type": "object",
-            "required": [
-                "kind",
-                "quantity",
-                "refId"
-            ],
             "properties": {
+                "amount": {
+                    "type": "integer",
+                    "maximum": 99999,
+                    "minimum": 1,
+                    "example": 100
+                },
                 "kind": {
                     "type": "string",
                     "enum": [
                         "item",
-                        "sitone"
+                        "sitone",
+                        "open_power"
                     ],
                     "example": "sitone"
                 },
@@ -4958,6 +4960,10 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "工程型小石"
+                },
+                "amount": {
+                    "type": "integer",
+                    "example": 100
                 },
                 "quantity": {
                     "type": "integer",

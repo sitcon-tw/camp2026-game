@@ -4,9 +4,10 @@ type CreateRewardRequest struct {
 	QRCodeToken string `json:"qrcodeToken,omitempty" validate:"omitempty,min=4,max=512" example:"qr_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok"`
 	PlayerID    string `json:"playerId,omitempty" validate:"omitempty,min=1,max=128" example:"7H9K2Q"`
 	TeamID      string `json:"teamId,omitempty" validate:"omitempty,min=1,max=128" example:"8M4RXP"`
-	Kind        string `json:"kind" validate:"required,oneof=item sitone" example:"sitone"`
-	RefID       string `json:"refId" validate:"required,min=1,max=128" example:"stone_engineering_base"`
-	Quantity    int    `json:"quantity" validate:"required,min=1,max=99" example:"1"`
+	Kind        string `json:"kind" validate:"required,oneof=item sitone open_power" example:"sitone"`
+	RefID       string `json:"refId,omitempty" validate:"omitempty,min=1,max=128" example:"stone_engineering_base"`
+	Quantity    int    `json:"quantity,omitempty" validate:"omitempty,min=1,max=99" example:"1"`
+	Amount      int    `json:"amount,omitempty" validate:"omitempty,min=1,max=99999" example:"100"`
 }
 
 type ListPlayersResponse struct {
@@ -51,7 +52,8 @@ type RewardTeamResponse struct {
 
 type RewardResponse struct {
 	Kind     string `json:"kind" example:"sitone"`
-	ID       string `json:"id" example:"stone_engineering_base"`
+	ID       string `json:"id,omitempty" example:"stone_engineering_base"`
 	Name     string `json:"name" example:"工程型小石"`
-	Quantity int    `json:"quantity" example:"1"`
+	Quantity int    `json:"quantity,omitempty" example:"1"`
+	Amount   int    `json:"amount,omitempty" example:"100"`
 }

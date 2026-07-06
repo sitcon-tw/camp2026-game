@@ -92,6 +92,11 @@ function clampQuantity(value: number) {
   return Math.max(1, Math.min(99, Math.floor(value)))
 }
 
+function clampOpenPowerAmount(value: number) {
+  if (!Number.isFinite(value)) return 10
+  return Math.max(1, Math.min(99999, Math.floor(value)))
+}
+
 export function StaffRewardsPanel() {
   const queryClient = useQueryClient()
   const [scannerOpen, setScannerOpen] = useState(false)
@@ -104,8 +109,9 @@ export function StaffRewardsPanel() {
   const [rewardKind, setRewardKind] = useState<StaffRewardKind>("sitone")
   const [selectedRefIDs, setSelectedRefIDs] = useState<
     Record<StaffRewardKind, string>
-  >({ item: "", sitone: "" })
+  >({ item: "", sitone: "", open_power: "" })
   const [quantity, setQuantity] = useState(1)
+  const [openPowerAmount, setOpenPowerAmount] = useState(100)
   const [search, setSearch] = useState("")
 
   const statusQuery = useQuery({
@@ -142,7 +148,12 @@ export function StaffRewardsPanel() {
     () => (itemsQuery.data ?? []).map(itemOption),
     [itemsQuery.data],
   )
-  const rewardOptions = rewardKind === "sitone" ? sitoneOptions : itemOptions
+  const rewardOptions =
+    rewardKind === "sitone"
+      ? sitoneOptions
+      : rewardKind === "item"
+        ? itemOptions
+        : []
   const playerOptions = playersQuery.data ?? []
   const teamOptions = teamsQuery.data ?? []
   const selectedRefID = rewardOptions.some(
@@ -191,11 +202,15 @@ export function StaffRewardsPanel() {
     onSuccess: (result) => {
       if (result.team) {
         toast.success(
-          `已發送 ${result.reward.name} x${result.reward.quantity} 給 ${result.team.name} 全組 (${result.grantedCount} 人)`,
+          result.reward.kind === "open_power"
+            ? `已發送 ${result.reward.amount} 開源力給 ${result.team.name} 全組 (${result.grantedCount} 人)`
+            : `已發送 ${result.reward.name} x${result.reward.quantity} 給 ${result.team.name} 全組 (${result.grantedCount} 人)`,
         )
       } else if (result.player) {
         toast.success(
-          `已發送 ${result.reward.name} x${result.reward.quantity} 給 ${result.player.nickname}`,
+          result.reward.kind === "open_power"
+            ? `已發送 ${result.reward.amount} 開源力給 ${result.player.nickname}`
+            : `已發送 ${result.reward.name} x${result.reward.quantity} 給 ${result.player.nickname}`,
         )
       }
       queryClient.invalidateQueries({ queryKey: ["me"] })
@@ -211,8 +226,8 @@ export function StaffRewardsPanel() {
     (targetMode === "player"
       ? !!targetPlayer?.playerId
       : !!selectedTeam?.teamId) &&
-    !!selectedOption &&
-    quantity >= 1 &&
+    (rewardKind === "open_power" ? openPowerAmount >= 1 : !!selectedOption) &&
+    (rewardKind === "open_power" || quantity >= 1) &&
     !rewardMutation.isPending
 
   function resolveToken(token: string) {
@@ -236,9 +251,17 @@ export function StaffRewardsPanel() {
 
   function handleRewardSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedOption) return
     if (targetMode === "player") {
       if (!targetPlayer) return
+      if (rewardKind === "open_power") {
+        rewardMutation.mutate({
+          playerId: targetPlayer.playerId,
+          kind: rewardKind,
+          amount: openPowerAmount,
+        })
+        return
+      }
+      if (!selectedOption) return
       rewardMutation.mutate({
         playerId: targetPlayer.playerId,
         kind: rewardKind,
@@ -248,6 +271,15 @@ export function StaffRewardsPanel() {
       return
     }
     if (!selectedTeam) return
+    if (rewardKind === "open_power") {
+      rewardMutation.mutate({
+        teamId: selectedTeam.teamId,
+        kind: rewardKind,
+        amount: openPowerAmount,
+      })
+      return
+    }
+    if (!selectedOption) return
     rewardMutation.mutate({
       teamId: selectedTeam.teamId,
       kind: rewardKind,
@@ -508,109 +540,161 @@ export function StaffRewardsPanel() {
                   <TabsTrigger value="item" className="w-full">
                     道具
                   </TabsTrigger>
+                  <TabsTrigger value="open_power" className="w-full">
+                    開源力
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             </CardHeader>
             <CardContent className="grid gap-3 px-5">
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="搜尋小石/道具名稱或 ID"
-                autoComplete="off"
-                aria-label="搜尋發放內容"
-              />
-              <Select
-                value={selectedRefID}
-                onValueChange={(value) =>
-                  setSelectedRefIDs((current) => ({
-                    ...current,
-                    [rewardKind]: value,
-                  }))
-                }
-                disabled={catalogsPending || rewardOptions.length === 0}
-              >
-                <SelectTrigger className="h-12 w-full">
-                  <SelectValue
-                    placeholder={catalogsPending ? "同步清單中" : "選擇內容"}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {visibleOptions.map((option) => (
-                    <SelectItem key={option.id} value={option.id}>
-                      {option.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <div className="bg-surface-raised border-border grid min-h-[112px] grid-cols-[64px_1fr] gap-3 rounded-[18px] border-2 p-3">
-                <div
-                  className={cn(
-                    "border-ink h-16 rounded-[20px_24px_16px_22px] border-2",
-                    selectedOption?.toneClass ?? "bg-card",
-                  )}
-                  aria-hidden
-                />
-                <div>
-                  <div className="mb-1 flex flex-wrap gap-1.5">
-                    {[selectedOption?.typeLabel, selectedOption?.rarityLabel]
-                      .filter(Boolean)
-                      .map((tag) => (
-                        <span
-                          key={tag}
-                          className="bg-card border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs font-black"
+              {rewardKind === "open_power" ? (
+                <>
+                  <div className="bg-surface-raised border-border grid min-h-[112px] gap-3 rounded-[18px] border-2 p-4">
+                    <div>
+                      <strong className="block text-[18px] leading-tight font-black">
+                        開源力
+                      </strong>
+                      <p className="text-muted-foreground mt-1 text-sm leading-[1.55]">
+                        直接發放指定數量的開源力給學員。
+                      </p>
+                    </div>
+                    <Input
+                      value={openPowerAmount}
+                      onChange={(event) =>
+                        setOpenPowerAmount(
+                          clampOpenPowerAmount(Number(event.target.value)),
+                        )
+                      }
+                      type="number"
+                      min={1}
+                      max={99999}
+                      inputMode="numeric"
+                      aria-label="開源力數量"
+                      className="h-12 text-center text-lg font-black"
+                    />
+                    <div className="grid grid-cols-4 gap-2">
+                      {[10, 50, 100, 500].map((value) => (
+                        <Button
+                          key={value}
+                          type="button"
+                          variant="outline"
+                          onClick={() => setOpenPowerAmount(value)}
                         >
-                          {tag}
-                        </span>
+                          {value}
+                        </Button>
                       ))}
+                    </div>
                   </div>
-                  <strong className="block text-[18px] leading-tight font-black">
-                    {selectedOption?.name ?? "尚未選擇"}
-                  </strong>
-                  <p className="text-muted-foreground mt-1 line-clamp-2 text-sm leading-[1.55]">
-                    {selectedOption?.description ?? "清單同步完成後即可選擇。"}
-                  </p>
-                </div>
-              </div>
+                </>
+              ) : (
+                <>
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="搜尋小石/道具名稱或 ID"
+                    autoComplete="off"
+                    aria-label="搜尋發放內容"
+                  />
+                  <Select
+                    value={selectedRefID}
+                    onValueChange={(value) =>
+                      setSelectedRefIDs((current) => ({
+                        ...current,
+                        [rewardKind]: value,
+                      }))
+                    }
+                    disabled={catalogsPending || rewardOptions.length === 0}
+                  >
+                    <SelectTrigger className="h-12 w-full">
+                      <SelectValue
+                        placeholder={
+                          catalogsPending ? "同步清單中" : "選擇內容"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {visibleOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          {option.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-label="減少數量"
-                  onClick={() =>
-                    setQuantity((value) => clampQuantity(value - 1))
-                  }
-                  disabled={quantity <= 1}
-                >
-                  <MinusIcon className="size-4" aria-hidden />
-                </Button>
-                <Input
-                  value={quantity}
-                  onChange={(event) =>
-                    setQuantity(clampQuantity(Number(event.target.value)))
-                  }
-                  type="number"
-                  min={1}
-                  max={99}
-                  inputMode="numeric"
-                  aria-label="發放數量"
-                  className="h-11 text-center text-lg font-black"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-label="增加數量"
-                  onClick={() =>
-                    setQuantity((value) => clampQuantity(value + 1))
-                  }
-                  disabled={quantity >= 99}
-                >
-                  <PlusIcon className="size-4" aria-hidden />
-                </Button>
-              </div>
+                  <div className="bg-surface-raised border-border grid min-h-[112px] grid-cols-[64px_1fr] gap-3 rounded-[18px] border-2 p-3">
+                    <div
+                      className={cn(
+                        "border-ink h-16 rounded-[20px_24px_16px_22px] border-2",
+                        selectedOption?.toneClass ?? "bg-card",
+                      )}
+                      aria-hidden
+                    />
+                    <div>
+                      <div className="mb-1 flex flex-wrap gap-1.5">
+                        {[
+                          selectedOption?.typeLabel,
+                          selectedOption?.rarityLabel,
+                        ]
+                          .filter(Boolean)
+                          .map((tag) => (
+                            <span
+                              key={tag}
+                              className="bg-card border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs font-black"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                      </div>
+                      <strong className="block text-[18px] leading-tight font-black">
+                        {selectedOption?.name ?? "尚未選擇"}
+                      </strong>
+                      <p className="text-muted-foreground mt-1 line-clamp-2 text-sm leading-[1.55]">
+                        {selectedOption?.description ??
+                          "清單同步完成後即可選擇。"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="減少數量"
+                      onClick={() =>
+                        setQuantity((value) => clampQuantity(value - 1))
+                      }
+                      disabled={quantity <= 1}
+                    >
+                      <MinusIcon className="size-4" aria-hidden />
+                    </Button>
+                    <Input
+                      value={quantity}
+                      onChange={(event) =>
+                        setQuantity(clampQuantity(Number(event.target.value)))
+                      }
+                      type="number"
+                      min={1}
+                      max={99}
+                      inputMode="numeric"
+                      aria-label="發放數量"
+                      className="h-11 text-center text-lg font-black"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="增加數量"
+                      onClick={() =>
+                        setQuantity((value) => clampQuantity(value + 1))
+                      }
+                      disabled={quantity >= 99}
+                    >
+                      <PlusIcon className="size-4" aria-hidden />
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -631,8 +715,9 @@ export function StaffRewardsPanel() {
                 最後一次發放
               </p>
               <strong className="text-[20px] leading-tight font-black">
-                {rewardMutation.data.reward.name} x
-                {rewardMutation.data.reward.quantity}
+                {rewardMutation.data.reward.kind === "open_power"
+                  ? `${rewardMutation.data.reward.name} +${rewardMutation.data.reward.amount}`
+                  : `${rewardMutation.data.reward.name} x${rewardMutation.data.reward.quantity}`}
               </strong>
               <p className="text-muted-foreground text-sm font-bold">
                 {rewardMutation.data.team ? (
@@ -656,6 +741,11 @@ export function StaffRewardsPanel() {
                   </>
                 ) : null}
               </p>
+              {rewardMutation.data.reward.kind === "open_power" ? (
+                <strong className="text-power text-lg font-black">
+                  +{rewardMutation.data.reward.amount} OP
+                </strong>
+              ) : null}
             </CardContent>
           </Card>
         ) : null}
