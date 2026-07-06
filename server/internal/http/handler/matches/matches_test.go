@@ -112,7 +112,7 @@ func TestMatchOpenPowerRewardAppliesBonus(t *testing.T) {
 	}
 }
 
-func TestBattleEffectsApplyCaps(t *testing.T) {
+func TestBattleEffectsStackWithoutCaps(t *testing.T) {
 	handler := New(Dependencies{Content: loadTestContent(t)})
 
 	effects, err := handler.battleEffects(t.Context(), "P1", []string{
@@ -123,8 +123,8 @@ func TestBattleEffectsApplyCaps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("battle effects: %v", err)
 	}
-	if effects.MaterialDropBonusPercent != 15 {
-		t.Fatalf("expected material drop cap 15, got %#v", effects)
+	if effects.MaterialDropBonusPercent != 36 {
+		t.Fatalf("expected material drop bonus 36, got %#v", effects)
 	}
 
 	effects, err = handler.battleEffects(t.Context(), "P1", []string{
@@ -134,8 +134,8 @@ func TestBattleEffectsApplyCaps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("battle effects: %v", err)
 	}
-	if effects.AnswerScoreBonusPercent != 30 {
-		t.Fatalf("expected answer score cap 30, got %#v", effects)
+	if effects.AnswerScoreBonusPercent != 40 {
+		t.Fatalf("expected answer score bonus 40, got %#v", effects)
 	}
 
 	effects, err = handler.battleEffects(t.Context(), "P1", []string{
@@ -146,8 +146,8 @@ func TestBattleEffectsApplyCaps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("battle effects: %v", err)
 	}
-	if effects.OpenPowerBonusPercent != 40 {
-		t.Fatalf("expected open power cap 40, got %#v", effects)
+	if effects.OpenPowerBonusPercent != 44 {
+		t.Fatalf("expected open power bonus 44, got %#v", effects)
 	}
 
 	effects, err = handler.battleEffects(t.Context(), "P1", []string{
@@ -157,8 +157,8 @@ func TestBattleEffectsApplyCaps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("battle effects: %v", err)
 	}
-	if effects.EliminateChancePercent != 50 || effects.EliminateCount != 2 {
-		t.Fatalf("expected eliminate cap 50 and count 2, got %#v", effects)
+	if effects.EliminateChancePercent != 70 || effects.EliminateCount != 2 {
+		t.Fatalf("expected eliminate bonus 70 and count 2, got %#v", effects)
 	}
 }
 

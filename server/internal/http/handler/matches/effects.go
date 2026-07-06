@@ -13,13 +13,6 @@ import (
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
 
-const (
-	materialDropBonusCap    = 15
-	answerScoreBonusCap     = 30
-	openPowerBonusCap       = 40
-	eliminateWrongChanceCap = 50
-)
-
 type battleEffects struct {
 	MaterialDropBonusPercent int
 	AnswerScoreBonusPercent  int
@@ -96,10 +89,6 @@ func (h *Handler) battleEffects(ctx context.Context, playerID string, sitoneIDs 
 		addCharmAbility(&effects, charmID, sitoneTypes)
 	}
 
-	effects.MaterialDropBonusPercent = capPercent(effects.MaterialDropBonusPercent, materialDropBonusCap)
-	effects.AnswerScoreBonusPercent = capPercent(effects.AnswerScoreBonusPercent, answerScoreBonusCap)
-	effects.OpenPowerBonusPercent = capPercent(effects.OpenPowerBonusPercent, openPowerBonusCap)
-	effects.EliminateChancePercent = capPercent(effects.EliminateChancePercent, eliminateWrongChanceCap)
 	effects.EliminateSourceNames = uniqueStrings(effects.EliminateSourceNames)
 	return effects, nil
 }
@@ -193,16 +182,6 @@ func (h *Handler) ownedCharmIDs(ctx context.Context, playerID string) (map[strin
 		return nil, err
 	}
 	return out, nil
-}
-
-func capPercent(value int, capValue int) int {
-	if value < 0 {
-		return 0
-	}
-	if value > capValue {
-		return capValue
-	}
-	return value
 }
 
 func applyPercentBonus(value int, bonusPercent int) int {
