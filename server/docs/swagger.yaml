@@ -1863,10 +1863,16 @@ definitions:
     type: object
   staff.CreateRewardRequest:
     properties:
+      amount:
+        example: 100
+        maximum: 99999
+        minimum: 1
+        type: integer
       kind:
         enum:
         - item
         - sitone
+        - open_power
         example: sitone
         type: string
       playerId:
@@ -1889,10 +1895,6 @@ definitions:
         maxLength: 128
         minLength: 1
         type: string
-    required:
-    - kind
-    - quantity
-    - refId
     type: object
   staff.CreateRewardResponse:
     properties:
@@ -1937,6 +1939,9 @@ definitions:
     type: object
   staff.RewardResponse:
     properties:
+      amount:
+        example: 100
+        type: integer
       id:
         example: stone_engineering_base
         type: string
@@ -3378,9 +3383,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Staff-only endpoint. Grants one sitone or item to a player selected
-        by player ID or QR code identifier, or to every player in a team, and
-        records the staff grant.
+      description: Staff-only endpoint. Grants one sitone, item, or open power
+        reward to a player selected by player ID or QR code identifier, or to every
+        player in a team, and records the staff grant.
       parameters:
       - description: Staff reward request
         in: body
@@ -3425,7 +3430,7 @@ paths:
             $ref: '#/definitions/httpx.ProblemDetails'
       security:
       - AuthCookieAuth: []
-      summary: Grant sitone or item as staff
+      summary: Grant sitone, item, or open power as staff
       tags:
       - staff
 schemes:

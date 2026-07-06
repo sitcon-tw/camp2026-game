@@ -65,6 +65,18 @@ func TestRewardDefinitionFindsEnabledItem(t *testing.T) {
 	}
 }
 
+func TestRewardDefinitionFindsOpenPower(t *testing.T) {
+	handler := New(Dependencies{Content: loadTestContent(t)})
+
+	reward, ok := handler.rewardDefinition(rewardKindOpenPower, "")
+	if !ok {
+		t.Fatal("expected open power reward definition")
+	}
+	if reward.id != rewardKindOpenPower || reward.name != "開源力" {
+		t.Fatalf("unexpected reward definition: %#v", reward)
+	}
+}
+
 func TestRewardDefinitionRejectsMissingContent(t *testing.T) {
 	handler := New(Dependencies{Content: loadTestContent(t)})
 
@@ -222,6 +234,42 @@ func TestInventoryCollection(t *testing.T) {
 	}
 	if collection != mongomodel.PlayerItemsCollection || field != "item_id" {
 		t.Fatalf("unexpected item inventory collection: %s %s", collection, field)
+	}
+}
+
+func TestValidateRewardBody(t *testing.T) {
+	tests := []struct {
+		name    string
+		body    CreateRewardRequest
+		wantErr bool
+	}{
+		{
+			name: "sitone reward",
+			body: CreateRewardRequest{Kind: rewardKindSitone, RefID: "stone_engineering_base", Quantity: 1},
+		},
+		{
+			name: "open power reward",
+			body: CreateRewardRequest{Kind: rewardKindOpenPower, Amount: 100},
+		},
+		{
+			name:    "open power missing amount",
+			body:    CreateRewardRequest{Kind: rewardKindOpenPower},
+			wantErr: true,
+		},
+		{
+			name:    "item missing quantity",
+			body:    CreateRewardRequest{Kind: rewardKindItem, RefID: "item_adventure_backpack"},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateRewardBody(tt.body)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("validateRewardBody() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
 

@@ -359,7 +359,7 @@ const ComputerBattleSettingsSchema = z.object({
   enabled: z.boolean(),
 })
 
-const StaffRewardKindSchema = z.enum(["item", "sitone"])
+const StaffRewardKindSchema = z.enum(["item", "sitone", "open_power"])
 
 const StaffPlayerSchema = z.object({
   playerId: z.string(),
@@ -394,9 +394,10 @@ const StaffRewardResponseSchema = z.object({
   team: TeamSchema.optional(),
   reward: z.object({
     kind: StaffRewardKindSchema,
-    id: z.string(),
+    id: z.string().optional(),
     name: z.string(),
-    quantity: z.number(),
+    quantity: z.number().optional(),
+    amount: z.number().optional(),
   }),
 })
 
@@ -780,8 +781,9 @@ export const gameApi = {
     qrcodeToken?: string
     teamId?: string
     kind: StaffRewardKind
-    refId: string
-    quantity: number
+    refId?: string
+    quantity?: number
+    amount?: number
   }) {
     const json = await apiClient.post("/api/staff/rewards", {
       json: input,

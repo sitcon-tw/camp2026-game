@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	rewardKindItem   = "item"
-	rewardKindSitone = "sitone"
+	rewardKindItem      = "item"
+	rewardKindSitone    = "sitone"
+	rewardKindOpenPower = "open_power"
 )
 
 type rewardDefinition struct {
@@ -28,8 +29,8 @@ type rewardDefinition struct {
 }
 
 // CreateReward godoc
-// @Summary Grant sitone or item as staff
-// @Description Staff-only endpoint. Grants one sitone or item to a player selected by player ID or QR code identifier, and records the staff grant.
+// @Summary Grant sitone, item, or open power as staff
+// @Description Staff-only endpoint. Grants one sitone, item, or open power reward to a player selected by player ID or QR code identifier, or to every player in a team, and records the staff grant.
 // @Tags staff
 // @Accept json
 // @Produce json
@@ -68,6 +69,10 @@ func (h *Handler) CreateReward(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.UnprocessableEntity("invalid request body", problems...))
 		return
 	}
+	if err := validateRewardBody(body); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
 
 	reward, found := h.rewardDefinition(body.Kind, body.RefID)
 	if !found {
@@ -98,6 +103,8 @@ func (h *Handler) rewardDefinition(kind string, refID string) (rewardDefinition,
 			return rewardDefinition{}, false
 		}
 		return rewardDefinition{kind: kind, id: item.ID, name: item.Name}, true
+	case rewardKindOpenPower:
+		return rewardDefinition{kind: kind, id: rewardKindOpenPower, name: "開源力"}, true
 	default:
 		return rewardDefinition{}, false
 	}
@@ -168,13 +175,32 @@ func (h *Handler) findPlayersByTeamID(ctx context.Context, teamID string) ([]mon
 
 func (h *Handler) createReward(ctx context.Context, staffPlayerID string, recipientPlayerID string, reward rewardDefinition, quantity int) (string, error) {
 	rewardID := newID("staff_reward")
-	if err := h.incrementInventory(ctx, recipientPlayerID, reward.kind, reward.id, quantity); err != nil {
-		return "", err
+	switch reward.kind {
+	case rewardKindOpenPower:
+		if err := h.insertOpenPowerReward(ctx, rewardID, recipientPlayerID, quantity, time.Now().UTC()); err != nil {
+			return "", err
+		}
+	default:
+		if err := h.incrementInventory(ctx, recipientPlayerID, reward.kind, reward.id, quantity); err != nil {
+			return "", err
+		}
 	}
 	if err := h.insertRewardRecord(ctx, rewardID, staffPlayerID, recipientPlayerID, reward, quantity, time.Now().UTC()); err != nil {
 		return "", err
 	}
 	return rewardID, nil
+}
+
+func (h *Handler) insertOpenPowerReward(ctx context.Context, rewardID string, playerID string, amount int, createdAt time.Time) error {
+	_, err := h.db.Collection(mongomodel.OpenPowerRecordsCollection).InsertOne(ctx, mongomodel.OpenPowerRecord{
+		ID:        newID("open_power"),
+		PlayerID:  playerID,
+		Amount:    amount,
+		Reason:    "staff_reward",
+		Source:    rewardID,
+		CreatedAt: createdAt,
+	})
+	return err
 }
 
 func (h *Handler) incrementInventory(ctx context.Context, playerID string, kind string, refID string, quantity int) error {
@@ -254,6 +280,35 @@ func validateRewardTarget(body CreateRewardRequest) []httpx.ErrorDetail {
 	}
 }
 
+func validateRewardBody(body CreateRewardRequest) error {
+	switch body.Kind {
+	case rewardKindOpenPower:
+		if body.Amount <= 0 {
+			return httpx.UnprocessableEntity(
+				"invalid request body",
+				httpx.ErrorDetail{Location: "body.amount", Message: "amount is required for open_power rewards"},
+			)
+		}
+		return nil
+	case rewardKindItem, rewardKindSitone:
+		if body.RefID == "" {
+			return httpx.UnprocessableEntity(
+				"invalid request body",
+				httpx.ErrorDetail{Location: "body.refId", Message: "refId is required for item or sitone rewards"},
+			)
+		}
+		if body.Quantity <= 0 {
+			return httpx.UnprocessableEntity(
+				"invalid request body",
+				httpx.ErrorDetail{Location: "body.quantity", Message: "quantity is required for item or sitone rewards"},
+			)
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
 func (h *Handler) createRewardResponse(
 	ctx context.Context,
 	staffPlayerID string,
@@ -292,7 +347,11 @@ func (h *Handler) createPlayerRewardResponse(
 		team = &RewardTeamResponse{TeamID: loadedTeam.ID, Name: loadedTeam.Name}
 	}
 
-	rewardID, err := h.createReward(ctx, staffPlayerID, recipient.ID, reward, body.Quantity)
+	rewardValue := body.Quantity
+	if body.Kind == rewardKindOpenPower {
+		rewardValue = body.Amount
+	}
+	rewardID, err := h.createReward(ctx, staffPlayerID, recipient.ID, reward, rewardValue)
 	if err != nil {
 		return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_create_failed", err)
 	}
@@ -310,6 +369,7 @@ func (h *Handler) createPlayerRewardResponse(
 			ID:       reward.id,
 			Name:     reward.name,
 			Quantity: body.Quantity,
+			Amount:   body.Amount,
 		},
 	}, http.StatusCreated, nil
 }
@@ -343,11 +403,15 @@ func (h *Handler) createTeamRewardResponse(
 	}
 
 	rewardIDs := make([]string, 0, len(recipients))
+	rewardValue := body.Quantity
+	if body.Kind == rewardKindOpenPower {
+		rewardValue = body.Amount
+	}
 	for _, recipient := range recipients {
 		if recipient.ID == "" {
 			continue
 		}
-		rewardID, err := h.createReward(ctx, staffPlayerID, recipient.ID, reward, body.Quantity)
+		rewardID, err := h.createReward(ctx, staffPlayerID, recipient.ID, reward, rewardValue)
 		if err != nil {
 			return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_create_failed", err)
 		}
@@ -376,6 +440,7 @@ func (h *Handler) createTeamRewardResponse(
 			ID:       reward.id,
 			Name:     reward.name,
 			Quantity: body.Quantity,
+			Amount:   body.Amount,
 		},
 	}, http.StatusCreated, nil
 }
