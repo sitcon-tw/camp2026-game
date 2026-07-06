@@ -175,6 +175,51 @@ func TestHistoryRejectsUnsupportedBucket(t *testing.T) {
 	}
 }
 
+func TestNormalizeUpdateTeamRequestTrimsFields(t *testing.T) {
+	got := normalizeUpdateTeamRequest(UpdateTeamRequest{
+		Name:      "  Blue Team  ",
+		AvatarURL: "  /game-icons/teams/blue.png  ",
+	})
+
+	if got.Name != "Blue Team" || got.AvatarURL != "/game-icons/teams/blue.png" {
+		t.Fatalf("unexpected normalized update team request: %#v", got)
+	}
+}
+
+func TestValidateUpdateTeamRequest(t *testing.T) {
+	valid := UpdateTeamRequest{Name: "Blue Team", AvatarURL: "https://example.test/avatar/blue.png"}
+	if details := validateUpdateTeamRequest("T1", valid); len(details) != 0 {
+		t.Fatalf("expected valid team update request, got %#v", details)
+	}
+
+	invalid := UpdateTeamRequest{Name: strings.Repeat("x", teamNameMaxLen+1), AvatarURL: "ftp://example.test/avatar.png"}
+	details := validateUpdateTeamRequest("", invalid)
+	if len(details) != 3 {
+		t.Fatalf("expected team id, name, and avatar validation errors, got %#v", details)
+	}
+}
+
+func TestValidTeamAvatarURLAllowsEmptyHTTPAndRootRelative(t *testing.T) {
+	for _, value := range []string{"", "https://example.test/avatar.png", "http://example.test/avatar.png", "/game-icons/teams/blue.png"} {
+		if !validTeamAvatarURL(value) {
+			t.Fatalf("expected %q to be valid", value)
+		}
+	}
+
+	for _, value := range []string{"ftp://example.test/avatar.png", "//example.test/avatar.png", "avatar.png"} {
+		if validTeamAvatarURL(value) {
+			t.Fatalf("expected %q to be invalid", value)
+		}
+	}
+}
+
+func TestUpdateTeamResponseIncludesAvatarURL(t *testing.T) {
+	got := updateTeamResponse(mongomodel.Team{ID: "T1", Name: "Blue Team", AvatarURL: "/avatar.png"})
+	if got.TeamID != "T1" || got.Name != "Blue Team" || got.AvatarURL != "/avatar.png" {
+		t.Fatalf("unexpected update team response: %#v", got)
+	}
+}
+
 func TestDashboardPlayerProjectionFetchesOnlyDashboardFields(t *testing.T) {
 	projection := dashboardPlayerProjection()
 	included := make(map[string]any, len(projection))

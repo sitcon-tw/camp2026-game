@@ -167,6 +167,7 @@ func staffTeamResponses(teams []mongomodel.Team, memberCounts map[string]int) []
 		responses = append(responses, StaffTeamResponse{
 			TeamID:      team.ID,
 			Name:        team.Name,
+			AvatarURL:   team.AvatarURL,
 			MemberCount: memberCounts[team.ID],
 		})
 	}

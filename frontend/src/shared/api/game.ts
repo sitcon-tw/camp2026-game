@@ -11,6 +11,7 @@ const nullableArray = <T extends z.ZodType>(schema: T) =>
 const TeamSchema = z.object({
   teamId: z.string(),
   name: z.string(),
+  avatarUrl: z.string().optional(),
 })
 
 const TeamMemberSchema = z.object({
@@ -370,6 +371,7 @@ const StaffPlayerSchema = z.object({
 const StaffTeamSchema = z.object({
   teamId: z.string(),
   name: z.string(),
+  avatarUrl: z.string().optional(),
   memberCount: z.number(),
 })
 
@@ -415,6 +417,7 @@ const AdminSettingsSchema = z.object({
 const AdminDashboardTeamSummarySchema = z.object({
   teamId: z.string(),
   name: z.string(),
+  avatarUrl: z.string().optional(),
 })
 
 const AdminDashboardPlayerSchema = z.object({
@@ -443,6 +446,7 @@ const AdminDashboardTeamSchema = z.object({
   rank: z.number(),
   teamId: z.string(),
   name: z.string(),
+  avatarUrl: z.string().optional(),
   playerCount: z.number(),
   sitoneCount: z.number(),
   itemCount: z.number(),
@@ -551,6 +555,7 @@ const AdminDashboardHistorySchema = z.object({
 })
 
 export type PlayerStatus = z.infer<typeof PlayerStatusSchema>
+export type Team = z.infer<typeof TeamSchema>
 export type TeamMember = z.infer<typeof TeamMemberSchema>
 export type HomeResponse = z.infer<typeof HomeResponseSchema>
 export type SitoneLoadoutResponse = z.infer<typeof SitoneLoadoutResponseSchema>
@@ -838,5 +843,18 @@ export const gameApi = {
       json: settings,
     })
     return AdminSettingsSchema.parse(json)
+  },
+
+  async updateAdminTeam(
+    teamID: string,
+    input: { name: string; avatarUrl?: string },
+  ) {
+    const json = await apiClient.put(
+      `/api/admin/teams/${encodeURIComponent(teamID)}`,
+      {
+        json: input,
+      },
+    )
+    return TeamSchema.parse(json)
   },
 }
