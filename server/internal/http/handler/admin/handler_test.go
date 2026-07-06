@@ -11,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
+	"github.com/sitcon-tw/camp2026-game/internal/gamecontrol"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
@@ -122,6 +123,18 @@ func TestGetSettingsRequiresAdminCookie(t *testing.T) {
 
 	if res.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, res.Code)
+	}
+}
+
+func TestSettingsResponseIncludesSameTeamBattleToggle(t *testing.T) {
+	got := settingsResponse(gamecontrol.Settings{})
+	if !got.SameTeamBattlesEnabled {
+		t.Fatal("expected same-team battles to be enabled by default")
+	}
+
+	got = settingsResponse(gamecontrol.Settings{SameTeamBattlesDisabled: true})
+	if got.SameTeamBattlesEnabled {
+		t.Fatal("expected same-team battles to be disabled when stored flag is set")
 	}
 }
 

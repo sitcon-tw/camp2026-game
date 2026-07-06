@@ -409,6 +409,7 @@ const AdminLoginResponseSchema = z.object({
 
 const AdminSettingsSchema = z.object({
   computerBattlesEnabled: z.boolean(),
+  sameTeamBattlesEnabled: z.boolean(),
   computerEasyAccuracy: z.number(),
   computerNormalAccuracy: z.number(),
   computerHardAccuracy: z.number(),

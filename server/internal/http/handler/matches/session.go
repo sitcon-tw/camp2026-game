@@ -223,6 +223,11 @@ func (s *MatchSession) Join(ctx context.Context, player mongomodel.Player) (Matc
 		s.mu.Unlock()
 		return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "match is full")
 	}
+	if err := s.h.ensureSameTeamBattleAllowed(ctx, s.match, player); err != nil {
+		s.mu.Unlock()
+		return MatchStateResponse{}, err
+	}
+
 	sitoneIDs, err := s.h.defaultSitoneLoadout(ctx, player)
 	if err != nil {
 		s.mu.Unlock()
@@ -250,6 +255,115 @@ func (s *MatchSession) Join(ctx context.Context, player mongomodel.Player) (Matc
 		s.h.publishEvent(ctx, event)
 	}
 	return s.h.buildMatchStateWithAnswers(ctx, match, player.ID, answers)
+}
+
+func (h *Handler) ensureSameTeamBattleAllowed(ctx context.Context, match mongomodel.Match, player mongomodel.Player) error {
+	if !shouldCheckSameTeamBattle(match, player) {
+		return nil
+	}
+
+	settings, err := gamecontrol.ReadSettings(ctx, h.db)
+	if err != nil {
+		return httpx.InternalServerError("match join failed", "match_join_settings_lookup_failed", err)
+	}
+	if settings.SameTeamBattlesEnabled() {
+		return nil
+	}
+
+	sameTeamOpponent, err := h.matchHasSameTeamOpponent(ctx, match, player)
+	if err != nil {
+		return httpx.InternalServerError("match join failed", "match_join_team_lookup_failed", err)
+	}
+	if sameTeamOpponent {
+		return httpx.NewError(http.StatusForbidden, "same-team battles are disabled")
+	}
+	return nil
+}
+
+func (h *Handler) ensureMatchSameTeamBattleAllowed(ctx context.Context, match mongomodel.Match) error {
+	if !shouldCheckSameTeamMatch(match) {
+		return nil
+	}
+
+	settings, err := gamecontrol.ReadSettings(ctx, h.db)
+	if err != nil {
+		return httpx.InternalServerError("match start failed", "match_start_settings_lookup_failed", err)
+	}
+	if settings.SameTeamBattlesEnabled() {
+		return nil
+	}
+
+	sameTeamParticipants, err := h.matchHasSameTeamParticipants(ctx, humanParticipantIDs(match))
+	if err != nil {
+		return httpx.InternalServerError("match start failed", "match_start_team_lookup_failed", err)
+	}
+	if sameTeamParticipants {
+		return httpx.NewError(http.StatusForbidden, "same-team battles are disabled")
+	}
+	return nil
+}
+
+func shouldCheckSameTeamMatch(match mongomodel.Match) bool {
+	return matchMode(match) == mongomodel.MatchModePVP && len(humanParticipantIDs(match)) > 1
+}
+
+func (h *Handler) matchHasSameTeamParticipants(ctx context.Context, playerIDs []string) (bool, error) {
+	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(ctx, bson.M{
+		"_id":     bson.M{"$in": playerIDs},
+		"team_id": bson.M{"$exists": true, "$ne": ""},
+	})
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var players []struct {
+		TeamID string `bson:"team_id"`
+	}
+	if err := cursor.All(ctx, &players); err != nil {
+		return false, err
+	}
+	seen := make(map[string]struct{}, len(players))
+	for _, player := range players {
+		if _, ok := seen[player.TeamID]; ok {
+			return true, nil
+		}
+		seen[player.TeamID] = struct{}{}
+	}
+	return false, nil
+}
+
+func shouldCheckSameTeamBattle(match mongomodel.Match, player mongomodel.Player) bool {
+	return matchMode(match) == mongomodel.MatchModePVP &&
+		player.TeamID != "" &&
+		!isParticipant(match, player.ID) &&
+		len(humanOpponentIDs(match, player.ID)) > 0
+}
+
+func (h *Handler) matchHasSameTeamOpponent(ctx context.Context, match mongomodel.Match, player mongomodel.Player) (bool, error) {
+	err := h.db.Collection(mongomodel.PlayersCollection).
+		FindOne(ctx, bson.M{
+			"_id":     bson.M{"$in": humanOpponentIDs(match, player.ID)},
+			"team_id": player.TeamID,
+		}).
+		Err()
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+func humanOpponentIDs(match mongomodel.Match, playerID string) []string {
+	ids := humanParticipantIDs(match)
+	opponents := ids[:0]
+	for _, id := range ids {
+		if id != playerID {
+			opponents = append(opponents, id)
+		}
+	}
+	return opponents
 }
 
 func (s *MatchSession) Ready(ctx context.Context, player mongomodel.Player) (MatchStateResponse, error) {
@@ -280,10 +394,17 @@ func (s *MatchSession) Ready(ctx context.Context, player mongomodel.Player) (Mat
 		s.mu.Unlock()
 		return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "select at least one sitone before ready")
 	}
+	wasReady := s.match.Players[idx].Ready
 	s.match.Players[idx].Ready = true
 	events = append(events, s.eventSnapshotLocked("player_ready"))
 
 	if allPlayersReady(s.match) {
+		if err := s.h.ensureMatchSameTeamBattleAllowed(ctx, s.match); err != nil {
+			s.match.Players[idx].Ready = wasReady
+			s.mu.Unlock()
+			return MatchStateResponse{}, err
+		}
+
 		questionIDs, err := s.h.pickQuestionIDs()
 		if err != nil {
 			s.mu.Unlock()

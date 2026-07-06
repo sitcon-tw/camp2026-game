@@ -336,6 +336,9 @@ definitions:
     type: object
   admin.DashboardTeamResponse:
     properties:
+      avatarUrl:
+        example: https://example.test/avatar/blue.png
+        type: string
       averageItems:
         example: 4.4
         type: number
@@ -371,6 +374,9 @@ definitions:
     type: object
   admin.DashboardTeamSummaryResponse:
     properties:
+      avatarUrl:
+        example: https://example.test/avatar/blue.png
+        type: string
       name:
         example: Blue Team
         type: string
@@ -430,11 +436,14 @@ definitions:
         maximum: 100
         minimum: 0
         type: integer
+      sameTeamBattlesEnabled:
+        type: boolean
     required:
     - computerBattlesEnabled
     - computerEasyAccuracy
     - computerHardAccuracy
     - computerNormalAccuracy
+    - sameTeamBattlesEnabled
     type: object
   admin.SettingsResponse:
     properties:
@@ -446,6 +455,29 @@ definitions:
         type: integer
       computerNormalAccuracy:
         type: integer
+      sameTeamBattlesEnabled:
+        type: boolean
+    type: object
+  admin.UpdateTeamRequest:
+    properties:
+      avatarUrl:
+        example: https://example.test/avatar/blue.png
+        type: string
+      name:
+        example: Blue Team
+        type: string
+    type: object
+  admin.UpdateTeamResponse:
+    properties:
+      avatarUrl:
+        example: https://example.test/avatar/blue.png
+        type: string
+      name:
+        example: Blue Team
+        type: string
+      teamId:
+        example: 8M4RXP
+        type: string
     type: object
   apimodel.AuthLoginRequest:
     properties:
@@ -1766,11 +1798,6 @@ definitions:
         maxLength: 512
         minLength: 4
         type: string
-      teamId:
-        example: 8M4RXP
-        maxLength: 128
-        minLength: 1
-        type: string
     required:
     - qrcodeToken
     type: object
@@ -1895,6 +1922,13 @@ definitions:
         maxLength: 128
         minLength: 1
         type: string
+      teamId:
+        example: 8M4RXP
+        maxLength: 128
+        minLength: 1
+        type: string
+    required:
+    - kind
     type: object
   staff.CreateRewardResponse:
     properties:
@@ -1980,6 +2014,9 @@ definitions:
     type: object
   staff.StaffTeamResponse:
     properties:
+      avatarUrl:
+        example: https://example.test/avatar/blue.png
+        type: string
       memberCount:
         example: 12
         type: integer
@@ -2172,6 +2209,58 @@ paths:
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
       summary: Update admin game settings
+      tags:
+      - admin
+  /admin/teams/{teamID}:
+    put:
+      consumes:
+      - application/json
+      description: Admin-only endpoint. Updates the team display name and avatar URL
+        shown in operations dashboards.
+      parameters:
+      - description: Team ID
+        in: path
+        name: teamID
+        required: true
+        type: string
+      - description: Team update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/admin.UpdateTeamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.UpdateTeamResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Update a team as admin
       tags:
       - admin
   /auth/login:
@@ -2738,6 +2827,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
         "404":
           description: Not Found
           schema:
@@ -2845,6 +2938,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
         "404":
           description: Not Found
           schema:
@@ -2902,6 +2999,29 @@ paths:
       summary: Get current open match
       tags:
       - matches
+  /me/events:
+    get:
+      description: Streams player reward notifications with Server-Sent Events.
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE event stream
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Stream player events
+      tags:
+      - me
   /me/home:
     get:
       description: Returns the authenticated player's home page summary, resource
@@ -3135,29 +3255,6 @@ paths:
       summary: Get current player status
       tags:
       - me
-  /me/events:
-    get:
-      description: Streams player reward notifications with Server-Sent Events.
-      produces:
-      - text/event-stream
-      responses:
-        "200":
-          description: SSE event stream
-          schema:
-            type: string
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: Stream player events
-      tags:
-      - me
   /qr/resolve:
     post:
       consumes:
@@ -3361,54 +3458,13 @@ paths:
       summary: Search players as staff
       tags:
       - staff
-  /staff/teams:
-    get:
-      description: Staff-only endpoint. Lists teams for reward targeting and supports
-        optional name or team ID filtering.
-      parameters:
-      - description: Team name or team ID keyword
-        in: query
-        name: query
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/staff.ListTeamsResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "503":
-          description: Service Unavailable
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: List teams as staff
-      tags:
-      - staff
   /staff/rewards:
     post:
       consumes:
       - application/json
-      description: Staff-only endpoint. Grants one sitone, item, or open power
-        reward to a player selected by player ID or QR code identifier, or to every
-        player in a team, and records the staff grant.
+      description: Staff-only endpoint. Grants one sitone, item, or open power reward
+        to a player selected by player ID or QR code identifier, or to every player
+        in a team, and records the staff grant.
       parameters:
       - description: Staff reward request
         in: body
@@ -3454,6 +3510,47 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Grant sitone, item, or open power as staff
+      tags:
+      - staff
+  /staff/teams:
+    get:
+      description: Staff-only endpoint. Lists teams for reward targeting and supports
+        optional name or team ID filtering.
+      parameters:
+      - description: Team name or team ID keyword
+        in: query
+        name: query
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/staff.ListTeamsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: List teams as staff
       tags:
       - staff
 schemes:

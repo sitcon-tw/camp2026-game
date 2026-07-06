@@ -568,6 +568,79 @@ func TestMatchModeAndPlayerKindDefaults(t *testing.T) {
 	}
 }
 
+func TestShouldCheckSameTeamBattleOnlyForNewPVPHumanOpponent(t *testing.T) {
+	match := mongomodel.Match{
+		Mode: mongomodel.MatchModePVP,
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: "P1", Kind: mongomodel.MatchPlayerKindHuman},
+		},
+	}
+	player := mongomodel.Player{ID: "P2", TeamID: "team-a"}
+	if !shouldCheckSameTeamBattle(match, player) {
+		t.Fatal("expected PVP join with a human opponent to check same-team setting")
+	}
+
+	match.Mode = mongomodel.MatchModeComputer
+	if shouldCheckSameTeamBattle(match, player) {
+		t.Fatal("expected computer match to skip same-team setting")
+	}
+
+	match.Mode = mongomodel.MatchModePVP
+	player.TeamID = ""
+	if shouldCheckSameTeamBattle(match, player) {
+		t.Fatal("expected ungrouped player to skip same-team setting")
+	}
+
+	player = mongomodel.Player{ID: "P1", TeamID: "team-a"}
+	if shouldCheckSameTeamBattle(match, player) {
+		t.Fatal("expected existing participant to skip same-team setting")
+	}
+
+	match.Players = []mongomodel.MatchPlayer{{PlayerID: computerPlayerID, Kind: mongomodel.MatchPlayerKindComputer}}
+	player = mongomodel.Player{ID: "P2", TeamID: "team-a"}
+	if shouldCheckSameTeamBattle(match, player) {
+		t.Fatal("expected match without human opponent to skip same-team setting")
+	}
+}
+
+func TestShouldCheckSameTeamMatchRequiresPVPHumanParticipants(t *testing.T) {
+	match := mongomodel.Match{
+		Mode: mongomodel.MatchModePVP,
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: "P1", Kind: mongomodel.MatchPlayerKindHuman},
+			{PlayerID: "P2", Kind: mongomodel.MatchPlayerKindHuman},
+		},
+	}
+	if !shouldCheckSameTeamMatch(match) {
+		t.Fatal("expected PVP match with two human participants to check same-team setting")
+	}
+
+	match.Mode = mongomodel.MatchModeComputer
+	if shouldCheckSameTeamMatch(match) {
+		t.Fatal("expected computer match to skip same-team setting")
+	}
+
+	match.Mode = mongomodel.MatchModePVP
+	match.Players[1].Kind = mongomodel.MatchPlayerKindComputer
+	if shouldCheckSameTeamMatch(match) {
+		t.Fatal("expected match without two human participants to skip same-team setting")
+	}
+}
+
+func TestHumanOpponentIDsExcludeCurrentAndComputerPlayers(t *testing.T) {
+	match := mongomodel.Match{
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: "P1", Kind: mongomodel.MatchPlayerKindHuman},
+			{PlayerID: "P2", Kind: mongomodel.MatchPlayerKindHuman},
+			{PlayerID: computerPlayerID, Kind: mongomodel.MatchPlayerKindComputer},
+		},
+	}
+	opponents := humanOpponentIDs(match, "P2")
+	if len(opponents) != 1 || opponents[0] != "P1" {
+		t.Fatalf("expected only P1 as human opponent, got %#v", opponents)
+	}
+}
+
 func TestComputerDifficultyForPlayerUsesLeaderboardPercentile(t *testing.T) {
 	entries := []computerRankEntry{
 		{PlayerID: "p1"},
