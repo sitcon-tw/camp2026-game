@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
+	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
 
@@ -355,6 +356,7 @@ func (h *Handler) createPlayerRewardResponse(
 	if err != nil {
 		return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_create_failed", err)
 	}
+	h.publishRewardGranted(recipient.ID, reward, body)
 
 	return CreateRewardResponse{
 		RewardIDs:    []string{rewardID},
@@ -416,6 +418,7 @@ func (h *Handler) createTeamRewardResponse(
 			return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_create_failed", err)
 		}
 		rewardIDs = append(rewardIDs, rewardID)
+		h.publishRewardGranted(recipient.ID, reward, body)
 	}
 	if len(rewardIDs) == 0 {
 		return CreateRewardResponse{}, 0, httpx.UnprocessableEntity(
@@ -443,4 +446,37 @@ func (h *Handler) createTeamRewardResponse(
 			Amount:   body.Amount,
 		},
 	}, http.StatusCreated, nil
+}
+
+func (h *Handler) publishRewardGranted(playerID string, reward rewardDefinition, body CreateRewardRequest) {
+	if h.broker == nil {
+		return
+	}
+	event := playerevents.RewardGrantedEvent{
+		Kind:       reward.kind,
+		RefID:      reward.id,
+		Name:       reward.name,
+		Source:     "staff_reward",
+		OccurredAt: time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	switch reward.kind {
+	case rewardKindOpenPower:
+		event.Amount = body.Amount
+	case rewardKindItem:
+		event.Quantity = body.Quantity
+		if item, ok := h.content.GetItem(body.RefID); ok {
+			event.ItemType = item.Type
+			event.IconPath = item.IconPath
+		}
+	case rewardKindSitone:
+		event.Quantity = body.Quantity
+		if sitone, ok := h.content.GetSitone(body.RefID); ok {
+			event.SitoneType = sitone.Type
+			event.IconPath = sitone.IconPath
+		}
+	}
+	h.broker.Publish(playerID, playerevents.Event{
+		Name:   "reward_granted",
+		Reward: &event,
+	})
 }

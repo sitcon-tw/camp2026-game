@@ -14,6 +14,7 @@ import (
 
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
+	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
 
@@ -80,6 +81,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("fusion failed", "fusion_create_failed", err))
 		return
 	}
+	h.publishFusionEvents(player.ID, recipe)
 
 	inventory, err := h.playerInventory(r.Context(), player.ID)
 	if err != nil {
@@ -152,6 +154,46 @@ func (h *Handler) createFusionWithTransaction(ctx context.Context, playerID stri
 		return "", err
 	}
 	return fusionID, nil
+}
+
+func (h *Handler) publishFusionEvents(playerID string, recipe content.FusionRecipe) {
+	if h.broker == nil {
+		return
+	}
+	occurredAt := time.Now().UTC().Format(time.RFC3339Nano)
+	for _, output := range recipe.Outputs {
+		event := playerevents.RewardGrantedEvent{
+			Kind:       output.Kind,
+			RefID:      output.ID,
+			Quantity:   output.Quantity,
+			Source:     "fusion",
+			OccurredAt: occurredAt,
+		}
+		switch output.Kind {
+		case content.FusionKindItem:
+			item, ok := h.content.GetItem(output.ID)
+			if !ok {
+				continue
+			}
+			event.Name = item.Name
+			event.ItemType = item.Type
+			event.IconPath = item.IconPath
+		case content.FusionKindSitone:
+			sitone, ok := h.content.GetSitone(output.ID)
+			if !ok {
+				continue
+			}
+			event.Name = sitone.Name
+			event.SitoneType = sitone.Type
+			event.IconPath = sitone.IconPath
+		default:
+			continue
+		}
+		h.broker.Publish(playerID, playerevents.Event{
+			Name:   "reward_granted",
+			Reward: &event,
+		})
+	}
 }
 
 func (h *Handler) consumeComponent(ctx context.Context, playerID string, component content.FusionComponent) error {

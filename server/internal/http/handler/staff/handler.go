@@ -9,23 +9,27 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
+	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
 
 type Dependencies struct {
 	Content *content.Store
 	MongoDB *mongo.Database
+	Broker  *playerevents.Broker
 }
 
 type Handler struct {
 	content *content.Store
 	db      *mongo.Database
+	broker  *playerevents.Broker
 }
 
 func New(dep Dependencies) *Handler {
 	return &Handler{
 		content: dep.Content,
 		db:      dep.MongoDB,
+		broker:  dep.Broker,
 	}
 }
 

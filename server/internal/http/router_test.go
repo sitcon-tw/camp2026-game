@@ -271,6 +271,7 @@ func TestMeRoutesRequireAuthentication(t *testing.T) {
 
 	for _, path := range []string{
 		"/api/me/home",
+		"/api/me/events",
 		"/api/me/status",
 		"/api/me/qrcode",
 		"/api/me/sitones",
@@ -293,6 +294,7 @@ func TestMeRoutesRequireDatabase(t *testing.T) {
 
 	for _, path := range []string{
 		"/api/me/home",
+		"/api/me/events",
 		"/api/me/status",
 		"/api/me/qrcode",
 		"/api/me/sitones",
@@ -449,6 +451,7 @@ func TestSwaggerJSON(t *testing.T) {
 		"/me/items",
 		"/me/matches",
 		"/me/home",
+		"/me/events",
 		"/me/qrcode",
 		"/me/sitones",
 		"/me/status",
@@ -527,6 +530,7 @@ func TestSwaggerJSON(t *testing.T) {
 	assertSwaggerSecurity(t, spec.Paths, "/fusions/recipes", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/leaderboards", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/home", http.MethodGet, true)
+	assertSwaggerSecurity(t, spec.Paths, "/me/events", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/status", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/qrcode", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/sitones", http.MethodGet, true)

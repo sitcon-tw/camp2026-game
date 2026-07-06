@@ -26,6 +26,7 @@ import (
 	staffhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/staff"
 	systemhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/system"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
+	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 )
 
 type Dependencies struct {
@@ -77,7 +78,7 @@ func timeoutExceptMatchEvents(timeout time.Duration) func(http.Handler) http.Han
 	return func(next http.Handler) http.Handler {
 		timeoutHandler := timeoutMiddleware(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasPrefix(r.URL.Path, "/api/matches/") && strings.HasSuffix(r.URL.Path, "/events") {
+			if isSSEPath(r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -86,7 +87,14 @@ func timeoutExceptMatchEvents(timeout time.Duration) func(http.Handler) http.Han
 	}
 }
 
+func isSSEPath(path string) bool {
+	return (strings.HasPrefix(path, "/api/matches/") && strings.HasSuffix(path, "/events")) ||
+		path == "/api/me/events"
+}
+
 func registerRoutes(api chi.Router, dep Dependencies) {
+	playerEventsBroker := playerevents.NewBroker()
+
 	adminhandler.New(adminhandler.Dependencies{
 		Content:           dep.Content,
 		MongoDB:           dep.MongoDB,
@@ -108,6 +116,7 @@ func registerRoutes(api chi.Router, dep Dependencies) {
 	mehandler.New(mehandler.Dependencies{
 		Content: dep.Content,
 		MongoDB: dep.MongoDB,
+		Broker:  playerEventsBroker,
 	}).RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
 	leaderboardshandler.New(leaderboardshandler.Dependencies{
 		Content: dep.Content,
@@ -123,15 +132,18 @@ func registerRoutes(api chi.Router, dep Dependencies) {
 		Content:     dep.Content,
 		MongoClient: dep.MongoClient,
 		MongoDB:     dep.MongoDB,
+		Broker:      playerEventsBroker,
 	}).RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
 	shophandler.New(shophandler.Dependencies{
 		Content:     dep.Content,
 		MongoClient: dep.MongoClient,
 		MongoDB:     dep.MongoDB,
+		Broker:      playerEventsBroker,
 	}).RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
 	staffhandler.New(staffhandler.Dependencies{
 		Content: dep.Content,
 		MongoDB: dep.MongoDB,
+		Broker:  playerEventsBroker,
 	}).RegisterRoutes(api.With(authctx.RequireStaff(dep.MongoDB)))
 
 	registerSwaggerRoutes(api)
