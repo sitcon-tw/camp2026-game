@@ -89,6 +89,11 @@ func (h *Handler) Display(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand unavailable", "community_stand_lookup_failed", err))
 		return
 	}
+	stand, err = h.ensureStandQRToken(r.Context(), stand)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand QR token unavailable", "community_stand_qr_token_failed", err))
+		return
+	}
 	reward, ok := h.rewardResponse(stand.Reward)
 	if !ok {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand reward unavailable", "community_stand_reward_missing", errors.New("reward content missing")))
@@ -104,6 +109,7 @@ func (h *Handler) Display(w http.ResponseWriter, r *http.Request) {
 		Stand:      standResponse(stand, reward),
 		VisitCount: visitCount,
 		ClaimCount: claimCount,
+		QRToken:    stand.QRToken,
 	})
 }
 

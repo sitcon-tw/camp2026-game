@@ -380,6 +380,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/inventory-trims": {
+            "post": {
+                "description": "Admin-only endpoint. Selects the top N leaderboard players, removes sitones and open power, then notifies affected players.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Trim top player inventory",
+                "parameters": [
+                    {
+                        "description": "Inventory trim request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.CreateInventoryTrimRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.CreateInventoryTrimResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/admin.CreateInventoryTrimResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/login": {
             "post": {
                 "description": "Uses the ADMIN_PASSWORD environment variable to create an admin session cookie.",
@@ -450,6 +520,83 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/admin/players/{playerID}/balance": {
+            "put": {
+                "description": "Admin-only endpoint. Sets one player's total sitone count and open power to target values, then notifies the player.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Update one player's balance totals",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Player ID",
+                        "name": "playerID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Player balance request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.UpdatePlayerBalanceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.InventoryTrimPlayerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
                     }
                 }
             }
@@ -762,6 +909,128 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/catalog.SitoneListResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/community/scans/{qrToken}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns the community stand shown after a player scans its QR code. The QR token is opaque and does not contain the stand ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "community-stands"
+                ],
+                "summary": "Get community stand by QR token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Opaque community stand QR token",
+                        "name": "qrToken",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/communitystands.DetailResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/community/scans/{qrToken}/claim": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Claims the scanned community stand reward for the authenticated player. Each player can claim each stand once.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "community-stands"
+                ],
+                "summary": "Claim community stand reward by QR token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Opaque community stand QR token",
+                        "name": "qrToken",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/communitystands.ClaimResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
                         }
                     },
                     "503": {
@@ -2925,6 +3194,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "SITCON 社群攤位"
                 },
+                "qrToken": {
+                    "type": "string",
+                    "example": "cst_abcd1234"
+                },
                 "reward": {
                     "$ref": "#/definitions/admin.CommunityStandRewardResponse"
                 },
@@ -3035,6 +3308,62 @@ const docTemplate = `{
                 "websiteUrl": {
                     "type": "string",
                     "example": "https://sitcon.org"
+                }
+            }
+        },
+        "admin.CreateInventoryTrimRequest": {
+            "type": "object",
+            "required": [
+                "top"
+            ],
+            "properties": {
+                "dryRun": {
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string",
+                    "maxLength": 240
+                },
+                "openPower": {
+                    "type": "integer",
+                    "maximum": 999999,
+                    "minimum": 0,
+                    "example": 500
+                },
+                "sitoneCount": {
+                    "type": "integer",
+                    "maximum": 9999,
+                    "minimum": 0,
+                    "example": 2
+                },
+                "top": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 1,
+                    "example": 3
+                }
+            }
+        },
+        "admin.CreateInventoryTrimResponse": {
+            "type": "object",
+            "properties": {
+                "affectedCount": {
+                    "type": "integer"
+                },
+                "dryRun": {
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "players": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.InventoryTrimPlayerResponse"
+                    }
+                },
+                "requestedTop": {
+                    "type": "integer"
                 }
             }
         },
@@ -3606,6 +3935,54 @@ const docTemplate = `{
                 }
             }
         },
+        "admin.InventoryTrimPlayerResponse": {
+            "type": "object",
+            "properties": {
+                "nickname": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "openPowerAfter": {
+                    "type": "integer",
+                    "example": 700
+                },
+                "openPowerBefore": {
+                    "type": "integer",
+                    "example": 1200
+                },
+                "openPowerTrimmed": {
+                    "type": "integer",
+                    "example": 500
+                },
+                "playerId": {
+                    "type": "string",
+                    "example": "7H9K2Q"
+                },
+                "rank": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "sitoneAfter": {
+                    "type": "integer",
+                    "example": 16
+                },
+                "sitoneBefore": {
+                    "type": "integer",
+                    "example": 18
+                },
+                "sitoneTrimmed": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "teamId": {
+                    "type": "string",
+                    "example": "8M4RXP"
+                },
+                "trimId": {
+                    "type": "string"
+                }
+            }
+        },
         "admin.LoginRequest": {
             "type": "object",
             "required": [
@@ -3704,6 +4081,27 @@ const docTemplate = `{
                 "websiteUrl": {
                     "type": "string",
                     "example": "https://sitcon.org"
+                }
+            }
+        },
+        "admin.UpdatePlayerBalanceRequest": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "maxLength": 240
+                },
+                "openPower": {
+                    "type": "integer",
+                    "maximum": 9999999,
+                    "minimum": 0,
+                    "example": 2400
+                },
+                "sitoneCount": {
+                    "type": "integer",
+                    "maximum": 99999,
+                    "minimum": 0,
+                    "example": 12
                 }
             }
         },
@@ -3944,6 +4342,10 @@ const docTemplate = `{
                 "claimCount": {
                     "type": "integer",
                     "example": 38
+                },
+                "qrToken": {
+                    "type": "string",
+                    "example": "cst_abcd1234"
                 },
                 "stand": {
                     "$ref": "#/definitions/communitystands.StandResponse"

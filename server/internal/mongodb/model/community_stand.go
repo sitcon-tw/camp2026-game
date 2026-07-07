@@ -14,6 +14,7 @@ type CommunityStand struct {
 	Description string      `bson:"description"`
 	LogoURL     string      `bson:"logo_url,omitempty"`
 	WebsiteURL  string      `bson:"website_url,omitempty"`
+	QRToken     string      `bson:"qr_token,omitempty"`
 	Enabled     bool        `bson:"enabled"`
 	Reward      StandReward `bson:"reward"`
 	CreatedAt   time.Time   `bson:"created_at"`

@@ -95,7 +95,7 @@
 
 #### 學員掃描後取得攤位資訊
 
-`GET /api/community/{standID}`
+`GET /api/community/scans/{qrToken}`
 
 需要學員登入。
 
@@ -107,7 +107,7 @@
 
 #### 學員領取攤位獎勵
 
-`POST /api/community/{standID}/claim`
+`POST /api/community/scans/{qrToken}/claim`
 
 需要學員登入。
 
@@ -128,6 +128,7 @@
 - `/community/$standId` 頁面使用。
 - 回傳攤位資訊、來過學員數、已領獎數。
 - 給社群攤位夥伴現場展示 QRCode 與查看統計。
+- QRCode 內容使用 `camp2026-community-stand|{qrToken}` 掃描 payload，不放入 `/community/{standID}` 看板網址。
 
 ## 課活組說明
 
@@ -182,5 +183,5 @@
 
 - 學員必須登入遊戲才能掃描與領獎。
 - 攤位看板頁不需要登入，方便社群夥伴直接展示。
-- 若相機權限無法開啟，學員可手動輸入攤位 ID。
-- QRCode 對應的是攤位網址，不是學員自己的個人 QRCode。
+- 若相機權限無法開啟，學員可手動輸入 QRCode 內容。
+- QRCode 對應的是不透明 qrToken，不是攤位網址，也不是學員自己的個人 QRCode。

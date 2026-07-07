@@ -34,6 +34,8 @@ func New(dep Dependencies) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(api chi.Router) {
+	api.Get("/community/scans/{qrToken}", h.ScanGet)
+	api.Post("/community/scans/{qrToken}/claim", h.ScanClaim)
 	api.Get("/community/{standID}", h.Get)
 	api.Post("/community/{standID}/claim", h.Claim)
 }

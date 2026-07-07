@@ -321,7 +321,9 @@ func TestCommunityStandRoutesRequireAuthentication(t *testing.T) {
 		path   string
 	}{
 		{method: http.MethodGet, path: "/api/community/q7m4x2v9"},
+		{method: http.MethodGet, path: "/api/community/scans/cst_token"},
 		{method: http.MethodPost, path: "/api/community/q7m4x2v9/claim"},
+		{method: http.MethodPost, path: "/api/community/scans/cst_token/claim"},
 	} {
 		res := performRequest(router, route.method, route.path, nil)
 		problem := assertProblem(t, res, http.StatusUnauthorized, "")
@@ -353,7 +355,9 @@ func TestCommunityStandRoutesRequireDatabase(t *testing.T) {
 		path   string
 	}{
 		{method: http.MethodGet, path: "/api/community/q7m4x2v9"},
+		{method: http.MethodGet, path: "/api/community/scans/cst_token"},
 		{method: http.MethodPost, path: "/api/community/q7m4x2v9/claim"},
+		{method: http.MethodPost, path: "/api/community/scans/cst_token/claim"},
 	} {
 		res := performRequestWithCookie(router, route.method, route.path, nil, "auth_token_123456")
 		problem := assertProblem(t, res, http.StatusServiceUnavailable, "")
@@ -498,6 +502,8 @@ func TestSwaggerJSON(t *testing.T) {
 		"/catalog/items",
 		"/catalog/sitones",
 		"/community/{standID}",
+		"/community/scans/{qrToken}",
+		"/community/scans/{qrToken}/claim",
 		"/community/{standID}/display",
 		"/community/{standID}/claim",
 		"/healthz",
@@ -582,6 +588,8 @@ func TestSwaggerJSON(t *testing.T) {
 	assertSwaggerSecurity(t, spec.Paths, "/catalog/items", http.MethodGet, false)
 	assertSwaggerSecurity(t, spec.Paths, "/catalog/sitones", http.MethodGet, false)
 	assertSwaggerSecurity(t, spec.Paths, "/community/{standID}", http.MethodGet, true)
+	assertSwaggerSecurity(t, spec.Paths, "/community/scans/{qrToken}", http.MethodGet, true)
+	assertSwaggerSecurity(t, spec.Paths, "/community/scans/{qrToken}/claim", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/community/{standID}/display", http.MethodGet, false)
 	assertSwaggerSecurity(t, spec.Paths, "/community/{standID}/claim", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/qr/resolve", http.MethodPost, true)

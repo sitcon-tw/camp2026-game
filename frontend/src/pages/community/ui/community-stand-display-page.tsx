@@ -11,6 +11,7 @@ import { QRCodeSVG } from "qrcode.react"
 import { useMemo } from "react"
 
 import { gameApi, type CommunityStandReward } from "@/shared/api/game"
+import { communityStandQrValue } from "@/shared/lib/community-stand-qr"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
@@ -29,8 +30,8 @@ export function CommunityStandDisplayPage({
     refetchInterval: 15_000,
   })
   const qrValue = useMemo(
-    () => standScanUrl(standQuery.data?.stand.standId ?? standID),
-    [standID, standQuery.data?.stand.standId],
+    () => communityStandQrValue(standQuery.data?.qrToken ?? ""),
+    [standQuery.data?.qrToken],
   )
 
   return (
@@ -173,9 +174,6 @@ export function CommunityStandDisplayPage({
                   value={qrValue}
                 />
               </div>
-              <p className="text-muted-foreground text-sm font-bold break-all">
-                {qrValue}
-              </p>
               <Button
                 type="button"
                 variant="secondary"
@@ -237,12 +235,6 @@ function MetricCard({
       </CardContent>
     </Card>
   )
-}
-
-function standScanUrl(standID: string) {
-  const path = `/community/${encodeURIComponent(standID)}`
-  if (typeof window === "undefined") return path
-  return new URL(path, window.location.origin).toString()
 }
 
 function rewardText(reward: CommunityStandReward) {

@@ -42,6 +42,7 @@ type DisplayResponse struct {
 	Stand      StandResponse `json:"stand"`
 	VisitCount int64         `json:"visitCount" example:"42"`
 	ClaimCount int64         `json:"claimCount" example:"38"`
+	QRToken    string        `json:"qrToken" example:"cst_abcd1234"`
 }
 
 func standResponse(stand mongomodel.CommunityStand, reward RewardResponse) StandResponse {
