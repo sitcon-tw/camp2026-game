@@ -332,7 +332,7 @@ function FusionConfirmDialog({
                 onClick={() => onFillMissing(recipe.id)}
               >
                 <GameFeatureIcon name="shop" className="size-4" />
-                {fillPending ? "補齊中" : "Fill Missing Materials"}
+                {fillPending ? "自動補齊中" : "自動補齊可取得材料"}
               </Button>
             </section>
           ) : null}
@@ -411,9 +411,16 @@ export function StoneFusionPanel() {
   const fillMutation = useMutation({
     mutationFn: gameApi.fillMissingFusionMaterials,
     onSuccess: (result, recipeID) => {
-      const filledNames = result.filledMaterials.map(
-        (material) => material.name,
-      )
+      const purchaseMessages = result.filledMaterials
+        .filter((material) => material.action === "purchase")
+        .map((material) => `${material.name} x${material.quantity}`)
+      const fusionMessages = result.filledMaterials
+        .filter((material) => material.action === "fusion")
+        .map((material) =>
+          material.source
+            ? `${material.name} x${material.quantity}（透過 ${material.source}）`
+            : `${material.name} x${material.quantity}`,
+        )
       const failedMaterials = result.failedMaterials
       setSelectedRecipe(result.recipe)
       queryClient.setQueryData<FusionRecipe[]>(
@@ -427,8 +434,18 @@ export function StoneFusionPanel() {
       queryClient.invalidateQueries({ queryKey: ["me", "items"] })
       queryClient.invalidateQueries({ queryKey: ["me", "home"] })
       queryClient.invalidateQueries({ queryKey: ["shop", "items"] })
-      if (filledNames.length > 0) {
-        toast.success(`已補齊：${filledNames.join("、")}`)
+      if (purchaseMessages.length > 0 || fusionMessages.length > 0) {
+        const parts = []
+        if (purchaseMessages.length > 0) {
+          parts.push(`已購買：${purchaseMessages.join("、")}`)
+        }
+        if (fusionMessages.length > 0) {
+          parts.push(`已合成：${fusionMessages.join("、")}`)
+        }
+        if (result.priceOpenPowerSpent > 0) {
+          parts.push(`消耗開放力 ${result.priceOpenPowerSpent}`)
+        }
+        toast.success(parts.join("；"))
       }
       if (failedMaterials.length > 0) {
         toast.error(
@@ -436,10 +453,12 @@ export function StoneFusionPanel() {
             .map((material) => `${material.name}：${material.reason}`)
             .join("；"),
         )
+      } else if (purchaseMessages.length === 0 && fusionMessages.length === 0) {
+        toast("目前沒有可自動補齊的材料")
       }
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "補齊材料失敗")
+      toast.error(error instanceof Error ? error.message : "自動補齊材料失敗")
     },
   })
 

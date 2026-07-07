@@ -210,6 +210,8 @@ const FusionFillMaterialResultSchema = z.object({
   id: z.string(),
   name: z.string(),
   quantity: z.number(),
+  action: z.enum(["purchase", "fusion"]).optional(),
+  source: z.string().optional(),
 })
 
 const FusionFillMaterialFailureSchema = FusionFillMaterialResultSchema.extend({

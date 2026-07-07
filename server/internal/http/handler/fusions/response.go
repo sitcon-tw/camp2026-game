@@ -60,6 +60,8 @@ type FillMaterialResult struct {
 	ID       string `json:"id" example:"item_adventure_backpack"`
 	Name     string `json:"name" example:"冒險背包"`
 	Quantity int    `json:"quantity" example:"1"`
+	Action   string `json:"action,omitempty" example:"purchase"`
+	Source   string `json:"source,omitempty" example:"營地背包小石"`
 }
 
 type FillMaterialFailure struct {
