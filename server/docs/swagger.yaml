@@ -804,6 +804,9 @@ definitions:
     type: object
   fusions.FillMaterialResult:
     properties:
+      action:
+        example: purchase
+        type: string
       id:
         example: item_adventure_backpack
         type: string
@@ -816,6 +819,9 @@ definitions:
       quantity:
         example: 1
         type: integer
+      source:
+        example: 營地背包小石
+        type: string
     type: object
   fusions.FillMissingMaterialsResponse:
     properties:
@@ -2642,7 +2648,8 @@ paths:
           description: OK
           headers:
             Set-Cookie:
-              description: camp2026_auth=<auth-token>; Path=/; HttpOnly; Secure; SameSite=Strict
+              description: camp2026_auth=<auth-token>; Path=/; Max-Age=31536000; HttpOnly;
+                Secure; SameSite=Strict
               type: string
           schema:
             $ref: '#/definitions/apimodel.AuthLoginResponse'
@@ -2892,9 +2899,9 @@ paths:
       - fusions
   /fusions/{recipeID}/fill-missing-materials:
     post:
-      description: Automatically purchases missing shop materials for a fusion recipe
-        when possible, then returns refreshed recipe availability and failure details
-        for anything that could not be filled.
+      description: Automatically purchases or crafts missing materials for a fusion
+        recipe when possible, then returns refreshed recipe availability and failure
+        details for anything that could not be filled.
       parameters:
       - description: Recipe ID
         in: path

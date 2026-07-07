@@ -69,8 +69,8 @@ func TestSetAuthCookie(t *testing.T) {
 	if cookie.SameSite != http.SameSiteStrictMode {
 		t.Fatalf("expected SameSite=Strict, got %v", cookie.SameSite)
 	}
-	if cookie.MaxAge != 0 {
-		t.Fatalf("expected session cookie max age, got %d", cookie.MaxAge)
+	if cookie.MaxAge != authCookieMaxAge {
+		t.Fatalf("expected one-year cookie max age, got %d", cookie.MaxAge)
 	}
 }
 

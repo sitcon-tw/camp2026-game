@@ -16,6 +16,8 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/openpower"
 )
 
+const authCookieMaxAge = 365 * 24 * 60 * 60
+
 // Login godoc
 // @Summary User login with auth token
 // @Description User-facing endpoint. Validates the issued game URL token and writes it to the camp2026_auth cookie.
@@ -24,7 +26,7 @@ import (
 // @Produce json
 // @Param request body apimodel.AuthLoginRequest true "Auth login request"
 // @Success 200 {object} apimodel.AuthLoginResponse
-// @Header 200 {string} Set-Cookie "camp2026_auth=<auth-token>; Path=/; HttpOnly; Secure; SameSite=Strict"
+// @Header 200 {string} Set-Cookie "camp2026_auth=<auth-token>; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Strict"
 // @Failure 400 {object} httpx.ProblemDetails
 // @Failure 401 {object} httpx.ProblemDetails
 // @Failure 422 {object} httpx.ProblemDetails
@@ -91,7 +93,7 @@ func playerTeamID(player mongomodel.Player) string {
 }
 
 func setAuthCookie(w http.ResponseWriter, token string) {
-	http.SetCookie(w, authCookie(token, 0))
+	http.SetCookie(w, authCookie(token, authCookieMaxAge))
 }
 
 func authCookie(value string, maxAge int) *http.Cookie {
