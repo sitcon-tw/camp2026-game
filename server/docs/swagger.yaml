@@ -599,6 +599,68 @@ definitions:
         example: engineering
         type: string
     type: object
+  communitystands.ClaimResponse:
+    properties:
+      claimId:
+        example: community_claim_507f1f77bcf86cd799439011
+        type: string
+      claimed:
+        example: true
+        type: boolean
+      reward:
+        $ref: '#/definitions/communitystands.RewardResponse'
+      stand:
+        $ref: '#/definitions/communitystands.StandResponse'
+    type: object
+  communitystands.DetailResponse:
+    properties:
+      claimed:
+        example: false
+        type: boolean
+      stand:
+        $ref: '#/definitions/communitystands.StandResponse'
+    type: object
+  communitystands.RewardResponse:
+    properties:
+      amount:
+        example: 50
+        type: integer
+      iconPath:
+        example: /game-icons/items/item_booth_sticker.png
+        type: string
+      kind:
+        example: item
+        type: string
+      name:
+        example: 攤位貼紙
+        type: string
+      quantity:
+        example: 1
+        type: integer
+      refId:
+        example: item_booth_sticker
+        type: string
+    type: object
+  communitystands.StandResponse:
+    properties:
+      description:
+        example: 介紹學生社群與開源參與方式。
+        type: string
+      logoUrl:
+        example: /game-icons/features/team.png
+        type: string
+      name:
+        example: SITCON 社群攤位
+        type: string
+      reward:
+        $ref: '#/definitions/communitystands.RewardResponse'
+      standId:
+        example: q7m4x2v9
+        type: string
+      websiteUrl:
+        example: https://sitcon.org
+        type: string
+    type: object
   fusions.CreateRequest:
     properties:
       recipeId:
@@ -612,6 +674,55 @@ definitions:
       fusionId:
         example: fusion_abc123
         type: string
+      recipe:
+        $ref: '#/definitions/fusions.FusionRecipeResponse'
+    type: object
+  fusions.FillMaterialFailure:
+    properties:
+      id:
+        example: item_adventure_backpack
+        type: string
+      kind:
+        example: item
+        type: string
+      name:
+        example: 冒險背包
+        type: string
+      quantity:
+        example: 1
+        type: integer
+      reason:
+        example: material is not purchasable automatically
+        type: string
+    type: object
+  fusions.FillMaterialResult:
+    properties:
+      id:
+        example: item_adventure_backpack
+        type: string
+      kind:
+        example: item
+        type: string
+      name:
+        example: 冒險背包
+        type: string
+      quantity:
+        example: 1
+        type: integer
+    type: object
+  fusions.FillMissingMaterialsResponse:
+    properties:
+      failedMaterials:
+        items:
+          $ref: '#/definitions/fusions.FillMaterialFailure'
+        type: array
+      filledMaterials:
+        items:
+          $ref: '#/definitions/fusions.FillMaterialResult'
+        type: array
+      priceOpenPowerSpent:
+        example: 50
+        type: integer
       recipe:
         $ref: '#/definitions/fusions.FusionRecipeResponse'
     type: object
@@ -641,9 +752,15 @@ definitions:
       kind:
         example: item
         type: string
+      missingQuantity:
+        example: 1
+        type: integer
       name:
         example: 冒險背包
         type: string
+      ownedQuantity:
+        example: 0
+        type: integer
       quantity:
         example: 1
         type: integer
@@ -2366,6 +2483,86 @@ paths:
       summary: List sitone catalog
       tags:
       - catalog
+  /community/{standID}:
+    get:
+      description: Returns the community stand shown after a player scans its QR code,
+        including whether the current player already claimed the reward.
+      parameters:
+      - description: Community stand ID from the scanned URL
+        in: path
+        name: standID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/communitystands.DetailResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get community stand by fixed stand ID
+      tags:
+      - community-stands
+  /community/{standID}/claim:
+    post:
+      description: Claims the scanned community stand reward for the authenticated
+        player. Each player can claim each stand once.
+      parameters:
+      - description: Community stand ID from the scanned URL
+        in: path
+        name: standID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/communitystands.ClaimResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Claim community stand reward
+      tags:
+      - community-stands
   /fusions:
     post:
       consumes:
@@ -2417,6 +2614,49 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Create fusion
+      tags:
+      - fusions
+  /fusions/{recipeID}/fill-missing-materials:
+    post:
+      description: Automatically purchases missing shop materials for a fusion recipe
+        when possible, then returns refreshed recipe availability and failure details
+        for anything that could not be filled.
+      parameters:
+      - description: Recipe ID
+        in: path
+        name: recipeID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fusions.FillMissingMaterialsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Fill missing fusion materials
       tags:
       - fusions
   /fusions/recipes:

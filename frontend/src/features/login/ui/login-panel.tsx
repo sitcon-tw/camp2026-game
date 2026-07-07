@@ -116,12 +116,7 @@ export function LoginPanel({ initialToken }: LoginPanelProps) {
       to: loginDestination(statusQuery.data),
       replace: true,
     })
-  }, [
-    navigate,
-    queryClient,
-    statusQuery.data,
-    statusQuery.isFetchedAfterMount,
-  ])
+  }, [navigate, queryClient, statusQuery.data, statusQuery.isFetchedAfterMount])
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
