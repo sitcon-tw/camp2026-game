@@ -79,33 +79,36 @@ export function GiftHistoryPage() {
 
   return (
     <GamePageShell
-      ariaLabel="贈禮紀錄頁"
+      ariaLabel="禮物接收歷史頁"
       contentClassName="grid content-start gap-y-3"
     >
       <PageHeader
-        title="贈禮紀錄"
-        headline="Gift History"
+        title="禮物接收歷史"
+        headline="Received Gifts"
         rightSlot={
-          <Button variant="secondary" size="sm" className="border-ink border-2">
+          <Badge
+            variant="secondary"
+            className="border-ink mt-1 border-2 px-3 py-1 text-sm font-black"
+          >
             {isPending ? "同步中" : `${entries.length} 筆`}
-          </Button>
+          </Badge>
         }
       />
 
       {isUnauthorized ? (
         <EmptyState
           title="請先登入"
-          description="登入後才能查看自己的贈禮紀錄。"
+          description="登入後才能查看自己收到的禮物紀錄。"
         />
       ) : isPending ? (
         <EmptyState
-          title="正在同步贈禮紀錄"
+          title="正在同步禮物接收歷史"
           description="系統正在整理你收到的獎勵。"
         />
       ) : entries.length === 0 ? (
         <Card className="border-ink rounded-[22px] border-2">
           <CardHeader>
-            <CardTitle>目前還沒有贈禮紀錄</CardTitle>
+            <CardTitle>目前還沒有禮物接收紀錄</CardTitle>
             <CardDescription>
               關主發放小石、道具或開源力後，紀錄會顯示在這裡。
             </CardDescription>
@@ -117,7 +120,7 @@ export function GiftHistoryPage() {
           </CardFooter>
         </Card>
       ) : (
-        <section className="grid gap-3" aria-label="贈禮紀錄列表">
+        <section className="grid gap-3" aria-label="禮物接收歷史列表">
           {entries.map((entry) => (
             <Card
               key={entry.rewardId}

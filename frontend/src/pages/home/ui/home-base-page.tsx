@@ -390,6 +390,19 @@ export function HomeBasePage() {
             })}
           </div>
         </section>
+
+        <Button
+          asChild
+          size="lg"
+          variant="secondary"
+          className="min-h-[56px] rounded-[16px] text-base"
+        >
+          <Link to="/gift-history" aria-label="查看禮物接收歷史">
+            <GameFeatureIcon name="giftHistory" className="size-7" />
+            查看禮物接收歷史
+            <ChevronRight className="size-5" aria-hidden />
+          </Link>
+        </Button>
       </section>
     </GamePageShell>
   )
