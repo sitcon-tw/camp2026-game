@@ -890,6 +890,11 @@ export const gameApi = {
     return PlayerSitonesResponseSchema.parse(json).sitones
   },
 
+  async teamSitones() {
+    const json = await apiClient.get("/api/me/team/sitones")
+    return PlayerSitonesResponseSchema.parse(json).sitones
+  },
+
   async playerItems() {
     const json = await apiClient.get("/api/me/items")
     return PlayerItemsResponseSchema.parse(json).items

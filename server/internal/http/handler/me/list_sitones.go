@@ -85,21 +85,25 @@ func mapPlayerSitones(store *content.Store, records []mongomodel.PlayerSitone) (
 			ID:       record.ID,
 			SitoneID: record.SitoneID,
 			Quantity: record.Quantity,
-			Sitone: SitoneResponse{
-				ID:                 sitone.ID,
-				Name:               sitone.Name,
-				Type:               sitone.Type,
-				Rarity:             sitone.Rarity,
-				Style:              sitone.Style,
-				Description:        sitone.Description,
-				IconPath:           sitone.IconPath,
-				AbilityName:        sitone.AbilityName,
-				AbilityKind:        sitone.AbilityKind,
-				AbilityValue:       sitone.AbilityValue,
-				AbilityCount:       sitone.AbilityCount,
-				AbilityDescription: sitone.AbilityDescription,
-			},
+			Sitone:   sitoneResponse(sitone),
 		})
 	}
 	return out, nil
+}
+
+func sitoneResponse(sitone content.Sitone) SitoneResponse {
+	return SitoneResponse{
+		ID:                 sitone.ID,
+		Name:               sitone.Name,
+		Type:               sitone.Type,
+		Rarity:             sitone.Rarity,
+		Style:              sitone.Style,
+		Description:        sitone.Description,
+		IconPath:           sitone.IconPath,
+		AbilityName:        sitone.AbilityName,
+		AbilityKind:        sitone.AbilityKind,
+		AbilityValue:       sitone.AbilityValue,
+		AbilityCount:       sitone.AbilityCount,
+		AbilityDescription: sitone.AbilityDescription,
+	}
 }

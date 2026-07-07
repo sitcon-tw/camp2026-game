@@ -275,6 +275,7 @@ func TestMeRoutesRequireAuthentication(t *testing.T) {
 		"/api/me/status",
 		"/api/me/qrcode",
 		"/api/me/sitones",
+		"/api/me/team/sitones",
 		"/api/me/sitone-loadout",
 		"/api/me/items",
 		"/api/me/matches",
@@ -298,6 +299,7 @@ func TestMeRoutesRequireDatabase(t *testing.T) {
 		"/api/me/status",
 		"/api/me/qrcode",
 		"/api/me/sitones",
+		"/api/me/team/sitones",
 		"/api/me/sitone-loadout",
 		"/api/me/items",
 		"/api/me/matches",
@@ -516,6 +518,7 @@ func TestSwaggerJSON(t *testing.T) {
 		"/me/events",
 		"/me/qrcode",
 		"/me/sitones",
+		"/me/team/sitones",
 		"/me/status",
 		"/matches",
 		"/matches/join",
@@ -601,6 +604,7 @@ func TestSwaggerJSON(t *testing.T) {
 	assertSwaggerSecurity(t, spec.Paths, "/me/status", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/qrcode", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/sitones", http.MethodGet, true)
+	assertSwaggerSecurity(t, spec.Paths, "/me/team/sitones", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/items", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/matches", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/matches", http.MethodPost, true)

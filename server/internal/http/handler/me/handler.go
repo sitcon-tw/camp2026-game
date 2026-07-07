@@ -41,6 +41,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Put("/me/avatar", h.UpdateAvatar)
 	api.Put("/me/team/avatar", h.UpdateTeamAvatar)
 	api.Get("/me/sitones", h.ListSitones)
+	api.Get("/me/team/sitones", h.ListTeamSitones)
 	api.Get("/me/sitone-loadout", h.SitoneLoadout)
 	api.Put("/me/sitone-loadout", h.UpdateSitoneLoadout)
 	api.Get("/me/items", h.ListItems)

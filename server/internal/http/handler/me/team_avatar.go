@@ -16,7 +16,7 @@ import (
 
 // UpdateTeamAvatar godoc
 // @Summary Update current player's team avatar
-// @Description Updates the authenticated player's team avatar to any sitone catalog icon, or clears it to restore the default team avatar.
+// @Description Updates the authenticated player's team avatar to a sitone icon owned by at least one team member, or clears it to restore the default team avatar.
 // @Tags me
 // @Accept json
 // @Produce json
@@ -52,7 +52,7 @@ func (h *Handler) UpdateTeamAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	avatarURL, err := h.teamAvatarURLForRequest(body)
+	avatarURL, err := h.teamAvatarURLForRequest(r.Context(), player.TeamID, body)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
@@ -70,7 +70,7 @@ func (h *Handler) UpdateTeamAvatar(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, UpdateTeamAvatarResponse{Team: teamResponse(team)})
 }
 
-func (h *Handler) teamAvatarURLForRequest(body UpdateTeamAvatarRequest) (string, error) {
+func (h *Handler) teamAvatarURLForRequest(ctx context.Context, teamID string, body UpdateTeamAvatarRequest) (string, error) {
 	if body.SitoneID == nil {
 		return "", nil
 	}
@@ -86,6 +86,14 @@ func (h *Handler) teamAvatarURLForRequest(body UpdateTeamAvatarRequest) (string,
 	}
 	if strings.TrimSpace(sitone.IconPath) == "" {
 		return "", httpx.BadRequest("sitone has no avatar icon")
+	}
+
+	owned, err := h.teamOwnedSitoneCounts(ctx, teamID)
+	if err != nil {
+		return "", httpx.InternalServerError("team avatar unavailable", "me_team_avatar_inventory_lookup_failed", err)
+	}
+	if owned[sitoneID] <= 0 {
+		return "", httpx.BadRequest("sitone is not owned by team")
 	}
 	return sitone.IconPath, nil
 }

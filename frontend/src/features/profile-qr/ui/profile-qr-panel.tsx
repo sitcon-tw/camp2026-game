@@ -10,7 +10,6 @@ import {
   gameApi,
   type PlayerSitone,
   type PlayerStatus,
-  type Sitone,
 } from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
@@ -38,9 +37,10 @@ export function ProfileQrPanel() {
     queryKey: ["me", "sitones"],
     queryFn: gameApi.playerSitones,
   })
-  const catalogSitonesQuery = useQuery({
-    queryKey: ["catalog", "sitones"],
-    queryFn: gameApi.catalogSitones,
+  const teamSitonesQuery = useQuery({
+    queryKey: ["me", "team", "sitones"],
+    queryFn: gameApi.teamSitones,
+    enabled: Boolean(statusQuery.data?.team),
   })
   const avatarMutation = useMutation({
     mutationFn: gameApi.updateAvatar,
@@ -297,8 +297,8 @@ export function ProfileQrPanel() {
       {profile?.team ? (
         <TeamAvatarPickerCard
           currentAvatarUrl={profile.team.avatarUrl}
-          sitones={catalogSitonesQuery.data ?? []}
-          loading={catalogSitonesQuery.isLoading}
+          sitones={teamSitonesQuery.data ?? []}
+          loading={teamSitonesQuery.isLoading}
           pending={teamAvatarMutation.isPending}
           teamName={profile.team.name}
           onSelect={(sitoneId) => teamAvatarMutation.mutate(sitoneId)}
@@ -411,7 +411,7 @@ function AvatarPickerCard({
 
 type TeamAvatarPickerCardProps = {
   currentAvatarUrl?: string
-  sitones: Sitone[]
+  sitones: PlayerSitone[]
   loading: boolean
   pending: boolean
   teamName: string
@@ -429,7 +429,7 @@ function TeamAvatarPickerCard({
   onReset,
 }: TeamAvatarPickerCardProps) {
   const avatarSitones = useMemo(
-    () => sitones.filter((sitone) => sitone.iconPath),
+    () => sitones.filter((record) => record.sitone.iconPath),
     [sitones],
   )
 
@@ -443,7 +443,7 @@ function TeamAvatarPickerCard({
             </p>
             <h2 className="text-[24px] leading-tight font-black">小隊頭貼</h2>
             <p className="text-muted-foreground mt-1 text-sm font-bold">
-              {teamName} · 全圖鑑可選
+              {teamName} · 隊員持有小石可選
             </p>
           </div>
           <Button
@@ -470,22 +470,22 @@ function TeamAvatarPickerCard({
             role="group"
             aria-label="選擇小隊頭貼小石"
           >
-            {avatarSitones.map((sitone) => {
-              const iconPath = sitone.iconPath
+            {avatarSitones.map((record) => {
+              const iconPath = record.sitone.iconPath
               const selected = iconPath === currentAvatarUrl
 
               return (
                 <button
-                  key={sitone.id}
+                  key={record.sitoneId}
                   type="button"
                   className={[
                     "border-ink bg-card grid h-[76px] min-w-0 place-items-center overflow-hidden rounded-[18px] border-2 p-1.5 shadow-[2px_2px_0_rgba(23,35,58,0.12)] transition",
                     selected ? "ring-primary ring-4" : "",
                   ].join(" ")}
-                  aria-label={`選擇${sitone.name}作為小隊頭貼`}
+                  aria-label={`選擇${record.sitone.name}作為小隊頭貼`}
                   aria-pressed={selected}
                   disabled={pending || selected}
-                  onClick={() => onSelect(sitone.id)}
+                  onClick={() => onSelect(record.sitoneId)}
                 >
                   <img
                     src={toOptimizedImageSrc(iconPath)}
@@ -494,14 +494,14 @@ function TeamAvatarPickerCard({
                     draggable={false}
                     className="h-full max-h-[66px] w-full object-contain"
                   />
-                  <span className="sr-only">{sitone.name}</span>
+                  <span className="sr-only">{record.sitone.name}</span>
                 </button>
               )
             })}
           </div>
         ) : (
           <p className="text-muted-foreground rounded-[18px] border-2 border-dashed p-4 text-center text-sm font-bold">
-            目前沒有可作為小隊頭貼的小石。
+            隊員取得小石後就能把牠設為小隊頭貼。
           </p>
         )}
       </CardContent>

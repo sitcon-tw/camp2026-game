@@ -4335,8 +4335,9 @@ paths:
     put:
       consumes:
       - application/json
-      description: Updates the authenticated player's team avatar to any sitone catalog
-        icon, or clears it to restore the default team avatar.
+      description: Updates the authenticated player's team avatar to a sitone icon
+        owned by at least one team member, or clears it to restore the default team
+        avatar.
       parameters:
       - description: Team avatar update request
         in: body
@@ -4370,6 +4371,38 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Update current player's team avatar
+      tags:
+      - me
+  /me/team/sitones:
+    get:
+      description: Returns the union of sitones owned by members of the authenticated
+        player's team with catalog definitions.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/me.SitoneListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: List current player's team sitones
       tags:
       - me
   /qr/resolve:

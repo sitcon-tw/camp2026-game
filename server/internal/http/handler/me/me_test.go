@@ -520,6 +520,19 @@ func TestUpdateAvatarClearsAvatar(t *testing.T) {
 
 func TestUpdateTeamAvatarSetsCatalogSitoneIcon(t *testing.T) {
 	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.players", bson.D{
+			{Key: "_id", Value: "7H9K2Q"},
+			{Key: "team_id", Value: "8M4RXP"},
+		}, bson.D{
+			{Key: "_id", Value: "2QK9H7"},
+			{Key: "team_id", Value: "8M4RXP"},
+		}),
+		createMeCursorResponse("camp2026_game_test.player_sitones", bson.D{
+			{Key: "_id", Value: "owned-sitone-001"},
+			{Key: "player_id", Value: "2QK9H7"},
+			{Key: "sitone_id", Value: "stone_engineering_base"},
+			{Key: "quantity", Value: 1},
+		}),
 		findAndModifyMeResponse(bson.D{
 			{Key: "_id", Value: "8M4RXP"},
 			{Key: "name", Value: "Blue Team"},
@@ -550,6 +563,31 @@ func TestUpdateTeamAvatarSetsCatalogSitoneIcon(t *testing.T) {
 	if body.Team.TeamID != "8M4RXP" || body.Team.AvatarURL != "/game-icons/stones/basic_blue.png" {
 		t.Fatalf("unexpected team avatar response: %#v", body)
 	}
+}
+
+func TestUpdateTeamAvatarRejectsSitoneUnownedByTeam(t *testing.T) {
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.players", bson.D{
+			{Key: "_id", Value: "7H9K2Q"},
+			{Key: "team_id", Value: "8M4RXP"},
+		}),
+		createMeCursorResponse("camp2026_game_test.player_sitones"),
+	)
+	handler := New(Dependencies{
+		Content: loadTestContent(t),
+		MongoDB: db,
+	})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q", TeamID: "8M4RXP"},
+		http.MethodPut,
+		"/api/me/team/avatar",
+		`{"sitoneId":"stone_engineering_base"}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateTeamAvatar(res, req)
+
+	assertProblem(t, res, http.StatusBadRequest)
 }
 
 func TestUpdateTeamAvatarClearsAvatar(t *testing.T) {
@@ -619,6 +657,59 @@ func TestUpdateTeamAvatarRejectsUnknownSitone(t *testing.T) {
 	handler.UpdateTeamAvatar(res, req)
 
 	assertProblem(t, res, http.StatusBadRequest)
+}
+
+func TestListTeamSitonesReturnsTeamOwnedUnion(t *testing.T) {
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.players", bson.D{
+			{Key: "_id", Value: "7H9K2Q"},
+			{Key: "team_id", Value: "8M4RXP"},
+		}, bson.D{
+			{Key: "_id", Value: "2QK9H7"},
+			{Key: "team_id", Value: "8M4RXP"},
+		}),
+		createMeCursorResponse("camp2026_game_test.player_sitones", bson.D{
+			{Key: "_id", Value: "owned-sitone-001"},
+			{Key: "player_id", Value: "7H9K2Q"},
+			{Key: "sitone_id", Value: "stone_engineering_base"},
+			{Key: "quantity", Value: 1},
+		}, bson.D{
+			{Key: "_id", Value: "owned-sitone-002"},
+			{Key: "player_id", Value: "2QK9H7"},
+			{Key: "sitone_id", Value: "stone_engineering_base"},
+			{Key: "quantity", Value: 2},
+		}, bson.D{
+			{Key: "_id", Value: "owned-sitone-003"},
+			{Key: "player_id", Value: "2QK9H7"},
+			{Key: "sitone_id", Value: "stone_explorer_base"},
+			{Key: "quantity", Value: 1},
+		}),
+	)
+	handler := New(Dependencies{
+		Content: loadTestContent(t),
+		MongoDB: db,
+	})
+	req := authenticatedRequest(mongomodel.Player{ID: "7H9K2Q", TeamID: "8M4RXP"})
+	res := httptest.NewRecorder()
+
+	handler.ListTeamSitones(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, res.Code, res.Body.String())
+	}
+	var body SitoneListResponse
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(body.Sitones) != 2 {
+		t.Fatalf("expected 2 team sitones, got %#v", body.Sitones)
+	}
+	if body.Sitones[0].SitoneID != "stone_engineering_base" || body.Sitones[0].Quantity != 3 {
+		t.Fatalf("expected summed engineering sitone, got %#v", body.Sitones[0])
+	}
+	if body.Sitones[1].SitoneID != "stone_explorer_base" || body.Sitones[1].Quantity != 1 {
+		t.Fatalf("expected explorer sitone, got %#v", body.Sitones[1])
+	}
 }
 
 func TestTeamMemberResponsesSkipsInvalidPlayers(t *testing.T) {
