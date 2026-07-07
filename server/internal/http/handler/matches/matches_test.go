@@ -134,8 +134,8 @@ func TestBattleEffectsStackWithoutCaps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("battle effects: %v", err)
 	}
-	if effects.AnswerScoreBonusPercent != 40 {
-		t.Fatalf("expected answer score bonus 40, got %#v", effects)
+	if effects.AnswerScoreBonusPercent != 20 || effects.MaterialDropBonusPercent != 30 {
+		t.Fatalf("expected answer score bonus 20 and material drop bonus 30, got %#v", effects)
 	}
 
 	effects, err = handler.battleEffects(t.Context(), "P1", []string{
@@ -157,8 +157,8 @@ func TestBattleEffectsStackWithoutCaps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("battle effects: %v", err)
 	}
-	if effects.EliminateChancePercent != 70 || effects.EliminateCount != 2 {
-		t.Fatalf("expected eliminate bonus 70 and count 2, got %#v", effects)
+	if effects.EliminateChancePercent != 60 || effects.EliminateCount != 3 {
+		t.Fatalf("expected eliminate bonus 60 and count 3, got %#v", effects)
 	}
 }
 
