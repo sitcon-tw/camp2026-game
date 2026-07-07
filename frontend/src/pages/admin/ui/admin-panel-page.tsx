@@ -1523,7 +1523,6 @@ function PlayersTable({ players }: { players: AdminDashboardPlayer[] }) {
                   <PlayerAvatar
                     playerId={draft.player.playerId}
                     nickname={draft.player.nickname}
-                    avatarUrl={draft.player.avatarUrl}
                     className="size-12"
                   />
                   <div className="min-w-0">
