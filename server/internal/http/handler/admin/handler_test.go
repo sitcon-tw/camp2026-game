@@ -17,6 +17,7 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/gamecontrol"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
+	"github.com/sitcon-tw/camp2026-game/internal/testcontent"
 )
 
 func TestLoginDisabledWithoutAdminPassword(t *testing.T) {
@@ -117,6 +118,34 @@ func TestLoginRejectsInvalidPassword(t *testing.T) {
 
 	if res.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, res.Code)
+	}
+}
+
+func TestSortPlayerSitonesForBalanceTrimPrefersQuantityThenBaseThenID(t *testing.T) {
+	handler := New(Dependencies{Content: testcontent.Load(t)})
+	sitones := []mongomodel.PlayerSitone{
+		{SitoneID: "stone_gpg", Quantity: 4},
+		{SitoneID: "stone_explorer_base", Quantity: 5},
+		{SitoneID: "stone_espresso", Quantity: 6},
+		{SitoneID: "stone_engineering_base", Quantity: 5},
+		{SitoneID: "stone_docker", Quantity: 5},
+	}
+
+	handler.sortPlayerSitonesForBalanceTrim(sitones)
+
+	got := make([]string, 0, len(sitones))
+	for _, sitone := range sitones {
+		got = append(got, sitone.SitoneID)
+	}
+	want := []string{
+		"stone_espresso",
+		"stone_engineering_base",
+		"stone_explorer_base",
+		"stone_docker",
+		"stone_gpg",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected trim order: got %#v want %#v", got, want)
 	}
 }
 

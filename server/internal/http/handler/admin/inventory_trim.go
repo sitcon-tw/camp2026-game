@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -500,6 +501,7 @@ func (h *Handler) trimPlayerSitones(ctx context.Context, playerID string, target
 	if err := cursor.All(ctx, &sitones); err != nil {
 		return 0, err
 	}
+	h.sortPlayerSitonesForBalanceTrim(sitones)
 
 	remaining := target
 	trimmed := 0
@@ -526,6 +528,28 @@ func (h *Handler) trimPlayerSitones(ctx context.Context, playerID string, target
 		trimmed += delta
 	}
 	return trimmed, nil
+}
+
+func (h *Handler) sortPlayerSitonesForBalanceTrim(sitones []mongomodel.PlayerSitone) {
+	sort.SliceStable(sitones, func(i, j int) bool {
+		if sitones[i].Quantity != sitones[j].Quantity {
+			return sitones[i].Quantity > sitones[j].Quantity
+		}
+		iBase := h.isBaseSitone(sitones[i].SitoneID)
+		jBase := h.isBaseSitone(sitones[j].SitoneID)
+		if iBase != jBase {
+			return iBase
+		}
+		return sitones[i].SitoneID < sitones[j].SitoneID
+	})
+}
+
+func (h *Handler) isBaseSitone(sitoneID string) bool {
+	if h.content == nil {
+		return false
+	}
+	sitone, ok := h.content.GetSitone(sitoneID)
+	return ok && sitone.Rarity == "base"
 }
 
 func (h *Handler) insertOpenPowerTrim(ctx context.Context, playerID string, openPower int, now time.Time) error {
