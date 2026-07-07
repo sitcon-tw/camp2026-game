@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router"
 import type { ErrorComponentProps } from "@tanstack/react-router"
 import { RotateCcw, ShieldAlert } from "lucide-react"
+import { useEffect } from "react"
 
+import { AppError } from "@/shared/api/error"
 import { Button } from "@/shared/ui/button"
 import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GameIcon } from "@/shared/ui/game-icon"
@@ -39,7 +41,42 @@ function errorHint(error: unknown) {
   return "小石基地剛剛遇到短暫亂流，隊伍資料先停在安全區。"
 }
 
+function errorDebugDetails(error: unknown) {
+  if (error instanceof AppError) {
+    return {
+      name: error.name,
+      message: error.message,
+      status: error.status,
+      code: error.code,
+      requestId: error.requestId,
+      retryable: error.retryable,
+      stack: error.stack,
+    }
+  }
+
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    }
+  }
+
+  return { value: error }
+}
+
 export function GameErrorPage({ error, reset }: ErrorComponentProps) {
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    console.error("GameErrorPage rendered", {
+      href: window.location.href,
+      pathname: window.location.pathname,
+      search: window.location.search,
+      diagnostics: errorDebugDetails(error),
+    })
+  }, [error])
+
   function handleRetry() {
     reset()
     window.location.reload()
