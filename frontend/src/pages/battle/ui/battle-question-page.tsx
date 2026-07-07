@@ -55,6 +55,23 @@ function answerStatus(
   return player.answeredCurrentQuestion ? "已答" : "作答中"
 }
 
+function answerRecoveredAfterRefresh(
+  previousQuestionID: string,
+  refreshedMatch: Awaited<ReturnType<typeof gameApi.getMatch>>,
+  currentPlayerID: string | undefined,
+) {
+  if (!currentPlayerID) return false
+
+  const refreshedPlayer = refreshedMatch.players.find(
+    (player) => player.playerId === currentPlayerID,
+  )
+  if (refreshedPlayer?.answeredCurrentQuestion) {
+    return true
+  }
+
+  return refreshedMatch.currentQuestion?.questionId !== previousQuestionID
+}
+
 function ScoreMeter({
   score,
   maxScore,
@@ -237,13 +254,17 @@ export function BattleQuestionPage() {
   const queryClient = useQueryClient()
   const [matchID] = useState(getStoredMatchID)
   const [now, setNow] = useState(() => Date.now())
+  const [pendingAnswerQuestionID, setPendingAnswerQuestionID] = useState<
+    string | null
+  >(null)
   const handleMatchDeleted = useCallback(() => {
     clearStoredMatchID()
     navigate({ to: "/battle", replace: true })
   }, [navigate])
+  const loadMatch = useCallback(() => gameApi.getMatch(matchID), [matchID])
   const matchQuery = useQuery({
     queryKey: ["matches", matchID],
-    queryFn: () => gameApi.getMatch(matchID),
+    queryFn: loadMatch,
     enabled: matchID.length > 0,
   })
   useMatchEvents(matchID, {
@@ -266,11 +287,39 @@ export function BattleQuestionPage() {
       questionID: string
       choice: MatchChoice
     }) => gameApi.answerMatch(matchID, questionID, choice),
+    onMutate: (variables) => {
+      setPendingAnswerQuestionID(variables.questionID)
+    },
     onSuccess: () => {
+      setPendingAnswerQuestionID(null)
       toast.success("答案已送出")
       queryClient.invalidateQueries({ queryKey: ["matches", matchID] })
     },
-    onError: (error) => {
+    onError: async (
+      error,
+      variables: { questionID: string; choice: MatchChoice },
+    ) => {
+      try {
+        const refreshedMatch = await queryClient.fetchQuery({
+          queryKey: ["matches", matchID],
+          queryFn: loadMatch,
+        })
+        if (
+          answerRecoveredAfterRefresh(
+            variables.questionID,
+            refreshedMatch,
+            statusQuery.data?.playerId,
+          )
+        ) {
+          setPendingAnswerQuestionID(null)
+          toast.success("答案已送出")
+          return
+        }
+      } catch {
+        // Keep the original submit error message when the refresh also fails.
+      }
+
+      setPendingAnswerQuestionID(null)
       toast.error(error instanceof Error ? error.message : "送出答案失敗")
     },
   })
@@ -337,6 +386,16 @@ export function BattleQuestionPage() {
     now,
   )
   const answered = currentPlayer?.answeredCurrentQuestion === true
+  const answerSyncPending = pendingAnswerQuestionID === question?.questionId
+
+  useEffect(() => {
+    if (
+      pendingAnswerQuestionID != null &&
+      (answered || isRevealing || question?.questionId !== pendingAnswerQuestionID)
+    ) {
+      setPendingAnswerQuestionID(null)
+    }
+  }, [answered, isRevealing, pendingAnswerQuestionID, question?.questionId])
 
   useEffect(() => {
     if (
@@ -428,7 +487,8 @@ export function BattleQuestionPage() {
                         isRevealing ||
                         answered ||
                         isEliminated ||
-                        answerMutation.isPending
+                        answerMutation.isPending ||
+                        answerSyncPending
                       }
                       onClick={() =>
                         question &&
