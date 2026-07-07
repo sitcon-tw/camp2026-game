@@ -652,11 +652,11 @@ rarity = "limited"
 style = "default"
 description = "牠總是在夜談時靠近火光，安靜聽完每個人的故事。有人願意開口時，牠身上的光就會亮一點。"
 icon_path = "/game-icons/stones/stone_fireside.png"
-ability_name = "亮晶晶"
+ability_name = "夜談餘火"
 ability_kind = "open_power_bonus"
-ability_value = 20
+ability_value = 120
 ability_count = 0
-ability_description = "對戰勝利時獲得開源力提高 20%。"
+ability_description = "對戰勝利時獲得開源力提高 120%。"
 
 [[sitones]]
 id = "stone_command_blind_trip"
@@ -664,13 +664,13 @@ name = "指令盲旅小石"
 type = "engineering"
 rarity = "limited"
 style = "default"
-description = "牠戴上眼罩後不急著往前衝，而是等待隊友把混亂變成一套清楚的指令。每一次成功抵達，都是大家共同定義出來的路。"
+description = "牠戴上眼罩後等待隊友把混亂變成一套清楚的指令。每一次成功抵達，都是大家共同定義出來的路。"
 icon_path = "/game-icons/stones/stone_command_blind_trip.png"
-ability_name = "穩定輸出"
-ability_kind = "answer_score_bonus"
-ability_value = 20
+ability_name = "指令校準"
+ability_kind = "open_power_bonus"
+ability_value = 50
 ability_count = 0
-ability_description = "對時分數提高 20%。"
+ability_description = "對戰勝利時獲得開源力提高 50%。"
 
 [[sitones]]
 id = "stone_human_llm"
@@ -683,8 +683,8 @@ icon_path = "/game-icons/stones/stone_human_llm.png"
 ability_name = "語意接龍"
 ability_kind = "eliminate_wrong_choice"
 ability_value = 50
-ability_count = 1
-ability_description = "題目開始時有 45% 機率刪去 1 個錯誤選項。"
+ability_count = 2
+ability_description = "題目開始時有 50% 機率刪去 2 個錯誤選項。"
 
 [[sitones]]
 id = "stone_von_neumann"
