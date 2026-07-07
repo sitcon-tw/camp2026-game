@@ -528,7 +528,7 @@ const docTemplate = `{
                         "headers": {
                             "Set-Cookie": {
                                 "type": "string",
-                                "description": "camp2026_auth=\u003cauth-token\u003e; Path=/; HttpOnly; Secure; SameSite=Strict"
+                                "description": "camp2026_auth=\u003cauth-token\u003e; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Strict"
                             }
                         }
                     },
@@ -951,7 +951,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Automatically purchases missing shop materials for a fusion recipe when possible, then returns refreshed recipe availability and failure details for anything that could not be filled.",
+                "description": "Automatically purchases or crafts missing materials for a fusion recipe when possible, then returns refreshed recipe availability and failure details for anything that could not be filled.",
                 "produces": [
                     "application/json"
                 ],
@@ -3895,6 +3895,10 @@ const docTemplate = `{
         "fusions.FillMaterialResult": {
             "type": "object",
             "properties": {
+                "action": {
+                    "type": "string",
+                    "example": "purchase"
+                },
                 "id": {
                     "type": "string",
                     "example": "item_adventure_backpack"
@@ -3910,6 +3914,10 @@ const docTemplate = `{
                 "quantity": {
                     "type": "integer",
                     "example": 1
+                },
+                "source": {
+                    "type": "string",
+                    "example": "營地背包小石"
                 }
             }
         },
