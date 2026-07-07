@@ -76,6 +76,29 @@ definitions:
           $ref: '#/definitions/admin.CommunityStandResponse'
         type: array
     type: object
+  admin.CreateCommunityStandRequest:
+    properties:
+      description:
+        example: 介紹學生社群與開源參與方式。
+        type: string
+      enabled:
+        example: true
+        type: boolean
+      logoUrl:
+        example: /game-icons/features/team.png
+        type: string
+      name:
+        example: SITCON 社群攤位
+        type: string
+      reward:
+        $ref: '#/definitions/admin.CommunityStandRewardRequest'
+      standId:
+        example: q7m4x2v9
+        type: string
+      websiteUrl:
+        example: https://sitcon.org
+        type: string
+    type: object
   admin.DashboardHistoryPointResponse:
     properties:
       openPower:
@@ -2341,7 +2364,90 @@ paths:
       summary: List community stands as admin
       tags:
       - admin
+    post:
+      consumes:
+      - application/json
+      description: Admin-only endpoint. Creates a community stand with display settings,
+        enablement, and reward settings.
+      parameters:
+      - description: Community stand create request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/admin.CreateCommunityStandRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/admin.CommunityStandResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Create a community stand as admin
+      tags:
+      - admin
   /admin/community-stands/{standID}:
+    delete:
+      description: Admin-only endpoint. Deletes a community stand and clears its visit
+        and claim counters.
+      parameters:
+      - description: Community stand ID
+        in: path
+        name: standID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Delete a community stand as admin
+      tags:
+      - admin
     put:
       consumes:
       - application/json

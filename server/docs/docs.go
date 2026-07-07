@@ -51,6 +51,74 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "description": "Admin-only endpoint. Creates a community stand with display settings, enablement, and reward settings.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Create a community stand as admin",
+                "parameters": [
+                    {
+                        "description": "Community stand create request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.CreateCommunityStandRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/admin.CommunityStandResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
             }
         },
         "/admin/community-stands/{standID}": {
@@ -96,6 +164,60 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Admin-only endpoint. Deletes a community stand and clears its visit and claim counters.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Delete a community stand as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Community stand ID",
+                        "name": "standID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     },
                     "401": {
                         "description": "Unauthorized",
@@ -2881,6 +3003,38 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/admin.CommunityStandResponse"
                     }
+                }
+            }
+        },
+        "admin.CreateCommunityStandRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "介紹學生社群與開源參與方式。"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "logoUrl": {
+                    "type": "string",
+                    "example": "/game-icons/features/team.png"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "SITCON 社群攤位"
+                },
+                "reward": {
+                    "$ref": "#/definitions/admin.CommunityStandRewardRequest"
+                },
+                "standId": {
+                    "type": "string",
+                    "example": "q7m4x2v9"
+                },
+                "websiteUrl": {
+                    "type": "string",
+                    "example": "https://sitcon.org"
                 }
             }
         },

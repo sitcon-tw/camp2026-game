@@ -46,6 +46,11 @@ type UpdateCommunityStandRequest struct {
 	Reward      CommunityStandRewardRequest `json:"reward"`
 }
 
+type CreateCommunityStandRequest struct {
+	StandID string `json:"standId" example:"q7m4x2v9"`
+	UpdateCommunityStandRequest
+}
+
 type CommunityStandRewardResponse struct {
 	Kind     string `json:"kind" example:"item"`
 	RefID    string `json:"refId,omitempty" example:"item_booth_sticker"`
@@ -113,6 +118,55 @@ func (h *Handler) ListCommunityStands(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, CommunityStandsResponse{Stands: responses})
 }
 
+// CreateCommunityStand godoc
+// @Summary Create a community stand as admin
+// @Description Admin-only endpoint. Creates a community stand with display settings, enablement, and reward settings.
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param request body CreateCommunityStandRequest true "Community stand create request"
+// @Success 201 {object} CommunityStandResponse
+// @Failure 400 {object} httpx.ProblemDetails
+// @Failure 401 {object} httpx.ProblemDetails
+// @Failure 409 {object} httpx.ProblemDetails
+// @Failure 422 {object} httpx.ProblemDetails
+// @Failure 500 {object} httpx.ProblemDetails
+// @Failure 503 {object} httpx.ProblemDetails
+// @Router /admin/community-stands [post]
+func (h *Handler) CreateCommunityStand(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAdmin(w, r) || !h.requireContent(w, r) || !h.requireDatabase(w, r) {
+		return
+	}
+
+	var body CreateCommunityStandRequest
+	if err := httpx.DecodeJSON(r, &body); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	body = normalizeCreateCommunityStandRequest(body)
+	if details := h.validateCreateCommunityStandRequest(body); len(details) > 0 {
+		httpx.WriteProblem(w, r, httpx.UnprocessableEntity("invalid community stand create request", details...))
+		return
+	}
+
+	stand, err := h.createCommunityStand(r.Context(), body)
+	if err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "community stand already exists"))
+			return
+		}
+		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand create failed", "admin_community_stand_create_failed", err))
+		return
+	}
+	response, err := h.communityStandResponse(r.Context(), stand)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand counters unavailable", "admin_community_stand_counters_failed", err))
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusCreated, response)
+}
+
 // UpdateCommunityStand godoc
 // @Summary Update a community stand as admin
 // @Description Admin-only endpoint. Updates display settings, enablement, and reward settings for a community stand.
@@ -164,6 +218,42 @@ func (h *Handler) UpdateCommunityStand(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, response)
 }
 
+// DeleteCommunityStand godoc
+// @Summary Delete a community stand as admin
+// @Description Admin-only endpoint. Deletes a community stand and clears its visit and claim counters.
+// @Tags admin
+// @Produce json
+// @Param standID path string true "Community stand ID"
+// @Success 204
+// @Failure 401 {object} httpx.ProblemDetails
+// @Failure 404 {object} httpx.ProblemDetails
+// @Failure 422 {object} httpx.ProblemDetails
+// @Failure 500 {object} httpx.ProblemDetails
+// @Failure 503 {object} httpx.ProblemDetails
+// @Router /admin/community-stands/{standID} [delete]
+func (h *Handler) DeleteCommunityStand(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAdmin(w, r) || !h.requireDatabase(w, r) {
+		return
+	}
+
+	standID := strings.TrimSpace(chi.URLParam(r, "standID"))
+	if details := validateCommunityStandID("path.standId", standID); len(details) > 0 {
+		httpx.WriteProblem(w, r, httpx.UnprocessableEntity("invalid community stand delete request", details...))
+		return
+	}
+
+	if err := h.deleteCommunityStand(r.Context(), standID); err != nil {
+		if err == mongo.ErrNoDocuments {
+			httpx.WriteProblem(w, r, httpx.NotFound("community stand not found"))
+			return
+		}
+		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand delete failed", "admin_community_stand_delete_failed", err))
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusNoContent, nil)
+}
+
 func normalizeUpdateCommunityStandRequest(body UpdateCommunityStandRequest) UpdateCommunityStandRequest {
 	body.Name = strings.TrimSpace(body.Name)
 	body.Description = strings.TrimSpace(body.Description)
@@ -174,14 +264,38 @@ func normalizeUpdateCommunityStandRequest(body UpdateCommunityStandRequest) Upda
 	return body
 }
 
+func normalizeCreateCommunityStandRequest(body CreateCommunityStandRequest) CreateCommunityStandRequest {
+	body.StandID = strings.TrimSpace(body.StandID)
+	body.UpdateCommunityStandRequest = normalizeUpdateCommunityStandRequest(body.UpdateCommunityStandRequest)
+	return body
+}
+
+func (h *Handler) validateCreateCommunityStandRequest(body CreateCommunityStandRequest) []httpx.ErrorDetail {
+	details := make([]httpx.ErrorDetail, 0, 8)
+	details = append(details, validateCommunityStandID("body.standId", body.StandID)...)
+	details = append(details, h.validateCommunityStandPayload(body.UpdateCommunityStandRequest)...)
+	return details
+}
+
 func (h *Handler) validateUpdateCommunityStandRequest(standID string, body UpdateCommunityStandRequest) []httpx.ErrorDetail {
 	details := make([]httpx.ErrorDetail, 0, 8)
-	if standID == "" {
-		details = append(details, httpx.ErrorDetail{Location: "path.standId", Message: "standId is required"})
-	} else if len([]rune(standID)) > communityStandIDMaxLen {
-		details = append(details, httpx.ErrorDetail{Location: "path.standId", Message: "standId must be at most 128"})
-	}
+	details = append(details, validateCommunityStandID("path.standId", standID)...)
+	details = append(details, h.validateCommunityStandPayload(body)...)
+	return details
+}
 
+func validateCommunityStandID(location string, standID string) []httpx.ErrorDetail {
+	if standID == "" {
+		return []httpx.ErrorDetail{{Location: location, Message: "standId is required"}}
+	}
+	if len([]rune(standID)) > communityStandIDMaxLen {
+		return []httpx.ErrorDetail{{Location: location, Message: "standId must be at most 128"}}
+	}
+	return nil
+}
+
+func (h *Handler) validateCommunityStandPayload(body UpdateCommunityStandRequest) []httpx.ErrorDetail {
+	details := make([]httpx.ErrorDetail, 0, 7)
 	if body.Enabled == nil {
 		details = append(details, httpx.ErrorDetail{Location: "body.enabled", Message: "enabled is required"})
 	}
@@ -260,6 +374,44 @@ func validHTTPURL(value string) bool {
 		return false
 	}
 	return parsed.Scheme == "http" || parsed.Scheme == "https"
+}
+
+func (h *Handler) createCommunityStand(ctx context.Context, body CreateCommunityStandRequest) (mongomodel.CommunityStand, error) {
+	now := time.Now().UTC()
+	stand := mongomodel.CommunityStand{
+		ID:          body.StandID,
+		Name:        body.Name,
+		Description: body.Description,
+		LogoURL:     body.LogoURL,
+		WebsiteURL:  body.WebsiteURL,
+		Enabled:     *body.Enabled,
+		Reward:      communityStandRewardModel(body.Reward),
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	_, err := h.db.Collection(mongomodel.CommunityStandsCollection).InsertOne(ctx, stand)
+	if err != nil {
+		return mongomodel.CommunityStand{}, err
+	}
+	return stand, nil
+}
+
+func (h *Handler) deleteCommunityStand(ctx context.Context, standID string) error {
+	result, err := h.db.Collection(mongomodel.CommunityStandsCollection).DeleteOne(ctx, bson.M{"_id": standID})
+	if err != nil {
+		return err
+	}
+	if result.DeletedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	if _, err := h.db.Collection(mongomodel.CommunityStandVisitsCollection).DeleteMany(ctx, bson.M{"stand_id": standID}); err != nil {
+		return err
+	}
+	if _, err := h.db.Collection(mongomodel.CommunityStandClaimsCollection).DeleteMany(ctx, bson.M{"stand_id": standID}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (h *Handler) updateCommunityStand(ctx context.Context, standID string, body UpdateCommunityStandRequest) (mongomodel.CommunityStand, error) {

@@ -505,6 +505,11 @@ const AdminCommunityStandUpdateInputSchema = z.object({
   reward: AdminCommunityStandRewardInputSchema,
 })
 
+const AdminCommunityStandCreateInputSchema =
+  AdminCommunityStandUpdateInputSchema.extend({
+    standId: z.string(),
+  })
+
 const AdminDashboardTeamSummarySchema = z.object({
   teamId: z.string(),
   name: z.string(),
@@ -729,6 +734,9 @@ export type AdminCommunityStand = z.infer<typeof AdminCommunityStandSchema>
 export type AdminCommunityStandUpdateInput = z.input<
   typeof AdminCommunityStandUpdateInputSchema
 >
+export type AdminCommunityStandCreateInput = z.input<
+  typeof AdminCommunityStandCreateInputSchema
+>
 export type AdminDashboard = z.infer<typeof AdminDashboardSchema>
 export type AdminDashboardPlayer = z.infer<typeof AdminDashboardPlayerSchema>
 export type AdminDashboardPlayerRank = z.infer<
@@ -838,7 +846,9 @@ export const gameApi = {
   },
 
   async completedMatches(page = 1) {
-    const json = await apiClient.get("/api/me/matches", { searchParams: { page } })
+    const json = await apiClient.get("/api/me/matches", {
+      searchParams: { page },
+    })
     return CompletedMatchesResponseSchema.parse(json)
   },
 
@@ -1033,6 +1043,13 @@ export const gameApi = {
     return AdminSettingsSchema.parse(json)
   },
 
+  async createAdminCommunityStand(input: AdminCommunityStandCreateInput) {
+    const json = await apiClient.post("/api/admin/community-stands", {
+      json: AdminCommunityStandCreateInputSchema.parse(input),
+    })
+    return AdminCommunityStandSchema.parse(json)
+  },
+
   async updateAdminCommunityStand(
     standID: string,
     input: AdminCommunityStandUpdateInput,
@@ -1044,6 +1061,12 @@ export const gameApi = {
       },
     )
     return AdminCommunityStandSchema.parse(json)
+  },
+
+  async deleteAdminCommunityStand(standID: string) {
+    await apiClient.delete(
+      `/api/admin/community-stands/${encodeURIComponent(standID)}`,
+    )
   },
 
   async updateAdminTeam(

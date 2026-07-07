@@ -290,6 +290,58 @@ func TestNormalizeUpdateCommunityStandRequestTrimsFields(t *testing.T) {
 	}
 }
 
+func TestNormalizeCreateCommunityStandRequestTrimsFields(t *testing.T) {
+	enabled := true
+	got := normalizeCreateCommunityStandRequest(CreateCommunityStandRequest{
+		StandID: "  stand-a  ",
+		UpdateCommunityStandRequest: UpdateCommunityStandRequest{
+			Name:        "  社群攤位  ",
+			Description: "  介紹社群  ",
+			LogoURL:     "  /game-icons/features/team.png  ",
+			WebsiteURL:  "  https://sitcon.org  ",
+			Enabled:     &enabled,
+			Reward: CommunityStandRewardRequest{
+				Kind:  "  item  ",
+				RefID: "  item_booth_sticker  ",
+			},
+		},
+	})
+
+	if got.StandID != "stand-a" || got.Name != "社群攤位" || got.Description != "介紹社群" || got.LogoURL != "/game-icons/features/team.png" || got.WebsiteURL != "https://sitcon.org" {
+		t.Fatalf("unexpected normalized community stand create request: %#v", got)
+	}
+	if got.Reward.Kind != "item" || got.Reward.RefID != "item_booth_sticker" {
+		t.Fatalf("unexpected normalized reward request: %#v", got.Reward)
+	}
+}
+
+func TestValidateCreateCommunityStandRequest(t *testing.T) {
+	handler := New(Dependencies{Content: loadAdminTestContent(t)})
+	enabled := true
+	valid := CreateCommunityStandRequest{
+		StandID: "stand-a",
+		UpdateCommunityStandRequest: UpdateCommunityStandRequest{
+			Name:        "社群攤位",
+			Description: "介紹學生社群。",
+			Enabled:     &enabled,
+			Reward: CommunityStandRewardRequest{
+				Kind:     standRewardKindItem,
+				RefID:    "item_booth_sticker",
+				Quantity: 1,
+			},
+		},
+	}
+	if details := handler.validateCreateCommunityStandRequest(valid); len(details) != 0 {
+		t.Fatalf("expected valid community stand create request, got %#v", details)
+	}
+
+	valid.StandID = ""
+	details := handler.validateCreateCommunityStandRequest(valid)
+	if len(details) != 1 || details[0].Location != "body.standId" {
+		t.Fatalf("expected body stand id validation error, got %#v", details)
+	}
+}
+
 func TestValidateUpdateCommunityStandRequest(t *testing.T) {
 	handler := New(Dependencies{Content: loadAdminTestContent(t)})
 	enabled := true

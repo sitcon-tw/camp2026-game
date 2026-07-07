@@ -7,11 +7,13 @@ import {
   LogOut,
   Pencil,
   Percent,
+  Plus,
   RefreshCw,
   Save,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
+  Trash2,
   X,
 } from "lucide-react"
 import { type FormEvent, type ReactNode, useState } from "react"
@@ -28,6 +30,7 @@ import { AppError } from "@/shared/api/error"
 import {
   gameApi,
   type AdminCommunityStand,
+  type AdminCommunityStandCreateInput,
   type AdminCommunityStandUpdateInput,
   type AdminDashboard,
   type AdminDashboardHistory,
@@ -41,6 +44,17 @@ import {
 } from "@/shared/api/game"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Badge } from "@/shared/ui/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/shared/ui/alert-dialog"
 import { Button } from "@/shared/ui/button"
 import {
   Card,
@@ -209,6 +223,7 @@ export function AdminPanelPage() {
   const queryClient = useQueryClient()
   const [password, setPassword] = useState("")
   const [draft, setDraft] = useState<AdminSettings | null>(null)
+  const [creatingCommunityStand, setCreatingCommunityStand] = useState(false)
 
   const settingsQuery = useQuery({
     queryKey: ["admin", "settings"],
@@ -280,6 +295,46 @@ export function AdminPanelPage() {
     },
     onError: (error) => {
       toast.error(errorMessage(error, "更新失敗"))
+    },
+  })
+
+  const createCommunityStandMutation = useMutation({
+    mutationFn: gameApi.createAdminCommunityStand,
+    onSuccess: (stand) => {
+      setCreatingCommunityStand(false)
+      queryClient.setQueryData<AdminCommunityStand[]>(
+        ["admin", "community-stands"],
+        (current) => sortCommunityStands([...(current ?? []), stand]),
+      )
+      void queryClient.invalidateQueries({
+        queryKey: ["community", "stand", stand.standId],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ["community", "stand", "display", stand.standId],
+      })
+      toast.success("攤位已新增")
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "攤位新增失敗"))
+    },
+  })
+
+  const deleteCommunityStandMutation = useMutation({
+    mutationFn: gameApi.deleteAdminCommunityStand,
+    onSuccess: (_result, standID) => {
+      queryClient.setQueryData<AdminCommunityStand[]>(
+        ["admin", "community-stands"],
+        (current) =>
+          (current ?? []).filter((stand) => stand.standId !== standID),
+      )
+      queryClient.removeQueries({ queryKey: ["community", "stand", standID] })
+      queryClient.removeQueries({
+        queryKey: ["community", "stand", "display", standID],
+      })
+      toast.success("攤位已刪除")
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "攤位刪除失敗"))
     },
   })
 
@@ -498,12 +553,22 @@ export function AdminPanelPage() {
         stands={communityStandsQuery.data ?? []}
         error={communityStandsQuery.error}
         isPending={communityStandsQuery.isPending}
+        isCreateFormOpen={creatingCommunityStand}
+        isCreating={createCommunityStandMutation.isPending}
+        deletingStandID={
+          deleteCommunityStandMutation.isPending
+            ? deleteCommunityStandMutation.variables
+            : undefined
+        }
         pendingStandID={
           updateCommunityStandMutation.isPending
             ? updateCommunityStandMutation.variables?.standID
             : undefined
         }
         onRetry={() => communityStandsQuery.refetch()}
+        onToggleCreate={() => setCreatingCommunityStand((current) => !current)}
+        onCreate={(input) => createCommunityStandMutation.mutate(input)}
+        onDelete={(standID) => deleteCommunityStandMutation.mutate(standID)}
         onSubmit={(standID, input) =>
           updateCommunityStandMutation.mutate({ standID, input })
         }
@@ -1507,7 +1572,10 @@ function PlayersTable({ players }: { players: AdminDashboardPlayer[] }) {
         </TableBody>
       </Table>
 
-      <Dialog open={draft != null} onOpenChange={(open) => !open && setDraft(null)}>
+      <Dialog
+        open={draft != null}
+        onOpenChange={(open) => !open && setDraft(null)}
+      >
         <DialogContent className="sm:max-w-[430px]">
           <form className="grid gap-5" onSubmit={submitBalance}>
             <DialogHeader>
@@ -1580,7 +1648,10 @@ function PlayersTable({ players }: { players: AdminDashboardPlayer[] }) {
               >
                 取消
               </Button>
-              <Button type="submit" disabled={!draft || balanceMutation.isPending}>
+              <Button
+                type="submit"
+                disabled={!draft || balanceMutation.isPending}
+              >
                 {balanceMutation.isPending ? (
                   <Spinner className="size-4" />
                 ) : (
@@ -2016,15 +2087,27 @@ function AdminCommunityStandsPanel({
   stands,
   error,
   isPending,
+  isCreateFormOpen,
+  isCreating,
+  deletingStandID,
   pendingStandID,
   onRetry,
+  onToggleCreate,
+  onCreate,
+  onDelete,
   onSubmit,
 }: {
   stands: AdminCommunityStand[]
   error: unknown
   isPending: boolean
+  isCreateFormOpen: boolean
+  isCreating: boolean
+  deletingStandID?: string
   pendingStandID?: string
   onRetry: () => void
+  onToggleCreate: () => void
+  onCreate: (input: AdminCommunityStandCreateInput) => void
+  onDelete: (standID: string) => void
   onSubmit: (standID: string, input: AdminCommunityStandUpdateInput) => void
 }) {
   if (isPending) {
@@ -2068,19 +2151,37 @@ function AdminCommunityStandsPanel({
             管理社群攤位顯示、啟用狀態與掃描獎勵。
           </p>
         </div>
-        <Badge variant="outline">{formatNumber(stands.length)} booths</Badge>
+        <div className="grid w-full grid-cols-[1fr_auto] items-center gap-2">
+          <Badge variant="outline" className="justify-self-start">
+            {formatNumber(stands.length)} booths
+          </Badge>
+          <Button type="button" size="sm" onClick={onToggleCreate}>
+            <Plus className="size-4" />
+            新增攤位
+          </Button>
+        </div>
       </div>
+
+      {isCreateFormOpen ? (
+        <CommunityStandCreateCard
+          isPending={isCreating}
+          onCancel={onToggleCreate}
+          onSubmit={onCreate}
+        />
+      ) : null}
 
       {stands.length === 0 ? (
         <EmptyBlock label="目前沒有攤位資料" />
       ) : (
-        <div className="grid gap-3 xl:grid-cols-3">
+        <div className="grid gap-3">
           {stands.map((stand) => (
             <CommunityStandEditorCard
               key={`${stand.standId}:${stand.updatedAt}`}
               stand={stand}
+              isDeleting={deletingStandID === stand.standId}
               isPending={pendingStandID === stand.standId}
               onSubmit={onSubmit}
+              onDelete={onDelete}
             />
           ))}
         </div>
@@ -2089,14 +2190,235 @@ function AdminCommunityStandsPanel({
   )
 }
 
+function CommunityStandCreateCard({
+  isPending,
+  onCancel,
+  onSubmit,
+}: {
+  isPending: boolean
+  onCancel: () => void
+  onSubmit: (input: AdminCommunityStandCreateInput) => void
+}) {
+  const [draft, setDraft] = useState<AdminCommunityStandCreateInput>(() =>
+    newCommunityStandDraft(),
+  )
+  const formID = "admin-community-stand-create"
+
+  function patchDraft(patch: Partial<AdminCommunityStandCreateInput>) {
+    setDraft((current) => ({ ...current, ...patch }))
+  }
+
+  function patchReward(
+    patch: Partial<AdminCommunityStandCreateInput["reward"]>,
+  ) {
+    setDraft((current) => ({
+      ...current,
+      reward: { ...current.reward, ...patch },
+    }))
+  }
+
+  function handleRewardKindChange(kind: StaffRewardKind) {
+    setDraft((current) => ({
+      ...current,
+      reward: communityStandRewardDraftForKind(kind, current.reward),
+    }))
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    onSubmit(sanitizeCommunityStandCreateDraft(draft))
+  }
+
+  return (
+    <Card className="border-ink rounded-[18px] border-2 py-5">
+      <form id={formID} className="grid gap-3" onSubmit={handleSubmit}>
+        <CardHeader className="gap-3 px-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <CardTitle className="text-lg font-black">新增社群攤位</CardTitle>
+              <CardDescription>
+                建立可顯示 QR Code 的社群攤位頁。
+              </CardDescription>
+            </div>
+            <Badge variant={draft.enabled ? "default" : "secondary"}>
+              {draft.enabled ? "啟用" : "停用"}
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <CardContent className="grid gap-4 px-5">
+          <div className="bg-surface-raised border-border grid grid-cols-[1fr_auto] items-center gap-3 rounded-[18px] border-2 p-3">
+            <span className="text-sm font-black">建立後開放攤位看板</span>
+            <Switch
+              checked={draft.enabled}
+              onCheckedChange={(checked) => patchDraft({ enabled: checked })}
+              aria-label="新攤位啟用狀態"
+            />
+          </div>
+
+          <div className="grid gap-3">
+            <Field>
+              <Label htmlFor={`${formID}-id`}>攤位 ID</Label>
+              <Input
+                id={`${formID}-id`}
+                value={draft.standId}
+                maxLength={128}
+                placeholder="community-booth"
+                onChange={(event) =>
+                  patchDraft({ standId: event.target.value })
+                }
+              />
+            </Field>
+            <Field>
+              <Label htmlFor={`${formID}-name`}>名稱</Label>
+              <Input
+                id={`${formID}-name`}
+                value={draft.name}
+                maxLength={96}
+                onChange={(event) => patchDraft({ name: event.target.value })}
+              />
+            </Field>
+            <Field>
+              <Label htmlFor={`${formID}-description`}>介紹</Label>
+              <Textarea
+                id={`${formID}-description`}
+                value={draft.description}
+                maxLength={1000}
+                onChange={(event) =>
+                  patchDraft({ description: event.target.value })
+                }
+              />
+            </Field>
+            <Field>
+              <Label htmlFor={`${formID}-logo`}>Logo URL</Label>
+              <Input
+                id={`${formID}-logo`}
+                value={draft.logoUrl ?? ""}
+                placeholder="/game-icons/features/team.png"
+                onChange={(event) =>
+                  patchDraft({ logoUrl: event.target.value })
+                }
+              />
+            </Field>
+            <Field>
+              <Label htmlFor={`${formID}-website`}>網站 URL</Label>
+              <Input
+                id={`${formID}-website`}
+                value={draft.websiteUrl ?? ""}
+                placeholder="https://sitcon.org"
+                onChange={(event) =>
+                  patchDraft({ websiteUrl: event.target.value })
+                }
+              />
+            </Field>
+          </div>
+
+          <div className="bg-surface-raised border-border grid gap-3 rounded-[18px] border-2 p-3">
+            <div className="grid gap-3">
+              <Field>
+                <Label htmlFor={`${formID}-reward-kind`}>獎勵</Label>
+                <Select
+                  value={draft.reward.kind}
+                  onValueChange={(value) =>
+                    handleRewardKindChange(value as StaffRewardKind)
+                  }
+                >
+                  <SelectTrigger
+                    id={`${formID}-reward-kind`}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="item">道具</SelectItem>
+                    <SelectItem value="sitone">小石</SelectItem>
+                    <SelectItem value="open_power">開源力</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              {draft.reward.kind === "open_power" ? (
+                <Field>
+                  <Label htmlFor={`${formID}-reward-amount`}>開源力數量</Label>
+                  <Input
+                    id={`${formID}-reward-amount`}
+                    type="number"
+                    min={1}
+                    max={100000}
+                    value={draft.reward.amount ?? 50}
+                    onChange={(event) =>
+                      patchReward({ amount: Number(event.target.value) })
+                    }
+                  />
+                </Field>
+              ) : (
+                <>
+                  <Field>
+                    <Label htmlFor={`${formID}-reward-ref`}>Content ID</Label>
+                    <Input
+                      id={`${formID}-reward-ref`}
+                      value={draft.reward.refId ?? ""}
+                      placeholder={
+                        draft.reward.kind === "item"
+                          ? "item_booth_sticker"
+                          : "stone_booth"
+                      }
+                      onChange={(event) =>
+                        patchReward({ refId: event.target.value })
+                      }
+                    />
+                  </Field>
+                  <Field>
+                    <Label htmlFor={`${formID}-reward-quantity`}>數量</Label>
+                    <Input
+                      id={`${formID}-reward-quantity`}
+                      type="number"
+                      min={1}
+                      max={1000}
+                      value={draft.reward.quantity ?? 1}
+                      onChange={(event) =>
+                        patchReward({ quantity: Number(event.target.value) })
+                      }
+                    />
+                  </Field>
+                </>
+              )}
+            </div>
+          </div>
+        </CardContent>
+
+        <CardFooter className="grid grid-cols-2 gap-2 px-5">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isPending}
+            onClick={onCancel}
+          >
+            <X />
+            取消
+          </Button>
+          <Button type="submit" disabled={isPending}>
+            <Plus />
+            {isPending ? "新增中" : "新增攤位"}
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
+  )
+}
+
 function CommunityStandEditorCard({
   stand,
   isPending,
+  isDeleting,
   onSubmit,
+  onDelete,
 }: {
   stand: AdminCommunityStand
   isPending: boolean
+  isDeleting: boolean
   onSubmit: (standID: string, input: AdminCommunityStandUpdateInput) => void
+  onDelete: (standID: string) => void
 }) {
   const [draft, setDraft] = useState<AdminCommunityStandUpdateInput>(() =>
     communityStandToDraft(stand),
@@ -2165,7 +2487,7 @@ function CommunityStandEditorCard({
             />
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3">
             <Field>
               <Label htmlFor={`${formID}-name`}>名稱</Label>
               <Input
@@ -2186,7 +2508,7 @@ function CommunityStandEditorCard({
                 }
               />
             </Field>
-            <Field className="md:col-span-2">
+            <Field>
               <Label htmlFor={`${formID}-description`}>介紹</Label>
               <Textarea
                 id={`${formID}-description`}
@@ -2197,7 +2519,7 @@ function CommunityStandEditorCard({
                 }
               />
             </Field>
-            <Field className="md:col-span-2">
+            <Field>
               <Label htmlFor={`${formID}-website`}>網站 URL</Label>
               <Input
                 id={`${formID}-website`}
@@ -2211,7 +2533,7 @@ function CommunityStandEditorCard({
           </div>
 
           <div className="bg-surface-raised border-border grid gap-3 rounded-[18px] border-2 p-3">
-            <div className="grid gap-3 md:grid-cols-[150px_minmax(0,1fr)_120px]">
+            <div className="grid gap-3">
               <Field>
                 <Label htmlFor={`${formID}-reward-kind`}>獎勵</Label>
                 <Select
@@ -2235,7 +2557,7 @@ function CommunityStandEditorCard({
               </Field>
 
               {draft.reward.kind === "open_power" ? (
-                <Field className="md:col-span-2">
+                <Field>
                   <Label htmlFor={`${formID}-reward-amount`}>開源力數量</Label>
                   <Input
                     id={`${formID}-reward-amount`}
@@ -2291,6 +2613,37 @@ function CommunityStandEditorCard({
         </CardContent>
 
         <CardFooter className="justify-end gap-2 px-5">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={isPending || isDeleting}
+              >
+                <Trash2 />
+                {isDeleting ? "刪除中" : "刪除"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent size="sm">
+              <AlertDialogHeader>
+                <AlertDialogTitle>刪除社群攤位</AlertDialogTitle>
+                <AlertDialogDescription>
+                  刪除 {stand.name} 後，該攤位網址、拜訪紀錄與領獎紀錄都會移除。
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel type="button">取消</AlertDialogCancel>
+                <AlertDialogAction
+                  type="button"
+                  variant="destructive"
+                  disabled={isDeleting}
+                  onClick={() => onDelete(stand.standId)}
+                >
+                  刪除攤位
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button
             type="button"
             variant="outline"
@@ -2308,6 +2661,38 @@ function CommunityStandEditorCard({
       </form>
     </Card>
   )
+}
+
+function sortCommunityStands(stands: AdminCommunityStand[]) {
+  return [...stands].sort((left, right) => {
+    const byName = left.name.localeCompare(right.name, "zh-TW")
+    return byName || left.standId.localeCompare(right.standId, "zh-TW")
+  })
+}
+
+function newCommunityStandDraft(): AdminCommunityStandCreateInput {
+  return {
+    standId: "",
+    name: "",
+    description: "",
+    logoUrl: "",
+    websiteUrl: "",
+    enabled: true,
+    reward: {
+      kind: "item",
+      refId: "",
+      quantity: 1,
+    },
+  }
+}
+
+function sanitizeCommunityStandCreateDraft(
+  draft: AdminCommunityStandCreateInput,
+): AdminCommunityStandCreateInput {
+  return {
+    ...sanitizeCommunityStandDraft(draft),
+    standId: draft.standId.trim(),
+  }
 }
 
 function communityStandToDraft(
