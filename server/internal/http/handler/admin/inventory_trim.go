@@ -25,7 +25,7 @@ const (
 )
 
 func defaultInventoryTrimMessage(openPower int) string {
-	return "小石看著自己的 AI server ，感覺記憶體不太夠，於是帶著" + strconv.Itoa(openPower) + "開源力去排隊購買記憶體了...應該很快就會回來"
+	return "小石看著自己的 AI server ，感覺記憶體不太夠，於是帶著 " + strconv.Itoa(openPower) + " 開源力去排隊購買記憶體了...應該很快就會回來"
 }
 
 type CreateInventoryTrimRequest struct {

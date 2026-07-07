@@ -180,7 +180,7 @@ function InventoryTrimmedNoticeCard({
 }) {
   const sitoneCount = event.sitoneCount ?? 0
   const openPower = event.openPower ?? 0
-  const defaultMessage = `小石看著自己的 AI server ，感覺記憶體不太夠，於是帶著${openPower}開源力去排隊購買記憶體了...應該很快就會回來`
+  const defaultMessage = `小石看著自己的 AI server ，感覺記憶體不太夠，於是帶著 ${openPower} 開源力去排隊購買記憶體了...應該很快就會回來`
   const message = legacyInventoryTrimMessages.includes(event.message)
     ? defaultMessage
     : event.message || defaultMessage
