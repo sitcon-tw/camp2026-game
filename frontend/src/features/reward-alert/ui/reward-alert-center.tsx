@@ -151,9 +151,24 @@ export function RewardAlertCenter() {
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    const source = new EventSource("/api/me/events", {
-      withCredentials: true,
-    })
+    let source: EventSource | null = null
+    let reconnectTimeout: number | null = null
+    let reconnectAttempts = 0
+    let disposed = false
+
+    const clearReconnectTimeout = () => {
+      if (reconnectTimeout != null) {
+        window.clearTimeout(reconnectTimeout)
+        reconnectTimeout = null
+      }
+    }
+
+    const closeSource = () => {
+      if (source == null) return
+      source.close()
+      source = null
+    }
+
     const handleRewardGranted = (message: MessageEvent<string>) => {
       try {
         const event = PlayerRewardEventSchema.parse(JSON.parse(message.data))
@@ -163,9 +178,46 @@ export function RewardAlertCenter() {
       }
     }
 
-    source.addEventListener("reward_granted", handleRewardGranted)
+    const scheduleReconnect = () => {
+      if (disposed || reconnectTimeout != null) return
 
-    return () => source.close()
+      const delay = Math.min(5000, 1000 * 2 ** reconnectAttempts)
+      reconnectAttempts += 1
+      reconnectTimeout = window.setTimeout(() => {
+        reconnectTimeout = null
+        connect()
+      }, delay)
+    }
+
+    const handleError = () => {
+      if (disposed) return
+      closeSource()
+      scheduleReconnect()
+    }
+
+    const connect = () => {
+      if (disposed) return
+
+      clearReconnectTimeout()
+      closeSource()
+
+      source = new EventSource("/api/me/events", {
+        withCredentials: true,
+      })
+      source.onopen = () => {
+        reconnectAttempts = 0
+      }
+      source.onerror = handleError
+      source.addEventListener("reward_granted", handleRewardGranted)
+    }
+
+    connect()
+
+    return () => {
+      disposed = true
+      clearReconnectTimeout()
+      closeSource()
+    }
   }, [])
 
   return null
