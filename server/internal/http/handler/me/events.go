@@ -37,6 +37,13 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Clear the server-level write deadline so the SSE stream is not killed by WriteTimeout.
+	rc := http.NewResponseController(w)
+	if err := rc.SetWriteDeadline(time.Time{}); err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_deadline_clear_failed", err))
+		return
+	}
+
 	eventCh, unsubscribe := h.broker.Subscribe(player.ID)
 	defer unsubscribe()
 
