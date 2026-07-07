@@ -603,6 +603,46 @@ func TestShouldCheckSameTeamBattleOnlyForNewPVPHumanOpponent(t *testing.T) {
 	}
 }
 
+func TestShouldCheckOpponentBattleLimitOnlyForNewPVPHumanOpponent(t *testing.T) {
+	match := mongomodel.Match{
+		Mode: mongomodel.MatchModePVP,
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: "P1", Kind: mongomodel.MatchPlayerKindHuman},
+		},
+	}
+	player := mongomodel.Player{ID: "P2"}
+	if !shouldCheckOpponentBattleLimit(match, player) {
+		t.Fatal("expected PVP join with exactly one human opponent to check battle limit")
+	}
+
+	match.Mode = mongomodel.MatchModeComputer
+	if shouldCheckOpponentBattleLimit(match, player) {
+		t.Fatal("expected computer match to skip battle limit check")
+	}
+
+	match.Mode = mongomodel.MatchModePVP
+	player = mongomodel.Player{ID: "P1"}
+	if shouldCheckOpponentBattleLimit(match, player) {
+		t.Fatal("expected existing participant to skip battle limit check")
+	}
+
+	match.Players = []mongomodel.MatchPlayer{
+		{PlayerID: computerPlayerID, Kind: mongomodel.MatchPlayerKindComputer},
+	}
+	player = mongomodel.Player{ID: "P2"}
+	if shouldCheckOpponentBattleLimit(match, player) {
+		t.Fatal("expected match without a human opponent to skip battle limit check")
+	}
+
+	match.Players = []mongomodel.MatchPlayer{
+		{PlayerID: "P1", Kind: mongomodel.MatchPlayerKindHuman},
+		{PlayerID: "P3", Kind: mongomodel.MatchPlayerKindHuman},
+	}
+	if shouldCheckOpponentBattleLimit(match, player) {
+		t.Fatal("expected match with more than one human opponent to skip battle limit check")
+	}
+}
+
 func TestShouldCheckSameTeamMatchRequiresPVPHumanParticipants(t *testing.T) {
 	match := mongomodel.Match{
 		Mode: mongomodel.MatchModePVP,

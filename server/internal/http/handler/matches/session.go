@@ -19,6 +19,7 @@ import (
 const (
 	matchSessionTickInterval = time.Second
 	matchSessionDBTimeout    = 5 * time.Second
+	maxOpponentMatchCount    = 10
 )
 
 type MatchSessionManager struct {
@@ -227,6 +228,10 @@ func (s *MatchSession) Join(ctx context.Context, player mongomodel.Player) (Matc
 		s.mu.Unlock()
 		return MatchStateResponse{}, err
 	}
+	if err := s.h.ensureOpponentBattleLimitAllowed(ctx, s.match, player); err != nil {
+		s.mu.Unlock()
+		return MatchStateResponse{}, err
+	}
 
 	sitoneIDs, err := s.h.defaultSitoneLoadout(ctx, player)
 	if err != nil {
@@ -340,6 +345,42 @@ func shouldCheckSameTeamBattle(match mongomodel.Match, player mongomodel.Player)
 		player.TeamID != "" &&
 		!isParticipant(match, player.ID) &&
 		len(humanOpponentIDs(match, player.ID)) > 0
+}
+
+func shouldCheckOpponentBattleLimit(match mongomodel.Match, player mongomodel.Player) bool {
+	return matchMode(match) == mongomodel.MatchModePVP &&
+		!isParticipant(match, player.ID) &&
+		len(humanOpponentIDs(match, player.ID)) == 1
+}
+
+func (h *Handler) ensureOpponentBattleLimitAllowed(ctx context.Context, match mongomodel.Match, player mongomodel.Player) error {
+	if !shouldCheckOpponentBattleLimit(match, player) {
+		return nil
+	}
+
+	opponentIDs := humanOpponentIDs(match, player.ID)
+	if len(opponentIDs) != 1 {
+		return nil
+	}
+
+	count, err := h.completedPVPMatchCountBetweenPlayers(ctx, player.ID, opponentIDs[0])
+	if err != nil {
+		return httpx.InternalServerError("match join failed", "match_join_limit_lookup_failed", err)
+	}
+	if count >= maxOpponentMatchCount {
+		return httpx.NewError(http.StatusForbidden, "player pair match limit reached")
+	}
+	return nil
+}
+
+func (h *Handler) completedPVPMatchCountBetweenPlayers(ctx context.Context, playerAID, playerBID string) (int64, error) {
+	return h.db.Collection(mongomodel.MatchesCollection).CountDocuments(ctx, bson.M{
+		"mode":   mongomodel.MatchModePVP,
+		"status": mongomodel.MatchStatusCompleted,
+		"players.player_id": bson.M{
+			"$all": bson.A{playerAID, playerBID},
+		},
+	})
 }
 
 func (h *Handler) matchHasSameTeamOpponent(ctx context.Context, match mongomodel.Match, player mongomodel.Player) (bool, error) {
