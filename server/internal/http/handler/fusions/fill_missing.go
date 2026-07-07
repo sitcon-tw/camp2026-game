@@ -2,7 +2,9 @@ package fusions
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -18,18 +20,30 @@ import (
 
 const fillPurchaseQuantity = 1
 
-type fillPlanEntry struct {
-	component content.FusionComponent
-	name      string
-	missing   int
-	reason    string
-	item      content.Item
-	fillable  bool
+const (
+	fillActionPurchase = "purchase"
+	fillActionFusion   = "fusion"
+)
+
+type fillState struct {
+	handler         *Handler
+	playerID        string
+	inventory       inventoryCounts
+	openPower       int
+	redeemedItemIDs map[string]bool
+	producers       map[string]producerRecipe
+	filled          map[string]FillMaterialResult
+	failed          map[string]FillMaterialFailure
+	spent           int
+}
+
+type producerRecipe struct {
+	recipe content.FusionRecipe
 }
 
 // FillMissingMaterials godoc
 // @Summary Fill missing fusion materials
-// @Description Automatically purchases missing shop materials for a fusion recipe when possible, then returns refreshed recipe availability and failure details for anything that could not be filled.
+// @Description Automatically purchases or crafts missing materials for a fusion recipe when possible, then returns refreshed recipe availability and failure details for anything that could not be filled.
 // @Tags fusions
 // @Produce json
 // @Security AuthCookieAuth
@@ -60,64 +74,41 @@ func (h *Handler) FillMissingMaterials(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	plan, err := h.buildFillPlan(r.Context(), player.ID, recipe, inventory)
-	if err != nil {
-		httpx.WriteProblem(w, r, httpx.InternalServerError("fill missing materials failed", "fusion_fill_plan_failed", err))
-		return
-	}
-	if len(plan) == 0 {
-		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "recipe materials are already complete"))
-		return
-	}
-
-	filled := make([]FillMaterialResult, 0, len(plan))
-	failed := make([]FillMaterialFailure, 0, len(plan))
-	spent := 0
 	currentOpenPower, err := openpower.TotalForPlayer(r.Context(), h.db, player.ID)
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("fill missing materials failed", "fusion_fill_open_power_lookup_failed", err))
 		return
 	}
 
-	for _, entry := range plan {
-		if !entry.fillable {
-			failed = append(failed, FillMaterialFailure{
-				Kind:     entry.component.Kind,
-				ID:       entry.component.ID,
-				Name:     entry.name,
-				Quantity: entry.missing,
-				Reason:   entry.reason,
-			})
+	redeemedItemIDs, err := h.redeemedItemIDs(r.Context(), player.ID)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("fill missing materials failed", "fusion_fill_redeemed_item_lookup_failed", err))
+		return
+	}
+
+	state := fillState{
+		handler:         h,
+		playerID:        player.ID,
+		inventory:       inventory,
+		openPower:       currentOpenPower,
+		redeemedItemIDs: redeemedItemIDs,
+		producers:       h.producerRecipes(),
+		filled:          map[string]FillMaterialResult{},
+		failed:          map[string]FillMaterialFailure{},
+	}
+
+	missingFound := false
+	for _, component := range recipe.Inputs {
+		missing := max(component.Quantity-ownedQuantityForComponent(component, state.inventory), 0)
+		if missing == 0 {
 			continue
 		}
-		if currentOpenPower < entry.item.PriceOpenPower {
-			failed = append(failed, FillMaterialFailure{
-				Kind:     entry.component.Kind,
-				ID:       entry.component.ID,
-				Name:     entry.name,
-				Quantity: entry.missing,
-				Reason:   "insufficient open power",
-			})
-			continue
-		}
-		if err := h.purchaseFillItem(r.Context(), player.ID, entry.item); err != nil {
-			failed = append(failed, FillMaterialFailure{
-				Kind:     entry.component.Kind,
-				ID:       entry.component.ID,
-				Name:     entry.name,
-				Quantity: entry.missing,
-				Reason:   fillPurchaseFailureReason(err),
-			})
-			continue
-		}
-		currentOpenPower -= entry.item.PriceOpenPower
-		spent += entry.item.PriceOpenPower
-		filled = append(filled, FillMaterialResult{
-			Kind:     entry.component.Kind,
-			ID:       entry.component.ID,
-			Name:     entry.name,
-			Quantity: fillPurchaseQuantity,
-		})
+		missingFound = true
+		state.ensureComponent(r.Context(), component, component.Quantity, nil)
+	}
+	if !missingFound {
+		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "recipe materials are already complete"))
+		return
 	}
 
 	inventory, err = h.playerInventory(r.Context(), player.ID)
@@ -133,73 +124,266 @@ func (h *Handler) FillMissingMaterials(w http.ResponseWriter, r *http.Request) {
 
 	httpx.WriteJSON(w, http.StatusOK, FillMissingMaterialsResponse{
 		Recipe:              response,
-		FilledMaterials:     filled,
-		FailedMaterials:     failed,
-		PriceOpenPowerSpent: spent,
+		FilledMaterials:     sortedFillResults(state.filled),
+		FailedMaterials:     sortedFillFailures(state.failed),
+		PriceOpenPowerSpent: state.spent,
 	})
 }
 
-func (h *Handler) buildFillPlan(ctx context.Context, playerID string, recipe content.FusionRecipe, inventory inventoryCounts) ([]fillPlanEntry, error) {
-	redeemedItemIDs := map[string]bool{}
-	if h.db != nil {
-		var err error
-		redeemedItemIDs, err = h.redeemedItemIDs(ctx, playerID)
-		if err != nil {
-			return nil, err
+func (s *fillState) ensureComponent(ctx context.Context, component content.FusionComponent, required int, path []string) bool {
+	if ownedQuantityForComponent(component, s.inventory) >= required {
+		return true
+	}
+
+	componentKey := fillComponentKey(component.Kind, component.ID)
+	if slices.Contains(path, componentKey) {
+		s.recordFailure(component, required-ownedQuantityForComponent(component, s.inventory), "合成路徑發生循環，無法自動補足")
+		return false
+	}
+	path = append(path, componentKey)
+
+	for ownedQuantityForComponent(component, s.inventory) < required {
+		if component.Kind == content.FusionKindItem {
+			if purchased, reason := s.tryPurchase(ctx, component); purchased {
+				continue
+			} else if reason != "" && !s.canCraft(component) {
+				s.recordFailure(component, required-ownedQuantityForComponent(component, s.inventory), reason)
+				return false
+			}
+		}
+
+		if crafted, reason := s.tryCraft(ctx, component, path); crafted {
+			continue
+		} else if reason != "" {
+			s.recordFailure(component, required-ownedQuantityForComponent(component, s.inventory), reason)
+			return false
+		}
+
+		s.recordFailure(component, required-ownedQuantityForComponent(component, s.inventory), "玩家目前無法自行取得這個材料")
+		return false
+	}
+
+	return true
+}
+
+func (s *fillState) tryPurchase(ctx context.Context, component content.FusionComponent) (bool, string) {
+	item, ok := s.handler.content.GetItem(component.ID)
+	if !ok {
+		return false, "找不到材料資料"
+	}
+	switch {
+	case component.Quantity-ownedQuantityForComponent(component, s.inventory) > fillPurchaseQuantity:
+		return false, "缺少數量超過可自動購買上限"
+	case !item.Enabled:
+		return false, "材料目前未開放"
+	case !item.Purchasable:
+		return false, "材料無法直接購買"
+	case item.Locked:
+		return false, "材料尚未開放購買"
+	case s.redeemedItemIDs[item.ID]:
+		return false, "材料已經購買過了"
+	case s.openPower < item.PriceOpenPower:
+		return false, "開放力不足，無法購買"
+	}
+	if err := s.handler.purchaseFillItem(ctx, s.playerID, item); err != nil {
+		return false, fillPurchaseFailureReason(err)
+	}
+
+	s.redeemedItemIDs[item.ID] = true
+	s.openPower -= item.PriceOpenPower
+	s.spent += item.PriceOpenPower
+	s.inventory.items[item.ID]++
+	s.recordFilled(content.FusionKindItem, item.ID, item.Name, fillPurchaseQuantity, fillActionPurchase, "")
+	return true, ""
+}
+
+func (s *fillState) tryCraft(ctx context.Context, component content.FusionComponent, path []string) (bool, string) {
+	producer, ok := s.producers[fillComponentKey(component.Kind, component.ID)]
+	if !ok {
+		if component.Kind == content.FusionKindSitone {
+			return false, "這顆小石沒有可自動模仿的合成路徑"
+		}
+		return false, ""
+	}
+
+	if s.handler.client == nil {
+		return false, "自動合成目前暫時不可用"
+	}
+
+	for _, input := range producer.recipe.Inputs {
+		if !s.ensureComponent(ctx, input, input.Quantity, path) {
+			return false, fmt.Sprintf("缺少 %s 的前置材料", componentDisplayName(s.handler.content, component))
 		}
 	}
 
-	plan := make([]fillPlanEntry, 0, len(recipe.Inputs))
-	for _, component := range recipe.Inputs {
-		missing := max(component.Quantity-ownedQuantityForComponent(component, inventory), 0)
-		if missing == 0 {
+	if !recipeAvailable(producer.recipe, s.inventory) {
+		return false, fmt.Sprintf("仍無法補齊 %s 的合成材料", componentDisplayName(s.handler.content, component))
+	}
+
+	if _, err := s.handler.createFusion(ctx, s.playerID, producer.recipe); err != nil {
+		if err == errInsufficientMaterials {
+			return false, fmt.Sprintf("%s 的合成材料仍然不足", producer.recipe.Name)
+		}
+		if err == errFusionTransactionsUnavailable {
+			return false, "自動合成目前暫時不可用"
+		}
+		return false, "自動合成失敗"
+	}
+
+	s.applyRecipeToInventory(producer.recipe)
+	s.handler.publishFusionEvents(s.playerID, producer.recipe)
+	for _, output := range producer.recipe.Outputs {
+		s.recordFilled(output.Kind, output.ID, componentDisplayName(s.handler.content, output), output.Quantity, fillActionFusion, producer.recipe.Name)
+	}
+	return true, ""
+}
+
+func (s *fillState) canCraft(component content.FusionComponent) bool {
+	_, ok := s.producers[fillComponentKey(component.Kind, component.ID)]
+	return ok
+}
+
+func (s *fillState) applyRecipeToInventory(recipe content.FusionRecipe) {
+	for _, input := range recipe.Inputs {
+		s.addInventory(input, -input.Quantity)
+	}
+	for _, output := range recipe.Outputs {
+		s.addInventory(output, output.Quantity)
+	}
+}
+
+func (s *fillState) addInventory(component content.FusionComponent, delta int) {
+	switch component.Kind {
+	case content.FusionKindItem:
+		s.inventory.items[component.ID] += delta
+		if s.inventory.items[component.ID] <= 0 {
+			delete(s.inventory.items, component.ID)
+		}
+	case content.FusionKindSitone:
+		s.inventory.sitones[component.ID] += delta
+		if s.inventory.sitones[component.ID] <= 0 {
+			delete(s.inventory.sitones, component.ID)
+		}
+	}
+}
+
+func (s *fillState) recordFilled(kind string, id string, name string, quantity int, action string, source string) {
+	key := fillResultKey(kind, id, action, source)
+	record := s.filled[key]
+	record.Kind = kind
+	record.ID = id
+	record.Name = name
+	record.Quantity += quantity
+	record.Action = action
+	record.Source = source
+	s.filled[key] = record
+}
+
+func (s *fillState) recordFailure(component content.FusionComponent, quantity int, reason string) {
+	if quantity <= 0 {
+		return
+	}
+	key := fillResultKey(component.Kind, component.ID, "", reason)
+	record := s.failed[key]
+	record.Kind = component.Kind
+	record.ID = component.ID
+	record.Name = componentDisplayName(s.handler.content, component)
+	record.Quantity += quantity
+	record.Reason = reason
+	s.failed[key] = record
+}
+
+func (h *Handler) producerRecipes() map[string]producerRecipe {
+	out := map[string]producerRecipe{}
+	ambiguous := map[string]bool{}
+	for _, recipe := range h.content.ListFusionRecipes() {
+		if !recipe.Enabled {
 			continue
 		}
-		entry := fillPlanEntry{
-			component: component,
-			missing:   missing,
+		for _, output := range recipe.Outputs {
+			key := fillComponentKey(output.Kind, output.ID)
+			if ambiguous[key] {
+				continue
+			}
+			if _, exists := out[key]; exists {
+				delete(out, key)
+				ambiguous[key] = true
+				continue
+			}
+			out[key] = producerRecipe{recipe: recipe}
 		}
-		switch component.Kind {
-		case content.FusionKindSitone:
-			sitone, ok := h.content.GetSitone(component.ID)
-			if !ok {
-				entry.name = component.ID
-				entry.reason = "material definition not found"
-				break
-			}
-			entry.name = sitone.Name
-			entry.reason = "sitones cannot be filled automatically"
-		case content.FusionKindItem:
-			item, ok := h.content.GetItem(component.ID)
-			if !ok {
-				entry.name = component.ID
-				entry.reason = "material definition not found"
-				break
-			}
-			entry.name = item.Name
-			entry.item = item
-			switch {
-			case missing > fillPurchaseQuantity:
-				entry.reason = "missing quantity exceeds automatic purchase limit"
-			case !item.Enabled:
-				entry.reason = "material is not available"
-			case !item.Purchasable:
-				entry.reason = "material is not purchasable automatically"
-			case item.Locked:
-				entry.reason = "material is locked"
-			case redeemedItemIDs[item.ID]:
-				entry.reason = "material has already been purchased"
-			default:
-				entry.fillable = true
-			}
-		default:
-			entry.name = component.ID
-			entry.reason = "unsupported material kind"
-		}
-		plan = append(plan, entry)
 	}
+	return out
+}
 
-	return plan, nil
+func fillComponentKey(kind string, id string) string {
+	return kind + ":" + id
+}
+
+func fillResultKey(kind string, id string, action string, extra string) string {
+	return kind + ":" + id + ":" + action + ":" + extra
+}
+
+func sortedFillResults(values map[string]FillMaterialResult) []FillMaterialResult {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make([]FillMaterialResult, 0, len(values))
+	for _, value := range values {
+		out = append(out, value)
+	}
+	slices.SortFunc(out, func(a, b FillMaterialResult) int {
+		if a.Action != b.Action {
+			return compareStrings(a.Action, b.Action)
+		}
+		if a.Name != b.Name {
+			return compareStrings(a.Name, b.Name)
+		}
+		return compareStrings(a.Source, b.Source)
+	})
+	return out
+}
+
+func sortedFillFailures(values map[string]FillMaterialFailure) []FillMaterialFailure {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make([]FillMaterialFailure, 0, len(values))
+	for _, value := range values {
+		out = append(out, value)
+	}
+	slices.SortFunc(out, func(a, b FillMaterialFailure) int {
+		if a.Name != b.Name {
+			return compareStrings(a.Name, b.Name)
+		}
+		return compareStrings(a.Reason, b.Reason)
+	})
+	return out
+}
+
+func compareStrings(a string, b string) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func componentDisplayName(store *content.Store, component content.FusionComponent) string {
+	switch component.Kind {
+	case content.FusionKindItem:
+		if item, ok := store.GetItem(component.ID); ok {
+			return item.Name
+		}
+	case content.FusionKindSitone:
+		if sitone, ok := store.GetSitone(component.ID); ok {
+			return sitone.Name
+		}
+	}
+	return component.ID
 }
 
 func (h *Handler) redeemedItemIDs(ctx context.Context, playerID string) (map[string]bool, error) {
@@ -285,7 +469,7 @@ func (h *Handler) incrementFillPlayerItem(ctx context.Context, playerID string, 
 
 func fillPurchaseFailureReason(err error) string {
 	if mongo.IsDuplicateKeyError(err) {
-		return "material has already been purchased"
+		return "材料已經購買過了"
 	}
-	return "automatic purchase failed"
+	return "自動購買失敗"
 }
