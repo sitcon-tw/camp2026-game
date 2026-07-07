@@ -14,6 +14,7 @@ import { SitoneIcon } from "@/shared/ui/sitone-icon"
 import { cn } from "@/shared/utils"
 
 const PlayerRewardEventSchema = z.object({
+  rewardId: z.string().optional(),
   kind: z.enum(["item", "sitone", "open_power"]),
   refId: z.string().optional(),
   name: z.string(),
@@ -26,6 +27,7 @@ const PlayerRewardEventSchema = z.object({
   staffPlayerId: z.string().optional(),
   staffNickname: z.string().optional(),
   occurredAt: z.string(),
+  delayed: z.boolean().optional(),
 })
 
 type PlayerRewardEvent = z.infer<typeof PlayerRewardEventSchema>
@@ -40,6 +42,12 @@ type GainCardProps = {
 
 function rewardDetail(event: PlayerRewardEvent, fallback: string) {
   if (event.source !== "staff_reward") return fallback
+  if (event.delayed) {
+    if (event.staffNickname) {
+      return `${event.staffNickname} 在你離線期間發送給你`
+    }
+    return "工作人員在你離線期間發送給你"
+  }
   if (event.staffNickname) return `${event.staffNickname} 發送給你`
   return "工作人員發送給你"
 }

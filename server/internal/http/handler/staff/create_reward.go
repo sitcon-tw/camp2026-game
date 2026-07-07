@@ -174,22 +174,31 @@ func (h *Handler) findPlayersByTeamID(ctx context.Context, teamID string) ([]mon
 	return players, nil
 }
 
-func (h *Handler) createReward(ctx context.Context, staffPlayerID string, recipientPlayerID string, reward rewardDefinition, quantity int) (string, error) {
-	rewardID := newID("staff_reward")
+func (h *Handler) createReward(ctx context.Context, staffPlayerID string, recipientPlayerID string, reward rewardDefinition, quantity int) (mongomodel.StaffReward, error) {
+	record := mongomodel.StaffReward{
+		ID:                  newID("staff_reward"),
+		StaffPlayerID:       staffPlayerID,
+		RecipientPlayerID:   recipientPlayerID,
+		Kind:                reward.kind,
+		RefID:               reward.id,
+		Quantity:            quantity,
+		CreatedAt:           time.Now().UTC(),
+		NotificationPending: true,
+	}
 	switch reward.kind {
 	case rewardKindOpenPower:
-		if err := h.insertOpenPowerReward(ctx, rewardID, recipientPlayerID, quantity, time.Now().UTC()); err != nil {
-			return "", err
+		if err := h.insertOpenPowerReward(ctx, record.ID, recipientPlayerID, quantity, record.CreatedAt); err != nil {
+			return mongomodel.StaffReward{}, err
 		}
 	default:
 		if err := h.incrementInventory(ctx, recipientPlayerID, reward.kind, reward.id, quantity); err != nil {
-			return "", err
+			return mongomodel.StaffReward{}, err
 		}
 	}
-	if err := h.insertRewardRecord(ctx, rewardID, staffPlayerID, recipientPlayerID, reward, quantity, time.Now().UTC()); err != nil {
-		return "", err
+	if err := h.insertRewardRecord(ctx, record); err != nil {
+		return mongomodel.StaffReward{}, err
 	}
-	return rewardID, nil
+	return record, nil
 }
 
 func (h *Handler) insertOpenPowerReward(ctx context.Context, rewardID string, playerID string, amount int, createdAt time.Time) error {
@@ -228,24 +237,8 @@ func (h *Handler) incrementInventory(ctx context.Context, playerID string, kind 
 	return err
 }
 
-func (h *Handler) insertRewardRecord(
-	ctx context.Context,
-	rewardID string,
-	staffPlayerID string,
-	recipientPlayerID string,
-	reward rewardDefinition,
-	quantity int,
-	createdAt time.Time,
-) error {
-	_, err := h.db.Collection(mongomodel.StaffRewardsCollection).InsertOne(ctx, mongomodel.StaffReward{
-		ID:                rewardID,
-		StaffPlayerID:     staffPlayerID,
-		RecipientPlayerID: recipientPlayerID,
-		Kind:              reward.kind,
-		RefID:             reward.id,
-		Quantity:          quantity,
-		CreatedAt:         createdAt,
-	})
+func (h *Handler) insertRewardRecord(ctx context.Context, reward mongomodel.StaffReward) error {
+	_, err := h.db.Collection(mongomodel.StaffRewardsCollection).InsertOne(ctx, reward)
 	return err
 }
 
@@ -352,14 +345,14 @@ func (h *Handler) createPlayerRewardResponse(
 	if body.Kind == rewardKindOpenPower {
 		rewardValue = body.Amount
 	}
-	rewardID, err := h.createReward(ctx, staffPlayer.ID, recipient.ID, reward, rewardValue)
+	rewardRecord, err := h.createReward(ctx, staffPlayer.ID, recipient.ID, reward, rewardValue)
 	if err != nil {
 		return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_create_failed", err)
 	}
-	h.publishRewardGranted(recipient.ID, staffPlayer, reward, body)
+	h.publishRewardGranted(ctx, recipient.ID, staffPlayer, rewardRecord)
 
 	return CreateRewardResponse{
-		RewardIDs:    []string{rewardID},
+		RewardIDs:    []string{rewardRecord.ID},
 		GrantedCount: 1,
 		Player: &RewardPlayerResponse{
 			PlayerID: recipient.ID,
@@ -413,12 +406,12 @@ func (h *Handler) createTeamRewardResponse(
 		if recipient.ID == "" {
 			continue
 		}
-		rewardID, err := h.createReward(ctx, staffPlayer.ID, recipient.ID, reward, rewardValue)
+		rewardRecord, err := h.createReward(ctx, staffPlayer.ID, recipient.ID, reward, rewardValue)
 		if err != nil {
 			return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_create_failed", err)
 		}
-		rewardIDs = append(rewardIDs, rewardID)
-		h.publishRewardGranted(recipient.ID, staffPlayer, reward, body)
+		rewardIDs = append(rewardIDs, rewardRecord.ID)
+		h.publishRewardGranted(ctx, recipient.ID, staffPlayer, rewardRecord)
 	}
 	if len(rewardIDs) == 0 {
 		return CreateRewardResponse{}, 0, httpx.UnprocessableEntity(
@@ -448,37 +441,31 @@ func (h *Handler) createTeamRewardResponse(
 	}, http.StatusCreated, nil
 }
 
-func (h *Handler) publishRewardGranted(playerID string, staffPlayer mongomodel.Player, reward rewardDefinition, body CreateRewardRequest) {
+func (h *Handler) publishRewardGranted(ctx context.Context, playerID string, staffPlayer mongomodel.Player, reward mongomodel.StaffReward) {
 	if h.broker == nil {
 		return
 	}
-	event := playerevents.RewardGrantedEvent{
-		Kind:          reward.kind,
-		RefID:         reward.id,
-		Name:          reward.name,
-		Source:        "staff_reward",
-		StaffPlayerID: staffPlayer.ID,
-		StaffNickname: staffPlayer.Nickname,
-		OccurredAt:    time.Now().UTC().Format(time.RFC3339Nano),
+	event, err := playerevents.StaffRewardGrantedEvent(h.content, reward, staffPlayer, false)
+	if err != nil {
+		return
 	}
-	switch reward.kind {
-	case rewardKindOpenPower:
-		event.Amount = body.Amount
-	case rewardKindItem:
-		event.Quantity = body.Quantity
-		if item, ok := h.content.GetItem(body.RefID); ok {
-			event.ItemType = item.Type
-			event.IconPath = item.IconPath
-		}
-	case rewardKindSitone:
-		event.Quantity = body.Quantity
-		if sitone, ok := h.content.GetSitone(body.RefID); ok {
-			event.SitoneType = sitone.Type
-			event.IconPath = sitone.IconPath
-		}
-	}
-	h.broker.Publish(playerID, playerevents.Event{
+	delivered := h.broker.Publish(playerID, playerevents.Event{
 		Name:   "reward_granted",
 		Reward: &event,
 	})
+	if delivered > 0 {
+		_ = h.markRewardNotified(ctx, reward.ID, time.Now().UTC())
+	}
+}
+
+func (h *Handler) markRewardNotified(ctx context.Context, rewardID string, notifiedAt time.Time) error {
+	_, err := h.db.Collection(mongomodel.StaffRewardsCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": rewardID, "notification_pending": true},
+		bson.M{
+			"$set":   bson.M{"notified_at": notifiedAt},
+			"$unset": bson.M{"notification_pending": ""},
+		},
+	)
+	return err
 }

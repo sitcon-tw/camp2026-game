@@ -43,6 +43,7 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.PlayerSitonesCollection, models: playerSitoneIndexModels()},
 		{collection: mongomodel.ShopPurchasesCollection, models: shopPurchaseIndexModels()},
 		{collection: shopPurchaseLocksCollection, models: shopPurchaseLockIndexModels()},
+		{collection: mongomodel.StaffRewardsCollection, models: staffRewardIndexModels()},
 		{collection: mongomodel.CommunityStandsCollection, models: communityStandIndexModels()},
 		{collection: mongomodel.CommunityStandVisitsCollection, models: communityStandVisitIndexModels()},
 		{collection: mongomodel.CommunityStandClaimsCollection, models: communityStandClaimIndexModels()},
@@ -209,6 +210,29 @@ func shopPurchaseLockIndexModels() []mongo.IndexModel {
 		{
 			Keys:    bson.D{{Key: "expires_at", Value: 1}},
 			Options: options.Index().SetName("shop_purchase_locks_expires_at_ttl").SetExpireAfterSeconds(0),
+		},
+	}
+}
+
+func staffRewardIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "recipient_player_id", Value: 1},
+				{Key: "created_at", Value: -1},
+				{Key: "_id", Value: -1},
+			},
+			Options: options.Index().SetName("staff_rewards_recipient_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "recipient_player_id", Value: 1},
+				{Key: "created_at", Value: 1},
+				{Key: "_id", Value: 1},
+			},
+			Options: options.Index().
+				SetName("staff_rewards_unnotified_recipient_created").
+				SetPartialFilterExpression(bson.M{"notification_pending": true}),
 		},
 	}
 }
