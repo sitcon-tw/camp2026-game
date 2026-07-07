@@ -121,7 +121,7 @@ services:
       MONGO_REPLICA_SET_HOST: mongodb:27017
       MONGO_REPLICA_SET_KEY: ${MONGO_REPLICA_SET_KEY:-camp2026ReplicaSetKeyChangeMe1234567890}
     ports:
-      - "${MONGODB_PORT:-27017}"
+      - "${MONGODB_PORT:-27017}:27017"
     volumes:
       - mongodb-data:/data/db
     healthcheck:
