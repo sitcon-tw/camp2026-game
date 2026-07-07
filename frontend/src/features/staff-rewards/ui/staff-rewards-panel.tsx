@@ -402,20 +402,22 @@ export function StaffRewardsPanel() {
                               className="h-auto w-full justify-start rounded-[16px] px-3 py-2 text-left whitespace-normal shadow-none"
                               onClick={() => selectTargetPlayer(player)}
                             >
-                              <span className="flex w-full min-w-0 items-center justify-between gap-2">
+                              <span className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
                                 <span className="flex min-w-0 items-center gap-2.5">
                                   <PlayerAvatar
                                     playerId={player.playerId}
                                     nickname={player.nickname}
                                     className="border-ink size-9 rounded-[13px] border-2"
                                   />
-                                  <span className="min-w-0">
+                                  <span className="min-w-0 flex-1">
                                     <span className="block truncate text-sm leading-tight font-black">
                                       {player.nickname}
                                     </span>
-                                    <span className="text-muted-foreground mt-1 block truncate text-xs leading-tight font-bold">
-                                      {player.team?.name ?? "未分組"} ·{" "}
-                                      {player.playerId}
+                                    <span className="text-muted-foreground mt-1 block text-xs leading-snug font-bold break-all whitespace-normal">
+                                      <span className="break-words">
+                                        {player.team?.name ?? "未分組"}
+                                      </span>{" "}
+                                      · {player.playerId}
                                     </span>
                                   </span>
                                 </span>
@@ -438,13 +440,13 @@ export function StaffRewardsPanel() {
                   ) : null}
                 </div>
 
-                <div className="bg-surface-raised border-border grid min-h-[88px] grid-cols-[52px_1fr] items-center gap-3 rounded-[18px] border-2 p-3">
+                <div className="bg-surface-raised border-border grid min-h-[88px] grid-cols-[52px_minmax(0,1fr)] items-center gap-3 rounded-[18px] border-2 p-3">
                   <PlayerAvatar
                     playerId={targetPlayer?.playerId}
                     nickname={targetPlayer?.nickname}
                     className="border-ink size-[52px] rounded-[18px] border-2"
                   />
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-muted-foreground text-xs font-black">
                       {resolveMutation.isPending
                         ? "確認 QR Code 中"
@@ -452,9 +454,14 @@ export function StaffRewardsPanel() {
                           ? (targetPlayer.team?.name ?? "未分組")
                           : "尚未選擇學員"}
                     </p>
-                    <strong className="mt-1 block text-[22px] leading-tight font-black">
+                    <strong className="mt-1 block text-[22px] leading-tight font-black break-words">
                       {targetPlayer?.nickname ?? "等待選擇"}
                     </strong>
+                    {targetPlayer ? (
+                      <p className="text-muted-foreground mt-1 text-xs leading-snug font-bold break-all">
+                        {targetPlayer.playerId}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </>
@@ -502,17 +509,17 @@ export function StaffRewardsPanel() {
                   </p>
                 ) : null}
 
-                <div className="bg-surface-raised border-border grid min-h-[88px] grid-cols-[52px_1fr] items-center gap-3 rounded-[18px] border-2 p-3">
+                <div className="bg-surface-raised border-border grid min-h-[88px] grid-cols-[52px_minmax(0,1fr)] items-center gap-3 rounded-[18px] border-2 p-3">
                   <div className="bg-card border-ink flex size-[52px] items-center justify-center rounded-[18px] border-2">
                     <UsersIcon className="size-6" aria-hidden />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-muted-foreground text-xs font-black">
                       {selectedTeam
                         ? `${selectedTeam.memberCount} 人`
                         : "尚未選擇組別"}
                     </p>
-                    <strong className="mt-1 block text-[22px] leading-tight font-black">
+                    <strong className="mt-1 block text-[22px] leading-tight font-black break-words">
                       {selectedTeam?.name ?? "等待選擇"}
                     </strong>
                   </div>
@@ -553,7 +560,7 @@ export function StaffRewardsPanel() {
               {rewardKind === "open_power" ? (
                 <>
                   <div className="bg-surface-raised border-border grid min-h-[112px] gap-3 rounded-[18px] border-2 p-4">
-                    <div>
+                    <div className="min-w-0">
                       <strong className="block text-[18px] leading-tight font-black">
                         開源力
                       </strong>
@@ -648,7 +655,7 @@ export function StaffRewardsPanel() {
                             </span>
                           ))}
                       </div>
-                      <strong className="block text-[18px] leading-tight font-black">
+                      <strong className="block text-[18px] leading-tight font-black break-words">
                         {selectedOption?.name ?? "尚未選擇"}
                       </strong>
                       <p className="text-muted-foreground mt-1 line-clamp-2 text-sm leading-[1.55]">

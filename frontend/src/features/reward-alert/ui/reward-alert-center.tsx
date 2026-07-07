@@ -1,7 +1,6 @@
 import { SparklesIcon } from "lucide-react"
 import type { ReactNode } from "react"
-import { useEffect } from "react"
-import { toast } from "sonner"
+import { useEffect, useState } from "react"
 import { z } from "zod"
 
 import {
@@ -9,6 +8,15 @@ import {
   itemTypeLabel,
   sitoneMeta,
 } from "@/shared/lib/game-labels"
+import { Button } from "@/shared/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/dialog"
 import { GameIcon } from "@/shared/ui/game-icon"
 import { SitoneIcon } from "@/shared/ui/sitone-icon"
 import { cn } from "@/shared/utils"
@@ -52,7 +60,7 @@ function GainCard({
   icon,
 }: GainCardProps) {
   return (
-    <div className="w-full max-w-[360px] rounded-[24px] border-2 border-[var(--border)] bg-[var(--normal-bg)] p-3 text-[var(--normal-text)] shadow-[0_12px_28px_rgba(23,35,58,0.2)]">
+    <div className="w-full rounded-[24px] border-2 border-[var(--border)] bg-[var(--normal-bg)] p-3 text-[var(--normal-text)] shadow-[0_12px_28px_rgba(23,35,58,0.2)]">
       <div className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3">
         <div
           className={cn(
@@ -66,7 +74,7 @@ function GainCard({
           <p className="text-muted-foreground text-[11px] font-black tracking-[0.08em] uppercase">
             {badge}
           </p>
-          <p className="truncate text-[17px] leading-tight font-black">
+          <p className="text-[17px] leading-tight font-black break-words">
             {title}
           </p>
           <p className="text-muted-foreground mt-1 text-sm leading-snug font-bold">
@@ -78,76 +86,72 @@ function GainCard({
   )
 }
 
-function showRewardGranted(event: PlayerRewardEvent) {
+function RewardNoticeCard({ event }: { event: PlayerRewardEvent }) {
   if (event.kind === "open_power") {
     const amount = event.amount ?? 0
-    toast.custom(
-      () => (
-        <GainCard
-          badge="獲得開源力"
-          title={`+${amount} OP`}
-          detail={rewardDetail(event, "開源力已入帳")}
-          accentClassName="bg-pebble-spark"
-          icon={<SparklesIcon className="size-7" />}
-        />
-      ),
-      { duration: 4500 },
+    return (
+      <GainCard
+        badge="獲得開源力"
+        title={`+${amount} OP`}
+        detail={rewardDetail(event, "開源力已入帳")}
+        accentClassName="bg-pebble-spark"
+        icon={<SparklesIcon className="size-7" />}
+      />
     )
-    return
   }
 
   if (event.kind === "item") {
     const typeLabel = itemTypeLabel(event.itemType ?? "item")
-    toast.custom(
-      () => (
-        <GainCard
-          badge="獲得道具"
-          title={event.name}
-          detail={rewardDetail(event, `+${event.quantity ?? 0} ${typeLabel}`)}
-          accentClassName={itemTypeClass(event.itemType ?? "")}
-          icon={
-            <GameIcon
-              iconPath={event.iconPath}
-              alt={event.name}
-              imageClassName="p-2"
-              fallback={
-                <span className="text-[11px] font-black">
-                  {typeLabel.slice(0, 2)}
-                </span>
-              }
-            />
-          }
-        />
-      ),
-      { duration: 5000 },
-    )
-    return
-  }
-
-  const meta = sitoneMeta(event.sitoneType ?? "")
-  toast.custom(
-    () => (
+    return (
       <GainCard
-        badge="獲得小石"
+        badge="獲得道具"
         title={event.name}
-        detail={rewardDetail(event, `+${event.quantity ?? 0} ${meta.label}`)}
-        accentClassName={meta.bgClassName}
+        detail={rewardDetail(event, `+${event.quantity ?? 0} ${typeLabel}`)}
+        accentClassName={itemTypeClass(event.itemType ?? "")}
         icon={
-          <SitoneIcon
-            type={event.sitoneType ?? ""}
+          <GameIcon
             iconPath={event.iconPath}
             alt={event.name}
-            className="size-14 rounded-[18px] border-0 text-sm"
-            imageClassName="p-1.5"
+            imageClassName="p-2"
+            fallback={
+              <span className="text-[11px] font-black">
+                {typeLabel.slice(0, 2)}
+              </span>
+            }
           />
         }
       />
-    ),
-    { duration: 5000 },
+    )
+  }
+
+  const meta = sitoneMeta(event.sitoneType ?? "")
+  return (
+    <GainCard
+      badge="獲得小石"
+      title={event.name}
+      detail={rewardDetail(event, `+${event.quantity ?? 0} ${meta.label}`)}
+      accentClassName={meta.bgClassName}
+      icon={
+        <SitoneIcon
+          type={event.sitoneType ?? ""}
+          iconPath={event.iconPath}
+          alt={event.name}
+          className="size-14 rounded-[18px] border-0 text-sm"
+          imageClassName="p-1.5"
+        />
+      }
+    />
   )
 }
 
 export function RewardAlertCenter() {
+  const [rewardQueue, setRewardQueue] = useState<PlayerRewardEvent[]>([])
+  const activeReward = rewardQueue[0] ?? null
+
+  function dismissActiveReward() {
+    setRewardQueue((current) => current.slice(1))
+  }
+
   useEffect(() => {
     if (typeof window === "undefined") return
 
@@ -172,7 +176,7 @@ export function RewardAlertCenter() {
     const handleRewardGranted = (message: MessageEvent<string>) => {
       try {
         const event = PlayerRewardEventSchema.parse(JSON.parse(message.data))
-        showRewardGranted(event)
+        setRewardQueue((current) => [...current, event])
       } catch {
         // Ignore malformed events and keep the stream alive.
       }
@@ -220,5 +224,33 @@ export function RewardAlertCenter() {
     }
   }, [])
 
-  return null
+  return (
+    <Dialog
+      open={activeReward != null}
+      onOpenChange={(open) => {
+        if (!open) dismissActiveReward()
+      }}
+    >
+      <DialogContent
+        className="gap-5 p-5 sm:max-w-[390px]"
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        onPointerDownOutside={(event) => event.preventDefault()}
+      >
+        <DialogHeader>
+          <DialogTitle>獲得獎勵</DialogTitle>
+          <DialogDescription>新的獎勵已加入你的帳號。</DialogDescription>
+        </DialogHeader>
+        {activeReward ? <RewardNoticeCard event={activeReward} /> : null}
+        <DialogFooter>
+          <Button
+            type="button"
+            className="w-full"
+            onClick={dismissActiveReward}
+          >
+            我知道了
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
 }

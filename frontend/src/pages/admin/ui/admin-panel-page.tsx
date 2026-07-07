@@ -798,22 +798,22 @@ function AdminGiftHistoryPanel({
                 <TableCell className="font-semibold">
                   {formatDateTime(entry.createdAt)}
                 </TableCell>
-                <TableCell>
-                  <div className="grid gap-1">
-                    <span className="font-semibold">
+                <TableCell className="min-w-[180px] whitespace-normal">
+                  <div className="grid min-w-0 gap-1">
+                    <span className="font-semibold break-words">
                       {entry.recipientNickname || entry.recipientPlayerId}
                     </span>
-                    <span className="text-muted-foreground text-xs">
+                    <span className="text-muted-foreground text-xs break-all">
                       {entry.recipientPlayerId}
                     </span>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div className="grid gap-1">
-                    <span className="font-semibold">
+                <TableCell className="min-w-[180px] whitespace-normal">
+                  <div className="grid min-w-0 gap-1">
+                    <span className="font-semibold break-words">
                       {entry.staffNickname || entry.staffPlayerId}
                     </span>
-                    <span className="text-muted-foreground text-xs">
+                    <span className="text-muted-foreground text-xs break-all">
                       {entry.staffPlayerId}
                     </span>
                   </div>
@@ -821,7 +821,9 @@ function AdminGiftHistoryPanel({
                 <TableCell>
                   <Badge variant="outline">{giftRewardKindLabel(entry)}</Badge>
                 </TableCell>
-                <TableCell className="font-semibold">{entry.name}</TableCell>
+                <TableCell className="min-w-[160px] font-semibold break-words whitespace-normal">
+                  {entry.name}
+                </TableCell>
                 <TableCell className="text-right font-black">
                   {giftRewardAmountLabel(entry)}
                 </TableCell>
