@@ -49,6 +49,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Post("/admin/login", h.Login)
 	api.Post("/admin/logout", h.Logout)
 	api.Get("/admin/dashboard", h.Dashboard)
+	api.Get("/admin/gift-history", h.GiftHistory)
 	api.Get("/admin/history", h.History)
 	api.Get("/admin/settings", h.GetSettings)
 	api.Put("/admin/settings", h.UpdateSettings)
@@ -220,6 +221,14 @@ func (h *Handler) requireDatabase(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 	httpx.WriteProblem(w, r, httpx.ServiceUnavailable("database is unavailable"))
+	return false
+}
+
+func (h *Handler) requireContent(w http.ResponseWriter, r *http.Request) bool {
+	if h.content != nil {
+		return true
+	}
+	httpx.WriteProblem(w, r, httpx.ServiceUnavailable("content store is unavailable"))
 	return false
 }
 
