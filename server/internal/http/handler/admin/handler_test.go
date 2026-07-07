@@ -52,6 +52,9 @@ func TestLoginSetsAdminSessionCookie(t *testing.T) {
 	if !cookie.HttpOnly || cookie.Path != "/" || cookie.MaxAge <= 0 {
 		t.Fatalf("expected http-only persistent root cookie, got %#v", cookie)
 	}
+	if cookie.MaxAge != 365*24*60*60 {
+		t.Fatalf("expected admin cookie max age to be one year, got %d", cookie.MaxAge)
+	}
 	if cookie.SameSite != http.SameSiteLaxMode {
 		t.Fatalf("expected SameSite=Lax, got %v", cookie.SameSite)
 	}
