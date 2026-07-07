@@ -89,7 +89,7 @@ func TestRewardDefinitionRejectsMissingContent(t *testing.T) {
 }
 
 func TestPlayerSearchFilterMatchesNicknameAndID(t *testing.T) {
-	filter := playerSearchFilter("Alice.1")
+	filter := playerSearchFilter("Alice.1", nil)
 
 	if got := filter["role"]; got != nil {
 		t.Fatalf("expected no role filter, got %#v", got)
@@ -115,6 +115,27 @@ func TestPlayerSearchFilterMatchesNicknameAndID(t *testing.T) {
 	}
 }
 
+func TestPlayerSearchFilterCanMatchTeamIDs(t *testing.T) {
+	filter := playerSearchFilter("第3小隊", []string{"team-003"})
+
+	branches, ok := filter["$or"].(bson.A)
+	if !ok || len(branches) != 3 {
+		t.Fatalf("expected nickname, id, and team search branches, got %#v", filter["$or"])
+	}
+	teamBranch, ok := branches[2].(bson.M)
+	if !ok {
+		t.Fatalf("expected team branch to be bson.M, got %#v", branches[2])
+	}
+	condition, ok := teamBranch["team_id"].(bson.M)
+	if !ok {
+		t.Fatalf("expected team_id condition, got %#v", teamBranch["team_id"])
+	}
+	values, ok := condition["$in"].([]string)
+	if !ok || len(values) != 1 || values[0] != "team-003" {
+		t.Fatalf("unexpected team_id values: %#v", condition["$in"])
+	}
+}
+
 func TestTeamSearchFilterMatchesNameAndID(t *testing.T) {
 	filter := teamSearchFilter("Blue.1")
 
@@ -136,6 +157,26 @@ func TestTeamSearchFilterMatchesNameAndID(t *testing.T) {
 				t.Fatalf("unexpected regex: %#v", regex)
 			}
 		}
+	}
+}
+
+func TestTeamSearchFilterMatchesChineseTeamNumber(t *testing.T) {
+	filter := teamSearchFilter("第3小隊")
+
+	branches, ok := filter["$or"].(bson.A)
+	if !ok || len(branches) != 4 {
+		t.Fatalf("expected raw and numeric team search branches, got %#v", filter["$or"])
+	}
+	numericBranch, ok := branches[2].(bson.M)
+	if !ok {
+		t.Fatalf("expected numeric branch to be bson.M, got %#v", branches[2])
+	}
+	regex, ok := numericBranch["name"].(bson.Regex)
+	if !ok {
+		t.Fatalf("expected name regex, got %#v", numericBranch["name"])
+	}
+	if regex.Pattern != `(^|[^0-9])0*3($|[^0-9])` || regex.Options != "i" {
+		t.Fatalf("unexpected numeric team regex: %#v", regex)
 	}
 }
 

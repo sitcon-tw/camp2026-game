@@ -53,7 +53,13 @@ func (h *Handler) ListPlayers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	players, err := h.searchPlayers(r.Context(), query)
+	matchedTeams, err := h.listTeams(r.Context(), query)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.NewError(http.StatusInternalServerError, "player search failed"))
+		return
+	}
+
+	players, err := h.searchPlayers(r.Context(), query, teamIDs(matchedTeams))
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusInternalServerError, "player search failed"))
 		return
@@ -70,10 +76,10 @@ func (h *Handler) ListPlayers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) searchPlayers(ctx context.Context, query string) ([]mongomodel.Player, error) {
+func (h *Handler) searchPlayers(ctx context.Context, query string, matchingTeamIDs []string) ([]mongomodel.Player, error) {
 	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(
 		ctx,
-		playerSearchFilter(query),
+		playerSearchFilter(query, matchingTeamIDs),
 		options.Find().
 			SetProjection(bson.D{
 				{Key: "auth_token", Value: 0},
@@ -103,13 +109,17 @@ func (h *Handler) searchPlayers(ctx context.Context, query string) ([]mongomodel
 	return players, nil
 }
 
-func playerSearchFilter(query string) bson.M {
+func playerSearchFilter(query string, matchingTeamIDs []string) bson.M {
 	regex := bson.Regex{Pattern: regexp.QuoteMeta(query), Options: "i"}
+	branches := bson.A{
+		bson.M{"nickname": regex},
+		bson.M{"_id": regex},
+	}
+	if len(matchingTeamIDs) > 0 {
+		branches = append(branches, bson.M{"team_id": bson.M{"$in": matchingTeamIDs}})
+	}
 	return bson.M{
-		"$or": bson.A{
-			bson.M{"nickname": regex},
-			bson.M{"_id": regex},
-		},
+		"$or": branches,
 	}
 }
 

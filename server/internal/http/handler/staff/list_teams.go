@@ -2,8 +2,10 @@ package staff
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -97,13 +99,45 @@ func (h *Handler) listTeams(ctx context.Context, query string) ([]mongomodel.Tea
 }
 
 func teamSearchFilter(query string) bson.M {
-	regex := bson.Regex{Pattern: regexp.QuoteMeta(query), Options: "i"}
-	return bson.M{
-		"$or": bson.A{
+	regexes := teamSearchRegexes(query)
+	branches := make(bson.A, 0, len(regexes)*2)
+	for _, regex := range regexes {
+		branches = append(branches,
 			bson.M{"name": regex},
 			bson.M{"_id": regex},
-		},
+		)
 	}
+	return bson.M{
+		"$or": branches,
+	}
+}
+
+func teamSearchRegexes(query string) []bson.Regex {
+	regexes := []bson.Regex{{Pattern: regexp.QuoteMeta(query), Options: "i"}}
+	if number, ok := teamNumberFromSearch(query); ok {
+		regexes = append(regexes, bson.Regex{
+			Pattern: fmt.Sprintf(`(^|[^0-9])0*%d($|[^0-9])`, number),
+			Options: "i",
+		})
+	}
+	return regexes
+}
+
+func teamNumberFromSearch(query string) (int, bool) {
+	normalized := strings.TrimSpace(query)
+	normalized = strings.TrimPrefix(normalized, "第")
+	normalized = strings.TrimSuffix(normalized, "小隊")
+	normalized = strings.TrimSuffix(normalized, "隊")
+	normalized = strings.TrimSuffix(normalized, "組")
+	normalized = strings.TrimSpace(normalized)
+	if normalized == "" {
+		return 0, false
+	}
+	number, err := strconv.Atoi(normalized)
+	if err != nil || number <= 0 {
+		return 0, false
+	}
+	return number, true
 }
 
 func teamIDs(teams []mongomodel.Team) []string {

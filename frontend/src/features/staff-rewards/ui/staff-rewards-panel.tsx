@@ -374,9 +374,9 @@ export function StaffRewardsPanel() {
                     <Input
                       value={playerSearch}
                       onChange={(event) => setPlayerSearch(event.target.value)}
-                      placeholder="搜尋 nickname 或 ID"
+                      placeholder="搜尋 nickname、ID 或第幾小隊"
                       autoComplete="off"
-                      aria-label="搜尋學員 nickname 或 ID"
+                      aria-label="搜尋學員 nickname、ID 或第幾小隊"
                       className="pl-9"
                     />
                   </div>
@@ -475,9 +475,9 @@ export function StaffRewardsPanel() {
                   <Input
                     value={teamSearch}
                     onChange={(event) => setTeamSearch(event.target.value)}
-                    placeholder="搜尋組別名稱或 ID"
+                    placeholder="搜尋第幾小隊、組別名稱或 ID"
                     autoComplete="off"
-                    aria-label="搜尋組別名稱或 ID"
+                    aria-label="搜尋第幾小隊、組別名稱或 ID"
                     className="pl-9"
                   />
                 </div>
