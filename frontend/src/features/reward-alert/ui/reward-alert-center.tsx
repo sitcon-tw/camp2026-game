@@ -1,4 +1,4 @@
-import { SparklesIcon, WindIcon } from "lucide-react"
+import { SparklesIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import { z } from "zod"
@@ -54,6 +54,8 @@ type InventoryTrimmedEvent = z.infer<typeof InventoryTrimmedEventSchema>
 type Notice =
   | { kind: "reward"; event: PlayerRewardEvent }
   | { kind: "inventory_trimmed"; event: InventoryTrimmedEvent }
+
+const runawaySitoneImagePath = "/game-icons/alerts/sitone-runaway-memory.png"
 
 type GainCardProps = {
   badge: string
@@ -167,7 +169,11 @@ function RewardNoticeCard({ event }: { event: PlayerRewardEvent }) {
   )
 }
 
-function InventoryTrimmedNoticeCard({ event }: { event: InventoryTrimmedEvent }) {
+function InventoryTrimmedNoticeCard({
+  event,
+}: {
+  event: InventoryTrimmedEvent
+}) {
   const sitoneCount = event.sitoneCount ?? 0
   const openPower = event.openPower ?? 0
   const parts = [
@@ -176,13 +182,39 @@ function InventoryTrimmedNoticeCard({ event }: { event: InventoryTrimmedEvent })
   ].filter(Boolean)
 
   return (
-    <GainCard
-      badge="資產離家出走"
-      title={parts.length > 0 ? parts.join("、") : "小石與開源力"}
-      detail={event.message}
-      accentClassName="bg-muted"
-      icon={<WindIcon className="size-7" aria-hidden />}
-    />
+    <section
+      className="bg-card border-ink relative grid gap-4 overflow-hidden rounded-[28px] border-2 p-3 text-center"
+      style={{ boxShadow: "6px 6px 0 var(--border)" }}
+    >
+      <div
+        className="border-ink bg-secondary text-secondary-foreground absolute top-3 right-3 z-10 rounded-full border-2 px-3 py-1 text-xs font-black"
+        aria-hidden
+      >
+        補記憶體
+      </div>
+
+      <div className="border-ink bg-muted relative aspect-square overflow-hidden rounded-[22px] border-2">
+        <img
+          src={runawaySitoneImagePath}
+          alt="小石開心帶著開源力去排隊購買記憶體"
+          className="size-full object-cover"
+          loading="lazy"
+          draggable={false}
+        />
+      </div>
+
+      <div className="grid gap-2 px-1 pb-1">
+        <p className="text-muted-foreground text-[11px] font-black tracking-[0.08em] uppercase">
+          Asset Update
+        </p>
+        <h2 className="text-[24px] leading-none font-black tracking-normal">
+          {parts.length > 0 ? parts.join("、") : "小石與開源力"}出門了
+        </h2>
+        <p className="text-muted-foreground text-sm leading-relaxed font-bold">
+          {event.message}
+        </p>
+      </div>
+    </section>
   )
 }
 
@@ -226,7 +258,9 @@ export function RewardAlertCenter() {
 
     const handleInventoryTrimmed = (message: MessageEvent<string>) => {
       try {
-        const event = InventoryTrimmedEventSchema.parse(JSON.parse(message.data))
+        const event = InventoryTrimmedEventSchema.parse(
+          JSON.parse(message.data),
+        )
         setNoticeQueue((current) => [
           ...current,
           { kind: "inventory_trimmed", event },
@@ -299,7 +333,7 @@ export function RewardAlertCenter() {
           </DialogTitle>
           <DialogDescription>
             {activeNotice?.kind === "inventory_trimmed"
-              ? "你的資產已更新。"
+              ? "小石暫時離開基地補充設備。"
               : "新的獎勵已加入你的帳號。"}
           </DialogDescription>
         </DialogHeader>

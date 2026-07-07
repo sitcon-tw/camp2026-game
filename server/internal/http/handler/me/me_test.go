@@ -163,7 +163,7 @@ func TestEventsStreamsPendingInventoryTrimsOnConnect(t *testing.T) {
 			{Key: "player_id", Value: "7H9K2Q"},
 			{Key: "sitone_count", Value: 2},
 			{Key: "open_power", Value: 500},
-			{Key: "message", Value: "你的小石跟開源力太多了，小石跟開源力覺得太臃腫自己離家出走了"},
+			{Key: "message", Value: "小石看著自己的 AI server ，感覺記憶體不太夠，於是帶著500開源力去排隊購買記憶體了...應該很快就會回來"},
 			{Key: "created_at", Value: createdAt},
 			{Key: "notification_pending", Value: true},
 		}),

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,11 +20,14 @@ import (
 )
 
 const (
-	defaultInventoryTrimMessage = "你的小石跟開源力太多了，小石跟開源力覺得太臃腫自己離家出走了"
 	defaultBalanceUpdateMessage = "營運平衡已更新你的小石與開源力數量。"
 	balanceFallbackSitoneID     = "stone_explorer_base"
 	inventoryTrimMaxTop         = 100
 )
+
+func defaultInventoryTrimMessage(openPower int) string {
+	return "小石看著自己的 AI server ，感覺記憶體不太夠，於是帶著" + strconv.Itoa(openPower) + "開源力去排隊購買記憶體了...應該很快就會回來"
+}
 
 type CreateInventoryTrimRequest struct {
 	Top         int    `json:"top" validate:"required,min=1,max=100" example:"3"`
@@ -102,7 +106,7 @@ func (h *Handler) CreateInventoryTrim(w http.ResponseWriter, r *http.Request) {
 	}
 	body.Message = strings.TrimSpace(body.Message)
 	if body.Message == "" {
-		body.Message = defaultInventoryTrimMessage
+		body.Message = defaultInventoryTrimMessage(body.OpenPower)
 	}
 	if err := httpx.ValidateStruct(body); err != nil {
 		httpx.WriteProblem(w, r, err)
@@ -302,7 +306,7 @@ func (h *Handler) updatePlayerBalance(ctx context.Context, playerID string, body
 	openPowerTrimmed := max(0, -openPowerDelta)
 	if message == "" {
 		if sitoneTrimmed > 0 || openPowerTrimmed > 0 {
-			message = defaultInventoryTrimMessage
+			message = defaultInventoryTrimMessage(openPowerTrimmed)
 		} else {
 			message = defaultBalanceUpdateMessage
 		}
