@@ -83,6 +83,48 @@ export function ProfileQrPanel() {
 
   return (
     <div className="flex flex-col gap-3.5">
+      <Card className="border-ink rounded-[32px] border-2 py-0 shadow-[5px_5px_0_rgba(23,35,58,0.16)]">
+        <CardContent className="px-[22px] pt-7 pb-6 text-center">
+          <div className="bg-paper border-ink mx-auto mb-5 grid aspect-square w-full max-w-[306px] place-items-center rounded-[18px] border-4 p-[18px]">
+            {qrcodeToken ? (
+              <QRCodeSVG
+                aria-label="玩家身份 QR Code"
+                bgColor="var(--paper)"
+                className="h-full w-full"
+                fgColor="var(--ink)"
+                level="M"
+                marginSize={4}
+                role="img"
+                size={256}
+                title="玩家身份 QR Code"
+                value={qrcodeToken}
+              />
+            ) : qrQuery.isError ? (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
+                <p className="text-muted-foreground text-sm font-bold">
+                  QR Code 暫時無法產生
+                </p>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void qrQuery.refetch()}
+                >
+                  重新整理
+                </Button>
+              </div>
+            ) : (
+              <Skeleton className="h-full w-full rounded-[12px]" />
+            )}
+          </div>
+          <h2 className="mb-2 text-[26px] font-black tracking-tight">
+            請掃描這個 QR Code
+          </h2>
+          <p className="text-muted-foreground mx-auto max-w-[15rem] leading-relaxed">
+            出示給工作人員掃描，用來確認身份與任務紀錄。
+          </p>
+        </CardContent>
+      </Card>
+
       <Card className="border-ink rounded-[var(--radius)] border-2 py-0 shadow-[4px_4px_0_rgba(23,35,58,0.14)]">
         <CardContent className="grid grid-cols-[70px_1fr] items-center gap-3.5 p-4">
           <PlayerAvatar
@@ -128,48 +170,6 @@ export function ProfileQrPanel() {
           onReset={() => teamAvatarMutation.mutate(null)}
         />
       ) : null}
-
-      <Card className="border-ink rounded-[32px] border-2 py-0 shadow-[5px_5px_0_rgba(23,35,58,0.16)]">
-        <CardContent className="px-[22px] pt-7 pb-6 text-center">
-          <div className="bg-paper border-ink mx-auto mb-5 grid aspect-square w-full max-w-[306px] place-items-center rounded-[18px] border-4 p-[18px]">
-            {qrcodeToken ? (
-              <QRCodeSVG
-                aria-label="玩家身份 QR Code"
-                bgColor="var(--paper)"
-                className="h-full w-full"
-                fgColor="var(--ink)"
-                level="M"
-                marginSize={4}
-                role="img"
-                size={256}
-                title="玩家身份 QR Code"
-                value={qrcodeToken}
-              />
-            ) : qrQuery.isError ? (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
-                <p className="text-muted-foreground text-sm font-bold">
-                  QR Code 暫時無法產生
-                </p>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => void qrQuery.refetch()}
-                >
-                  重新整理
-                </Button>
-              </div>
-            ) : (
-              <Skeleton className="h-full w-full rounded-[12px]" />
-            )}
-          </div>
-          <h2 className="mb-2 text-[26px] font-black tracking-tight">
-            請掃描這個 QR Code
-          </h2>
-          <p className="text-muted-foreground mx-auto max-w-[15rem] leading-relaxed">
-            出示給工作人員掃描，用來確認身份與任務紀錄。
-          </p>
-        </CardContent>
-      </Card>
 
       <Card className="border-ink rounded-[24px] border-2 py-0 shadow-[4px_4px_0_rgba(23,35,58,0.14)]">
         <CardContent className="grid gap-3 p-4">
@@ -269,7 +269,7 @@ function AvatarPickerCard({
                   key={record.id}
                   type="button"
                   className={[
-                    "border-ink bg-card grid aspect-square min-h-0 place-items-center rounded-[18px] border-2 p-1.5 shadow-[2px_2px_0_rgba(23,35,58,0.12)] transition",
+                    "border-ink bg-card grid aspect-square min-h-0 min-w-0 place-items-center overflow-hidden rounded-[18px] border-2 p-1.5 shadow-[2px_2px_0_rgba(23,35,58,0.12)] transition",
                     selected ? "ring-primary ring-4" : "",
                   ].join(" ")}
                   aria-label={`選擇${record.sitone.name}作為頭貼`}
@@ -282,7 +282,7 @@ function AvatarPickerCard({
                     alt=""
                     aria-hidden="true"
                     draggable={false}
-                    className="h-full w-full object-contain"
+                    className="block size-full min-h-0 min-w-0 object-contain"
                   />
                   <span className="sr-only">{record.sitone.name}</span>
                 </button>
@@ -356,7 +356,7 @@ function TeamAvatarPickerCard({
           </div>
         ) : avatarSitones.length > 0 ? (
           <div
-            className="grid max-h-[306px] grid-cols-4 gap-2 overflow-y-auto pr-1"
+            className="grid max-h-[306px] grid-cols-4 gap-2 overflow-y-auto overscroll-contain pr-1"
             role="group"
             aria-label="選擇小隊頭貼小石"
           >
@@ -369,7 +369,7 @@ function TeamAvatarPickerCard({
                   key={sitone.id}
                   type="button"
                   className={[
-                    "border-ink bg-card grid aspect-square min-h-0 place-items-center rounded-[18px] border-2 p-1.5 shadow-[2px_2px_0_rgba(23,35,58,0.12)] transition",
+                    "border-ink bg-card grid aspect-square min-h-0 min-w-0 place-items-center overflow-hidden rounded-[18px] border-2 p-1.5 shadow-[2px_2px_0_rgba(23,35,58,0.12)] transition",
                     selected ? "ring-primary ring-4" : "",
                   ].join(" ")}
                   aria-label={`選擇${sitone.name}作為小隊頭貼`}
@@ -382,7 +382,7 @@ function TeamAvatarPickerCard({
                     alt=""
                     aria-hidden="true"
                     draggable={false}
-                    className="h-full w-full object-contain"
+                    className="block size-full min-h-0 min-w-0 object-contain"
                   />
                   <span className="sr-only">{sitone.name}</span>
                 </button>
