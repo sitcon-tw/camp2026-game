@@ -55,7 +55,8 @@ type Notice =
   | { kind: "reward"; event: PlayerRewardEvent }
   | { kind: "inventory_trimmed"; event: InventoryTrimmedEvent }
 
-const runawaySitoneImagePath = "/game-icons/alerts/sitone-runaway-memory.png"
+const runawaySitoneImagePath =
+  "/game-icons/alerts/sitone-runaway-memory-20260708.png"
 const legacyInventoryTrimMessages = [
   "你的小石跟開源力太多了，小石跟開源力覺得太臃腫自己離家出走了",
   "營運平衡已更新你的小石與開源力數量。",
