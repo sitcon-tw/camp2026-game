@@ -3,16 +3,18 @@ package playerevents
 import "sync"
 
 type RewardGrantedEvent struct {
-	Kind       string `json:"kind"`
-	RefID      string `json:"refId,omitempty"`
-	Name       string `json:"name"`
-	Quantity   int    `json:"quantity,omitempty"`
-	Amount     int    `json:"amount,omitempty"`
-	ItemType   string `json:"itemType,omitempty"`
-	SitoneType string `json:"sitoneType,omitempty"`
-	IconPath   string `json:"iconPath,omitempty"`
-	Source     string `json:"source,omitempty"`
-	OccurredAt string `json:"occurredAt"`
+	Kind          string `json:"kind"`
+	RefID         string `json:"refId,omitempty"`
+	Name          string `json:"name"`
+	Quantity      int    `json:"quantity,omitempty"`
+	Amount        int    `json:"amount,omitempty"`
+	ItemType      string `json:"itemType,omitempty"`
+	SitoneType    string `json:"sitoneType,omitempty"`
+	IconPath      string `json:"iconPath,omitempty"`
+	Source        string `json:"source,omitempty"`
+	StaffPlayerID string `json:"staffPlayerId,omitempty"`
+	StaffNickname string `json:"staffNickname,omitempty"`
+	OccurredAt    string `json:"occurredAt"`
 }
 
 type Event struct {

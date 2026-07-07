@@ -33,6 +33,7 @@ import {
   type AdminDashboardPlayerRank,
   type AdminDashboardTeam,
   type AdminSettings,
+  type GiftHistoryEntry,
 } from "@/shared/api/game"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Badge } from "@/shared/ui/badge"
@@ -133,6 +134,24 @@ function formatDateTime(value?: string) {
   return dateTimeFormatter.format(date)
 }
 
+function giftRewardAmountLabel(entry: GiftHistoryEntry) {
+  if (entry.kind === "open_power") {
+    return `+${entry.amount ?? 0} OP`
+  }
+  return `x${entry.quantity ?? 0}`
+}
+
+function giftRewardKindLabel(entry: GiftHistoryEntry) {
+  switch (entry.kind) {
+    case "item":
+      return "道具"
+    case "sitone":
+      return "小石"
+    case "open_power":
+      return "開源力"
+  }
+}
+
 function formatHistoryTimestamp(value: string, bucket: "hour" | "day") {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return "-"
@@ -191,6 +210,13 @@ export function AdminPanelPage() {
   const historyQuery = useQuery({
     queryKey: ["admin", "history", "hour"],
     queryFn: () => gameApi.adminHistory("hour"),
+    enabled: Boolean(settingsQuery.data),
+    retry: false,
+    refetchInterval: 30_000,
+  })
+  const giftHistoryQuery = useQuery({
+    queryKey: ["admin", "gift-history"],
+    queryFn: gameApi.adminGiftHistory,
     enabled: Boolean(settingsQuery.data),
     retry: false,
     refetchInterval: 30_000,
@@ -338,17 +364,23 @@ export function AdminPanelPage() {
               variant="outline"
               size="icon"
               aria-label="重新整理 dashboard"
-              disabled={dashboardQuery.isFetching || historyQuery.isFetching}
+              disabled={
+                dashboardQuery.isFetching ||
+                historyQuery.isFetching ||
+                giftHistoryQuery.isFetching
+              }
               onClick={() => {
                 void dashboardQuery.refetch()
                 void historyQuery.refetch()
+                void giftHistoryQuery.refetch()
               }}
             >
               <RefreshCw
                 className={cn(
                   "size-4",
-                  (dashboardQuery.isFetching || historyQuery.isFetching) &&
-                    "animate-spin",
+                  (dashboardQuery.isFetching ||
+                    historyQuery.isFetching ||
+                    giftHistoryQuery.isFetching) && "animate-spin",
                 )}
               />
             </Button>
@@ -386,9 +418,13 @@ export function AdminPanelPage() {
         <AdminDashboardView
           dashboard={dashboardQuery.data}
           history={historyQuery.data}
+          giftHistory={giftHistoryQuery.data}
+          giftHistoryError={giftHistoryQuery.error}
+          giftHistoryPending={giftHistoryQuery.isPending}
           historyError={historyQuery.error}
           historyPending={historyQuery.isPending}
           onRetryHistory={() => historyQuery.refetch()}
+          onRetryGiftHistory={() => giftHistoryQuery.refetch()}
         />
       ) : null}
 
@@ -416,15 +452,23 @@ function DashboardLoadingCard() {
 function AdminDashboardView({
   dashboard,
   history,
+  giftHistory,
+  giftHistoryError,
+  giftHistoryPending,
   historyError,
   historyPending,
   onRetryHistory,
+  onRetryGiftHistory,
 }: {
   dashboard: AdminDashboard
   history?: AdminDashboardHistory
+  giftHistory?: GiftHistoryEntry[]
+  giftHistoryError: unknown
+  giftHistoryPending: boolean
   historyError: unknown
   historyPending: boolean
   onRetryHistory: () => void
+  onRetryGiftHistory: () => void
 }) {
   const { summary, matches } = dashboard
 
@@ -552,6 +596,13 @@ function AdminDashboardView({
         onRetry={onRetryHistory}
       />
 
+      <AdminGiftHistoryPanel
+        entries={giftHistory}
+        isPending={giftHistoryPending}
+        error={giftHistoryError}
+        onRetry={onRetryGiftHistory}
+      />
+
       <MostOwnedPanel inventory={dashboard.inventory} />
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
@@ -588,6 +639,133 @@ function AdminDashboardView({
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+function AdminGiftHistoryPanel({
+  entries,
+  isPending,
+  error,
+  onRetry,
+}: {
+  entries?: GiftHistoryEntry[]
+  isPending: boolean
+  error: unknown
+  onRetry: () => void
+}) {
+  if (isPending) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardContent className="flex items-center gap-3 px-5">
+          <Spinner className="size-5" />
+          <span className="font-black">正在載入贈禮紀錄</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <GameFeatureIcon name="history" className="size-5" />
+            全玩家贈禮紀錄
+          </CardTitle>
+          <CardDescription>
+            {errorMessage(error, "贈禮紀錄暫時無法讀取。")}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="px-5">
+          <Button type="button" variant="outline" onClick={onRetry}>
+            重新整理
+          </Button>
+        </CardFooter>
+      </Card>
+    )
+  }
+
+  if (!entries || entries.length === 0) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <GameFeatureIcon name="history" className="size-5" />
+            全玩家贈禮紀錄
+          </CardTitle>
+          <CardDescription>目前還沒有 staff 發獎紀錄。</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="rounded-[18px] py-5">
+      <CardHeader className="gap-3 px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg font-black">
+              <GameFeatureIcon name="history" className="size-5" />
+              全玩家贈禮紀錄
+            </CardTitle>
+            <CardDescription>
+              顯示最近 {entries.length} 筆工作人員發送紀錄。
+            </CardDescription>
+          </div>
+          <Badge variant="secondary">{entries.length} 筆</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="px-5">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>時間</TableHead>
+              <TableHead>收件玩家</TableHead>
+              <TableHead>發送者</TableHead>
+              <TableHead>類型</TableHead>
+              <TableHead>內容</TableHead>
+              <TableHead className="text-right">數量</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {entries.slice(0, 20).map((entry) => (
+              <TableRow key={entry.rewardId}>
+                <TableCell className="font-semibold">
+                  {formatDateTime(entry.createdAt)}
+                </TableCell>
+                <TableCell>
+                  <div className="grid gap-1">
+                    <span className="font-semibold">
+                      {entry.recipientNickname || entry.recipientPlayerId}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {entry.recipientPlayerId}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="grid gap-1">
+                    <span className="font-semibold">
+                      {entry.staffNickname || entry.staffPlayerId}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {entry.staffPlayerId}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{giftRewardKindLabel(entry)}</Badge>
+                </TableCell>
+                <TableCell className="font-semibold">{entry.name}</TableCell>
+                <TableCell className="text-right font-black">
+                  {giftRewardAmountLabel(entry)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   )
 }
 

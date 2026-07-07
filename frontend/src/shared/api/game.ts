@@ -611,6 +611,24 @@ const AdminDashboardHistorySchema = z.object({
   points: nullableArray(AdminDashboardHistoryPointSchema),
 })
 
+const GiftHistoryEntrySchema = z.object({
+  rewardId: z.string(),
+  kind: StaffRewardKindSchema,
+  refId: z.string().optional(),
+  name: z.string(),
+  quantity: z.number().optional(),
+  amount: z.number().optional(),
+  staffPlayerId: z.string(),
+  staffNickname: z.string().optional(),
+  recipientPlayerId: z.string(),
+  recipientNickname: z.string().optional(),
+  createdAt: z.string(),
+})
+
+const GiftHistoryResponseSchema = z.object({
+  entries: nullableArray(GiftHistoryEntrySchema),
+})
+
 export type PlayerStatus = z.infer<typeof PlayerStatusSchema>
 export type Team = z.infer<typeof TeamSchema>
 export type TeamMember = z.infer<typeof TeamMemberSchema>
@@ -675,6 +693,7 @@ export type AdminDashboardHistory = z.infer<typeof AdminDashboardHistorySchema>
 export type AdminDashboardHistoryPoint = z.infer<
   typeof AdminDashboardHistoryPointSchema
 >
+export type GiftHistoryEntry = z.infer<typeof GiftHistoryEntrySchema>
 
 export const gameApi = {
   async login(token: string) {
@@ -935,6 +954,16 @@ export const gameApi = {
       searchParams: { bucket },
     })
     return AdminDashboardHistorySchema.parse(json)
+  },
+
+  async giftHistory() {
+    const json = await apiClient.get("/api/me/gift-history")
+    return GiftHistoryResponseSchema.parse(json).entries
+  },
+
+  async adminGiftHistory() {
+    const json = await apiClient.get("/api/admin/gift-history")
+    return GiftHistoryResponseSchema.parse(json).entries
   },
 
   async updateAdminSettings(settings: AdminSettings) {
