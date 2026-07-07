@@ -446,6 +446,12 @@ const CommunityStandDetailResponseSchema = z.object({
   claimed: z.boolean(),
 })
 
+const CommunityStandDisplayResponseSchema = z.object({
+  stand: CommunityStandSchema,
+  visitCount: z.number(),
+  claimCount: z.number(),
+})
+
 const CommunityStandClaimResponseSchema = z.object({
   claimId: z.string(),
   stand: CommunityStandSchema,
@@ -646,6 +652,9 @@ export type CommunityStand = z.infer<typeof CommunityStandSchema>
 export type CommunityStandDetailResponse = z.infer<
   typeof CommunityStandDetailResponseSchema
 >
+export type CommunityStandDisplayResponse = z.infer<
+  typeof CommunityStandDisplayResponseSchema
+>
 export type CommunityStandClaimResponse = z.infer<
   typeof CommunityStandClaimResponseSchema
 >
@@ -699,6 +708,13 @@ export const gameApi = {
       `/api/community/${encodeURIComponent(standID)}`,
     )
     return CommunityStandDetailResponseSchema.parse(json)
+  },
+
+  async communityStandDisplay(standID: string) {
+    const json = await apiClient.get(
+      `/api/community/${encodeURIComponent(standID)}/display`,
+    )
+    return CommunityStandDisplayResponseSchema.parse(json)
   },
 
   async claimCommunityStand(standID: string) {

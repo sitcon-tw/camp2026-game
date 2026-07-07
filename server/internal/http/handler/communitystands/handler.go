@@ -38,6 +38,10 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Post("/community/{standID}/claim", h.Claim)
 }
 
+func (h *Handler) RegisterPublicRoutes(api chi.Router) {
+	api.Get("/community/{standID}/display", h.Display)
+}
+
 func currentPlayer(w http.ResponseWriter, r *http.Request) (mongomodel.Player, bool) {
 	player, ok := authctx.PlayerFromContext(r.Context())
 	if !ok {

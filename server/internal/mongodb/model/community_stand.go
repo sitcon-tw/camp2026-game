@@ -4,6 +4,7 @@ import "time"
 
 const (
 	CommunityStandsCollection      = "community_stands"
+	CommunityStandVisitsCollection = "community_stand_visits"
 	CommunityStandClaimsCollection = "community_stand_claims"
 )
 
@@ -32,4 +33,12 @@ type CommunityStandClaim struct {
 	PlayerID  string    `bson:"player_id"`
 	RewardID  string    `bson:"reward_id"`
 	CreatedAt time.Time `bson:"created_at"`
+}
+
+type CommunityStandVisit struct {
+	ID             string    `bson:"_id"`
+	StandID        string    `bson:"stand_id"`
+	PlayerID       string    `bson:"player_id"`
+	FirstVisitedAt time.Time `bson:"first_visited_at"`
+	LastVisitedAt  time.Time `bson:"last_visited_at"`
 }

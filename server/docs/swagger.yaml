@@ -620,6 +620,17 @@ definitions:
       stand:
         $ref: '#/definitions/communitystands.StandResponse'
     type: object
+  communitystands.DisplayResponse:
+    properties:
+      claimCount:
+        example: 38
+        type: integer
+      stand:
+        $ref: '#/definitions/communitystands.StandResponse'
+      visitCount:
+        example: 42
+        type: integer
+    type: object
   communitystands.RewardResponse:
     properties:
       amount:
@@ -2561,6 +2572,38 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Claim community stand reward
+      tags:
+      - community-stands
+  /community/{standID}/display:
+    get:
+      description: Returns public stand information and visit counters for community
+        stand partners.
+      parameters:
+      - description: Community stand ID
+        in: path
+        name: standID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/communitystands.DisplayResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Get community stand display data
       tags:
       - community-stands
   /fusions:

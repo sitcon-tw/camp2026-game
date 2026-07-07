@@ -331,6 +331,18 @@ func TestCommunityStandRoutesRequireAuthentication(t *testing.T) {
 	}
 }
 
+func TestCommunityStandDisplayRouteDoesNotRequireAuthentication(t *testing.T) {
+	router := NewRouter(Dependencies{
+		Content: loadTestContent(t),
+	})
+
+	res := performRequest(router, http.MethodGet, "/api/community/q7m4x2v9/display", nil)
+	problem := assertProblem(t, res, http.StatusServiceUnavailable, "")
+	if problem.Status != http.StatusServiceUnavailable {
+		t.Fatalf("expected problem status %d, got %d", http.StatusServiceUnavailable, problem.Status)
+	}
+}
+
 func TestCommunityStandRoutesRequireDatabase(t *testing.T) {
 	router := NewRouter(Dependencies{
 		Content: loadTestContent(t),
@@ -486,6 +498,7 @@ func TestSwaggerJSON(t *testing.T) {
 		"/catalog/items",
 		"/catalog/sitones",
 		"/community/{standID}",
+		"/community/{standID}/display",
 		"/community/{standID}/claim",
 		"/healthz",
 		"/fusions",
@@ -569,6 +582,7 @@ func TestSwaggerJSON(t *testing.T) {
 	assertSwaggerSecurity(t, spec.Paths, "/catalog/items", http.MethodGet, false)
 	assertSwaggerSecurity(t, spec.Paths, "/catalog/sitones", http.MethodGet, false)
 	assertSwaggerSecurity(t, spec.Paths, "/community/{standID}", http.MethodGet, true)
+	assertSwaggerSecurity(t, spec.Paths, "/community/{standID}/display", http.MethodGet, false)
 	assertSwaggerSecurity(t, spec.Paths, "/community/{standID}/claim", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/qr/resolve", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/fusions", http.MethodPost, true)

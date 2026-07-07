@@ -44,6 +44,7 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.ShopPurchasesCollection, models: shopPurchaseIndexModels()},
 		{collection: shopPurchaseLocksCollection, models: shopPurchaseLockIndexModels()},
 		{collection: mongomodel.CommunityStandsCollection, models: communityStandIndexModels()},
+		{collection: mongomodel.CommunityStandVisitsCollection, models: communityStandVisitIndexModels()},
 		{collection: mongomodel.CommunityStandClaimsCollection, models: communityStandClaimIndexModels()},
 	}
 }
@@ -240,6 +241,25 @@ func communityStandClaimIndexModels() []mongo.IndexModel {
 				{Key: "created_at", Value: -1},
 			},
 			Options: options.Index().SetName("community_stand_claims_player_created"),
+		},
+	}
+}
+
+func communityStandVisitIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "stand_id", Value: 1},
+				{Key: "player_id", Value: 1},
+			},
+			Options: options.Index().SetName("community_stand_visits_stand_player").SetUnique(true),
+		},
+		{
+			Keys: bson.D{
+				{Key: "stand_id", Value: 1},
+				{Key: "last_visited_at", Value: -1},
+			},
+			Options: options.Index().SetName("community_stand_visits_stand_last_visited"),
 		},
 	}
 }

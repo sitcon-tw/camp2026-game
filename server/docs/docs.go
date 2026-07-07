@@ -620,6 +620,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/community/{standID}/display": {
+            "get": {
+                "description": "Returns public stand information and visit counters for community stand partners.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "community-stands"
+                ],
+                "summary": "Get community stand display data",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Community stand ID",
+                        "name": "standID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/communitystands.DisplayResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/fusions": {
             "post": {
                 "security": [
@@ -3389,6 +3436,22 @@ const docTemplate = `{
                 },
                 "stand": {
                     "$ref": "#/definitions/communitystands.StandResponse"
+                }
+            }
+        },
+        "communitystands.DisplayResponse": {
+            "type": "object",
+            "properties": {
+                "claimCount": {
+                    "type": "integer",
+                    "example": 38
+                },
+                "stand": {
+                    "$ref": "#/definitions/communitystands.StandResponse"
+                },
+                "visitCount": {
+                    "type": "integer",
+                    "example": 42
                 }
             }
         },

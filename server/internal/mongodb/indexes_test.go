@@ -175,6 +175,23 @@ func TestIndexModelsByCollection(t *testing.T) {
 				{Key: "created_at", Value: -1},
 			},
 		},
+		{
+			collection: mongomodel.CommunityStandVisitsCollection,
+			name:       "community_stand_visits_stand_player",
+			keys: bson.D{
+				{Key: "stand_id", Value: 1},
+				{Key: "player_id", Value: 1},
+			},
+			unique: true,
+		},
+		{
+			collection: mongomodel.CommunityStandVisitsCollection,
+			name:       "community_stand_visits_stand_last_visited",
+			keys: bson.D{
+				{Key: "stand_id", Value: 1},
+				{Key: "last_visited_at", Value: -1},
+			},
+		},
 	}
 
 	if len(models) != len(expected) {

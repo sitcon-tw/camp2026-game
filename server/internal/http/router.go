@@ -141,11 +141,13 @@ func registerRoutes(api chi.Router, dep Dependencies) {
 		MongoDB:     dep.MongoDB,
 		Broker:      playerEventsBroker,
 	}).RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
-	communitystandshandler.New(communitystandshandler.Dependencies{
+	communityStandsHandler := communitystandshandler.New(communitystandshandler.Dependencies{
 		Content: dep.Content,
 		MongoDB: dep.MongoDB,
 		Broker:  playerEventsBroker,
-	}).RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
+	})
+	communityStandsHandler.RegisterPublicRoutes(api)
+	communityStandsHandler.RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
 	staffhandler.New(staffhandler.Dependencies{
 		Content: dep.Content,
 		MongoDB: dep.MongoDB,

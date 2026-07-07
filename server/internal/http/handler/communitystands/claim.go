@@ -52,6 +52,10 @@ func (h *Handler) Claim(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand reward unavailable", "community_stand_reward_missing", errors.New("reward content missing")))
 		return
 	}
+	if err := h.recordStandVisit(r.Context(), stand.ID, player.ID); err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand visit failed", "community_stand_visit_failed", err))
+		return
+	}
 
 	claimID, err := h.claimStandReward(r.Context(), player.ID, stand)
 	if errors.Is(err, errCommunityStandAlreadyClaimed) {

@@ -38,6 +38,12 @@ type ClaimResponse struct {
 	Claimed bool           `json:"claimed" example:"true"`
 }
 
+type DisplayResponse struct {
+	Stand      StandResponse `json:"stand"`
+	VisitCount int64         `json:"visitCount" example:"42"`
+	ClaimCount int64         `json:"claimCount" example:"38"`
+}
+
 func standResponse(stand mongomodel.CommunityStand, reward RewardResponse) StandResponse {
 	return StandResponse{
 		StandID:     stand.ID,
