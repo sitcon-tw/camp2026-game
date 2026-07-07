@@ -17,6 +17,7 @@ import (
 const matchSaveMaxAttempts = 5
 
 var errMatchSaveConflict = errors.New("match save conflict")
+var errMatchNotOpen = errors.New("match is not open")
 
 func (h *Handler) findMatchByID(ctx context.Context, matchID string) (mongomodel.Match, error) {
 	var match mongomodel.Match
@@ -681,6 +682,10 @@ func writeMatchProblem(w http.ResponseWriter, r *http.Request, err error) {
 	}
 	if errors.Is(err, errMatchSaveConflict) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "match was updated; retry"))
+		return
+	}
+	if errors.Is(err, errMatchNotOpen) {
+		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "match is not open"))
 		return
 	}
 	if errors.Is(err, errOpenParticipantMatchExists) {

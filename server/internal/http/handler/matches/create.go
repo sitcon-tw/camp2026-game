@@ -32,7 +32,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.ensureNoOpenParticipantMatch(r.Context(), player.ID); err != nil {
-		writeCreateMatchProblem(w, r, err)
+		h.writeCreateMatchProblem(w, r, player.ID, err)
 		return
 	}
 
@@ -78,7 +78,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := h.db.Collection(mongomodel.MatchesCollection).InsertOne(r.Context(), match); err != nil {
 		if mongo.IsDuplicateKeyError(err) {
-			writeOpenParticipantMatchConflict(w, r)
+			h.writeExistingOpenParticipantMatch(w, r, player.ID)
 			return
 		}
 		httpx.WriteProblem(w, r, httpx.InternalServerError("match creation failed", "match_insert_failed", err))
@@ -120,12 +120,22 @@ func openHostedMatchFilter(playerID string) bson.M {
 	}
 }
 
-func writeCreateMatchProblem(w http.ResponseWriter, r *http.Request, err error) {
+func (h *Handler) writeCreateMatchProblem(w http.ResponseWriter, r *http.Request, playerID string, err error) {
 	if errors.Is(err, errOpenParticipantMatchExists) {
+		if h.writeExistingOpenMatchState(w, r, playerID) {
+			return
+		}
 		writeOpenParticipantMatchConflict(w, r)
 		return
 	}
 	httpx.WriteProblem(w, r, httpx.InternalServerError("match creation failed", "match_open_lookup_failed", err))
+}
+
+func (h *Handler) writeExistingOpenParticipantMatch(w http.ResponseWriter, r *http.Request, playerID string) {
+	if h.writeExistingOpenMatchState(w, r, playerID) {
+		return
+	}
+	writeOpenParticipantMatchConflict(w, r)
 }
 
 func writeOpenParticipantMatchConflict(w http.ResponseWriter, r *http.Request) {

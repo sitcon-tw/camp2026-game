@@ -99,7 +99,7 @@ func (m *MatchSessionManager) GetOrLoad(ctx context.Context, matchID string) (*M
 		return nil, err
 	}
 	if !matchIsOpen(match) {
-		return nil, httpx.NewError(http.StatusConflict, "match is not open")
+		return nil, errMatchNotOpen
 	}
 	answers, err := m.h.findAnswers(ctx, match.ID)
 	if err != nil {

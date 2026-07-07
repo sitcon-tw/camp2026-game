@@ -51,3 +51,7 @@ export function createAppError(input: {
     requestId: parsed.success ? parsed.data.instance : undefined,
   })
 }
+
+export function isTerminalClientError(error: unknown) {
+  return error instanceof AppError && error.status >= 400 && !error.retryable
+}

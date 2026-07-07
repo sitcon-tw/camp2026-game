@@ -8,7 +8,7 @@ import {
   MatchCodeScannerDialog,
   normalizeMatchCode,
 } from "@/features/battle-qr"
-import { AppError } from "@/shared/api/error"
+import { AppError, isTerminalClientError } from "@/shared/api/error"
 import { gameApi, type MatchState } from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
 import {
@@ -87,9 +87,8 @@ export function BattleLobbyPage() {
       }
     },
     retry: (failureCount, error) =>
-      !(error instanceof AppError && error.status < 500) && failureCount < 2,
-    refetchOnMount: "always",
-    staleTime: 0,
+      !isTerminalClientError(error) && failureCount < 2,
+    staleTime: 15_000,
   })
   const openMatch =
     openMatchQuery.data?.status === "waiting" ||
@@ -149,8 +148,13 @@ export function BattleLobbyPage() {
       toast.error(error instanceof Error ? error.message : "加入房間失敗")
     },
   })
+  const battleActionPending =
+    createMutation.isPending ||
+    createComputerMutation.isPending ||
+    joinMutation.isPending
 
   function handleJoinCode(value: string) {
+    if (battleActionPending) return
     if (openMatch) {
       onMatchReady(openMatch)
       return
@@ -168,6 +172,7 @@ export function BattleLobbyPage() {
   }
 
   function handleQuickStart() {
+    if (battleActionPending) return
     if (openMatch) {
       onMatchReady(openMatch)
       return
@@ -176,6 +181,7 @@ export function BattleLobbyPage() {
   }
 
   function handleComputerBattle() {
+    if (battleActionPending) return
     if (openMatch) {
       onMatchReady(openMatch)
       return
@@ -203,7 +209,7 @@ export function BattleLobbyPage() {
             disabled={
               openMatchChecking ||
               computerSettingsQuery.isPending ||
-              createComputerMutation.isPending ||
+              battleActionPending ||
               (!openMatch && !computerSettingsQuery.data?.enabled)
             }
             onClick={handleComputerBattle}
@@ -239,7 +245,7 @@ export function BattleLobbyPage() {
           <Button
             type="button"
             className={actionButtonClassName}
-            disabled={openMatchChecking || createMutation.isPending}
+            disabled={openMatchChecking || battleActionPending}
             onClick={handleQuickStart}
           >
             <GameFeatureIcon name="battle" className="size-4" />
@@ -282,7 +288,7 @@ export function BattleLobbyPage() {
               disabled={
                 Boolean(openMatch) ||
                 openMatchChecking ||
-                joinMutation.isPending
+                battleActionPending
               }
               onClick={() => setScannerOpen(true)}
             >
@@ -292,7 +298,7 @@ export function BattleLobbyPage() {
               className="h-11 rounded-[14px] px-3 text-[15px] font-black"
               variant="secondary"
               type="button"
-              disabled={openMatchChecking || joinMutation.isPending}
+              disabled={openMatchChecking || battleActionPending}
               onClick={handleJoin}
             >
               {openMatch
@@ -313,6 +319,7 @@ export function BattleLobbyPage() {
           onOpenChange={setScannerOpen}
           onCode={(scannedCode) => {
             setCode(scannedCode)
+            setScannerOpen(false)
             handleJoinCode(scannedCode)
           }}
         />

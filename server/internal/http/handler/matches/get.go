@@ -1,9 +1,11 @@
 package matches
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 )
@@ -36,13 +38,11 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if matchIsOpen(match) {
-		session, err := h.sessions.GetOrLoad(r.Context(), match.ID)
+		state, err := h.openMatchState(r.Context(), match.ID, player.ID)
 		if err != nil {
-			httpx.WriteProblem(w, r, err)
-			return
-		}
-		state, err := session.State(r.Context(), player.ID)
-		if err != nil {
+			if h.writeRecoveredClosedMatchState(w, r, match.ID, player.ID, err) {
+				return
+			}
 			httpx.WriteProblem(w, r, err)
 			return
 		}
@@ -56,4 +56,41 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, state)
+}
+
+func (h *Handler) writeRecoveredClosedMatchState(
+	w http.ResponseWriter,
+	r *http.Request,
+	matchID string,
+	playerID string,
+	err error,
+) bool {
+	if !openMatchUnavailable(err) {
+		return false
+	}
+
+	match, findErr := h.findMatchByID(r.Context(), matchID)
+	if errors.Is(findErr, mongo.ErrNoDocuments) {
+		httpx.WriteProblem(w, r, httpx.NotFound("match not found"))
+		return true
+	}
+	if findErr != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("match lookup failed", "match_lookup_failed", findErr))
+		return true
+	}
+	if !isParticipant(match, playerID) {
+		httpx.WriteProblem(w, r, httpx.NotFound("match not found"))
+		return true
+	}
+	if matchIsOpen(match) {
+		return false
+	}
+
+	state, buildErr := h.buildMatchState(r.Context(), match, playerID)
+	if buildErr != nil {
+		httpx.WriteProblem(w, r, buildErr)
+		return true
+	}
+	httpx.WriteJSON(w, http.StatusOK, state)
+	return true
 }

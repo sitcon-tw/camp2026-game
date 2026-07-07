@@ -1,7 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
 
-import { MatchStateSchema, type MatchState } from "@/shared/api/game"
+import { AppError, isTerminalClientError } from "@/shared/api/error"
+import { gameApi, MatchStateSchema, type MatchState } from "@/shared/api/game"
 
 const matchEventNames = [
   "match_updated",
@@ -44,8 +45,31 @@ export function useMatchEvents(
       source = null
     }
 
-    const refreshMatch = () =>
-      queryClient.invalidateQueries({ queryKey: ["matches", matchID] })
+    const stopAfterTerminalError = (error: unknown) => {
+      if (!isTerminalClientError(error)) return false
+
+      deleted = true
+      clearReconnectTimeout()
+      closeSource()
+      if (error instanceof AppError && error.status === 404) {
+        queryClient.removeQueries({ queryKey: ["matches", matchID] })
+        onDeleted?.()
+      }
+      return true
+    }
+
+    const refreshMatch = async () => {
+      try {
+        await queryClient.fetchQuery({
+          queryKey: ["matches", matchID],
+          queryFn: () => gameApi.getMatch(matchID),
+          staleTime: 0,
+        })
+        return true
+      } catch (error) {
+        return !stopAfterTerminalError(error)
+      }
+    }
 
     const scheduleReconnect = () => {
       if (disposed || deleted || reconnectTimeout != null) return
@@ -79,8 +103,9 @@ export function useMatchEvents(
     const handleError = () => {
       if (disposed || deleted) return
       closeSource()
-      void refreshMatch()
-      scheduleReconnect()
+      void refreshMatch().then((shouldReconnect) => {
+        if (shouldReconnect) scheduleReconnect()
+      })
     }
 
     const handleVisibilityChange = () => {
@@ -124,8 +149,9 @@ export function useMatchEvents(
       if (disposed || deleted || source == null) return
       if (Date.now() - lastEventAt > 60_000) {
         closeSource()
-        void refreshMatch()
-        scheduleReconnect()
+        void refreshMatch().then((shouldReconnect) => {
+          if (shouldReconnect) scheduleReconnect()
+        })
       }
     }, 20_000)
 

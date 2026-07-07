@@ -69,7 +69,7 @@ func (h *Handler) joinMatch(w http.ResponseWriter, r *http.Request, match mongom
 	state, err := session.Join(r.Context(), player)
 	if err != nil {
 		if errors.Is(err, errOpenParticipantMatchExists) {
-			writeOpenParticipantMatchConflict(w, r)
+			h.writeExistingOpenParticipantMatch(w, r, player.ID)
 			return
 		}
 		if errors.Is(err, errMatchSaveConflict) {

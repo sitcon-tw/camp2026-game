@@ -72,7 +72,7 @@ func (h *Handler) CreateComputer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.ensureNoOpenParticipantMatch(r.Context(), player.ID); err != nil {
-		writeCreateMatchProblem(w, r, err)
+		h.writeCreateMatchProblem(w, r, player.ID, err)
 		return
 	}
 
@@ -120,7 +120,7 @@ func (h *Handler) CreateComputer(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := h.db.Collection(mongomodel.MatchesCollection).InsertOne(r.Context(), match); err != nil {
 		if mongo.IsDuplicateKeyError(err) {
-			writeOpenParticipantMatchConflict(w, r)
+			h.writeExistingOpenParticipantMatch(w, r, player.ID)
 			return
 		}
 		httpx.WriteProblem(w, r, httpx.InternalServerError("match creation failed", "match_insert_failed", err))

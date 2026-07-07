@@ -2,11 +2,14 @@ package matches
 
 import (
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
@@ -355,6 +358,29 @@ func TestOpenParticipantMatchFilterMatchesWaitingAndActiveParticipant(t *testing
 	}
 	if values[0] != mongomodel.MatchStatusWaiting || values[1] != mongomodel.MatchStatusActive {
 		t.Fatalf("expected waiting and active statuses, got %#v", values)
+	}
+}
+
+func TestOpenMatchUnavailableDetectsStaleOpenRace(t *testing.T) {
+	if !openMatchUnavailable(mongo.ErrNoDocuments) {
+		t.Fatal("expected missing match to be treated as unavailable")
+	}
+	if !openMatchUnavailable(errMatchNotOpen) {
+		t.Fatal("expected no-longer-open match to be treated as unavailable")
+	}
+	if openMatchUnavailable(errors.New("database unavailable")) {
+		t.Fatal("expected unrelated errors to remain reportable")
+	}
+}
+
+func TestWriteOpenMatchLookupProblemReturnsNotFoundForUnavailableOpenMatch(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/matches/open", nil)
+	for _, err := range []error{mongo.ErrNoDocuments, errMatchNotOpen} {
+		res := httptest.NewRecorder()
+		writeOpenMatchLookupProblem(res, req, err)
+		if res.Code != http.StatusNotFound {
+			t.Fatalf("expected unavailable open match to return 404, got %d", res.Code)
+		}
 	}
 }
 
