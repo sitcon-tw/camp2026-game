@@ -284,6 +284,7 @@ func teamRankEntries(teams []mongomodel.Team, players []mongomodel.Player, stats
 		rows = append(rows, TeamRankResponse{
 			TeamID:      team.ID,
 			Name:        team.Name,
+			AvatarURL:   team.AvatarURL,
 			SitoneCount: teamStats.SitoneCount,
 			OpenPower:   teamStats.OpenPower,
 		})

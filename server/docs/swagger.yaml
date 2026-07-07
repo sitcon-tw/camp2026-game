@@ -99,6 +99,46 @@ definitions:
         example: https://sitcon.org
         type: string
     type: object
+  admin.CreateInventoryTrimRequest:
+    properties:
+      dryRun:
+        type: boolean
+      message:
+        maxLength: 240
+        type: string
+      openPower:
+        example: 500
+        maximum: 999999
+        minimum: 0
+        type: integer
+      sitoneCount:
+        example: 2
+        maximum: 9999
+        minimum: 0
+        type: integer
+      top:
+        example: 3
+        maximum: 100
+        minimum: 1
+        type: integer
+    required:
+    - top
+    type: object
+  admin.CreateInventoryTrimResponse:
+    properties:
+      affectedCount:
+        type: integer
+      dryRun:
+        type: boolean
+      message:
+        type: string
+      players:
+        items:
+          $ref: '#/definitions/admin.InventoryTrimPlayerResponse'
+        type: array
+      requestedTop:
+        type: integer
+    type: object
   admin.DashboardHistoryPointResponse:
     properties:
       openPower:
@@ -506,6 +546,41 @@ definitions:
           $ref: '#/definitions/admin.DashboardPlayerRankResponse'
         type: array
     type: object
+  admin.InventoryTrimPlayerResponse:
+    properties:
+      nickname:
+        example: Alice
+        type: string
+      openPowerAfter:
+        example: 700
+        type: integer
+      openPowerBefore:
+        example: 1200
+        type: integer
+      openPowerTrimmed:
+        example: 500
+        type: integer
+      playerId:
+        example: 7H9K2Q
+        type: string
+      rank:
+        example: 1
+        type: integer
+      sitoneAfter:
+        example: 16
+        type: integer
+      sitoneBefore:
+        example: 18
+        type: integer
+      sitoneTrimmed:
+        example: 2
+        type: integer
+      teamId:
+        example: 8M4RXP
+        type: string
+      trimId:
+        type: string
+    type: object
   admin.LoginRequest:
     properties:
       password:
@@ -576,6 +651,22 @@ definitions:
       websiteUrl:
         example: https://sitcon.org
         type: string
+    type: object
+  admin.UpdatePlayerBalanceRequest:
+    properties:
+      message:
+        maxLength: 240
+        type: string
+      openPower:
+        example: 2400
+        maximum: 9999999
+        minimum: 0
+        type: integer
+      sitoneCount:
+        example: 12
+        maximum: 99999
+        minimum: 0
+        type: integer
     type: object
   admin.UpdateTeamRequest:
     properties:
@@ -1171,6 +1262,9 @@ definitions:
     type: object
   leaderboards.RankEntryResponse:
     properties:
+      avatarUrl:
+        example: /game-icons/stones/basic_blue.png
+        type: string
       current:
         example: true
         type: boolean
@@ -1231,6 +1325,9 @@ definitions:
     type: object
   leaderboards.TeamSummaryResponse:
     properties:
+      avatarUrl:
+        example: /game-icons/stones/basic_blue.png
+        type: string
       name:
         example: Blue Team
         type: string
@@ -2039,6 +2136,9 @@ definitions:
     type: object
   me.TeamRankResponse:
     properties:
+      avatarUrl:
+        example: /game-icons/stones/basic_blue.png
+        type: string
       gapToPrevious:
         example: 3
         type: integer
@@ -2060,12 +2160,38 @@ definitions:
     type: object
   me.TeamResponse:
     properties:
+      avatarUrl:
+        example: /game-icons/stones/basic_blue.png
+        type: string
       name:
         example: Blue Team
         type: string
       teamId:
         example: 8M4RXP
         type: string
+    type: object
+  me.UpdateAvatarRequest:
+    properties:
+      sitoneId:
+        example: stone_engineering_base
+        type: string
+    type: object
+  me.UpdateAvatarResponse:
+    properties:
+      avatarUrl:
+        example: /game-icons/stones/basic_blue.png
+        type: string
+    type: object
+  me.UpdateTeamAvatarRequest:
+    properties:
+      sitoneId:
+        example: stone_engineering_base
+        type: string
+    type: object
+  me.UpdateTeamAvatarResponse:
+    properties:
+      team:
+        $ref: '#/definitions/me.TeamResponse'
     type: object
   qr.PlayerSummaryResponse:
     properties:
@@ -2585,6 +2711,53 @@ paths:
       summary: Get admin resource history
       tags:
       - admin
+  /admin/inventory-trims:
+    post:
+      consumes:
+      - application/json
+      description: Admin-only endpoint. Selects the top N leaderboard players, removes
+        sitones and open power, then notifies affected players.
+      parameters:
+      - description: Inventory trim request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/admin.CreateInventoryTrimRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.CreateInventoryTrimResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/admin.CreateInventoryTrimResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Trim top player inventory
+      tags:
+      - admin
   /admin/login:
     post:
       consumes:
@@ -2632,6 +2805,58 @@ paths:
         "204":
           description: No Content
       summary: Logout admin session
+      tags:
+      - admin
+  /admin/players/{playerID}/balance:
+    put:
+      consumes:
+      - application/json
+      description: Admin-only endpoint. Sets one player's total sitone count and open
+        power to target values, then notifies the player.
+      parameters:
+      - description: Player ID
+        in: path
+        name: playerID
+        required: true
+        type: string
+      - description: Player balance request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/admin.UpdatePlayerBalanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.InventoryTrimPlayerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Update one player's balance totals
       tags:
       - admin
   /admin/settings:
@@ -3634,6 +3859,47 @@ paths:
       summary: Get current open match
       tags:
       - matches
+  /me/avatar:
+    put:
+      consumes:
+      - application/json
+      description: Updates the authenticated player's avatar to an owned sitone icon,
+        or clears it to restore the default generated avatar.
+      parameters:
+      - description: Avatar update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/me.UpdateAvatarRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/me.UpdateAvatarResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Update current player avatar
+      tags:
+      - me
   /me/events:
     get:
       description: Streams player reward notifications with Server-Sent Events.
@@ -3925,6 +4191,47 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Get current player status
+      tags:
+      - me
+  /me/team/avatar:
+    put:
+      consumes:
+      - application/json
+      description: Updates the authenticated player's team avatar to any sitone catalog
+        icon, or clears it to restore the default team avatar.
+      parameters:
+      - description: Team avatar update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/me.UpdateTeamAvatarRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/me.UpdateTeamAvatarResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Update current player's team avatar
       tags:
       - me
   /qr/resolve:

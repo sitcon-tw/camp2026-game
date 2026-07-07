@@ -3,8 +3,9 @@ package me
 import "time"
 
 type TeamResponse struct {
-	TeamID string `json:"teamId" example:"8M4RXP"`
-	Name   string `json:"name" example:"Blue Team"`
+	TeamID    string `json:"teamId" example:"8M4RXP"`
+	Name      string `json:"name" example:"Blue Team"`
+	AvatarURL string `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
 }
 
 type TeamMemberResponse struct {
@@ -41,6 +42,7 @@ type TeamRankResponse struct {
 	Rank          int    `json:"rank" example:"2"`
 	TeamID        string `json:"teamId" example:"8M4RXP"`
 	Name          string `json:"name" example:"Blue Team"`
+	AvatarURL     string `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
 	SitoneCount   int    `json:"sitoneCount" example:"18"`
 	OpenPower     int    `json:"openPower" example:"1188"`
 	GapToPrevious int    `json:"gapToPrevious" example:"3"`
@@ -62,6 +64,22 @@ type SitoneLoadoutRequest struct {
 
 type SitoneLoadoutResponse struct {
 	SitoneIDs []string `json:"sitoneIds" example:"stone_engineering_base,stone_explorer_base"`
+}
+
+type UpdateAvatarRequest struct {
+	SitoneID *string `json:"sitoneId" example:"stone_engineering_base"`
+}
+
+type UpdateAvatarResponse struct {
+	AvatarURL string `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
+}
+
+type UpdateTeamAvatarRequest struct {
+	SitoneID *string `json:"sitoneId" example:"stone_engineering_base"`
+}
+
+type UpdateTeamAvatarResponse struct {
+	Team TeamResponse `json:"team"`
 }
 
 type SitoneListResponse struct {
