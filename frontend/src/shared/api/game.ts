@@ -470,6 +470,7 @@ const CommunityStandDisplayResponseSchema = z.object({
   stand: CommunityStandSchema,
   visitCount: z.number(),
   claimCount: z.number(),
+  qrToken: z.string(),
 })
 
 const CommunityStandClaimResponseSchema = z.object({
@@ -495,6 +496,7 @@ const AdminCommunityStandSchema = CommunityStandSchema.extend({
   enabled: z.boolean(),
   visitCount: z.number(),
   claimCount: z.number(),
+  qrToken: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
@@ -816,6 +818,19 @@ export const gameApi = {
   async claimCommunityStand(standID: string) {
     const json = await apiClient.post(
       `/api/community/${encodeURIComponent(standID)}/claim`,
+    )
+    return CommunityStandClaimResponseSchema.parse(json)
+  },
+  async communityStandByQRToken(qrToken: string) {
+    const json = await apiClient.get(
+      `/api/community/scans/${encodeURIComponent(qrToken)}`,
+    )
+    return CommunityStandDetailResponseSchema.parse(json)
+  },
+
+  async claimCommunityStandByQRToken(qrToken: string) {
+    const json = await apiClient.post(
+      `/api/community/scans/${encodeURIComponent(qrToken)}/claim`,
     )
     return CommunityStandClaimResponseSchema.parse(json)
   },

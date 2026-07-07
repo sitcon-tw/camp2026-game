@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	communitystand "github.com/sitcon-tw/camp2026-game/internal/communitystand"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -66,6 +67,7 @@ type CommunityStandResponse struct {
 	Description string                       `json:"description" example:"介紹學生社群與開源參與方式。"`
 	LogoURL     string                       `json:"logoUrl,omitempty" example:"/game-icons/features/team.png"`
 	WebsiteURL  string                       `json:"websiteUrl,omitempty" example:"https://sitcon.org"`
+	QRToken     string                       `json:"qrToken" example:"cst_abcd1234"`
 	Enabled     bool                         `json:"enabled" example:"true"`
 	Reward      CommunityStandRewardResponse `json:"reward"`
 	VisitCount  int64                        `json:"visitCount" example:"42"`
@@ -378,18 +380,23 @@ func validHTTPURL(value string) bool {
 
 func (h *Handler) createCommunityStand(ctx context.Context, body CreateCommunityStandRequest) (mongomodel.CommunityStand, error) {
 	now := time.Now().UTC()
+	qrToken, err := communitystand.NewQRToken()
+	if err != nil {
+		return mongomodel.CommunityStand{}, err
+	}
 	stand := mongomodel.CommunityStand{
 		ID:          body.StandID,
 		Name:        body.Name,
 		Description: body.Description,
 		LogoURL:     body.LogoURL,
 		WebsiteURL:  body.WebsiteURL,
+		QRToken:     qrToken,
 		Enabled:     *body.Enabled,
 		Reward:      communityStandRewardModel(body.Reward),
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	_, err := h.db.Collection(mongomodel.CommunityStandsCollection).InsertOne(ctx, stand)
+	_, err = h.db.Collection(mongomodel.CommunityStandsCollection).InsertOne(ctx, stand)
 	if err != nil {
 		return mongomodel.CommunityStand{}, err
 	}
@@ -475,6 +482,7 @@ func (h *Handler) communityStandResponse(ctx context.Context, stand mongomodel.C
 		Description: stand.Description,
 		LogoURL:     stand.LogoURL,
 		WebsiteURL:  stand.WebsiteURL,
+		QRToken:     stand.QRToken,
 		Enabled:     stand.Enabled,
 		Reward:      reward,
 		VisitCount:  visitCount,

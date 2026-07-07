@@ -170,6 +170,13 @@ func TestIndexModelsByCollection(t *testing.T) {
 		},
 		{
 			collection: mongomodel.CommunityStandsCollection,
+			name:       "community_stands_qr_token",
+			keys:       bson.D{{Key: "qr_token", Value: 1}},
+			unique:     true,
+			partial:    bson.M{"qr_token": bson.M{"$gt": ""}},
+		},
+		{
+			collection: mongomodel.CommunityStandsCollection,
 			name:       "community_stands_enabled_created",
 			keys: bson.D{
 				{Key: "enabled", Value: -1},

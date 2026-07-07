@@ -240,6 +240,13 @@ func staffRewardIndexModels() []mongo.IndexModel {
 func communityStandIndexModels() []mongo.IndexModel {
 	return []mongo.IndexModel{
 		{
+			Keys: bson.D{{Key: "qr_token", Value: 1}},
+			Options: options.Index().
+				SetName("community_stands_qr_token").
+				SetUnique(true).
+				SetPartialFilterExpression(bson.M{"qr_token": bson.M{"$gt": ""}}),
+		},
+		{
 			Keys: bson.D{
 				{Key: "enabled", Value: -1},
 				{Key: "created_at", Value: -1},

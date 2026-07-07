@@ -920,6 +920,128 @@ const docTemplate = `{
                 }
             }
         },
+        "/community/scans/{qrToken}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns the community stand shown after a player scans its QR code. The QR token is opaque and does not contain the stand ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "community-stands"
+                ],
+                "summary": "Get community stand by QR token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Opaque community stand QR token",
+                        "name": "qrToken",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/communitystands.DetailResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/community/scans/{qrToken}/claim": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Claims the scanned community stand reward for the authenticated player. Each player can claim each stand once.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "community-stands"
+                ],
+                "summary": "Claim community stand reward by QR token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Opaque community stand QR token",
+                        "name": "qrToken",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/communitystands.ClaimResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/community/{standID}": {
             "get": {
                 "security": [
@@ -3261,6 +3383,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "SITCON 社群攤位"
                 },
+                "qrToken": {
+                    "type": "string",
+                    "example": "cst_abcd1234"
+                },
                 "reward": {
                     "$ref": "#/definitions/admin.CommunityStandRewardResponse"
                 },
@@ -4405,6 +4531,10 @@ const docTemplate = `{
                 "claimCount": {
                     "type": "integer",
                     "example": 38
+                },
+                "qrToken": {
+                    "type": "string",
+                    "example": "cst_abcd1234"
                 },
                 "stand": {
                     "$ref": "#/definitions/communitystands.StandResponse"

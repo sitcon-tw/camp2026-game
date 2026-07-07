@@ -19,6 +19,9 @@ definitions:
       name:
         example: SITCON 社群攤位
         type: string
+      qrToken:
+        example: cst_abcd1234
+        type: string
       reward:
         $ref: '#/definitions/admin.CommunityStandRewardResponse'
       standId:
@@ -835,6 +838,9 @@ definitions:
       claimCount:
         example: 38
         type: integer
+      qrToken:
+        example: cst_abcd1234
+        type: string
       stand:
         $ref: '#/definitions/communitystands.StandResponse'
       visitCount:
@@ -3193,6 +3199,86 @@ paths:
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
       summary: Get community stand display data
+      tags:
+      - community-stands
+  /community/scans/{qrToken}:
+    get:
+      description: Returns the community stand shown after a player scans its QR code.
+        The QR token is opaque and does not contain the stand ID.
+      parameters:
+      - description: Opaque community stand QR token
+        in: path
+        name: qrToken
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/communitystands.DetailResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get community stand by QR token
+      tags:
+      - community-stands
+  /community/scans/{qrToken}/claim:
+    post:
+      description: Claims the scanned community stand reward for the authenticated
+        player. Each player can claim each stand once.
+      parameters:
+      - description: Opaque community stand QR token
+        in: path
+        name: qrToken
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/communitystands.ClaimResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Claim community stand reward by QR token
       tags:
       - community-stands
   /fusions:

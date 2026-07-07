@@ -11,6 +11,7 @@ import { toast } from "sonner"
 
 import { AppError } from "@/shared/api/error"
 import { gameApi, type CommunityStandReward } from "@/shared/api/game"
+import { parseCommunityStandQRToken } from "@/shared/lib/community-stand-qr"
 import {
   useQrCodeScanner,
   type QrCodeScannerStatus,
@@ -38,10 +39,10 @@ const statusMessages: Record<QrCodeScannerStatus, string> = {
   starting: "正在啟動相機",
   scanning: "對準社群攤位 QR Code",
   "secure-context-required":
-    "瀏覽器需要 HTTPS 或 localhost 才能開啟相機，請輸入攤位 ID。",
-  "camera-unavailable": "這個瀏覽器無法開啟相機，請輸入攤位 ID。",
-  "permission-denied": "相機權限未開啟，請輸入攤位 ID。",
-  "scan-error": "相機已開啟，但無法讀取 QR Code，請輸入攤位 ID。",
+    "瀏覽器需要 HTTPS 或 localhost 才能開啟相機，請輸入 QR Code 內容。",
+  "camera-unavailable": "這個瀏覽器無法開啟相機，請輸入 QR Code 內容。",
+  "permission-denied": "相機權限未開啟，請輸入 QR Code 內容。",
+  "scan-error": "相機已開啟，但無法讀取 QR Code，請輸入 QR Code 內容。",
 }
 
 export function CommunityStandScannerDialog({
@@ -53,11 +54,11 @@ export function CommunityStandScannerDialog({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [manualValue, setManualValue] = useState("")
   const [manualMessage, setManualMessage] = useState<string | null>(null)
-  const [standID, setStandID] = useState<string | null>(null)
-  const activeStandID = standID ?? ""
+  const [qrToken, setQRToken] = useState<string | null>(null)
+  const activeQRToken = qrToken ?? ""
 
   const resetScanner = useCallback(() => {
-    setStandID(null)
+    setQRToken(null)
     setManualValue("")
     setManualMessage(null)
   }, [])
@@ -71,30 +72,30 @@ export function CommunityStandScannerDialog({
   )
 
   const openStand = useCallback((value: string) => {
-    const parsedStandID = parseCommunityStandID(value)
-    if (!parsedStandID) {
-      setManualMessage("找不到攤位 ID，請確認 QR Code 或手動輸入。")
+    const parsedQRToken = parseCommunityStandQRToken(value)
+    if (!parsedQRToken) {
+      setManualMessage("找不到 QR Code 內容，請確認後再手動輸入。")
       return
     }
     setManualMessage(null)
-    setStandID(parsedStandID)
+    setQRToken(parsedQRToken)
   }, [])
 
   const scannerStatus = useQrCodeScanner({
-    open: open && !standID,
+    open: open && !qrToken,
     videoRef,
     canvasRef,
     onResult: openStand,
   })
   const standQuery = useQuery({
-    queryKey: ["community", "stand", activeStandID],
-    queryFn: () => gameApi.communityStand(activeStandID),
-    enabled: open && activeStandID.length > 0,
+    queryKey: ["community", "stand", "scan", activeQRToken],
+    queryFn: () => gameApi.communityStandByQRToken(activeQRToken),
+    enabled: open && activeQRToken.length > 0,
   })
   const claimMutation = useMutation({
-    mutationFn: () => gameApi.claimCommunityStand(activeStandID),
+    mutationFn: () => gameApi.claimCommunityStandByQRToken(activeQRToken),
     onSuccess: (result) => {
-      queryClient.setQueryData(["community", "stand", result.stand.standId], {
+      queryClient.setQueryData(["community", "stand", "scan", activeQRToken], {
         stand: result.stand,
         claimed: true,
       })
@@ -104,7 +105,7 @@ export function CommunityStandScannerDialog({
     onError: (error) => {
       if (error instanceof AppError && error.status === 409) {
         queryClient.setQueryData(
-          ["community", "stand", activeStandID],
+          ["community", "stand", "scan", activeQRToken],
           (current: unknown) => {
             if (!current || typeof current !== "object") return current
             return { ...current, claimed: true }
@@ -125,7 +126,7 @@ export function CommunityStandScannerDialog({
   return (
     <Dialog open={open} onOpenChange={updateOpen}>
       <DialogContent className="gap-4">
-        {!standID ? (
+        {!qrToken ? (
           <>
             <DialogHeader>
               <DialogTitle>掃描社群攤位 QR Code</DialogTitle>
@@ -151,7 +152,7 @@ export function CommunityStandScannerDialog({
                   setManualValue(event.target.value)
                   setManualMessage(null)
                 }}
-                placeholder="輸入攤位 ID 或 QR Code 網址"
+                placeholder="輸入 QR Code 內容"
                 autoComplete="off"
                 inputMode="text"
               />
@@ -305,35 +306,6 @@ export function CommunityStandScannerDialog({
       </DialogContent>
     </Dialog>
   )
-}
-
-function parseCommunityStandID(value: string) {
-  const trimmed = value.trim()
-  if (!trimmed) return null
-
-  try {
-    const url = new URL(trimmed)
-    const parts = url.pathname.split("/").filter(Boolean)
-    if (parts[0] === "community" && parts[1]) return cleanStandID(parts[1])
-  } catch {
-    // Treat non-URL QR contents as a raw stand ID.
-  }
-
-  if (trimmed.startsWith("/")) {
-    const parts = trimmed.split("/").filter(Boolean)
-    if (parts[0] === "community" && parts[1]) return cleanStandID(parts[1])
-  }
-  return cleanStandID(trimmed)
-}
-
-function cleanStandID(value: string) {
-  let decoded = value.trim()
-  try {
-    decoded = decodeURIComponent(decoded).trim()
-  } catch {
-    return null
-  }
-  return /^[a-z0-9][a-z0-9-]{1,80}$/.test(decoded) ? decoded : null
 }
 
 function rewardText(reward: CommunityStandReward) {
