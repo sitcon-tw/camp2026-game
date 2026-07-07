@@ -133,12 +133,18 @@ func statusResponse(player mongomodel.Player, team *mongomodel.Team, openPower i
 		Role:        player.Role,
 	}
 	if team != nil {
-		response.Team = &TeamResponse{
-			TeamID: team.ID,
-			Name:   team.Name,
-		}
+		mappedTeam := teamResponse(*team)
+		response.Team = &mappedTeam
 	}
 	return response
+}
+
+func teamResponse(team mongomodel.Team) TeamResponse {
+	return TeamResponse{
+		TeamID:    team.ID,
+		Name:      team.Name,
+		AvatarURL: team.AvatarURL,
+	}
 }
 
 func teamMemberResponses(players []mongomodel.Player) []TeamMemberResponse {

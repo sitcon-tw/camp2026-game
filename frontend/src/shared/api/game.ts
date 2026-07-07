@@ -26,6 +26,7 @@ const PlayerStatusSchema = z.object({
   team: TeamSchema.optional(),
   teamMembers: nullableArray(TeamMemberSchema),
   openPower: z.number(),
+  avatarUrl: z.string().optional(),
   role: z.string().optional(),
 })
 
@@ -69,6 +70,14 @@ const QRResolveResponseSchema = z.object({
 
 const SitoneLoadoutResponseSchema = z.object({
   sitoneIds: nullableArray(z.string()),
+})
+
+const UpdateAvatarResponseSchema = z.object({
+  avatarUrl: z.string().optional(),
+})
+
+const UpdateTeamAvatarResponseSchema = z.object({
+  team: TeamSchema,
 })
 
 const SitoneSchema = z.object({
@@ -231,6 +240,7 @@ const LeaderboardEntrySchema = z.object({
   name: z.string(),
   teamId: z.string().optional(),
   teamName: z.string().optional(),
+  avatarUrl: z.string().optional(),
   sitoneCount: z.number(),
   openPower: z.number(),
   current: z.boolean(),
@@ -823,6 +833,20 @@ export const gameApi = {
       json: { sitoneIds },
     })
     return SitoneLoadoutResponseSchema.parse(json)
+  },
+
+  async updateAvatar(sitoneId: string | null) {
+    const json = await apiClient.put("/api/me/avatar", {
+      json: { sitoneId },
+    })
+    return UpdateAvatarResponseSchema.parse(json)
+  },
+
+  async updateTeamAvatar(sitoneId: string | null) {
+    const json = await apiClient.put("/api/me/team/avatar", {
+      json: { sitoneId },
+    })
+    return UpdateTeamAvatarResponseSchema.parse(json)
   },
 
   async catalogSitones() {

@@ -13,14 +13,16 @@ type RankEntryResponse struct {
 	Name        string `json:"name" example:"Blue Team"`
 	TeamID      string `json:"teamId,omitempty" example:"8M4RXP"`
 	TeamName    string `json:"teamName,omitempty" example:"Blue Team"`
+	AvatarURL   string `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
 	SitoneCount int    `json:"sitoneCount" example:"18"`
 	OpenPower   int    `json:"openPower" example:"1188"`
 	Current     bool   `json:"current" example:"true"`
 }
 
 type TeamSummaryResponse struct {
-	TeamID string `json:"teamId" example:"8M4RXP"`
-	Name   string `json:"name" example:"Blue Team"`
+	TeamID    string `json:"teamId" example:"8M4RXP"`
+	Name      string `json:"name" example:"Blue Team"`
+	AvatarURL string `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
 }
 
 type TeamPlayersResponse struct {

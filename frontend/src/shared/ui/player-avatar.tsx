@@ -27,6 +27,7 @@ type PlayerAvatarProps = Omit<
 > & {
   playerId?: string
   nickname?: string
+  avatarUrl?: string
   kind?: "human" | "computer"
   svgClassName?: string
 }
@@ -34,6 +35,7 @@ type PlayerAvatarProps = Omit<
 export function PlayerAvatar({
   playerId,
   nickname,
+  avatarUrl,
   kind,
   className,
   svgClassName,
@@ -46,8 +48,10 @@ export function PlayerAvatar({
     () =>
       isComputer
         ? COMPUTER_AVATAR_SRC
-        : svgDataUrl(createAvatar(thumbs, { seed }).toString()),
-    [isComputer, seed],
+        : avatarUrl
+          ? avatarUrl
+          : svgDataUrl(createAvatar(thumbs, { seed }).toString()),
+    [avatarUrl, isComputer, seed],
   )
 
   return (

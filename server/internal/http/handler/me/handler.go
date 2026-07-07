@@ -37,6 +37,8 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/me/home", h.Home)
 	api.Get("/me/events", h.Events)
 	api.Get("/me/status", h.Status)
+	api.Put("/me/avatar", h.UpdateAvatar)
+	api.Put("/me/team/avatar", h.UpdateTeamAvatar)
 	api.Get("/me/sitones", h.ListSitones)
 	api.Get("/me/sitone-loadout", h.SitoneLoadout)
 	api.Put("/me/sitone-loadout", h.UpdateSitoneLoadout)

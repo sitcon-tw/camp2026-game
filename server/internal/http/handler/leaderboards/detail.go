@@ -287,8 +287,9 @@ func (h *Handler) findPlayerSitones(ctx context.Context, playerID string) ([]mon
 
 func teamSummary(team mongomodel.Team) TeamSummaryResponse {
 	return TeamSummaryResponse{
-		TeamID: team.ID,
-		Name:   team.Name,
+		TeamID:    team.ID,
+		Name:      team.Name,
+		AvatarURL: team.AvatarURL,
 	}
 }
 

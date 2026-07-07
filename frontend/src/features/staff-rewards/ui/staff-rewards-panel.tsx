@@ -27,7 +27,6 @@ import {
   rarityLabel,
   sitoneMeta,
 } from "@/shared/lib/game-labels"
-import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
@@ -242,7 +241,8 @@ export function StaffRewardsPanel() {
         .map(sitoneOption)
         .sort(
           (left, right) =>
-            left.sortRank - right.sortRank || left.name.localeCompare(right.name),
+            left.sortRank - right.sortRank ||
+            left.name.localeCompare(right.name),
         ),
     [sitonesQuery.data],
   )

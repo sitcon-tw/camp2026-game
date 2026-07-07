@@ -31,7 +31,7 @@ func TestTeamEntriesRankBySitoneThenOpenPowerThenName(t *testing.T) {
 		{ID: "team-a", Name: "Alpha"},
 		{ID: "team-b", Name: "Beta"},
 		{ID: "team-c", Name: "Gamma"},
-		{ID: "team-d", Name: "Delta"},
+		{ID: "team-d", Name: "Delta", AvatarURL: "/game-icons/stones/basic_blue.png"},
 	}
 	players := []mongomodel.Player{
 		{ID: "player-a", Nickname: "Alice", TeamID: "team-a"},
@@ -63,11 +63,26 @@ func TestTeamEntriesRankBySitoneThenOpenPowerThenName(t *testing.T) {
 	if entries[0].SitoneCount != 101 || entries[0].OpenPower != 249 {
 		t.Fatalf("expected staff stats to be included in team-d, got %#v", entries[0])
 	}
+	if entries[0].AvatarURL != "/game-icons/stones/basic_blue.png" {
+		t.Fatalf("expected team avatar url, got %#v", entries[0])
+	}
 	if current == nil || current.ID != "team-c" || !current.Current {
 		t.Fatalf("expected current team-c entry, got %#v", current)
 	}
 	if gap != 1 {
 		t.Fatalf("expected sitone-count gap 1, got %d", gap)
+	}
+}
+
+func TestTeamSummaryIncludesAvatarURL(t *testing.T) {
+	response := teamSummary(mongomodel.Team{
+		ID:        "team-a",
+		Name:      "Alpha",
+		AvatarURL: "/game-icons/stones/basic_blue.png",
+	})
+
+	if response.TeamID != "team-a" || response.AvatarURL != "/game-icons/stones/basic_blue.png" {
+		t.Fatalf("unexpected team summary: %#v", response)
 	}
 }
 

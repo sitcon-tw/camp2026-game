@@ -234,15 +234,13 @@ function LeaderboardRow({
         <PlayerAvatar
           playerId={entry.id}
           nickname={entry.name}
+          avatarUrl={entry.avatarUrl}
           className="border-ink size-[42px] rounded-[14px] border-2"
         />
       ) : (
-        <div
-          className={[
-            "border-ink size-[42px] rotate-[-6deg] rounded-[14px_18px_12px_16px] border-2",
-            rowColors[index % rowColors.length],
-          ].join(" ")}
-          aria-hidden
+        <TeamAvatar
+          avatarUrl={entry.avatarUrl}
+          fallbackClassName={rowColors[index % rowColors.length]}
         />
       )}
       <div className="min-w-0">
@@ -269,6 +267,33 @@ function LeaderboardRow({
   )
 }
 
+function TeamAvatar({
+  avatarUrl,
+  fallbackClassName,
+}: {
+  avatarUrl?: string
+  fallbackClassName: string
+}) {
+  return (
+    <div
+      className={[
+        "border-ink grid size-[42px] rotate-[-6deg] place-items-center overflow-hidden rounded-[14px_18px_12px_16px] border-2",
+        avatarUrl ? "bg-card p-1" : fallbackClassName,
+      ].join(" ")}
+      aria-hidden
+    >
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt=""
+          draggable={false}
+          className="size-full object-contain"
+        />
+      ) : null}
+    </div>
+  )
+}
+
 function TeamPlayersPanel({
   teamID,
   onSelectPlayer,
@@ -284,7 +309,18 @@ function TeamPlayersPanel({
   return (
     <>
       <PanelTitle
-        icon={<GameFeatureIcon name="team" className="size-4" />}
+        icon={
+          data?.team.avatarUrl ? (
+            <img
+              src={data.team.avatarUrl}
+              alt=""
+              draggable={false}
+              className="size-full object-contain p-0.5"
+            />
+          ) : (
+            <GameFeatureIcon name="team" className="size-4" />
+          )
+        }
         title={data?.team.name ?? "隊伍成員"}
         subtitle={
           isPending

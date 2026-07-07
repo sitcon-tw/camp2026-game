@@ -259,8 +259,9 @@ func TestQRCodeRequiresToken(t *testing.T) {
 
 func TestStatusResponse(t *testing.T) {
 	team := mongomodel.Team{
-		ID:   "8M4RXP",
-		Name: "Blue Team",
+		ID:        "8M4RXP",
+		Name:      "Blue Team",
+		AvatarURL: "/game-icons/stones/basic_blue.png",
 	}
 	response := statusResponse(
 		mongomodel.Player{
@@ -301,6 +302,9 @@ func TestStatusResponse(t *testing.T) {
 	}
 	if response.Team.TeamID != "8M4RXP" {
 		t.Fatalf("expected team id, got %q", response.Team.TeamID)
+	}
+	if response.Team.AvatarURL != "/game-icons/stones/basic_blue.png" {
+		t.Fatalf("expected team avatar url, got %q", response.Team.AvatarURL)
 	}
 	if response.OpenPower != 1280 {
 		t.Fatalf("expected open power 1280, got %d", response.OpenPower)
@@ -347,6 +351,194 @@ func TestStaffStatusResponseKeepsStaffRoleWhenNoTeamIsLoaded(t *testing.T) {
 	if response.Role != "staff" {
 		t.Fatalf("expected staff role, got %q", response.Role)
 	}
+}
+
+func TestUpdateAvatarSetsOwnedSitoneIcon(t *testing.T) {
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.player_sitones", bson.D{
+			{Key: "_id", Value: "owned-sitone-001"},
+			{Key: "player_id", Value: "7H9K2Q"},
+			{Key: "sitone_id", Value: "stone_engineering_base"},
+			{Key: "quantity", Value: 1},
+		}),
+		updateMeResponse(1),
+	)
+	handler := New(Dependencies{
+		Content: loadTestContent(t),
+		MongoDB: db,
+	})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q"},
+		http.MethodPut,
+		"/api/me/avatar",
+		`{"sitoneId":"stone_engineering_base"}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateAvatar(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, res.Code, res.Body.String())
+	}
+	var body UpdateAvatarResponse
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.AvatarURL != "/game-icons/stones/basic_blue.png" {
+		t.Fatalf("expected basic blue avatar, got %#v", body)
+	}
+}
+
+func TestUpdateAvatarRejectsUnownedSitone(t *testing.T) {
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.player_sitones"),
+	)
+	handler := New(Dependencies{
+		Content: loadTestContent(t),
+		MongoDB: db,
+	})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q"},
+		http.MethodPut,
+		"/api/me/avatar",
+		`{"sitoneId":"stone_engineering_base"}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateAvatar(res, req)
+
+	assertProblem(t, res, http.StatusBadRequest)
+}
+
+func TestUpdateAvatarClearsAvatar(t *testing.T) {
+	db := startMeMockDatabase(t, updateMeResponse(1))
+	handler := New(Dependencies{
+		Content: loadTestContent(t),
+		MongoDB: db,
+	})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q"},
+		http.MethodPut,
+		"/api/me/avatar",
+		`{"sitoneId":null}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateAvatar(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, res.Code, res.Body.String())
+	}
+	var body UpdateAvatarResponse
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.AvatarURL != "" {
+		t.Fatalf("expected empty avatar url, got %#v", body)
+	}
+}
+
+func TestUpdateTeamAvatarSetsCatalogSitoneIcon(t *testing.T) {
+	db := startMeMockDatabase(t,
+		findAndModifyMeResponse(bson.D{
+			{Key: "_id", Value: "8M4RXP"},
+			{Key: "name", Value: "Blue Team"},
+			{Key: "avatar_url", Value: "/game-icons/stones/basic_blue.png"},
+		}),
+	)
+	handler := New(Dependencies{
+		Content: loadTestContent(t),
+		MongoDB: db,
+	})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q", TeamID: "8M4RXP"},
+		http.MethodPut,
+		"/api/me/team/avatar",
+		`{"sitoneId":"stone_engineering_base"}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateTeamAvatar(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, res.Code, res.Body.String())
+	}
+	var body UpdateTeamAvatarResponse
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Team.TeamID != "8M4RXP" || body.Team.AvatarURL != "/game-icons/stones/basic_blue.png" {
+		t.Fatalf("unexpected team avatar response: %#v", body)
+	}
+}
+
+func TestUpdateTeamAvatarClearsAvatar(t *testing.T) {
+	db := startMeMockDatabase(t,
+		findAndModifyMeResponse(bson.D{
+			{Key: "_id", Value: "8M4RXP"},
+			{Key: "name", Value: "Blue Team"},
+		}),
+	)
+	handler := New(Dependencies{
+		Content: loadTestContent(t),
+		MongoDB: db,
+	})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q", TeamID: "8M4RXP"},
+		http.MethodPut,
+		"/api/me/team/avatar",
+		`{"sitoneId":null}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateTeamAvatar(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, res.Code, res.Body.String())
+	}
+	var body UpdateTeamAvatarResponse
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Team.AvatarURL != "" {
+		t.Fatalf("expected empty team avatar url, got %#v", body)
+	}
+}
+
+func TestUpdateTeamAvatarRejectsPlayerWithoutTeam(t *testing.T) {
+	handler := New(Dependencies{
+		Content: loadTestContent(t),
+		MongoDB: startMeMockDatabase(t),
+	})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q"},
+		http.MethodPut,
+		"/api/me/team/avatar",
+		`{"sitoneId":"stone_engineering_base"}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateTeamAvatar(res, req)
+
+	assertProblem(t, res, http.StatusBadRequest)
+}
+
+func TestUpdateTeamAvatarRejectsUnknownSitone(t *testing.T) {
+	handler := New(Dependencies{
+		Content: loadTestContent(t),
+		MongoDB: startMeMockDatabase(t),
+	})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q", TeamID: "8M4RXP"},
+		http.MethodPut,
+		"/api/me/team/avatar",
+		`{"sitoneId":"missing"}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateTeamAvatar(res, req)
+
+	assertProblem(t, res, http.StatusBadRequest)
 }
 
 func TestTeamMemberResponsesSkipsInvalidPlayers(t *testing.T) {
@@ -659,8 +851,25 @@ func updateMeResponse(modified int32) bson.D {
 	}
 }
 
+func findAndModifyMeResponse(value bson.D) bson.D {
+	return bson.D{
+		{Key: "ok", Value: 1},
+		{Key: "lastErrorObject", Value: bson.D{
+			{Key: "n", Value: 1},
+			{Key: "updatedExisting", Value: true},
+		}},
+		{Key: "value", Value: value},
+	}
+}
+
 func authenticatedRequest(player mongomodel.Player) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/api/me/qrcode", strings.NewReader(""))
+	return req.WithContext(authctx.WithPlayer(req.Context(), player))
+}
+
+func authenticatedJSONRequest(player mongomodel.Player, method string, target string, body string) *http.Request {
+	req := httptest.NewRequest(method, target, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	return req.WithContext(authctx.WithPlayer(req.Context(), player))
 }
 
