@@ -357,7 +357,7 @@ export function BattleQuestionPage() {
 
   if (!matchID) {
     return (
-      <GamePageShell contentClassName="grid content-start gap-y-2">
+      <GamePageShell contentClassName="grid content-start gap-y-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <Card>
           <CardContent className="grid gap-3">
             <h1 className="text-2xl font-bold">找不到目前對戰</h1>
@@ -371,7 +371,7 @@ export function BattleQuestionPage() {
   }
 
   return (
-    <GamePageShell contentClassName="grid min-h-dvh grid-rows-[auto_minmax(0,1fr)_auto] gap-y-2 px-2">
+    <GamePageShell contentClassName="grid min-h-dvh grid-rows-[auto_minmax(0,1fr)_auto] gap-y-2 px-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
       <PlayerRail
         label="對手"
         player={opponentPlayer}
