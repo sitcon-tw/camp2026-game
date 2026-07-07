@@ -499,16 +499,28 @@ enabled = true
 price_open_power = 150
 
 [[items]]
+id = "item_wooden_plank"
+name = "木板"
+type = "material"
+rarity = "common"
+description = "木板，可用於小石合成。"
+icon_path = "/game-icons/items/item_wooden_plank.png"
+source = "shop"
+purchasable = true
+enabled = true
+price_open_power = 150
+
+[[items]]
 id = "item_charm_connection"
 name = "連線成功御守"
 type = "charm"
 rarity = "rare"
-description = "永久生效。帶探索型小石上場時，對戰小石掉落率額外提高 15%。"
+description = "永久生效。帶探索型小石上場時，小石掉落率額外提高 15%。"
 icon_path = "/game-icons/items/item_charm_connection.png"
 source = "shop"
 purchasable = true
 enabled = true
-price_open_power = 800
+price_open_power = 1000
 
 [[items]]
 id = "item_charm_debug"
@@ -532,7 +544,7 @@ icon_path = "/game-icons/items/item_charm_all_nighter.png"
 source = "shop"
 purchasable = true
 enabled = true
-price_open_power = 800
+price_open_power = 5000
 
 [[items]]
 id = "item_charm_success"
@@ -544,7 +556,7 @@ icon_path = "/game-icons/items/item_charm_success.png"
 source = "shop"
 purchasable = true
 enabled = true
-price_open_power = 800
+price_open_power = 1500
 
 [[items]]
 id = "item_charm_harmony"
@@ -556,7 +568,7 @@ icon_path = "/game-icons/items/item_charm_harmony.png"
 source = "shop"
 purchasable = true
 enabled = true
-price_open_power = 800
+price_open_power = 1500
 
 [[items]]
 id = "item_postcard_sitcon2024"

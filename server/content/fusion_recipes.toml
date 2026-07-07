@@ -169,6 +169,29 @@ id = "stone_star_village_guide"
 quantity = 1
 
 [[fusion_recipes]]
+id = "recipe_item_wooden_plank_to_star_village_signpost"
+branch_id = "branch_2024_star_village"
+type = "exploration"
+stage_from = 0
+stage_to = 0
+name = "星手村路標"
+description = "把四塊木板釘成一個清楚的路標，讓攤位小石進化"
+story = "把四塊木板釘成一個清楚的路標，讓攤位小石進化成為。"
+review_title = "開源星手村議程"
+review_url = "https://sitcon.org/2024/agenda/5b0c91/"
+enabled = true
+
+[[fusion_recipes.inputs]]
+kind = "item"
+id = "item_wooden_plank"
+quantity = 4
+
+[[fusion_recipes.outputs]]
+kind = "item"
+id = "item_star_village_signpost"
+quantity = 1
+
+[[fusion_recipes]]
 id = "recipe_explore_2019_blackbox_s1_s2"
 branch_id = "branch_2019_blackbox"
 type = "exploration"
