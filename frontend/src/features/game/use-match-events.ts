@@ -132,12 +132,12 @@ export function useMatchDeadlineRefresh(
     const transitionQuestionIndex = match.currentQuestionIndex ?? -1
     const transitionQuestionID = match.currentQuestion?.questionId ?? ""
 
-    const delay = Math.max(0, deadlineAt - Date.now() + 300)
+    const delay = Math.max(0, deadlineAt - Date.now() + 100)
     const timeout = window.setTimeout(() => {
       void queryClient.invalidateQueries({ queryKey: ["matches", matchID] })
     }, delay)
 
-    const recoveryDelays = [1500, 3000, 5000]
+    const recoveryDelays = [400, 900, 2000]
     const recoveryTimeouts = recoveryDelays.map((extraDelay) =>
       window.setTimeout(() => {
         const latest = queryClient.getQueryData<MatchState>(["matches", matchID])
