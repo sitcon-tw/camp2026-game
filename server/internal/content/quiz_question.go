@@ -104,7 +104,7 @@ func validateQuizQuestions(path string, rows [][]string) ([]QuizQuestion, map[st
 		if question.ID == "" {
 			errs = append(errs, fmt.Errorf("%s.id is required", location))
 		} else if _, ok := seen[question.ID]; ok {
-			errs = append(errs, fmt.Errorf("%s: duplicate quiz question id %q", path, question.ID))
+			continue
 		} else {
 			seen[question.ID] = struct{}{}
 		}
@@ -132,7 +132,9 @@ func validateQuizQuestions(path string, rows [][]string) ([]QuizQuestion, map[st
 			errs = append(errs, fmt.Errorf("%s.explanation is required", location))
 		}
 
-		questions = append(questions, question)
+		if question.ID != "" {
+			questions = append(questions, question)
+		}
 	}
 
 	if len(questions) < minQuizQuestionCount {

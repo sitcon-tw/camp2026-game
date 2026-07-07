@@ -235,6 +235,29 @@ func TestLoadQuizQuestions(t *testing.T) {
 	}
 }
 
+func TestLoadQuizQuestionsSkipsDuplicateIDs(t *testing.T) {
+	quizContent := validQuizQuestionsCSV() + "\nquiz-001,Duplicate Question,A,B,C,D,D,Duplicate explanation"
+	dir := writeContent(t, validSitonesTOML(), validItemsTOML(), quizContent)
+
+	store, err := Load(dir)
+	if err != nil {
+		t.Fatalf("load content: %v", err)
+	}
+
+	questions := store.ListQuizQuestions()
+	if len(questions) != minQuizQuestionCount {
+		t.Fatalf("expected %d questions, got %d", minQuizQuestionCount, len(questions))
+	}
+
+	question, ok := store.GetQuizQuestion("quiz-001")
+	if !ok {
+		t.Fatal("expected quiz-001 to exist")
+	}
+	if question.Prompt != "Question 1" || question.CorrectChoice != "A" {
+		t.Fatalf("expected first quiz-001 to win, got %#v", question)
+	}
+}
+
 func TestLoadFusionRecipes(t *testing.T) {
 	dir := writeContent(t, validSitonesTOML(), validItemsTOML(), validQuizQuestionsCSV(), `
 [[fusion_recipes]]
