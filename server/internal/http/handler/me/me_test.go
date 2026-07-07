@@ -12,6 +12,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/x/mongo/driver/drivertest"
 
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
@@ -88,6 +90,67 @@ func TestEventsStreamsRewardGrantedEvent(t *testing.T) {
 	}
 	if !strings.Contains(body, `"name":"冒險背包"`) {
 		t.Fatalf("expected reward payload, got %q", body)
+	}
+}
+
+func TestEventsStreamsPendingStaffRewardsOnConnect(t *testing.T) {
+	createdAt := time.Date(2026, 7, 7, 9, 30, 0, 0, time.UTC)
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.staff_rewards", bson.D{
+			{Key: "_id", Value: "reward-offline"},
+			{Key: "staff_player_id", Value: "staff-a"},
+			{Key: "recipient_player_id", Value: "7H9K2Q"},
+			{Key: "kind", Value: "item"},
+			{Key: "ref_id", Value: "item_adventure_backpack"},
+			{Key: "quantity", Value: 2},
+			{Key: "created_at", Value: createdAt},
+			{Key: "notification_pending", Value: true},
+		}),
+		createMeCursorResponse("camp2026_game_test.players", bson.D{
+			{Key: "_id", Value: "staff-a"},
+			{Key: "nickname", Value: "Staff One"},
+		}),
+		updateMeResponse(1),
+	)
+	handler := New(Dependencies{
+		Content: loadTestContent(t),
+		MongoDB: db,
+		Broker:  playerevents.NewBroker(),
+	})
+	req := authenticatedRequest(mongomodel.Player{ID: "7H9K2Q"})
+	ctx, cancel := context.WithCancel(req.Context())
+	req = req.WithContext(ctx)
+	res := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		handler.Events(res, req)
+	}()
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for {
+		body := res.Body.String()
+		if strings.Contains(body, `"rewardId":"reward-offline"`) && strings.Contains(body, `"delayed":true`) {
+			break
+		}
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+
+	body := res.Body.String()
+	if !strings.Contains(body, "event: reward_granted") {
+		t.Fatalf("expected pending reward event, got %q", body)
+	}
+	if !strings.Contains(body, `"rewardId":"reward-offline"`) || !strings.Contains(body, `"delayed":true`) {
+		t.Fatalf("expected delayed reward payload, got %q", body)
+	}
+	if !strings.Contains(body, `"staffNickname":"Staff One"`) || !strings.Contains(body, `"quantity":2`) {
+		t.Fatalf("expected staff and quantity fields, got %q", body)
 	}
 }
 
@@ -496,6 +559,47 @@ func TestMapCompletedMatches(t *testing.T) {
 	}
 	if len(matches[0].Players) != 2 || matches[0].Players[0].Score != 850 {
 		t.Fatalf("unexpected completed match players: %#v", matches[0].Players)
+	}
+}
+
+func startMeMockDatabase(t *testing.T, responses ...bson.D) *mongo.Database {
+	t.Helper()
+
+	deployment := drivertest.NewMockDeployment(responses...)
+	clientOptions := options.Client()
+	clientOptions.Deployment = deployment
+
+	client, err := mongo.Connect(clientOptions)
+	if err != nil {
+		t.Fatalf("connect mock mongodb client: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = client.Disconnect(t.Context())
+	})
+
+	return client.Database("camp2026_game_test")
+}
+
+func createMeCursorResponse(ns string, batch ...bson.D) bson.D {
+	values := make(bson.A, 0, len(batch))
+	for _, doc := range batch {
+		values = append(values, doc)
+	}
+	return bson.D{
+		{Key: "ok", Value: 1},
+		{Key: "cursor", Value: bson.D{
+			{Key: "id", Value: int64(0)},
+			{Key: "ns", Value: ns},
+			{Key: "firstBatch", Value: values},
+		}},
+	}
+}
+
+func updateMeResponse(modified int32) bson.D {
+	return bson.D{
+		{Key: "ok", Value: 1},
+		{Key: "n", Value: modified},
+		{Key: "nModified", Value: modified},
 	}
 }
 

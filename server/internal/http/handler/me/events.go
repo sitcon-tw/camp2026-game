@@ -1,14 +1,19 @@
 package me
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
+	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
 
 // Events godoc
@@ -44,10 +49,26 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 	eventCh, unsubscribe := h.broker.Subscribe(player.ID)
 	defer unsubscribe()
 
+	pendingEvents, err := h.pendingStaffRewardEvents(r.Context(), player.ID, time.Now().UTC())
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_pending_rewards_failed", err))
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
+
+	for _, event := range pendingEvents {
+		if !writePlayerEventSSE(w, event.Event) {
+			return
+		}
+		flusher.Flush()
+		if err := h.markStaffRewardNotified(r.Context(), event.RewardID, time.Now().UTC()); err != nil {
+			return
+		}
+	}
 
 	heartbeat := time.NewTicker(20 * time.Second)
 	defer heartbeat.Stop()
@@ -60,7 +81,9 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
-			writePlayerEventSSE(w, event)
+			if !writePlayerEventSSE(w, event) {
+				return
+			}
 			flusher.Flush()
 		case <-heartbeat.C:
 			_, _ = fmt.Fprint(w, "event: keepalive\ndata: {}\n\n")
@@ -69,14 +92,134 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func writePlayerEventSSE(w http.ResponseWriter, event playerevents.Event) {
+type pendingStaffRewardEvent struct {
+	RewardID string
+	Event    playerevents.Event
+}
+
+func (h *Handler) pendingStaffRewardEvents(ctx context.Context, playerID string, connectedAt time.Time) ([]pendingStaffRewardEvent, error) {
+	if h.db == nil || h.content == nil {
+		return nil, nil
+	}
+
+	cursor, err := h.db.Collection(mongomodel.StaffRewardsCollection).Find(
+		ctx,
+		bson.M{
+			"recipient_player_id":  playerID,
+			"notification_pending": true,
+			"created_at":           bson.M{"$lte": connectedAt},
+		},
+		options.Find().
+			SetSort(bson.D{{Key: "created_at", Value: 1}, {Key: "_id", Value: 1}}).
+			SetLimit(100),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var records []mongomodel.StaffReward
+	if err := cursor.All(ctx, &records); err != nil {
+		return nil, err
+	}
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	staffPlayers, err := h.loadRewardStaffPlayers(ctx, records)
+	if err != nil {
+		return nil, err
+	}
+
+	events := make([]pendingStaffRewardEvent, 0, len(records))
+	for _, record := range records {
+		event, err := playerevents.StaffRewardGrantedEvent(h.content, record, staffPlayers[record.StaffPlayerID], true)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, pendingStaffRewardEvent{
+			RewardID: record.ID,
+			Event: playerevents.Event{
+				Name:   "reward_granted",
+				Reward: &event,
+			},
+		})
+	}
+	return events, nil
+}
+
+func (h *Handler) loadRewardStaffPlayers(ctx context.Context, records []mongomodel.StaffReward) (map[string]mongomodel.Player, error) {
+	staffIDs := make(map[string]struct{}, len(records))
+	for _, record := range records {
+		if record.StaffPlayerID != "" {
+			staffIDs[record.StaffPlayerID] = struct{}{}
+		}
+	}
+	if len(staffIDs) == 0 {
+		return map[string]mongomodel.Player{}, nil
+	}
+
+	ids := make([]string, 0, len(staffIDs))
+	for id := range staffIDs {
+		ids = append(ids, id)
+	}
+	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(
+		ctx,
+		bson.M{"_id": bson.M{"$in": ids}},
+		options.Find().SetProjection(bson.D{
+			{Key: "auth_token", Value: 0},
+			{Key: "qrcode_token", Value: 0},
+			{Key: "default_sitone_ids", Value: 0},
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var players []mongomodel.Player
+	if err := cursor.All(ctx, &players); err != nil {
+		return nil, err
+	}
+	byID := make(map[string]mongomodel.Player, len(players))
+	for _, player := range players {
+		byID[player.ID] = player
+	}
+	return byID, nil
+}
+
+func (h *Handler) markStaffRewardNotified(ctx context.Context, rewardID string, notifiedAt time.Time) error {
+	if h.db == nil {
+		return nil
+	}
+	_, err := h.db.Collection(mongomodel.StaffRewardsCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": rewardID, "notification_pending": true},
+		bson.M{
+			"$set":   bson.M{"notified_at": notifiedAt},
+			"$unset": bson.M{"notification_pending": ""},
+		},
+	)
+	return err
+}
+
+func writePlayerEventSSE(w http.ResponseWriter, event playerevents.Event) bool {
 	if event.Reward == nil {
-		return
+		return true
 	}
 	payload, err := json.Marshal(event.Reward)
 	if err != nil {
-		return
+		return false
 	}
-	_, _ = fmt.Fprintf(w, "event: %s\n", event.Name)
-	_, _ = fmt.Fprintf(w, "data: %s\n\n", payload)
+	if _, err := fmt.Fprintf(w, "event: %s\n", event.Name); err != nil {
+		return false
+	}
+	if _, err := fmt.Fprintf(w, "data: %s\n\n", payload); err != nil {
+		return false
+	}
+	return true
 }

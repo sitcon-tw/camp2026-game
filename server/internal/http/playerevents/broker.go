@@ -3,6 +3,7 @@ package playerevents
 import "sync"
 
 type RewardGrantedEvent struct {
+	RewardID      string `json:"rewardId,omitempty"`
 	Kind          string `json:"kind"`
 	RefID         string `json:"refId,omitempty"`
 	Name          string `json:"name"`
@@ -15,6 +16,7 @@ type RewardGrantedEvent struct {
 	StaffPlayerID string `json:"staffPlayerId,omitempty"`
 	StaffNickname string `json:"staffNickname,omitempty"`
 	OccurredAt    string `json:"occurredAt"`
+	Delayed       bool   `json:"delayed,omitempty"`
 }
 
 type Event struct {
@@ -59,7 +61,7 @@ func (b *Broker) Subscribe(playerID string) (<-chan Event, func()) {
 	return ch, unsubscribe
 }
 
-func (b *Broker) Publish(playerID string, event Event) {
+func (b *Broker) Publish(playerID string, event Event) int {
 	b.mu.Lock()
 	subscribers := make([]chan Event, 0, len(b.subscribers[playerID]))
 	for ch := range b.subscribers[playerID] {
@@ -67,10 +69,13 @@ func (b *Broker) Publish(playerID string, event Event) {
 	}
 	b.mu.Unlock()
 
+	delivered := 0
 	for _, ch := range subscribers {
 		select {
 		case ch <- event:
+			delivered++
 		default:
 		}
 	}
+	return delivered
 }
