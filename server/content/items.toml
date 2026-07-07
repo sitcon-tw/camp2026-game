@@ -505,8 +505,8 @@ type = "material"
 rarity = "common"
 description = "木板，可用於小石合成。"
 icon_path = "/game-icons/items/item_wooden_plank.png"
-source = "shop"
-purchasable = true
+source = "event"
+purchasable = false
 enabled = true
 price_open_power = 150
 
