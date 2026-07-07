@@ -73,12 +73,12 @@ export function CommunityStandDisplayPage({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-3">
           <section className="grid content-start gap-3">
             <Card className="border-ink rounded-[28px] border-2 py-0 shadow-[5px_5px_0_rgba(23,35,58,0.16)]">
               <CardContent className="grid gap-4 p-5">
-                <div className="flex items-start gap-4">
-                  <div className="bg-surface-raised border-ink grid size-24 shrink-0 place-items-center overflow-hidden rounded-[24px] border-2">
+                <div className="grid grid-cols-[80px_minmax(0,1fr)] items-start gap-3">
+                  <div className="bg-surface-raised border-ink grid size-20 shrink-0 place-items-center overflow-hidden rounded-[22px] border-2">
                     {standQuery.data.stand.logoUrl ? (
                       <img
                         src={standQuery.data.stand.logoUrl}
@@ -86,14 +86,14 @@ export function CommunityStandDisplayPage({
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <UsersRound className="size-9" aria-hidden />
+                      <UsersRound className="size-8" aria-hidden />
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-[30px] leading-tight font-black">
+                    <h2 className="text-[28px] leading-tight font-black break-words">
                       {standQuery.data.stand.name}
                     </h2>
-                    <p className="text-muted-foreground mt-2 leading-relaxed whitespace-pre-line">
+                    <p className="text-muted-foreground mt-2 leading-relaxed break-words whitespace-pre-line">
                       {standQuery.data.stand.description}
                     </p>
                   </div>
@@ -159,7 +159,7 @@ export function CommunityStandDisplayPage({
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 px-5 pb-5 text-center">
-              <div className="bg-paper border-ink mx-auto grid aspect-square w-full max-w-[288px] place-items-center rounded-[18px] border-4 p-[18px]">
+              <div className="bg-paper border-ink mx-auto grid aspect-square w-full max-w-[288px] place-items-center rounded-[18px] border-4 p-4">
                 <QRCodeSVG
                   aria-label={`${standQuery.data.stand.name} 攤位 QR Code`}
                   bgColor="var(--paper)"
@@ -195,10 +195,10 @@ export function CommunityStandDisplayPage({
 
 function DisplayLoading() {
   return (
-    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid gap-3">
       <Card className="border-ink rounded-[28px] border-2 py-0">
         <CardContent className="grid gap-4 p-5">
-          <Skeleton className="size-24 rounded-[24px]" />
+          <Skeleton className="size-20 rounded-[22px]" />
           <Skeleton className="h-8 w-2/3" />
           <Skeleton className="h-24 w-full" />
         </CardContent>
