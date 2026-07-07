@@ -579,6 +579,54 @@ func TestBuildDashboardHistoryResponseUsesBaselineAndCumulativeDeltas(t *testing
 	}
 }
 
+func TestBuildDashboardHistoryResponseIncludesInventoryTrimSitoneDeltas(t *testing.T) {
+	now := time.Date(2026, 7, 7, 17, 30, 0, 0, time.UTC)
+	grantHour := time.Date(2026, 7, 7, 15, 0, 0, 0, time.UTC)
+	trimHour := time.Date(2026, 7, 7, 16, 0, 0, 0, time.UTC)
+	currentHour := time.Date(2026, 7, 7, 17, 0, 0, 0, time.UTC)
+
+	got := buildDashboardHistoryResponse(now, dashboardHistoryBucketHour, dashboardHistoryRawData{
+		CurrentSitoneTotal: 882,
+		SitoneDeltas: []dashboardHistoryDeltaStat{
+			{Timestamp: grantHour, Amount: 1200},
+			{Timestamp: trimHour, Amount: -500},
+		},
+	})
+
+	if got.SitoneBaseline != 182 {
+		t.Fatalf("expected positive baseline after accounting for trim deltas, got %#v", got)
+	}
+	want := []DashboardHistoryPointResponse{
+		{Timestamp: grantHour, SitoneCount: 1382, SitoneDelta: 1200},
+		{Timestamp: trimHour, SitoneCount: 882, SitoneDelta: -500},
+		{Timestamp: currentHour, SitoneCount: 882},
+	}
+	if !reflect.DeepEqual(got.Points, want) {
+		t.Fatalf("unexpected history points:\ngot  %#v\nwant %#v", got.Points, want)
+	}
+}
+
+func TestDashboardHistoryInventoryTrimSitoneDeltaPipeline(t *testing.T) {
+	playerIDs := []string{"player-a", "player-b"}
+
+	got := dashboardHistoryInventoryTrimSitoneDeltaPipeline(dashboardHistoryBucketHour, playerIDs)
+	want := mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{
+			{Key: "player_id", Value: bson.D{{Key: "$in", Value: playerIDs}}},
+			{Key: "sitone_count", Value: bson.D{{Key: "$gt", Value: 0}}},
+		}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: dashboardHistoryBucketExpression("created_at", dashboardHistoryBucketHour)},
+			{Key: "amount", Value: bson.D{{Key: "$sum", Value: bson.D{{Key: "$multiply", Value: bson.A{"$sitone_count", -1}}}}}},
+		}}},
+		{{Key: "$sort", Value: bson.D{{Key: "_id", Value: 1}}}},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected inventory trim sitone history pipeline:\ngot  %#v\nwant %#v", got, want)
+	}
+}
+
 func TestDashboardHistoryOpenPowerDeltaPipeline(t *testing.T) {
 	playerIDs := []string{"player-a", "player-b"}
 

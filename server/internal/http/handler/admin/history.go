@@ -144,6 +144,15 @@ func (h *Handler) dashboardHistoryRawData(ctx context.Context, bucket string) (d
 	if err != nil {
 		return dashboardHistoryRawData{}, err
 	}
+	inventoryTrimDeltas, err := aggregateAllDashboard[dashboardHistoryDeltaStat](
+		ctx,
+		h.db,
+		mongomodel.InventoryTrimsCollection,
+		dashboardHistoryInventoryTrimSitoneDeltaPipeline(bucket, playerIDs),
+	)
+	if err != nil {
+		return dashboardHistoryRawData{}, err
+	}
 	openPowerDeltas, err := aggregateAllDashboard[dashboardHistoryDeltaStat](
 		ctx,
 		h.db,
@@ -154,11 +163,12 @@ func (h *Handler) dashboardHistoryRawData(ctx context.Context, bucket string) (d
 		return dashboardHistoryRawData{}, err
 	}
 
-	sitoneDeltas := make([]dashboardHistoryDeltaStat, 0, len(staffSitoneDeltas)+len(dropSitoneDeltas)+len(fusionInputDeltas)+len(fusionOutputDeltas))
+	sitoneDeltas := make([]dashboardHistoryDeltaStat, 0, len(staffSitoneDeltas)+len(dropSitoneDeltas)+len(fusionInputDeltas)+len(fusionOutputDeltas)+len(inventoryTrimDeltas))
 	sitoneDeltas = append(sitoneDeltas, staffSitoneDeltas...)
 	sitoneDeltas = append(sitoneDeltas, dropSitoneDeltas...)
 	sitoneDeltas = append(sitoneDeltas, fusionInputDeltas...)
 	sitoneDeltas = append(sitoneDeltas, fusionOutputDeltas...)
+	sitoneDeltas = append(sitoneDeltas, inventoryTrimDeltas...)
 
 	return dashboardHistoryRawData{
 		CurrentSitoneTotal: currentSitones.Total,
@@ -221,6 +231,20 @@ func dashboardHistoryFusionSitoneDeltaPipeline(bucket string, componentField str
 		{{Key: "$group", Value: bson.D{
 			{Key: "_id", Value: dashboardHistoryBucketExpression("created_at", bucket)},
 			{Key: "amount", Value: bson.D{{Key: "$sum", Value: bson.D{{Key: "$multiply", Value: bson.A{quantityPath, sign}}}}}},
+		}}},
+		{{Key: "$sort", Value: bson.D{{Key: "_id", Value: 1}}}},
+	}
+}
+
+func dashboardHistoryInventoryTrimSitoneDeltaPipeline(bucket string, playerIDs []string) mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{
+			{Key: "player_id", Value: bson.D{{Key: "$in", Value: playerIDs}}},
+			{Key: "sitone_count", Value: bson.D{{Key: "$gt", Value: 0}}},
+		}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: dashboardHistoryBucketExpression("created_at", bucket)},
+			{Key: "amount", Value: bson.D{{Key: "$sum", Value: bson.D{{Key: "$multiply", Value: bson.A{"$sitone_count", -1}}}}}},
 		}}},
 		{{Key: "$sort", Value: bson.D{{Key: "_id", Value: 1}}}},
 	}
