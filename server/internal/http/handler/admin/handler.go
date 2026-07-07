@@ -19,7 +19,7 @@ import (
 const (
 	CookieName        = "camp2026_admin"
 	sessionMessage    = "camp2026-admin-session-v1"
-	adminCookieMaxAge = 12 * 60 * 60
+	adminCookieMaxAge = 365 * 24 * 60 * 60
 )
 
 type Dependencies struct {
