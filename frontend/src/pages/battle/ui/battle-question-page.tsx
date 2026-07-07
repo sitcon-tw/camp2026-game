@@ -371,7 +371,7 @@ export function BattleQuestionPage() {
   }
 
   return (
-    <GamePageShell contentClassName="grid min-h-svh grid-rows-[auto_minmax(0,1fr)_auto] gap-y-2 px-2">
+    <GamePageShell contentClassName="grid min-h-dvh grid-rows-[auto_minmax(0,1fr)_auto] gap-y-2 px-2">
       <PlayerRail
         label="對手"
         player={opponentPlayer}
