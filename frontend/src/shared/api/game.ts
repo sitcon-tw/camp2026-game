@@ -76,6 +76,10 @@ const UpdateAvatarResponseSchema = z.object({
   avatarUrl: z.string().optional(),
 })
 
+const UpdateNicknameResponseSchema = z.object({
+  nickname: z.string(),
+})
+
 const UpdateTeamAvatarResponseSchema = z.object({
   team: TeamSchema,
 })
@@ -840,6 +844,13 @@ export const gameApi = {
       json: { sitoneId },
     })
     return UpdateAvatarResponseSchema.parse(json)
+  },
+
+  async updateNickname(nickname: string) {
+    const json = await apiClient.put("/api/me/nickname", {
+      json: { nickname },
+    })
+    return UpdateNicknameResponseSchema.parse(json)
   },
 
   async updateTeamAvatar(sitoneId: string | null) {

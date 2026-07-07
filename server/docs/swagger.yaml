@@ -2182,6 +2182,18 @@ definitions:
         example: /game-icons/stones/basic_blue.png
         type: string
     type: object
+  me.UpdateNicknameRequest:
+    properties:
+      nickname:
+        example: Alice
+        type: string
+    type: object
+  me.UpdateNicknameResponse:
+    properties:
+      nickname:
+        example: Alice
+        type: string
+    type: object
   me.UpdateTeamAvatarRequest:
     properties:
       sitoneId:
@@ -4041,6 +4053,46 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: List current player completed matches
+      tags:
+      - me
+  /me/nickname:
+    put:
+      consumes:
+      - application/json
+      description: Updates the authenticated player's display nickname.
+      parameters:
+      - description: Nickname update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/me.UpdateNicknameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/me.UpdateNicknameResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Update current player nickname
       tags:
       - me
   /me/qrcode:

@@ -2416,6 +2416,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/me/nickname": {
+            "put": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Updates the authenticated player's display nickname.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "me"
+                ],
+                "summary": "Update current player nickname",
+                "parameters": [
+                    {
+                        "description": "Nickname update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/me.UpdateNicknameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/me.UpdateNicknameResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/me/qrcode": {
             "get": {
                 "security": [
@@ -6254,6 +6317,24 @@ const docTemplate = `{
                 "avatarUrl": {
                     "type": "string",
                     "example": "/game-icons/stones/basic_blue.png"
+                }
+            }
+        },
+        "me.UpdateNicknameRequest": {
+            "type": "object",
+            "properties": {
+                "nickname": {
+                    "type": "string",
+                    "example": "Alice"
+                }
+            }
+        },
+        "me.UpdateNicknameResponse": {
+            "type": "object",
+            "properties": {
+                "nickname": {
+                    "type": "string",
+                    "example": "Alice"
                 }
             }
         },
