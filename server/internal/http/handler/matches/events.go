@@ -62,6 +62,7 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
 
 	var state MatchStateResponse
 	if session != nil {
@@ -76,7 +77,7 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 	writeSSE(w, "match_updated", state)
 	flusher.Flush()
 
-	heartbeat := time.NewTicker(30 * time.Second)
+	heartbeat := time.NewTicker(20 * time.Second)
 	defer heartbeat.Stop()
 
 	for {
@@ -104,7 +105,7 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 			writeSSE(w, event.Name, state)
 			flusher.Flush()
 		case <-heartbeat.C:
-			_, _ = fmt.Fprint(w, ": keepalive\n\n")
+			_, _ = fmt.Fprint(w, "event: keepalive\ndata: {}\n\n")
 			flusher.Flush()
 		}
 	}

@@ -25,7 +25,9 @@ export function useMatchEvents(
 
     let source: EventSource | null = null
     let reconnectTimeout: number | null = null
+    let watchdogInterval: number | null = null
     let reconnectAttempts = 0
+    let lastEventAt = Date.now()
     let deleted = false
     let disposed = false
 
@@ -57,6 +59,7 @@ export function useMatchEvents(
     }
 
     const handleMessage = (event: MessageEvent<string>) => {
+      lastEventAt = Date.now()
       try {
         const match = MatchStateSchema.parse(JSON.parse(event.data))
         queryClient.setQueryData<MatchState>(["matches", matchID], match)
@@ -80,6 +83,15 @@ export function useMatchEvents(
       scheduleReconnect()
     }
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible" || disposed || deleted) return
+      // Force reconnect when tab comes back into focus — CF may have silently dropped the connection.
+      clearReconnectTimeout()
+      closeSource()
+      reconnectAttempts = 0
+      connect()
+    }
+
     const connect = () => {
       if (disposed || deleted) return
 
@@ -93,21 +105,39 @@ export function useMatchEvents(
 
       source.onopen = () => {
         reconnectAttempts = 0
+        lastEventAt = Date.now()
         void refreshMatch()
       }
       source.onerror = handleError
+      source.addEventListener("keepalive", () => {
+        lastEventAt = Date.now()
+      })
       for (const eventName of matchEventNames) {
         source.addEventListener(eventName, handleMessage)
       }
       source.addEventListener("match_deleted", handleDeleted)
     }
 
+    // Watchdog: if no event (including keepalive) arrives for 60s, the connection is likely
+    // silently dead (CF dropped it without triggering onerror). Force reconnect.
+    watchdogInterval = window.setInterval(() => {
+      if (disposed || deleted || source == null) return
+      if (Date.now() - lastEventAt > 60_000) {
+        closeSource()
+        void refreshMatch()
+        scheduleReconnect()
+      }
+    }, 20_000)
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
     connect()
 
     return () => {
       disposed = true
       clearReconnectTimeout()
       closeSource()
+      if (watchdogInterval != null) window.clearInterval(watchdogInterval)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
   }, [enabled, matchID, onDeleted, queryClient])
 }
