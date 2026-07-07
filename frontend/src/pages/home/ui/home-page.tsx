@@ -75,7 +75,7 @@ const pebbleTypes = [
 
 export function HomePage() {
   return (
-    <main className="bg-background text-foreground min-h-svh">
+    <main className="bg-background text-foreground min-h-dvh">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-6 sm:px-8 lg:py-10">
         <section className="bg-card flex flex-col gap-4 rounded-lg border px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="space-y-2">

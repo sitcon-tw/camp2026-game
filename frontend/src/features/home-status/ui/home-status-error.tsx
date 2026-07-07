@@ -22,7 +22,7 @@ export function HomeStatusError({ error }: HomeStatusErrorProps) {
         : "無法取得基地狀態"
 
   return (
-    <main className="bg-background text-foreground min-h-svh px-5 py-6 sm:px-8 lg:py-10">
+    <main className="bg-background text-foreground min-h-dvh px-5 py-6 sm:px-8 lg:py-10">
       <Card className="border-destructive/40 mx-auto max-w-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
