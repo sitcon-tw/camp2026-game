@@ -27,6 +27,7 @@ import {
   rarityLabel,
   sitoneMeta,
 } from "@/shared/lib/game-labels"
+import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
@@ -35,7 +36,10 @@ import { PlayerAvatar } from "@/shared/ui/player-avatar"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select"
@@ -49,6 +53,8 @@ type RewardOption = {
   typeLabel: string
   rarityLabel: string
   toneClass: string
+  sortTags: StoneSortTag[]
+  sortRank: number
 }
 
 type TargetPlayer = {
@@ -59,8 +65,94 @@ type TargetPlayer = {
 
 type TargetMode = "player" | "team"
 
+type StoneSortTag = "checkpoint" | "level1" | "level2"
+
+const CHECKPOINT_STONE_IDS = new Set([
+  "stone_command_blind_trip",
+  "stone_human_llm",
+  "stone_von_neumann",
+  "stone_packet_rescue",
+  "stone_prompt_injection",
+])
+
+const LEVEL1_STONE_IDS = new Set([
+  "stone_2022_maze",
+  "stone_camp_backpack",
+  "stone_booth",
+  "stone_2019_blackbox",
+  "stone_2021_abacus",
+  "stone_prompt",
+  "stone_sticky_note",
+  "stone_2024_finite",
+  "stone_community_handshake",
+  "stone_consensus_draft",
+  "stone_contribution",
+  "stone_2020_tour_flag",
+  "stone_docker",
+  "stone_gpg",
+  "stone_test",
+  "stone_terminal",
+  "stone_microphone",
+  "stone_p5js",
+  "stone_espresso",
+  "stone_2024_ribbon",
+])
+
+const LEVEL2_STONE_IDS = new Set([
+  "stone_2022_break_wall_cat",
+  "stone_2026_camp_explorer",
+  "stone_star_village_guide",
+  "stone_2019_unboxed_algorithm",
+  "stone_2021_abacus_descendant",
+  "stone_human_after_all",
+  "stone_course_shared_notes",
+  "stone_2024_infinite_inspiration",
+  "stone_star_village_exchange",
+  "stone_student_autonomy",
+  "stone_open_source_route",
+  "stone_2020_sitcon_tour_group",
+  "stone_kubernetes",
+  "stone_crypto_gatekeeper",
+  "stone_clean_code",
+  "stone_system_intern",
+  "stone_lightning_talk",
+  "stone_tech_art",
+  "stone_2024_last_night_polaroid",
+])
+
+function sitoneSortTags(sitoneID: string): StoneSortTag[] {
+  if (CHECKPOINT_STONE_IDS.has(sitoneID)) return ["checkpoint"]
+  if (LEVEL1_STONE_IDS.has(sitoneID)) return ["level1"]
+  if (LEVEL2_STONE_IDS.has(sitoneID)) return ["level2"]
+  return []
+}
+
+function stoneSortTagLabel(tag: StoneSortTag) {
+  switch (tag) {
+    case "checkpoint":
+      return "闖關活動小石"
+    case "level1":
+      return "Level 1 小石"
+    case "level2":
+      return "Level 2 小石"
+  }
+}
+
+function stoneSortRank(tags: StoneSortTag[]) {
+  const tag = tags[0]
+  if (tag === "checkpoint") return 0
+  if (tag === "level1") return 1
+  if (tag === "level2") return 2
+  return 3
+}
+
+function primaryStoneSortTag(option: RewardOption) {
+  return option.sortTags[0]
+}
+
 function sitoneOption(sitone: Sitone): RewardOption {
   const meta = sitoneMeta(sitone.type)
+  const sortTags = sitoneSortTags(sitone.id)
   return {
     id: sitone.id,
     name: sitone.name,
@@ -68,6 +160,8 @@ function sitoneOption(sitone: Sitone): RewardOption {
     typeLabel: meta.label,
     rarityLabel: rarityLabel(sitone.rarity),
     toneClass: meta.bgClassName,
+    sortTags,
+    sortRank: stoneSortRank(sortTags),
   }
 }
 
@@ -79,6 +173,8 @@ function itemOption(item: Item): RewardOption {
     typeLabel: itemTypeLabel(item.type),
     rarityLabel: rarityLabel(item.rarity),
     toneClass: itemTypeClass(item.type),
+    sortTags: [],
+    sortRank: 0,
   }
 }
 
@@ -141,7 +237,13 @@ export function StaffRewardsPanel() {
   })
 
   const sitoneOptions = useMemo(
-    () => (sitonesQuery.data ?? []).map(sitoneOption),
+    () =>
+      (sitonesQuery.data ?? [])
+        .map(sitoneOption)
+        .sort(
+          (left, right) =>
+            left.sortRank - right.sortRank || left.name.localeCompare(right.name),
+        ),
     [sitonesQuery.data],
   )
   const itemOptions = useMemo(
@@ -171,7 +273,10 @@ export function StaffRewardsPanel() {
           (option) =>
             option.name.toLowerCase().includes(keyword) ||
             option.id.toLowerCase().includes(keyword) ||
-            option.typeLabel.toLowerCase().includes(keyword),
+            option.typeLabel.toLowerCase().includes(keyword) ||
+            option.sortTags.some((tag) =>
+              stoneSortTagLabel(tag).toLowerCase().includes(keyword),
+            ),
         )
       : rewardOptions
     if (
@@ -184,6 +289,22 @@ export function StaffRewardsPanel() {
   }, [rewardOptions, search, selectedOption])
   const selectedTeam =
     teamOptions.find((team) => team.teamId === selectedTeamID) ?? null
+  const groupedVisibleSitoneOptions = useMemo(
+    () =>
+      [
+        { tag: "checkpoint" as const, label: "闖關活動" },
+        { tag: "level1" as const, label: "Level 1" },
+        { tag: "level2" as const, label: "Level 2" },
+      ]
+        .map((group) => ({
+          ...group,
+          options: visibleOptions.filter(
+            (option) => primaryStoneSortTag(option) === group.tag,
+          ),
+        }))
+        .filter((group) => group.options.length > 0),
+    [visibleOptions],
+  )
 
   const resolveMutation = useMutation({
     mutationFn: gameApi.resolveQRCode,
@@ -613,11 +734,35 @@ export function StaffRewardsPanel() {
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {visibleOptions.map((option) => (
-                        <SelectItem key={option.id} value={option.id}>
-                          {option.name}
-                        </SelectItem>
-                      ))}
+                      {rewardKind === "sitone" ? (
+                        <>
+                          {groupedVisibleSitoneOptions.map((group, index) => (
+                            <SelectGroup key={group.tag}>
+                              {index > 0 ? <SelectSeparator /> : null}
+                              <SelectLabel className="px-2 py-2 text-[11px] font-black normal-case opacity-70">
+                                {group.label}
+                              </SelectLabel>
+                              {group.options.map((option) => (
+                                <SelectItem key={option.id} value={option.id}>
+                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5 pr-4">
+                                    <span className="font-black">
+                                      {option.name}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          ))}
+                        </>
+                      ) : (
+                        <>
+                          {visibleOptions.map((option) => (
+                            <SelectItem key={option.id} value={option.id}>
+                              {option.name}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
 
