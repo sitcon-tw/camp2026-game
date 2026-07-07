@@ -14,6 +14,7 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/gamecontrol"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
+	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 )
 
 const (
@@ -27,6 +28,7 @@ type Dependencies struct {
 	MongoDB           *mongo.Database
 	AdminPassword     string
 	AdminCookieSecure bool
+	Broker            *playerevents.Broker
 }
 
 type Handler struct {
@@ -34,6 +36,7 @@ type Handler struct {
 	db                *mongo.Database
 	adminPassword     string
 	adminCookieSecure bool
+	broker            *playerevents.Broker
 }
 
 func New(dep Dependencies) *Handler {
@@ -42,6 +45,7 @@ func New(dep Dependencies) *Handler {
 		db:                dep.MongoDB,
 		adminPassword:     strings.TrimSpace(dep.AdminPassword),
 		adminCookieSecure: dep.AdminCookieSecure,
+		broker:            dep.Broker,
 	}
 }
 
@@ -51,6 +55,8 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/admin/dashboard", h.Dashboard)
 	api.Get("/admin/gift-history", h.GiftHistory)
 	api.Get("/admin/history", h.History)
+	api.Post("/admin/inventory-trims", h.CreateInventoryTrim)
+	api.Put("/admin/players/{playerID}/balance", h.UpdatePlayerBalance)
 	api.Get("/admin/settings", h.GetSettings)
 	api.Put("/admin/settings", h.UpdateSettings)
 	api.Get("/admin/community-stands", h.ListCommunityStands)

@@ -1,4 +1,4 @@
-import { SparklesIcon } from "lucide-react"
+import { SparklesIcon, WindIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import { z } from "zod"
@@ -39,6 +39,21 @@ const PlayerRewardEventSchema = z.object({
 })
 
 type PlayerRewardEvent = z.infer<typeof PlayerRewardEventSchema>
+
+const InventoryTrimmedEventSchema = z.object({
+  trimId: z.string().optional(),
+  message: z.string(),
+  sitoneCount: z.number().optional(),
+  openPower: z.number().optional(),
+  occurredAt: z.string(),
+  delayed: z.boolean().optional(),
+})
+
+type InventoryTrimmedEvent = z.infer<typeof InventoryTrimmedEventSchema>
+
+type Notice =
+  | { kind: "reward"; event: PlayerRewardEvent }
+  | { kind: "inventory_trimmed"; event: InventoryTrimmedEvent }
 
 type GainCardProps = {
   badge: string
@@ -152,12 +167,31 @@ function RewardNoticeCard({ event }: { event: PlayerRewardEvent }) {
   )
 }
 
-export function RewardAlertCenter() {
-  const [rewardQueue, setRewardQueue] = useState<PlayerRewardEvent[]>([])
-  const activeReward = rewardQueue[0] ?? null
+function InventoryTrimmedNoticeCard({ event }: { event: InventoryTrimmedEvent }) {
+  const sitoneCount = event.sitoneCount ?? 0
+  const openPower = event.openPower ?? 0
+  const parts = [
+    sitoneCount > 0 ? `${sitoneCount} 顆小石` : null,
+    openPower > 0 ? `${openPower} OP` : null,
+  ].filter(Boolean)
 
-  function dismissActiveReward() {
-    setRewardQueue((current) => current.slice(1))
+  return (
+    <GainCard
+      badge="資產離家出走"
+      title={parts.length > 0 ? parts.join("、") : "小石與開源力"}
+      detail={event.message}
+      accentClassName="bg-muted"
+      icon={<WindIcon className="size-7" aria-hidden />}
+    />
+  )
+}
+
+export function RewardAlertCenter() {
+  const [noticeQueue, setNoticeQueue] = useState<Notice[]>([])
+  const activeNotice = noticeQueue[0] ?? null
+
+  function dismissActiveNotice() {
+    setNoticeQueue((current) => current.slice(1))
   }
 
   useEffect(() => {
@@ -184,7 +218,19 @@ export function RewardAlertCenter() {
     const handleRewardGranted = (message: MessageEvent<string>) => {
       try {
         const event = PlayerRewardEventSchema.parse(JSON.parse(message.data))
-        setRewardQueue((current) => [...current, event])
+        setNoticeQueue((current) => [...current, { kind: "reward", event }])
+      } catch {
+        // Ignore malformed events and keep the stream alive.
+      }
+    }
+
+    const handleInventoryTrimmed = (message: MessageEvent<string>) => {
+      try {
+        const event = InventoryTrimmedEventSchema.parse(JSON.parse(message.data))
+        setNoticeQueue((current) => [
+          ...current,
+          { kind: "inventory_trimmed", event },
+        ])
       } catch {
         // Ignore malformed events and keep the stream alive.
       }
@@ -221,6 +267,7 @@ export function RewardAlertCenter() {
       }
       source.onerror = handleError
       source.addEventListener("reward_granted", handleRewardGranted)
+      source.addEventListener("inventory_trimmed", handleInventoryTrimmed)
     }
 
     connect()
@@ -234,9 +281,9 @@ export function RewardAlertCenter() {
 
   return (
     <Dialog
-      open={activeReward != null}
+      open={activeNotice != null}
       onOpenChange={(open) => {
-        if (!open) dismissActiveReward()
+        if (!open) dismissActiveNotice()
       }}
     >
       <DialogContent
@@ -245,15 +292,28 @@ export function RewardAlertCenter() {
         onPointerDownOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>獲得獎勵</DialogTitle>
-          <DialogDescription>新的獎勵已加入你的帳號。</DialogDescription>
+          <DialogTitle>
+            {activeNotice?.kind === "inventory_trimmed"
+              ? "小石離家出走"
+              : "獲得獎勵"}
+          </DialogTitle>
+          <DialogDescription>
+            {activeNotice?.kind === "inventory_trimmed"
+              ? "你的資產已更新。"
+              : "新的獎勵已加入你的帳號。"}
+          </DialogDescription>
         </DialogHeader>
-        {activeReward ? <RewardNoticeCard event={activeReward} /> : null}
+        {activeNotice?.kind === "reward" ? (
+          <RewardNoticeCard event={activeNotice.event} />
+        ) : null}
+        {activeNotice?.kind === "inventory_trimmed" ? (
+          <InventoryTrimmedNoticeCard event={activeNotice.event} />
+        ) : null}
         <DialogFooter>
           <Button
             type="button"
             className="w-full"
-            onClick={dismissActiveReward}
+            onClick={dismissActiveNotice}
           >
             我知道了
           </Button>

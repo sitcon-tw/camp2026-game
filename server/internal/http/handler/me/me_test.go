@@ -110,6 +110,7 @@ func TestEventsStreamsPendingStaffRewardsOnConnect(t *testing.T) {
 			{Key: "_id", Value: "staff-a"},
 			{Key: "nickname", Value: "Staff One"},
 		}),
+		createMeCursorResponse("camp2026_game_test.inventory_trims"),
 		updateMeResponse(1),
 	)
 	handler := New(Dependencies{
@@ -151,6 +152,61 @@ func TestEventsStreamsPendingStaffRewardsOnConnect(t *testing.T) {
 	}
 	if !strings.Contains(body, `"staffNickname":"Staff One"`) || !strings.Contains(body, `"quantity":2`) {
 		t.Fatalf("expected staff and quantity fields, got %q", body)
+	}
+}
+
+func TestEventsStreamsPendingInventoryTrimsOnConnect(t *testing.T) {
+	createdAt := time.Date(2026, 7, 7, 9, 30, 0, 0, time.UTC)
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.inventory_trims", bson.D{
+			{Key: "_id", Value: "trim-offline"},
+			{Key: "player_id", Value: "7H9K2Q"},
+			{Key: "sitone_count", Value: 2},
+			{Key: "open_power", Value: 500},
+			{Key: "message", Value: "你的小石跟開源力太多了，小石跟開源力覺得太臃腫自己離家出走了"},
+			{Key: "created_at", Value: createdAt},
+			{Key: "notification_pending", Value: true},
+		}),
+		updateMeResponse(1),
+	)
+	handler := New(Dependencies{
+		MongoDB: db,
+		Broker:  playerevents.NewBroker(),
+	})
+	req := authenticatedRequest(mongomodel.Player{ID: "7H9K2Q"})
+	ctx, cancel := context.WithCancel(req.Context())
+	req = req.WithContext(ctx)
+	res := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		handler.Events(res, req)
+	}()
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for {
+		body := res.Body.String()
+		if strings.Contains(body, `"trimId":"trim-offline"`) && strings.Contains(body, `"delayed":true`) {
+			break
+		}
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+
+	body := res.Body.String()
+	if !strings.Contains(body, "event: inventory_trimmed") {
+		t.Fatalf("expected pending inventory trim event, got %q", body)
+	}
+	if !strings.Contains(body, `"trimId":"trim-offline"`) || !strings.Contains(body, `"delayed":true`) {
+		t.Fatalf("expected delayed trim payload, got %q", body)
+	}
+	if !strings.Contains(body, `"sitoneCount":2`) || !strings.Contains(body, `"openPower":500`) {
+		t.Fatalf("expected trim quantities, got %q", body)
 	}
 }
 

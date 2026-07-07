@@ -663,6 +663,20 @@ const GiftHistoryResponseSchema = z.object({
   entries: nullableArray(GiftHistoryEntrySchema),
 })
 
+const AdminPlayerBalanceResponseSchema = z.object({
+  trimId: z.string().optional(),
+  rank: z.number(),
+  playerId: z.string(),
+  nickname: z.string(),
+  teamId: z.string().optional(),
+  sitoneBefore: z.number(),
+  sitoneTrimmed: z.number(),
+  sitoneAfter: z.number(),
+  openPowerBefore: z.number(),
+  openPowerTrimmed: z.number(),
+  openPowerAfter: z.number(),
+})
+
 export type PlayerStatus = z.infer<typeof PlayerStatusSchema>
 export type Team = z.infer<typeof TeamSchema>
 export type TeamMember = z.infer<typeof TeamMemberSchema>
@@ -732,6 +746,9 @@ export type AdminDashboardHistoryPoint = z.infer<
   typeof AdminDashboardHistoryPointSchema
 >
 export type GiftHistoryEntry = z.infer<typeof GiftHistoryEntrySchema>
+export type AdminPlayerBalanceResponse = z.infer<
+  typeof AdminPlayerBalanceResponseSchema
+>
 
 export const gameApi = {
   async login(token: string) {
@@ -1040,5 +1057,18 @@ export const gameApi = {
       },
     )
     return TeamSchema.parse(json)
+  },
+
+  async updateAdminPlayerBalance(
+    playerID: string,
+    input: { sitoneCount: number; openPower: number; message?: string },
+  ) {
+    const json = await apiClient.put(
+      `/api/admin/players/${encodeURIComponent(playerID)}/balance`,
+      {
+        json: input,
+      },
+    )
+    return AdminPlayerBalanceResponseSchema.parse(json)
   },
 }

@@ -54,6 +54,11 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_pending_rewards_failed", err))
 		return
 	}
+	pendingTrimEvents, err := h.pendingInventoryTrimEvents(r.Context(), player.ID, time.Now().UTC())
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_pending_trims_failed", err))
+		return
+	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -66,6 +71,15 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 		}
 		flusher.Flush()
 		if err := h.markStaffRewardNotified(r.Context(), event.RewardID, time.Now().UTC()); err != nil {
+			return
+		}
+	}
+	for _, event := range pendingTrimEvents {
+		if !writePlayerEventSSE(w, event.Event) {
+			return
+		}
+		flusher.Flush()
+		if err := h.markInventoryTrimNotified(r.Context(), event.TrimID, time.Now().UTC()); err != nil {
 			return
 		}
 	}
@@ -95,6 +109,11 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 type pendingStaffRewardEvent struct {
 	RewardID string
 	Event    playerevents.Event
+}
+
+type pendingInventoryTrimEvent struct {
+	TrimID string
+	Event  playerevents.Event
 }
 
 func (h *Handler) pendingStaffRewardEvents(ctx context.Context, playerID string, connectedAt time.Time) ([]pendingStaffRewardEvent, error) {
@@ -144,6 +163,51 @@ func (h *Handler) pendingStaffRewardEvents(ctx context.Context, playerID string,
 			Event: playerevents.Event{
 				Name:   "reward_granted",
 				Reward: &event,
+			},
+		})
+	}
+	return events, nil
+}
+
+func (h *Handler) pendingInventoryTrimEvents(ctx context.Context, playerID string, connectedAt time.Time) ([]pendingInventoryTrimEvent, error) {
+	if h.db == nil {
+		return nil, nil
+	}
+
+	cursor, err := h.db.Collection(mongomodel.InventoryTrimsCollection).Find(
+		ctx,
+		bson.M{
+			"player_id":            playerID,
+			"notification_pending": true,
+			"created_at":           bson.M{"$lte": connectedAt},
+		},
+		options.Find().
+			SetSort(bson.D{{Key: "created_at", Value: 1}, {Key: "_id", Value: 1}}).
+			SetLimit(100),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var records []mongomodel.InventoryTrim
+	if err := cursor.All(ctx, &records); err != nil {
+		return nil, err
+	}
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	events := make([]pendingInventoryTrimEvent, 0, len(records))
+	for _, record := range records {
+		event := playerevents.InventoryTrimmed(record, true)
+		events = append(events, pendingInventoryTrimEvent{
+			TrimID: record.ID,
+			Event: playerevents.Event{
+				Name:             playerevents.InventoryTrimmedEventName,
+				InventoryTrimmed: &event,
 			},
 		})
 	}
@@ -207,18 +271,45 @@ func (h *Handler) markStaffRewardNotified(ctx context.Context, rewardID string, 
 	return err
 }
 
+func (h *Handler) markInventoryTrimNotified(ctx context.Context, trimID string, notifiedAt time.Time) error {
+	if h.db == nil {
+		return nil
+	}
+	_, err := h.db.Collection(mongomodel.InventoryTrimsCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": trimID, "notification_pending": true},
+		bson.M{
+			"$set":   bson.M{"notified_at": notifiedAt},
+			"$unset": bson.M{"notification_pending": ""},
+		},
+	)
+	return err
+}
+
 func writePlayerEventSSE(w http.ResponseWriter, event playerevents.Event) bool {
-	if event.Reward == nil {
+	var payload any
+	switch event.Name {
+	case "reward_granted":
+		if event.Reward == nil {
+			return true
+		}
+		payload = event.Reward
+	case playerevents.InventoryTrimmedEventName:
+		if event.InventoryTrimmed == nil {
+			return true
+		}
+		payload = event.InventoryTrimmed
+	default:
 		return true
 	}
-	payload, err := json.Marshal(event.Reward)
+	encoded, err := json.Marshal(payload)
 	if err != nil {
 		return false
 	}
 	if _, err := fmt.Fprintf(w, "event: %s\n", event.Name); err != nil {
 		return false
 	}
-	if _, err := fmt.Fprintf(w, "data: %s\n\n", payload); err != nil {
+	if _, err := fmt.Fprintf(w, "data: %s\n\n", encoded); err != nil {
 		return false
 	}
 	return true

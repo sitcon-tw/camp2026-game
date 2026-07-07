@@ -101,6 +101,7 @@ func registerRoutes(api chi.Router, dep Dependencies) {
 		MongoDB:           dep.MongoDB,
 		AdminPassword:     dep.AdminPassword,
 		AdminCookieSecure: dep.AdminCookieSecure,
+		Broker:            playerEventsBroker,
 	}).RegisterRoutes(api)
 	systemhandler.New(systemhandler.Dependencies{
 		MongoClient: dep.MongoClient,

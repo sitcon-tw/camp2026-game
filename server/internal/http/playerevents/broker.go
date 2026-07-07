@@ -19,9 +19,19 @@ type RewardGrantedEvent struct {
 	Delayed       bool   `json:"delayed,omitempty"`
 }
 
+type InventoryTrimmedEvent struct {
+	TrimID      string `json:"trimId,omitempty"`
+	Message     string `json:"message"`
+	SitoneCount int    `json:"sitoneCount,omitempty"`
+	OpenPower   int    `json:"openPower,omitempty"`
+	OccurredAt  string `json:"occurredAt"`
+	Delayed     bool   `json:"delayed,omitempty"`
+}
+
 type Event struct {
-	Name   string
-	Reward *RewardGrantedEvent
+	Name             string
+	Reward           *RewardGrantedEvent
+	InventoryTrimmed *InventoryTrimmedEvent
 }
 
 type Broker struct {

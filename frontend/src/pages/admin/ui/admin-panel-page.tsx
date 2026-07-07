@@ -11,6 +11,7 @@ import {
   Save,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   X,
 } from "lucide-react"
 import { type FormEvent, type ReactNode, useState } from "react"
@@ -50,6 +51,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/dialog"
 import {
   ChartContainer,
   ChartTooltip,
@@ -536,6 +545,7 @@ function AdminDashboardView({
   onRetryGiftHistory: () => void
 }) {
   const { summary, matches } = dashboard
+  const [statsTab, setStatsTab] = useState("players")
 
   return (
     <div className="grid gap-4">
@@ -671,11 +681,14 @@ function AdminDashboardView({
       <MostOwnedPanel inventory={dashboard.inventory} />
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
-        <TopPlayersPanel topPlayers={dashboard.topPlayers} />
+        <TopPlayersPanel
+          topPlayers={dashboard.topPlayers}
+          onOpenPlayers={() => setStatsTab("players")}
+        />
         <TeamsPanel teams={dashboard.teams} />
       </section>
 
-      <Tabs defaultValue="players" className="gap-3">
+      <Tabs value={statsTab} onValueChange={setStatsTab} className="gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-black">完整統計</h2>
@@ -1164,8 +1177,10 @@ function MiniStat({ label, value }: { label: string; value: number }) {
 
 function TopPlayersPanel({
   topPlayers,
+  onOpenPlayers,
 }: {
   topPlayers: AdminDashboard["topPlayers"]
+  onOpenPlayers: () => void
 }) {
   const groups: Array<{
     value: string
@@ -1209,13 +1224,21 @@ function TopPlayersPanel({
   return (
     <Card className="rounded-[18px] py-5">
       <CardHeader className="px-5">
-        <CardTitle className="flex items-center gap-2 text-lg font-black">
-          <GameFeatureIcon name="leaderboard" className="size-5" />
-          玩家排行
-        </CardTitle>
-        <CardDescription>
-          從不同維度看目前誰拿最多、誰開源力最高、誰答題表現最好。
-        </CardDescription>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg font-black">
+              <GameFeatureIcon name="leaderboard" className="size-5" />
+              玩家排行
+            </CardTitle>
+            <CardDescription>
+              從不同維度看目前誰拿最多、誰開源力最高、誰答題表現最好。
+            </CardDescription>
+          </div>
+          <Button type="button" variant="outline" onClick={onOpenPlayers}>
+            <SlidersHorizontal className="size-4" />
+            前往平衡
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="px-5">
         <Tabs defaultValue="sitones">
@@ -1348,60 +1371,229 @@ function TeamsPanel({ teams }: { teams: AdminDashboardTeam[] }) {
   )
 }
 
+type PlayerBalanceDraft = {
+  player: AdminDashboardPlayer
+  sitoneCount: string
+  openPower: string
+}
+
 function PlayersTable({ players }: { players: AdminDashboardPlayer[] }) {
+  const queryClient = useQueryClient()
+  const [draft, setDraft] = useState<PlayerBalanceDraft | null>(null)
+
+  const balanceMutation = useMutation({
+    mutationFn: (input: {
+      playerId: string
+      sitoneCount: number
+      openPower: number
+    }) =>
+      gameApi.updateAdminPlayerBalance(input.playerId, {
+        sitoneCount: input.sitoneCount,
+        openPower: input.openPower,
+      }),
+    onSuccess: (result) => {
+      setDraft(null)
+      void queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] })
+      void queryClient.invalidateQueries({ queryKey: ["admin", "history"] })
+      void queryClient.invalidateQueries({ queryKey: ["leaderboards"] })
+      void queryClient.invalidateQueries({ queryKey: ["me"] })
+      toast.success(`${result.nickname} 的平衡數值已更新`)
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "玩家平衡更新失敗"))
+    },
+  })
+
+  function startBalance(player: AdminDashboardPlayer) {
+    setDraft({
+      player,
+      sitoneCount: String(player.sitoneCount),
+      openPower: String(player.openPower),
+    })
+  }
+
+  function updateDraft(patch: Partial<Omit<PlayerBalanceDraft, "player">>) {
+    setDraft((current) => (current ? { ...current, ...patch } : current))
+  }
+
+  function submitBalance(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!draft || balanceMutation.isPending) return
+    const sitoneCount = Math.max(0, integerOrZero(draft.sitoneCount))
+    const openPower = Math.max(0, integerOrZero(draft.openPower))
+    balanceMutation.mutate({
+      playerId: draft.player.playerId,
+      sitoneCount,
+      openPower,
+    })
+  }
+
+  const activePlayerID = draft?.player.playerId
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>#</TableHead>
-          <TableHead>玩家</TableHead>
-          <TableHead>隊伍</TableHead>
-          <TableHead className="text-right">小石</TableHead>
-          <TableHead className="text-right">OP</TableHead>
-          <TableHead className="text-right">道具</TableHead>
-          <TableHead className="text-right">對戰</TableHead>
-          <TableHead className="text-right">答題</TableHead>
-          <TableHead className="text-right">正確率</TableHead>
-          <TableHead className="text-right">分數</TableHead>
-          <TableHead>最近活動</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {players.map((player) => (
-          <TableRow key={player.playerId}>
-            <TableCell className="font-black">#{player.rank}</TableCell>
-            <TableCell>
-              <PlayerName player={player} />
-            </TableCell>
-            <TableCell>{teamLabel(player)}</TableCell>
-            <TableCell className="text-right font-black">
-              {formatNumber(player.sitoneCount)}
-            </TableCell>
-            <TableCell className="text-right">
-              {formatNumber(player.openPower)}
-            </TableCell>
-            <TableCell className="text-right">
-              {formatNumber(player.itemCount)}
-            </TableCell>
-            <TableCell className="text-right">
-              {formatNumber(player.completedMatchCount)}/
-              {formatNumber(player.matchCount)}
-            </TableCell>
-            <TableCell className="text-right">
-              {formatNumber(player.correctAnswerCount)}/
-              {formatNumber(player.answerCount)}
-            </TableCell>
-            <TableCell className="text-right">
-              {formatPercent(player.answerAccuracy)}
-            </TableCell>
-            <TableCell className="text-right">
-              {formatNumber(player.score)}
-            </TableCell>
-            <TableCell>{formatDateTime(player.lastActivityAt)}</TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>#</TableHead>
+            <TableHead>玩家</TableHead>
+            <TableHead>隊伍</TableHead>
+            <TableHead className="text-right">小石</TableHead>
+            <TableHead className="text-right">OP</TableHead>
+            <TableHead className="text-right">道具</TableHead>
+            <TableHead className="text-right">對戰</TableHead>
+            <TableHead className="text-right">答題</TableHead>
+            <TableHead className="text-right">正確率</TableHead>
+            <TableHead className="text-right">分數</TableHead>
+            <TableHead>最近活動</TableHead>
+            <TableHead className="w-[112px] text-right">操作</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {players.map((player) => {
+            const isPending =
+              balanceMutation.isPending && activePlayerID === player.playerId
+
+            return (
+              <TableRow key={player.playerId}>
+                <TableCell className="font-black">#{player.rank}</TableCell>
+                <TableCell>
+                  <PlayerName player={player} />
+                </TableCell>
+                <TableCell>{teamLabel(player)}</TableCell>
+                <TableCell className="text-right font-black">
+                  {formatNumber(player.sitoneCount)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatNumber(player.openPower)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatNumber(player.itemCount)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatNumber(player.completedMatchCount)}/
+                  {formatNumber(player.matchCount)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatNumber(player.correctAnswerCount)}/
+                  {formatNumber(player.answerCount)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatPercent(player.answerAccuracy)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatNumber(player.score)}
+                </TableCell>
+                <TableCell>{formatDateTime(player.lastActivityAt)}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={balanceMutation.isPending}
+                    onClick={() => startBalance(player)}
+                  >
+                    {isPending ? (
+                      <Spinner className="size-4" />
+                    ) : (
+                      <SlidersHorizontal className="size-4" />
+                    )}
+                    平衡
+                  </Button>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+
+      <Dialog open={draft != null} onOpenChange={(open) => !open && setDraft(null)}>
+        <DialogContent className="sm:max-w-[430px]">
+          <form className="grid gap-5" onSubmit={submitBalance}>
+            <DialogHeader>
+              <DialogTitle>調整玩家平衡</DialogTitle>
+              <DialogDescription>
+                設定更新後的總小石數與總開源力。若數值降低，玩家會收到離家出走通知。
+              </DialogDescription>
+            </DialogHeader>
+
+            {draft ? (
+              <div className="grid gap-4">
+                <div className="bg-surface-raised border-border grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[16px] border-2 p-3">
+                  <PlayerAvatar
+                    playerId={draft.player.playerId}
+                    nickname={draft.player.nickname}
+                    avatarUrl={draft.player.avatarUrl}
+                    className="size-12"
+                  />
+                  <div className="min-w-0">
+                    <strong className="block truncate">
+                      {draft.player.nickname}
+                    </strong>
+                    <span className="text-muted-foreground text-xs font-bold">
+                      {draft.player.playerId} · {teamLabel(draft.player)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="balance-sitone-count">小石總數</Label>
+                  <Input
+                    id="balance-sitone-count"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={draft.sitoneCount}
+                    onChange={(event) =>
+                      updateDraft({ sitoneCount: event.target.value })
+                    }
+                  />
+                  <span className="text-muted-foreground text-xs font-bold">
+                    目前 {formatNumber(draft.player.sitoneCount)} 顆
+                  </span>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="balance-open-power">開源力總數</Label>
+                  <Input
+                    id="balance-open-power"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={draft.openPower}
+                    onChange={(event) =>
+                      updateDraft({ openPower: event.target.value })
+                    }
+                  />
+                  <span className="text-muted-foreground text-xs font-bold">
+                    目前 {formatNumber(draft.player.openPower)} OP
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={balanceMutation.isPending}
+                onClick={() => setDraft(null)}
+              >
+                取消
+              </Button>
+              <Button type="submit" disabled={!draft || balanceMutation.isPending}>
+                {balanceMutation.isPending ? (
+                  <Spinner className="size-4" />
+                ) : (
+                  <Save className="size-4" />
+                )}
+                Update
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
