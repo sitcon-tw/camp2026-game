@@ -112,7 +112,11 @@ type ItemResponse struct {
 }
 
 type CompletedMatchListResponse struct {
-	Matches []CompletedMatchResponse `json:"matches"`
+	Matches    []CompletedMatchResponse `json:"matches"`
+	Page       int                      `json:"page"`
+	PerPage    int                      `json:"perPage"`
+	Total      int                      `json:"total"`
+	TotalPages int                      `json:"totalPages"`
 }
 
 type CompletedMatchResponse struct {

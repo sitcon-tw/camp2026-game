@@ -1750,6 +1750,14 @@ definitions:
         items:
           $ref: '#/definitions/me.CompletedMatchResponse'
         type: array
+      page:
+        type: integer
+      perPage:
+        type: integer
+      total:
+        type: integer
+      totalPages:
+        type: integer
     type: object
   me.CompletedMatchPlayerResponse:
     properties:
@@ -3628,7 +3636,13 @@ paths:
   /me/matches:
     get:
       description: Returns completed quiz matches joined by the authenticated player.
-        Waiting and active matches are not returned.
+        Waiting and active matches are not returned. Results are paginated with 50
+        items per page.
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
       produces:
       - application/json
       responses:
@@ -3636,6 +3650,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/me.CompletedMatchListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
         "401":
           description: Unauthorized
           schema:
