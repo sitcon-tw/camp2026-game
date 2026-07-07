@@ -1,6 +1,12 @@
 import { Link, useLocation } from "@tanstack/react-router"
 
-const publicPathPrefixes = ["/login", "/codex", "/admin"] as const
+const hiddenPathPrefixes = [
+  "/login",
+  "/codex",
+  "/admin",
+  "/battle/question",
+  "/battle/ingame",
+] as const
 
 const navItems = [
   {
@@ -30,8 +36,8 @@ const navItems = [
   },
 ] as const
 
-function isPublicPath(pathname: string) {
-  return publicPathPrefixes.some(
+function isHiddenPath(pathname: string) {
+  return hiddenPathPrefixes.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   )
 }
@@ -45,7 +51,7 @@ function isActivePath(pathname: string, to: (typeof navItems)[number]["to"]) {
 export function AppBottomNav() {
   const { pathname } = useLocation()
 
-  if (isPublicPath(pathname)) return null
+  if (isHiddenPath(pathname)) return null
 
   return (
     <nav
