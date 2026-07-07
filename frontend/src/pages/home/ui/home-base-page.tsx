@@ -29,7 +29,7 @@ const ACTIONS: {
   },
   {
     label: "冒險者通行證",
-    desc: "讓關主驗證你的玩家身份",
+    desc: "出示身份，也能掃描社群攤位",
     icon: "pass",
     to: "/profile/qr",
   },

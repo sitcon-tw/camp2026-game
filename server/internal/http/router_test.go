@@ -310,6 +310,59 @@ func TestMeRoutesRequireDatabase(t *testing.T) {
 	}
 }
 
+func TestCommunityStandRoutesRequireAuthentication(t *testing.T) {
+	router := NewRouter(Dependencies{
+		Content: loadTestContent(t),
+		MongoDB: fakeDatabase(t),
+	})
+
+	for _, route := range []struct {
+		method string
+		path   string
+	}{
+		{method: http.MethodGet, path: "/api/community/q7m4x2v9"},
+		{method: http.MethodPost, path: "/api/community/q7m4x2v9/claim"},
+	} {
+		res := performRequest(router, route.method, route.path, nil)
+		problem := assertProblem(t, res, http.StatusUnauthorized, "")
+		if problem.Status != http.StatusUnauthorized {
+			t.Fatalf("%s %s: expected problem status %d, got %d", route.method, route.path, http.StatusUnauthorized, problem.Status)
+		}
+	}
+}
+
+func TestCommunityStandDisplayRouteDoesNotRequireAuthentication(t *testing.T) {
+	router := NewRouter(Dependencies{
+		Content: loadTestContent(t),
+	})
+
+	res := performRequest(router, http.MethodGet, "/api/community/q7m4x2v9/display", nil)
+	problem := assertProblem(t, res, http.StatusServiceUnavailable, "")
+	if problem.Status != http.StatusServiceUnavailable {
+		t.Fatalf("expected problem status %d, got %d", http.StatusServiceUnavailable, problem.Status)
+	}
+}
+
+func TestCommunityStandRoutesRequireDatabase(t *testing.T) {
+	router := NewRouter(Dependencies{
+		Content: loadTestContent(t),
+	})
+
+	for _, route := range []struct {
+		method string
+		path   string
+	}{
+		{method: http.MethodGet, path: "/api/community/q7m4x2v9"},
+		{method: http.MethodPost, path: "/api/community/q7m4x2v9/claim"},
+	} {
+		res := performRequestWithCookie(router, route.method, route.path, nil, "auth_token_123456")
+		problem := assertProblem(t, res, http.StatusServiceUnavailable, "")
+		if problem.Status != http.StatusServiceUnavailable {
+			t.Fatalf("%s %s: expected problem status %d, got %d", route.method, route.path, http.StatusServiceUnavailable, problem.Status)
+		}
+	}
+}
+
 func TestListSitoneCatalog(t *testing.T) {
 	router := NewRouter(Dependencies{
 		Content: loadTestContent(t),
@@ -444,6 +497,9 @@ func TestSwaggerJSON(t *testing.T) {
 		"/auth/logout",
 		"/catalog/items",
 		"/catalog/sitones",
+		"/community/{standID}",
+		"/community/{standID}/display",
+		"/community/{standID}/claim",
 		"/healthz",
 		"/fusions",
 		"/fusions/recipes",
@@ -525,6 +581,9 @@ func TestSwaggerJSON(t *testing.T) {
 	assertSwaggerSecurity(t, spec.Paths, "/auth/logout", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/catalog/items", http.MethodGet, false)
 	assertSwaggerSecurity(t, spec.Paths, "/catalog/sitones", http.MethodGet, false)
+	assertSwaggerSecurity(t, spec.Paths, "/community/{standID}", http.MethodGet, true)
+	assertSwaggerSecurity(t, spec.Paths, "/community/{standID}/display", http.MethodGet, false)
+	assertSwaggerSecurity(t, spec.Paths, "/community/{standID}/claim", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/qr/resolve", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/fusions", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/fusions/recipes", http.MethodGet, true)

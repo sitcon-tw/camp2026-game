@@ -20,7 +20,7 @@ export function ProfileQrPage() {
             PLAYER PASS
           </p>
           <h1 className="text-[29px] leading-[1.05] font-black tracking-tight">
-            個人 QR Code
+            冒險者通行證
           </h1>
         </div>
       </header>

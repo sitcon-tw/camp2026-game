@@ -10,6 +10,7 @@ import (
 
 	drivermongo "go.mongodb.org/mongo-driver/v2/mongo"
 
+	"github.com/sitcon-tw/camp2026-game/internal/communitystand"
 	"github.com/sitcon-tw/camp2026-game/internal/config"
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	httpserver "github.com/sitcon-tw/camp2026-game/internal/http"
@@ -51,6 +52,13 @@ func New(ctx context.Context) (*Application, error) {
 		_ = mongoClient.Disconnect(disconnectCtx)
 
 		return nil, err
+	}
+	if err := communitystand.EnsureDefaults(ctx, mongoDB); err != nil {
+		disconnectCtx, disconnectCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer disconnectCancel()
+		_ = mongoClient.Disconnect(disconnectCtx)
+
+		return nil, fmt.Errorf("ensure community stands: %w", err)
 	}
 
 	handler := httpserver.NewRouter(httpserver.Dependencies{

@@ -423,6 +423,42 @@ const StaffRewardResponseSchema = z.object({
   }),
 })
 
+const CommunityStandRewardSchema = z.object({
+  kind: StaffRewardKindSchema,
+  refId: z.string().optional(),
+  name: z.string(),
+  quantity: z.number().optional(),
+  amount: z.number().optional(),
+  iconPath: z.string().optional(),
+})
+
+const CommunityStandSchema = z.object({
+  standId: z.string(),
+  name: z.string(),
+  description: z.string(),
+  logoUrl: z.string().optional(),
+  websiteUrl: z.string().optional(),
+  reward: CommunityStandRewardSchema,
+})
+
+const CommunityStandDetailResponseSchema = z.object({
+  stand: CommunityStandSchema,
+  claimed: z.boolean(),
+})
+
+const CommunityStandDisplayResponseSchema = z.object({
+  stand: CommunityStandSchema,
+  visitCount: z.number(),
+  claimCount: z.number(),
+})
+
+const CommunityStandClaimResponseSchema = z.object({
+  claimId: z.string(),
+  stand: CommunityStandSchema,
+  reward: CommunityStandRewardSchema,
+  claimed: z.boolean(),
+})
+
 const AdminLoginResponseSchema = z.object({
   authenticated: z.boolean(),
 })
@@ -611,6 +647,17 @@ export type StaffRewardKind = z.infer<typeof StaffRewardKindSchema>
 export type StaffPlayer = z.infer<typeof StaffPlayerSchema>
 export type StaffTeam = z.infer<typeof StaffTeamSchema>
 export type StaffRewardResponse = z.infer<typeof StaffRewardResponseSchema>
+export type CommunityStandReward = z.infer<typeof CommunityStandRewardSchema>
+export type CommunityStand = z.infer<typeof CommunityStandSchema>
+export type CommunityStandDetailResponse = z.infer<
+  typeof CommunityStandDetailResponseSchema
+>
+export type CommunityStandDisplayResponse = z.infer<
+  typeof CommunityStandDisplayResponseSchema
+>
+export type CommunityStandClaimResponse = z.infer<
+  typeof CommunityStandClaimResponseSchema
+>
 export type AdminSettings = z.infer<typeof AdminSettingsSchema>
 export type AdminDashboard = z.infer<typeof AdminDashboardSchema>
 export type AdminDashboardPlayer = z.infer<typeof AdminDashboardPlayerSchema>
@@ -654,6 +701,27 @@ export const gameApi = {
   async qrcode() {
     const json = await apiClient.get("/api/me/qrcode")
     return QRCodeResponseSchema.parse(json)
+  },
+
+  async communityStand(standID: string) {
+    const json = await apiClient.get(
+      `/api/community/${encodeURIComponent(standID)}`,
+    )
+    return CommunityStandDetailResponseSchema.parse(json)
+  },
+
+  async communityStandDisplay(standID: string) {
+    const json = await apiClient.get(
+      `/api/community/${encodeURIComponent(standID)}/display`,
+    )
+    return CommunityStandDisplayResponseSchema.parse(json)
+  },
+
+  async claimCommunityStand(standID: string) {
+    const json = await apiClient.post(
+      `/api/community/${encodeURIComponent(standID)}/claim`,
+    )
+    return CommunityStandClaimResponseSchema.parse(json)
   },
 
   async resolveQRCode(qrcodeToken: string) {

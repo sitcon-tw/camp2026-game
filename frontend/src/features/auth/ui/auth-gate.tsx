@@ -11,7 +11,7 @@ import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { Spinner } from "@/shared/ui/spinner"
 import { RewardAlertCenter } from "@/features/reward-alert/ui/reward-alert-center"
 
-const publicPathPrefixes = ["/login", "/codex", "/admin"] as const
+const publicPathPrefixes = ["/login", "/codex", "/admin", "/community"] as const
 
 function isPublicPath(pathname: string) {
   return publicPathPrefixes.some(

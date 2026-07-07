@@ -495,6 +495,175 @@
                 }
             }
         },
+        "/community/{standID}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns the community stand shown after a player scans its QR code, including whether the current player already claimed the reward.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "community-stands"
+                ],
+                "summary": "Get community stand by fixed stand ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Community stand ID from the scanned URL",
+                        "name": "standID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/communitystands.DetailResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/community/{standID}/claim": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Claims the scanned community stand reward for the authenticated player. Each player can claim each stand once.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "community-stands"
+                ],
+                "summary": "Claim community stand reward",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Community stand ID from the scanned URL",
+                        "name": "standID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/communitystands.ClaimResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/community/{standID}/display": {
+            "get": {
+                "description": "Returns public stand information and visit counters for community stand partners.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "community-stands"
+                ],
+                "summary": "Get community stand display data",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Community stand ID",
+                        "name": "standID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/communitystands.DisplayResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/fusions": {
             "post": {
                 "security": [
@@ -600,6 +769,70 @@
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/fusions/{recipeID}/fill-missing-materials": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Automatically purchases missing shop materials for a fusion recipe when possible, then returns refreshed recipe availability and failure details for anything that could not be filled.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fusions"
+                ],
+                "summary": "Fill missing fusion materials",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Recipe ID",
+                        "name": "recipeID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/fusions.FillMissingMaterialsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
@@ -3172,6 +3405,110 @@
                 }
             }
         },
+        "communitystands.ClaimResponse": {
+            "type": "object",
+            "properties": {
+                "claimId": {
+                    "type": "string",
+                    "example": "community_claim_507f1f77bcf86cd799439011"
+                },
+                "claimed": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "reward": {
+                    "$ref": "#/definitions/communitystands.RewardResponse"
+                },
+                "stand": {
+                    "$ref": "#/definitions/communitystands.StandResponse"
+                }
+            }
+        },
+        "communitystands.DetailResponse": {
+            "type": "object",
+            "properties": {
+                "claimed": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "stand": {
+                    "$ref": "#/definitions/communitystands.StandResponse"
+                }
+            }
+        },
+        "communitystands.DisplayResponse": {
+            "type": "object",
+            "properties": {
+                "claimCount": {
+                    "type": "integer",
+                    "example": 38
+                },
+                "stand": {
+                    "$ref": "#/definitions/communitystands.StandResponse"
+                },
+                "visitCount": {
+                    "type": "integer",
+                    "example": 42
+                }
+            }
+        },
+        "communitystands.RewardResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "iconPath": {
+                    "type": "string",
+                    "example": "/game-icons/items/item_booth_sticker.png"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "item"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "攤位貼紙"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "refId": {
+                    "type": "string",
+                    "example": "item_booth_sticker"
+                }
+            }
+        },
+        "communitystands.StandResponse": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "介紹學生社群與開源參與方式。"
+                },
+                "logoUrl": {
+                    "type": "string",
+                    "example": "/game-icons/features/team.png"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "SITCON 社群攤位"
+                },
+                "reward": {
+                    "$ref": "#/definitions/communitystands.RewardResponse"
+                },
+                "standId": {
+                    "type": "string",
+                    "example": "q7m4x2v9"
+                },
+                "websiteUrl": {
+                    "type": "string",
+                    "example": "https://sitcon.org"
+                }
+            }
+        },
         "fusions.CreateRequest": {
             "type": "object",
             "required": [
@@ -3190,6 +3527,76 @@
                 "fusionId": {
                     "type": "string",
                     "example": "fusion_abc123"
+                },
+                "recipe": {
+                    "$ref": "#/definitions/fusions.FusionRecipeResponse"
+                }
+            }
+        },
+        "fusions.FillMaterialFailure": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "item_adventure_backpack"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "item"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "冒險背包"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "reason": {
+                    "type": "string",
+                    "example": "material is not purchasable automatically"
+                }
+            }
+        },
+        "fusions.FillMaterialResult": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "item_adventure_backpack"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "item"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "冒險背包"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "fusions.FillMissingMaterialsResponse": {
+            "type": "object",
+            "properties": {
+                "failedMaterials": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fusions.FillMaterialFailure"
+                    }
+                },
+                "filledMaterials": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fusions.FillMaterialResult"
+                    }
+                },
+                "priceOpenPowerSpent": {
+                    "type": "integer",
+                    "example": 50
                 },
                 "recipe": {
                     "$ref": "#/definitions/fusions.FusionRecipeResponse"
@@ -3231,9 +3638,17 @@
                     "type": "string",
                     "example": "item"
                 },
+                "missingQuantity": {
+                    "type": "integer",
+                    "example": 1
+                },
                 "name": {
                     "type": "string",
                     "example": "冒險背包"
+                },
+                "ownedQuantity": {
+                    "type": "integer",
+                    "example": 0
                 },
                 "quantity": {
                     "type": "integer",

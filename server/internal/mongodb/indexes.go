@@ -43,6 +43,9 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.PlayerSitonesCollection, models: playerSitoneIndexModels()},
 		{collection: mongomodel.ShopPurchasesCollection, models: shopPurchaseIndexModels()},
 		{collection: shopPurchaseLocksCollection, models: shopPurchaseLockIndexModels()},
+		{collection: mongomodel.CommunityStandsCollection, models: communityStandIndexModels()},
+		{collection: mongomodel.CommunityStandVisitsCollection, models: communityStandVisitIndexModels()},
+		{collection: mongomodel.CommunityStandClaimsCollection, models: communityStandClaimIndexModels()},
 	}
 }
 
@@ -206,6 +209,57 @@ func shopPurchaseLockIndexModels() []mongo.IndexModel {
 		{
 			Keys:    bson.D{{Key: "expires_at", Value: 1}},
 			Options: options.Index().SetName("shop_purchase_locks_expires_at_ttl").SetExpireAfterSeconds(0),
+		},
+	}
+}
+
+func communityStandIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "enabled", Value: -1},
+				{Key: "created_at", Value: -1},
+				{Key: "_id", Value: 1},
+			},
+			Options: options.Index().SetName("community_stands_enabled_created"),
+		},
+	}
+}
+
+func communityStandClaimIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "stand_id", Value: 1},
+				{Key: "player_id", Value: 1},
+			},
+			Options: options.Index().SetName("community_stand_claims_stand_player").SetUnique(true),
+		},
+		{
+			Keys: bson.D{
+				{Key: "player_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+			Options: options.Index().SetName("community_stand_claims_player_created"),
+		},
+	}
+}
+
+func communityStandVisitIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "stand_id", Value: 1},
+				{Key: "player_id", Value: 1},
+			},
+			Options: options.Index().SetName("community_stand_visits_stand_player").SetUnique(true),
+		},
+		{
+			Keys: bson.D{
+				{Key: "stand_id", Value: 1},
+				{Key: "last_visited_at", Value: -1},
+			},
+			Options: options.Index().SetName("community_stand_visits_stand_last_visited"),
 		},
 	}
 }

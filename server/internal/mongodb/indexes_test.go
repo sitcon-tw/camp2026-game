@@ -149,6 +149,49 @@ func TestIndexModelsByCollection(t *testing.T) {
 			keys:               bson.D{{Key: "expires_at", Value: 1}},
 			expireAfterSeconds: int32Pointer(0),
 		},
+		{
+			collection: mongomodel.CommunityStandsCollection,
+			name:       "community_stands_enabled_created",
+			keys: bson.D{
+				{Key: "enabled", Value: -1},
+				{Key: "created_at", Value: -1},
+				{Key: "_id", Value: 1},
+			},
+		},
+		{
+			collection: mongomodel.CommunityStandClaimsCollection,
+			name:       "community_stand_claims_stand_player",
+			keys: bson.D{
+				{Key: "stand_id", Value: 1},
+				{Key: "player_id", Value: 1},
+			},
+			unique: true,
+		},
+		{
+			collection: mongomodel.CommunityStandClaimsCollection,
+			name:       "community_stand_claims_player_created",
+			keys: bson.D{
+				{Key: "player_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+		},
+		{
+			collection: mongomodel.CommunityStandVisitsCollection,
+			name:       "community_stand_visits_stand_player",
+			keys: bson.D{
+				{Key: "stand_id", Value: 1},
+				{Key: "player_id", Value: 1},
+			},
+			unique: true,
+		},
+		{
+			collection: mongomodel.CommunityStandVisitsCollection,
+			name:       "community_stand_visits_stand_last_visited",
+			keys: bson.D{
+				{Key: "stand_id", Value: 1},
+				{Key: "last_visited_at", Value: -1},
+			},
+		},
 	}
 
 	if len(models) != len(expected) {
