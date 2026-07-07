@@ -81,7 +81,7 @@ func (h *Handler) CreateReward(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, status, problem := h.createRewardResponse(r.Context(), staffPlayer.ID, reward, body)
+	response, status, problem := h.createRewardResponse(r.Context(), staffPlayer, reward, body)
 	if problem != nil {
 		httpx.WriteProblem(w, r, problem)
 		return
@@ -312,19 +312,19 @@ func validateRewardBody(body CreateRewardRequest) error {
 
 func (h *Handler) createRewardResponse(
 	ctx context.Context,
-	staffPlayerID string,
+	staffPlayer mongomodel.Player,
 	reward rewardDefinition,
 	body CreateRewardRequest,
 ) (CreateRewardResponse, int, error) {
 	if body.TeamID != "" {
-		return h.createTeamRewardResponse(ctx, staffPlayerID, reward, body)
+		return h.createTeamRewardResponse(ctx, staffPlayer, reward, body)
 	}
-	return h.createPlayerRewardResponse(ctx, staffPlayerID, reward, body)
+	return h.createPlayerRewardResponse(ctx, staffPlayer, reward, body)
 }
 
 func (h *Handler) createPlayerRewardResponse(
 	ctx context.Context,
-	staffPlayerID string,
+	staffPlayer mongomodel.Player,
 	reward rewardDefinition,
 	body CreateRewardRequest,
 ) (CreateRewardResponse, int, error) {
@@ -352,11 +352,11 @@ func (h *Handler) createPlayerRewardResponse(
 	if body.Kind == rewardKindOpenPower {
 		rewardValue = body.Amount
 	}
-	rewardID, err := h.createReward(ctx, staffPlayerID, recipient.ID, reward, rewardValue)
+	rewardID, err := h.createReward(ctx, staffPlayer.ID, recipient.ID, reward, rewardValue)
 	if err != nil {
 		return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_create_failed", err)
 	}
-	h.publishRewardGranted(recipient.ID, reward, body)
+	h.publishRewardGranted(recipient.ID, staffPlayer, reward, body)
 
 	return CreateRewardResponse{
 		RewardIDs:    []string{rewardID},
@@ -378,7 +378,7 @@ func (h *Handler) createPlayerRewardResponse(
 
 func (h *Handler) createTeamRewardResponse(
 	ctx context.Context,
-	staffPlayerID string,
+	staffPlayer mongomodel.Player,
 	reward rewardDefinition,
 	body CreateRewardRequest,
 ) (CreateRewardResponse, int, error) {
@@ -413,12 +413,12 @@ func (h *Handler) createTeamRewardResponse(
 		if recipient.ID == "" {
 			continue
 		}
-		rewardID, err := h.createReward(ctx, staffPlayerID, recipient.ID, reward, rewardValue)
+		rewardID, err := h.createReward(ctx, staffPlayer.ID, recipient.ID, reward, rewardValue)
 		if err != nil {
 			return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_create_failed", err)
 		}
 		rewardIDs = append(rewardIDs, rewardID)
-		h.publishRewardGranted(recipient.ID, reward, body)
+		h.publishRewardGranted(recipient.ID, staffPlayer, reward, body)
 	}
 	if len(rewardIDs) == 0 {
 		return CreateRewardResponse{}, 0, httpx.UnprocessableEntity(
@@ -448,16 +448,18 @@ func (h *Handler) createTeamRewardResponse(
 	}, http.StatusCreated, nil
 }
 
-func (h *Handler) publishRewardGranted(playerID string, reward rewardDefinition, body CreateRewardRequest) {
+func (h *Handler) publishRewardGranted(playerID string, staffPlayer mongomodel.Player, reward rewardDefinition, body CreateRewardRequest) {
 	if h.broker == nil {
 		return
 	}
 	event := playerevents.RewardGrantedEvent{
-		Kind:       reward.kind,
-		RefID:      reward.id,
-		Name:       reward.name,
-		Source:     "staff_reward",
-		OccurredAt: time.Now().UTC().Format(time.RFC3339Nano),
+		Kind:          reward.kind,
+		RefID:         reward.id,
+		Name:          reward.name,
+		Source:        "staff_reward",
+		StaffPlayerID: staffPlayer.ID,
+		StaffNickname: staffPlayer.Nickname,
+		OccurredAt:    time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	switch reward.kind {
 	case rewardKindOpenPower:

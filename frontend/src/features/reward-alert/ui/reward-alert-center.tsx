@@ -23,6 +23,8 @@ const PlayerRewardEventSchema = z.object({
   sitoneType: z.string().optional(),
   iconPath: z.string().optional(),
   source: z.string().optional(),
+  staffPlayerId: z.string().optional(),
+  staffNickname: z.string().optional(),
   occurredAt: z.string(),
 })
 
@@ -34,6 +36,12 @@ type GainCardProps = {
   detail: string
   accentClassName: string
   icon: ReactNode
+}
+
+function rewardDetail(event: PlayerRewardEvent, fallback: string) {
+  if (event.source !== "staff_reward") return fallback
+  if (event.staffNickname) return `${event.staffNickname} 發送給你`
+  return "工作人員發送給你"
 }
 
 function GainCard({
@@ -78,9 +86,7 @@ function showRewardGranted(event: PlayerRewardEvent) {
         <GainCard
           badge="獲得開源力"
           title={`+${amount} OP`}
-          detail={
-            event.source === "staff_reward" ? "工作人員發送" : "開源力已入帳"
-          }
+          detail={rewardDetail(event, "開源力已入帳")}
           accentClassName="bg-pebble-spark"
           icon={<SparklesIcon className="size-7" />}
         />
@@ -97,7 +103,7 @@ function showRewardGranted(event: PlayerRewardEvent) {
         <GainCard
           badge="獲得道具"
           title={event.name}
-          detail={`+${event.quantity ?? 0} ${typeLabel}`}
+          detail={rewardDetail(event, `+${event.quantity ?? 0} ${typeLabel}`)}
           accentClassName={itemTypeClass(event.itemType ?? "")}
           icon={
             <GameIcon
@@ -124,7 +130,7 @@ function showRewardGranted(event: PlayerRewardEvent) {
       <GainCard
         badge="獲得小石"
         title={event.name}
-        detail={`+${event.quantity ?? 0} ${meta.label}`}
+        detail={rewardDetail(event, `+${event.quantity ?? 0} ${meta.label}`)}
         accentClassName={meta.bgClassName}
         icon={
           <SitoneIcon
