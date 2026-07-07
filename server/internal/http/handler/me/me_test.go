@@ -353,6 +353,86 @@ func TestStaffStatusResponseKeepsStaffRoleWhenNoTeamIsLoaded(t *testing.T) {
 	}
 }
 
+func TestUpdateNicknameSavesTrimmedNickname(t *testing.T) {
+	db := startMeMockDatabase(t, updateMeResponse(1))
+	handler := New(Dependencies{MongoDB: db})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q", Nickname: "Alice"},
+		http.MethodPut,
+		"/api/me/nickname",
+		`{"nickname":"  小明  "}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateNickname(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, res.Code, res.Body.String())
+	}
+	var body UpdateNicknameResponse
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Nickname != "小明" {
+		t.Fatalf("expected trimmed nickname, got %#v", body)
+	}
+}
+
+func TestUpdateNicknameRejectsBlankNickname(t *testing.T) {
+	handler := New(Dependencies{MongoDB: startMeMockDatabase(t)})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q"},
+		http.MethodPut,
+		"/api/me/nickname",
+		`{"nickname":"   "}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateNickname(res, req)
+
+	assertProblem(t, res, http.StatusBadRequest)
+}
+
+func TestUpdateNicknameRejectsTooLongNickname(t *testing.T) {
+	handler := New(Dependencies{MongoDB: startMeMockDatabase(t)})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q"},
+		http.MethodPut,
+		"/api/me/nickname",
+		`{"nickname":"一二三四五六七八九十一二三四五六七八九十一"}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateNickname(res, req)
+
+	assertProblem(t, res, http.StatusBadRequest)
+}
+
+func TestUpdateNicknameRequiresPlayerContext(t *testing.T) {
+	handler := New(Dependencies{MongoDB: startMeMockDatabase(t)})
+	req := httptest.NewRequest(http.MethodPut, "/api/me/nickname", strings.NewReader(`{"nickname":"Alice"}`))
+	res := httptest.NewRecorder()
+
+	handler.UpdateNickname(res, req)
+
+	assertProblem(t, res, http.StatusUnauthorized)
+}
+
+func TestUpdateNicknameRequiresDatabase(t *testing.T) {
+	handler := New(Dependencies{})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "7H9K2Q"},
+		http.MethodPut,
+		"/api/me/nickname",
+		`{"nickname":"Alice"}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.UpdateNickname(res, req)
+
+	assertProblem(t, res, http.StatusServiceUnavailable)
+}
+
 func TestUpdateAvatarSetsOwnedSitoneIcon(t *testing.T) {
 	db := startMeMockDatabase(t,
 		createMeCursorResponse("camp2026_game_test.player_sitones", bson.D{

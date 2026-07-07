@@ -1,14 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { RotateCcw, ScanLine } from "lucide-react"
+import { Check, Pencil, RotateCcw, ScanLine, X } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
-import { useMemo, useState } from "react"
+import { FormEvent, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { AppError } from "@/shared/api/error"
-import { gameApi, type PlayerSitone, type Sitone } from "@/shared/api/game"
+import {
+  gameApi,
+  type PlayerSitone,
+  type PlayerStatus,
+  type Sitone,
+} from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
+import { Input } from "@/shared/ui/input"
 import { PlayerAvatar } from "@/shared/ui/player-avatar"
 import { Skeleton } from "@/shared/ui/skeleton"
 import { toOptimizedImageSrc } from "@/shared/utils/image-src"
@@ -17,6 +23,8 @@ import { CommunityStandScannerDialog } from "./community-stand-scanner-dialog"
 
 export function ProfileQrPanel() {
   const [communityScannerOpen, setCommunityScannerOpen] = useState(false)
+  const [nicknameEditing, setNicknameEditing] = useState(false)
+  const [nicknameValue, setNicknameValue] = useState("")
   const queryClient = useQueryClient()
   const statusQuery = useQuery({
     queryKey: ["me", "status"],
@@ -44,6 +52,23 @@ export function ProfileQrPanel() {
       toast.error(error instanceof AppError ? error.message : "頭貼更新失敗")
     },
   })
+  const nicknameMutation = useMutation({
+    mutationFn: gameApi.updateNickname,
+    onSuccess: (result) => {
+      setNicknameEditing(false)
+      setNicknameValue(result.nickname)
+      queryClient.setQueryData<PlayerStatus>(["me", "status"], (current) =>
+        current ? { ...current, nickname: result.nickname } : current,
+      )
+      void queryClient.invalidateQueries({ queryKey: ["me", "status"] })
+      void queryClient.invalidateQueries({ queryKey: ["me", "home"] })
+      void queryClient.invalidateQueries({ queryKey: ["leaderboards"] })
+      toast.success("暱稱已更新")
+    },
+    onError: (error) => {
+      toast.error(error instanceof AppError ? error.message : "暱稱更新失敗")
+    },
+  })
   const teamAvatarMutation = useMutation({
     mutationFn: gameApi.updateTeamAvatar,
     onSuccess: () => {
@@ -64,6 +89,36 @@ export function ProfileQrPanel() {
     (qrQuery.error instanceof AppError && qrQuery.error.status === 401)
   const profile = statusQuery.data
   const qrcodeToken = qrQuery.data?.qrcodeToken
+  const nicknameInputLength = [...nicknameValue.trim()].length
+
+  function startNicknameEdit() {
+    setNicknameValue(profile?.nickname ?? "")
+    setNicknameEditing(true)
+  }
+
+  function cancelNicknameEdit() {
+    setNicknameValue(profile?.nickname ?? "")
+    setNicknameEditing(false)
+  }
+
+  function submitNickname(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const nickname = nicknameValue.trim()
+    const length = [...nickname].length
+    if (length < 1) {
+      toast.error("請輸入暱稱")
+      return
+    }
+    if (length > 20) {
+      toast.error("暱稱最多 20 個字")
+      return
+    }
+    if (nickname === profile?.nickname) {
+      setNicknameEditing(false)
+      return
+    }
+    nicknameMutation.mutate(nickname)
+  }
 
   if (isUnauthorized) {
     return (
@@ -83,6 +138,107 @@ export function ProfileQrPanel() {
 
   return (
     <div className="flex flex-col gap-3.5">
+      <Card className="border-ink rounded-[var(--radius)] border-2 py-0 shadow-[4px_4px_0_rgba(23,35,58,0.14)]">
+        <CardContent className="grid grid-cols-[70px_1fr] items-center gap-3.5 p-4">
+          <PlayerAvatar
+            playerId={profile?.playerId}
+            nickname={profile?.nickname}
+            avatarUrl={profile?.avatarUrl}
+            size="lg"
+            className="bg-power border-ink h-[70px] w-[70px] rounded-[24px] border-2 text-3xl"
+          />
+          <div className="min-w-0">
+            <span className="text-muted-foreground block text-xs font-black tracking-widest uppercase">
+              玩家身份
+            </span>
+            {nicknameEditing ? (
+              <form className="mt-1 grid gap-2" onSubmit={submitNickname}>
+                <Input
+                  aria-label="暱稱"
+                  maxLength={40}
+                  value={nicknameValue}
+                  disabled={nicknameMutation.isPending}
+                  onChange={(event) => setNicknameValue(event.target.value)}
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={
+                      nicknameInputLength > 20
+                        ? "text-destructive text-xs font-bold"
+                        : "text-muted-foreground text-xs font-bold"
+                    }
+                  >
+                    {nicknameInputLength}/20
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="取消修改暱稱"
+                      disabled={nicknameMutation.isPending}
+                      onClick={cancelNicknameEdit}
+                    >
+                      <X className="size-4" aria-hidden />
+                    </Button>
+                    <Button
+                      type="submit"
+                      size="icon"
+                      aria-label="儲存暱稱"
+                      disabled={nicknameMutation.isPending}
+                    >
+                      <Check className="size-4" aria-hidden />
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            ) : (
+              <div className="mb-1 flex min-w-0 items-center gap-2">
+                <h2 className="min-w-0 truncate text-[28px] leading-none font-black tracking-tight">
+                  {profile?.nickname ?? "同步中"}
+                </h2>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="修改暱稱"
+                  disabled={!profile}
+                  onClick={startNicknameEdit}
+                >
+                  <Pencil className="size-4" aria-hidden />
+                </Button>
+              </div>
+            )}
+            <p className="text-muted-foreground">
+              {profile
+                ? `${profile.team?.name ?? (profile.role === "staff" ? "工作人員" : "未分組")} · 開源力 ${profile.openPower}`
+                : "讀取玩家資料"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <AvatarPickerCard
+        currentAvatarUrl={profile?.avatarUrl}
+        sitones={sitonesQuery.data ?? []}
+        loading={sitonesQuery.isLoading}
+        pending={avatarMutation.isPending}
+        onSelect={(sitoneId) => avatarMutation.mutate(sitoneId)}
+        onReset={() => avatarMutation.mutate(null)}
+      />
+
+      {profile?.team ? (
+        <TeamAvatarPickerCard
+          currentAvatarUrl={profile.team.avatarUrl}
+          sitones={catalogSitonesQuery.data ?? []}
+          loading={catalogSitonesQuery.isLoading}
+          pending={teamAvatarMutation.isPending}
+          teamName={profile.team.name}
+          onSelect={(sitoneId) => teamAvatarMutation.mutate(sitoneId)}
+          onReset={() => teamAvatarMutation.mutate(null)}
+        />
+      ) : null}
+
       <Card className="border-ink rounded-[32px] border-2 py-0 shadow-[5px_5px_0_rgba(23,35,58,0.16)]">
         <CardContent className="px-[22px] pt-7 pb-6 text-center">
           <div className="bg-paper border-ink mx-auto mb-5 grid aspect-square w-full max-w-[306px] place-items-center rounded-[18px] border-4 p-[18px]">
@@ -124,52 +280,6 @@ export function ProfileQrPanel() {
           </p>
         </CardContent>
       </Card>
-
-      <Card className="border-ink rounded-[var(--radius)] border-2 py-0 shadow-[4px_4px_0_rgba(23,35,58,0.14)]">
-        <CardContent className="grid grid-cols-[70px_1fr] items-center gap-3.5 p-4">
-          <PlayerAvatar
-            playerId={profile?.playerId}
-            nickname={profile?.nickname}
-            avatarUrl={profile?.avatarUrl}
-            size="lg"
-            className="bg-power border-ink h-[70px] w-[70px] rounded-[24px] border-2 text-3xl"
-          />
-          <div>
-            <span className="text-muted-foreground block text-xs font-black tracking-widest uppercase">
-              玩家身份
-            </span>
-            <h2 className="mb-1 text-[28px] leading-none font-black tracking-tight">
-              {profile?.nickname ?? "同步中"}
-            </h2>
-            <p className="text-muted-foreground">
-              {profile
-                ? `${profile.team?.name ?? (profile.role === "staff" ? "工作人員" : "未分組")} · 開源力 ${profile.openPower}`
-                : "讀取玩家資料"}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <AvatarPickerCard
-        currentAvatarUrl={profile?.avatarUrl}
-        sitones={sitonesQuery.data ?? []}
-        loading={sitonesQuery.isLoading}
-        pending={avatarMutation.isPending}
-        onSelect={(sitoneId) => avatarMutation.mutate(sitoneId)}
-        onReset={() => avatarMutation.mutate(null)}
-      />
-
-      {profile?.team ? (
-        <TeamAvatarPickerCard
-          currentAvatarUrl={profile.team.avatarUrl}
-          sitones={catalogSitonesQuery.data ?? []}
-          loading={catalogSitonesQuery.isLoading}
-          pending={teamAvatarMutation.isPending}
-          teamName={profile.team.name}
-          onSelect={(sitoneId) => teamAvatarMutation.mutate(sitoneId)}
-          onReset={() => teamAvatarMutation.mutate(null)}
-        />
-      ) : null}
 
       <Card className="border-ink rounded-[24px] border-2 py-0 shadow-[4px_4px_0_rgba(23,35,58,0.14)]">
         <CardContent className="grid gap-3 p-4">
@@ -269,7 +379,7 @@ function AvatarPickerCard({
                   key={record.id}
                   type="button"
                   className={[
-                    "border-ink bg-card grid aspect-square min-h-0 min-w-0 place-items-center overflow-hidden rounded-[18px] border-2 p-1.5 shadow-[2px_2px_0_rgba(23,35,58,0.12)] transition",
+                    "border-ink bg-card grid aspect-square min-h-0 place-items-center rounded-[18px] border-2 p-1.5 shadow-[2px_2px_0_rgba(23,35,58,0.12)] transition",
                     selected ? "ring-primary ring-4" : "",
                   ].join(" ")}
                   aria-label={`選擇${record.sitone.name}作為頭貼`}
@@ -282,7 +392,7 @@ function AvatarPickerCard({
                     alt=""
                     aria-hidden="true"
                     draggable={false}
-                    className="block size-full min-h-0 min-w-0 object-contain"
+                    className="h-full w-full object-contain"
                   />
                   <span className="sr-only">{record.sitone.name}</span>
                 </button>
@@ -356,7 +466,7 @@ function TeamAvatarPickerCard({
           </div>
         ) : avatarSitones.length > 0 ? (
           <div
-            className="grid max-h-[306px] grid-cols-4 gap-2 overflow-y-auto overscroll-contain pr-1"
+            className="grid max-h-[306px] grid-cols-4 gap-2 overflow-y-auto pr-1"
             role="group"
             aria-label="選擇小隊頭貼小石"
           >
@@ -369,7 +479,7 @@ function TeamAvatarPickerCard({
                   key={sitone.id}
                   type="button"
                   className={[
-                    "border-ink bg-card grid aspect-square min-h-0 min-w-0 place-items-center overflow-hidden rounded-[18px] border-2 p-1.5 shadow-[2px_2px_0_rgba(23,35,58,0.12)] transition",
+                    "border-ink bg-card grid aspect-square min-h-0 place-items-center rounded-[18px] border-2 p-1.5 shadow-[2px_2px_0_rgba(23,35,58,0.12)] transition",
                     selected ? "ring-primary ring-4" : "",
                   ].join(" ")}
                   aria-label={`選擇${sitone.name}作為小隊頭貼`}
@@ -382,7 +492,7 @@ function TeamAvatarPickerCard({
                     alt=""
                     aria-hidden="true"
                     draggable={false}
-                    className="block size-full min-h-0 min-w-0 object-contain"
+                    className="h-full w-full object-contain"
                   />
                   <span className="sr-only">{sitone.name}</span>
                 </button>

@@ -66,6 +66,14 @@ type SitoneLoadoutResponse struct {
 	SitoneIDs []string `json:"sitoneIds" example:"stone_engineering_base,stone_explorer_base"`
 }
 
+type UpdateNicknameRequest struct {
+	Nickname string `json:"nickname" example:"Alice"`
+}
+
+type UpdateNicknameResponse struct {
+	Nickname string `json:"nickname" example:"Alice"`
+}
+
 type UpdateAvatarRequest struct {
 	SitoneID *string `json:"sitoneId" example:"stone_engineering_base"`
 }
