@@ -128,14 +128,44 @@ export function useMatchDeadlineRefresh(
     const deadlineAt = new Date(deadline).getTime()
     if (!Number.isFinite(deadlineAt)) return
 
+    const transitionPhase = match.phase
+    const transitionQuestionIndex = match.currentQuestionIndex ?? -1
+    const transitionQuestionID = match.currentQuestion?.questionId ?? ""
+
     const delay = Math.max(0, deadlineAt - Date.now() + 300)
     const timeout = window.setTimeout(() => {
       void queryClient.invalidateQueries({ queryKey: ["matches", matchID] })
     }, delay)
 
-    return () => window.clearTimeout(timeout)
+    const recoveryDelays = [1500, 3000, 5000]
+    const recoveryTimeouts = recoveryDelays.map((extraDelay) =>
+      window.setTimeout(() => {
+        const latest = queryClient.getQueryData<MatchState>(["matches", matchID])
+        if (latest?.status !== "active") return
+
+        const latestQuestionIndex = latest.currentQuestionIndex ?? -1
+        const latestQuestionID = latest.currentQuestion?.questionId ?? ""
+        const unchanged =
+          latest.phase === transitionPhase &&
+          latestQuestionIndex === transitionQuestionIndex &&
+          latestQuestionID === transitionQuestionID
+
+        if (!unchanged) return
+
+        void queryClient.invalidateQueries({ queryKey: ["matches", matchID] })
+      }, delay + extraDelay),
+    )
+
+    return () => {
+      window.clearTimeout(timeout)
+      for (const recoveryTimeout of recoveryTimeouts) {
+        window.clearTimeout(recoveryTimeout)
+      }
+    }
   }, [
     matchID,
+    match?.currentQuestion?.questionId,
+    match?.currentQuestionIndex,
     match?.phase,
     match?.revealEndsAt,
     match?.roundEndsAt,
