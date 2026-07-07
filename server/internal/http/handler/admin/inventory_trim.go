@@ -20,9 +20,8 @@ import (
 )
 
 const (
-	defaultBalanceUpdateMessage = "營運平衡已更新你的小石與開源力數量。"
-	balanceFallbackSitoneID     = "stone_explorer_base"
-	inventoryTrimMaxTop         = 100
+	balanceFallbackSitoneID = "stone_explorer_base"
+	inventoryTrimMaxTop     = 100
 )
 
 func defaultInventoryTrimMessage(openPower int) string {
@@ -304,12 +303,9 @@ func (h *Handler) updatePlayerBalance(ctx context.Context, playerID string, body
 	message := body.Message
 	sitoneTrimmed := max(0, -sitoneDelta)
 	openPowerTrimmed := max(0, -openPowerDelta)
-	if message == "" {
-		if sitoneTrimmed > 0 || openPowerTrimmed > 0 {
-			message = defaultInventoryTrimMessage(openPowerTrimmed)
-		} else {
-			message = defaultBalanceUpdateMessage
-		}
+	hasTrimmedBalance := sitoneTrimmed > 0 || openPowerTrimmed > 0
+	if message == "" && hasTrimmedBalance {
+		message = defaultInventoryTrimMessage(openPowerTrimmed)
 	}
 
 	response := InventoryTrimPlayerResponse{
@@ -325,7 +321,7 @@ func (h *Handler) updatePlayerBalance(ctx context.Context, playerID string, body
 		OpenPowerAfter:   body.OpenPower,
 	}
 
-	if sitoneDelta != 0 || openPowerDelta != 0 {
+	if hasTrimmedBalance {
 		trim, err := h.createBalanceNotification(ctx, playerID, sitoneTrimmed, openPowerTrimmed, message, now)
 		if err != nil {
 			return InventoryTrimPlayerResponse{}, err

@@ -56,6 +56,10 @@ type Notice =
   | { kind: "inventory_trimmed"; event: InventoryTrimmedEvent }
 
 const runawaySitoneImagePath = "/game-icons/alerts/sitone-runaway-memory.png"
+const legacyInventoryTrimMessages = [
+  "你的小石跟開源力太多了，小石跟開源力覺得太臃腫自己離家出走了",
+  "營運平衡已更新你的小石與開源力數量。",
+]
 
 type GainCardProps = {
   badge: string
@@ -176,6 +180,10 @@ function InventoryTrimmedNoticeCard({
 }) {
   const sitoneCount = event.sitoneCount ?? 0
   const openPower = event.openPower ?? 0
+  const defaultMessage = `小石看著自己的 AI server ，感覺記憶體不太夠，於是帶著${openPower}開源力去排隊購買記憶體了...應該很快就會回來`
+  const message = legacyInventoryTrimMessages.includes(event.message)
+    ? defaultMessage
+    : event.message || defaultMessage
   const parts = [
     sitoneCount > 0 ? `${sitoneCount} 顆小石` : null,
     openPower > 0 ? `${openPower} OP` : null,
@@ -208,12 +216,21 @@ function InventoryTrimmedNoticeCard({
           Asset Update
         </p>
         <h2 className="text-[24px] leading-none font-black tracking-normal">
-          {parts.length > 0 ? parts.join("、") : "小石與開源力"}出門了
+          小石離家出走
         </h2>
         <p className="text-muted-foreground text-sm leading-relaxed font-bold">
-          {event.message}
+          {message}
         </p>
       </div>
+
+      {parts.length > 0 ? (
+        <div
+          className="bg-surface-raised border-border rounded-[18px] border-2 px-3 py-2 text-sm font-black"
+          aria-label="離家出走資產"
+        >
+          {parts.join("、")}
+        </div>
+      ) : null}
     </section>
   )
 }
