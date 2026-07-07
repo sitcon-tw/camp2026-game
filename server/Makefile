@@ -27,7 +27,7 @@ fetch-quiz-questions:
 generate: swagger
 
 swagger:
-	swag init -g main.go -d cmd/api,internal/http -o docs --parseInternal
+	go run -mod=mod github.com/swaggo/swag/cmd/swag init -g main.go -d cmd/api,internal/http,internal/gifthistory -o docs --parseInternal
 
 fmt:
 	go fmt ./...

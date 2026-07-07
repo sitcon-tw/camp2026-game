@@ -148,12 +148,15 @@ export function StaffRewardsPanel() {
     () => (itemsQuery.data ?? []).map(itemOption),
     [itemsQuery.data],
   )
-  const rewardOptions =
-    rewardKind === "sitone"
-      ? sitoneOptions
-      : rewardKind === "item"
-        ? itemOptions
-        : []
+  const rewardOptions = useMemo(
+    () =>
+      rewardKind === "sitone"
+        ? sitoneOptions
+        : rewardKind === "item"
+          ? itemOptions
+          : [],
+    [itemOptions, rewardKind, sitoneOptions],
+  )
   const playerOptions = playersQuery.data ?? []
   const teamOptions = teamsQuery.data ?? []
   const selectedRefID = rewardOptions.some(

@@ -386,16 +386,10 @@ export function BattleQuestionPage() {
     now,
   )
   const answered = currentPlayer?.answeredCurrentQuestion === true
-  const answerSyncPending = pendingAnswerQuestionID === question?.questionId
-
-  useEffect(() => {
-    if (
-      pendingAnswerQuestionID != null &&
-      (answered || isRevealing || question?.questionId !== pendingAnswerQuestionID)
-    ) {
-      setPendingAnswerQuestionID(null)
-    }
-  }, [answered, isRevealing, pendingAnswerQuestionID, question?.questionId])
+  const answerSyncPending =
+    pendingAnswerQuestionID === question?.questionId &&
+    !answered &&
+    !isRevealing
 
   useEffect(() => {
     if (

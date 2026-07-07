@@ -471,6 +471,34 @@ const AdminSettingsSchema = z.object({
   computerHardAccuracy: z.number(),
 })
 
+const AdminCommunityStandSchema = CommunityStandSchema.extend({
+  enabled: z.boolean(),
+  visitCount: z.number(),
+  claimCount: z.number(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+const AdminCommunityStandsResponseSchema = z.object({
+  stands: nullableArray(AdminCommunityStandSchema),
+})
+
+const AdminCommunityStandRewardInputSchema = z.object({
+  kind: StaffRewardKindSchema,
+  refId: z.string().optional(),
+  quantity: z.number().optional(),
+  amount: z.number().optional(),
+})
+
+const AdminCommunityStandUpdateInputSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  logoUrl: z.string().optional(),
+  websiteUrl: z.string().optional(),
+  enabled: z.boolean(),
+  reward: AdminCommunityStandRewardInputSchema,
+})
+
 const AdminDashboardTeamSummarySchema = z.object({
   teamId: z.string(),
   name: z.string(),
@@ -677,6 +705,10 @@ export type CommunityStandClaimResponse = z.infer<
   typeof CommunityStandClaimResponseSchema
 >
 export type AdminSettings = z.infer<typeof AdminSettingsSchema>
+export type AdminCommunityStand = z.infer<typeof AdminCommunityStandSchema>
+export type AdminCommunityStandUpdateInput = z.input<
+  typeof AdminCommunityStandUpdateInputSchema
+>
 export type AdminDashboard = z.infer<typeof AdminDashboardSchema>
 export type AdminDashboardPlayer = z.infer<typeof AdminDashboardPlayerSchema>
 export type AdminDashboardPlayerRank = z.infer<
@@ -966,11 +998,29 @@ export const gameApi = {
     return GiftHistoryResponseSchema.parse(json).entries
   },
 
+  async adminCommunityStands() {
+    const json = await apiClient.get("/api/admin/community-stands")
+    return AdminCommunityStandsResponseSchema.parse(json).stands
+  },
+
   async updateAdminSettings(settings: AdminSettings) {
     const json = await apiClient.put("/api/admin/settings", {
       json: settings,
     })
     return AdminSettingsSchema.parse(json)
+  },
+
+  async updateAdminCommunityStand(
+    standID: string,
+    input: AdminCommunityStandUpdateInput,
+  ) {
+    const json = await apiClient.put(
+      `/api/admin/community-stands/${encodeURIComponent(standID)}`,
+      {
+        json: AdminCommunityStandUpdateInputSchema.parse(input),
+      },
+    )
+    return AdminCommunityStandSchema.parse(json)
   },
 
   async updateAdminTeam(

@@ -170,7 +170,10 @@ export function useMatchDeadlineRefresh(
     const recoveryDelays = [400, 900, 2000]
     const recoveryTimeouts = recoveryDelays.map((extraDelay) =>
       window.setTimeout(() => {
-        const latest = queryClient.getQueryData<MatchState>(["matches", matchID])
+        const latest = queryClient.getQueryData<MatchState>([
+          "matches",
+          matchID,
+        ])
         if (latest?.status !== "active") return
 
         const latestQuestionIndex = latest.currentQuestionIndex ?? -1

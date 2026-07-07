@@ -12,6 +12,121 @@
     },
     "basePath": "/api",
     "paths": {
+        "/admin/community-stands": {
+            "get": {
+                "description": "Admin-only endpoint. Returns all community stands, including disabled stands, with counters and editable settings.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List community stands as admin",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.CommunityStandsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/community-stands/{standID}": {
+            "put": {
+                "description": "Admin-only endpoint. Updates display settings, enablement, and reward settings for a community stand.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Update a community stand as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Community stand ID",
+                        "name": "standID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Community stand update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.UpdateCommunityStandRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.CommunityStandResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/dashboard": {
             "get": {
                 "description": "Returns an admin-only operational dashboard with player, inventory, match, and activity statistics.",
@@ -27,6 +142,44 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/admin.DashboardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/gift-history": {
+            "get": {
+                "description": "Returns recent staff gift history across all players.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get admin gift history",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/gifthistory.Response"
                         }
                     },
                     "401": {
@@ -1742,6 +1895,49 @@
                 }
             }
         },
+        "/me/gift-history": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated player's staff gift history.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "me"
+                ],
+                "summary": "Get current player gift history",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/gifthistory.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/me/home": {
             "get": {
                 "security": [
@@ -2564,6 +2760,113 @@
         }
     },
     "definitions": {
+        "admin.CommunityStandResponse": {
+            "type": "object",
+            "properties": {
+                "claimCount": {
+                    "type": "integer",
+                    "example": 38
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "介紹學生社群與開源參與方式。"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "logoUrl": {
+                    "type": "string",
+                    "example": "/game-icons/features/team.png"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "SITCON 社群攤位"
+                },
+                "reward": {
+                    "$ref": "#/definitions/admin.CommunityStandRewardResponse"
+                },
+                "standId": {
+                    "type": "string",
+                    "example": "q7m4x2v9"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "visitCount": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "websiteUrl": {
+                    "type": "string",
+                    "example": "https://sitcon.org"
+                }
+            }
+        },
+        "admin.CommunityStandRewardRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "item"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "refId": {
+                    "type": "string",
+                    "example": "item_booth_sticker"
+                }
+            }
+        },
+        "admin.CommunityStandRewardResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "iconPath": {
+                    "type": "string",
+                    "example": "/game-icons/items/item_booth_sticker.png"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "item"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "攤位貼紙"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "refId": {
+                    "type": "string",
+                    "example": "item_booth_sticker"
+                }
+            }
+        },
+        "admin.CommunityStandsResponse": {
+            "type": "object",
+            "properties": {
+                "stands": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.CommunityStandResponse"
+                    }
+                }
+            }
+        },
         "admin.DashboardHistoryPointResponse": {
             "type": "object",
             "properties": {
@@ -3205,6 +3508,34 @@
                 }
             }
         },
+        "admin.UpdateCommunityStandRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "介紹學生社群與開源參與方式。"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "logoUrl": {
+                    "type": "string",
+                    "example": "/game-icons/features/team.png"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "SITCON 社群攤位"
+                },
+                "reward": {
+                    "$ref": "#/definitions/admin.CommunityStandRewardRequest"
+                },
+                "websiteUrl": {
+                    "type": "string",
+                    "example": "https://sitcon.org"
+                }
+            }
+        },
         "admin.UpdateTeamRequest": {
             "type": "object",
             "properties": {
@@ -3740,6 +4071,55 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/fusions.FusionRecipeResponse"
+                    }
+                }
+            }
+        },
+        "gifthistory.Entry": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "recipientNickname": {
+                    "type": "string"
+                },
+                "recipientPlayerId": {
+                    "type": "string"
+                },
+                "refId": {
+                    "type": "string"
+                },
+                "rewardId": {
+                    "type": "string"
+                },
+                "staffNickname": {
+                    "type": "string"
+                },
+                "staffPlayerId": {
+                    "type": "string"
+                }
+            }
+        },
+        "gifthistory.Response": {
+            "type": "object",
+            "properties": {
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/gifthistory.Entry"
                     }
                 }
             }
