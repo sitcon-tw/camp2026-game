@@ -30,12 +30,13 @@ import (
 )
 
 const (
-	playerAID    = "player-a"
-	playerBID    = "player-b"
-	playerCID    = "player-c"
-	playerAToken = "auth-token-player-a-123456"
-	playerBToken = "auth-token-player-b-123456"
-	playerCToken = "auth-token-player-c-123456"
+	playerAID          = "player-a"
+	playerBID          = "player-b"
+	playerCID          = "player-c"
+	playerAToken       = "auth-token-player-a-123456"
+	playerBToken       = "auth-token-player-b-123456"
+	playerCToken       = "auth-token-player-c-123456"
+	opponentMatchLimit = 10
 )
 
 func TestMatchFlowE2E(t *testing.T) {
@@ -192,6 +193,7 @@ func TestWaitingRoomLeaveFlowE2E(t *testing.T) {
 	playerBCookie := login(t, server.URL, playerBToken)
 
 	assertWaitingRoomLeaveFlow(t, ctx, db, server.URL, playerACookie, playerBCookie)
+	assertOpponentMatchLimit(t, ctx, db, server.URL, playerACookie, playerBCookie)
 }
 
 func startMongo(t *testing.T, ctx context.Context) (*mongo.Client, *mongo.Database) {
@@ -580,6 +582,38 @@ func assertWaitingRoomLeaveFlow(t *testing.T, ctx context.Context, db *mongo.Dat
 	if !errors.Is(err, mongo.ErrNoDocuments) {
 		t.Fatalf("expected host leave to delete waiting match, got %v", err)
 	}
+}
+
+func assertOpponentMatchLimit(t *testing.T, ctx context.Context, db *mongo.Database, serverURL string, hostCookie *http.Cookie, challengerCookie *http.Cookie) {
+	t.Helper()
+
+	for i := 0; i < opponentMatchLimit; i++ {
+		matchID := fmt.Sprintf("match-limit-%02d", i+1)
+		_, err := db.Collection(mongomodel.MatchesCollection).InsertOne(ctx, bson.M{
+			"_id":            matchID,
+			"code":           fmt.Sprintf("LIM%02d", i+1),
+			"mode":           mongomodel.MatchModePVP,
+			"status":         mongomodel.MatchStatusCompleted,
+			"host_player_id": playerAID,
+			"players": bson.A{
+				bson.M{"player_id": playerAID, "kind": mongomodel.MatchPlayerKindHuman},
+				bson.M{"player_id": playerBID, "kind": mongomodel.MatchPlayerKindHuman},
+			},
+			"created_at":   time.Now().UTC(),
+			"completed_at": time.Now().UTC(),
+		})
+		if err != nil {
+			t.Fatalf("insert completed match %d: %v", i+1, err)
+		}
+	}
+
+	var created matchState
+	body := postJSON(t, serverURL+"/api/matches", nil, []*http.Cookie{hostCookie}, http.StatusCreated)
+	decodeJSON(t, body, &created)
+
+	postJSON(t, serverURL+"/api/matches/join", map[string]string{
+		"code": created.Code,
+	}, []*http.Cookie{challengerCookie}, http.StatusForbidden)
 }
 
 func assertDatabaseState(t *testing.T, ctx context.Context, db *mongo.Database, matchID string, completed matchState) {
