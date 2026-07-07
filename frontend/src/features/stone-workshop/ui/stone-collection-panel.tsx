@@ -9,6 +9,7 @@ import {
 } from "@/shared/lib/game-labels"
 import { Button } from "@/shared/ui/button"
 import { Card } from "@/shared/ui/card"
+import { toOptimizedImageSrc } from "@/shared/utils/image-src"
 import { cn } from "@/shared/utils"
 
 type StoneTypeKey = "all" | "explore" | "spark" | "echo" | "build" | "play"
@@ -402,7 +403,7 @@ function StoneShape({
     >
       {iconPath ? (
         <img
-          src={iconPath}
+          src={toOptimizedImageSrc(iconPath)}
           alt=""
           className={cn(
             "relative z-10 size-[54px] object-contain drop-shadow-[0_2px_0_rgba(23,35,58,0.18)]",

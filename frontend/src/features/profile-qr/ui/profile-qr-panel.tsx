@@ -11,6 +11,7 @@ import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
 import { PlayerAvatar } from "@/shared/ui/player-avatar"
 import { Skeleton } from "@/shared/ui/skeleton"
+import { toOptimizedImageSrc } from "@/shared/utils/image-src"
 
 import { CommunityStandScannerDialog } from "./community-stand-scanner-dialog"
 
@@ -277,7 +278,7 @@ function AvatarPickerCard({
                   onClick={() => onSelect(record.sitoneId)}
                 >
                   <img
-                    src={iconPath}
+                    src={toOptimizedImageSrc(iconPath)}
                     alt=""
                     aria-hidden="true"
                     draggable={false}
@@ -377,7 +378,7 @@ function TeamAvatarPickerCard({
                   onClick={() => onSelect(sitone.id)}
                 >
                   <img
-                    src={iconPath}
+                    src={toOptimizedImageSrc(iconPath)}
                     alt=""
                     aria-hidden="true"
                     draggable={false}

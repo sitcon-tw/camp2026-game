@@ -1,4 +1,5 @@
 import { Badge } from "@/shared/ui/badge"
+import { toOptimizedImageSrc } from "@/shared/utils/image-src"
 import { cn } from "@/shared/utils"
 
 type Sitone = {
@@ -31,13 +32,16 @@ export function BattleIngameTeam({
           if (index !== highlight)
             return (
               <div>
-                <img src={item.pictureSrc} className="h-10" />
+                <img
+                  src={toOptimizedImageSrc(item.pictureSrc)}
+                  className="h-10"
+                />
               </div>
             )
         })}
       </div>
       <div className="grid gap-y-2">
-        <img src={highlightedSitone.pictureSrc} />
+        <img src={toOptimizedImageSrc(highlightedSitone.pictureSrc)} />
         <span className="text-center text-lg">{highlightedSitone.name}</span>
         <Badge className="mx-auto">{highlightedSitone.type}型小石</Badge>
       </div>

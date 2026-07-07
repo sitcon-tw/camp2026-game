@@ -1,5 +1,6 @@
 import { type ReactNode } from "react"
 
+import { toOptimizedImageSrc } from "@/shared/utils/image-src"
 import { cn } from "@/shared/utils"
 
 type GameIconProps = {
@@ -26,7 +27,7 @@ export function GameIcon({
     >
       {iconPath ? (
         <img
-          src={iconPath}
+          src={toOptimizedImageSrc(iconPath)}
           alt={alt}
           className={cn("size-full object-contain", imageClassName)}
           loading="lazy"

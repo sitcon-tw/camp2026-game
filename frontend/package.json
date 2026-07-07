@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && node scripts/optimize-images.mjs && tsc --noEmit",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
@@ -59,6 +59,7 @@
     "globals": "^16.5.0",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.7.1",
+    "sharp": "^0.35.3",
     "tailwindcss": "^4.1.17",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.48.1",

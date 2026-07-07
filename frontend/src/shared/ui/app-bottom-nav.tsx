@@ -1,5 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router"
 
+import { toOptimizedImageSrc } from "@/shared/utils/image-src"
+
 const hiddenPathPrefixes = [
   "/login",
   "/codex",
@@ -75,7 +77,7 @@ export function AppBottomNav() {
                 ].join(" ")}
               >
                 <img
-                  src={item.iconSrc}
+                  src={toOptimizedImageSrc(item.iconSrc)}
                   alt=""
                   className={[
                     "size-11 object-contain transition-transform",

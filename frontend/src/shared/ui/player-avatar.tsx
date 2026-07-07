@@ -3,6 +3,7 @@ import * as thumbs from "@dicebear/thumbs"
 import * as React from "react"
 
 import { Avatar, AvatarImage } from "@/shared/ui/avatar"
+import { toOptimizedImageSrc } from "@/shared/utils/image-src"
 import { cn } from "@/shared/utils"
 
 const COMPUTER_AVATAR_SRC = "/game-icons/avatars/computer-opponent.png"
@@ -63,7 +64,7 @@ export function PlayerAvatar({
       {...props}
     >
       <AvatarImage
-        src={avatarSrc}
+        src={toOptimizedImageSrc(avatarSrc)}
         alt=""
         aria-hidden="true"
         draggable={false}

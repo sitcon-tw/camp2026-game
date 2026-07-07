@@ -19,6 +19,7 @@ import {
 } from "@/shared/ui/dialog"
 import { GameIcon } from "@/shared/ui/game-icon"
 import { SitoneIcon } from "@/shared/ui/sitone-icon"
+import { toOptimizedImageSrc } from "@/shared/utils/image-src"
 import { cn } from "@/shared/utils"
 
 const PlayerRewardEventSchema = z.object({
@@ -204,7 +205,7 @@ function InventoryTrimmedNoticeCard({
 
       <div className="border-ink bg-muted relative aspect-square overflow-hidden rounded-[22px] border-2">
         <img
-          src={runawaySitoneImagePath}
+          src={toOptimizedImageSrc(runawaySitoneImagePath)}
           alt="小石開心帶著開源力去排隊購買記憶體"
           className="size-full object-cover"
           loading="lazy"

@@ -15,6 +15,7 @@ import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { Skeleton } from "@/shared/ui/skeleton"
+import { toOptimizedImageSrc } from "@/shared/utils/image-src"
 
 type CommunityStandDisplayPageProps = {
   standID: string
@@ -131,7 +132,9 @@ export function CommunityStandDisplayPage({
               <CardContent className="flex items-center gap-3 p-4">
                 {standQuery.data.stand.reward.iconPath ? (
                   <img
-                    src={standQuery.data.stand.reward.iconPath}
+                    src={toOptimizedImageSrc(
+                      standQuery.data.stand.reward.iconPath,
+                    )}
                     alt=""
                     className="border-ink bg-card size-12 rounded-[14px] border-2 object-cover"
                   />
