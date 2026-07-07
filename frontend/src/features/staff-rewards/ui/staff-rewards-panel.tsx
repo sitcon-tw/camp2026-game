@@ -51,6 +51,8 @@ type RewardOption = {
   description: string
   typeLabel: string
   rarityLabel: string
+  functionLabel?: string
+  detailLabel?: string
   toneClass: string
   sortTags: StoneSortTag[]
   sortRank: number
@@ -65,6 +67,14 @@ type TargetPlayer = {
 type TargetMode = "player" | "team"
 
 type StoneSortTag = "checkpoint" | "level1" | "level2"
+
+type ItemEvolutionStage = "level1" | "level2"
+
+type ItemFunctionMeta = {
+  functionLabel: string
+  detailLabel?: string
+  sortRank: number
+}
 
 const CHECKPOINT_STONE_IDS = new Set([
   "stone_command_blind_trip",
@@ -119,6 +129,89 @@ const LEVEL2_STONE_IDS = new Set([
   "stone_2024_last_night_polaroid",
 ])
 
+const ITEM_EVOLUTION_META: Record<
+  string,
+  { stage: ItemEvolutionStage; type: Sitone["type"] }
+> = {
+  item_adventure_backpack: { stage: "level1", type: "exploration" },
+  item_black_box_sticker: { stage: "level1", type: "exploration" },
+  item_booth_sticker: { stage: "level1", type: "exploration" },
+  item_canvas_code: { stage: "level1", type: "entertainment" },
+  item_charter_draft: { stage: "level1", type: "resonance" },
+  item_container_sticker: { stage: "level1", type: "engineering" },
+  item_contribution_sticker: { stage: "level1", type: "resonance" },
+  item_espresso_cup: { stage: "level1", type: "entertainment" },
+  item_finite_label: { stage: "level1", type: "inspiration" },
+  item_maze_map: { stage: "level1", type: "exploration" },
+  item_microphone: { stage: "level1", type: "entertainment" },
+  item_prompt_card: { stage: "level1", type: "inspiration" },
+  item_public_key_tag: { stage: "level1", type: "engineering" },
+  item_ribbon: { stage: "level1", type: "entertainment" },
+  item_sticky_note: { stage: "level1", type: "inspiration" },
+  item_student_community_card: { stage: "level1", type: "resonance" },
+  item_terminal_cursor: { stage: "level1", type: "engineering" },
+  item_test_sticker: { stage: "level1", type: "engineering" },
+  item_tour_flag: { stage: "level1", type: "resonance" },
+  item_wooden_abacus: { stage: "level1", type: "inspiration" },
+  item_cat_paw_print: { stage: "level2", type: "exploration" },
+  item_clean_spec: { stage: "level2", type: "engineering" },
+  item_cluster_core: { stage: "level2", type: "engineering" },
+  item_essence_timer: { stage: "level2", type: "entertainment" },
+  item_human_label: { stage: "level2", type: "inspiration" },
+  item_infinite_star_map: { stage: "level2", type: "inspiration" },
+  item_lightning_talk_script: { stage: "level2", type: "entertainment" },
+  item_mission_map: { stage: "level2", type: "exploration" },
+  item_open_source_roadmap: { stage: "level2", type: "resonance" },
+  item_pixel_paint: { stage: "level2", type: "entertainment" },
+  item_polaroid_film: { stage: "level2", type: "entertainment" },
+  item_predecessor_notes: { stage: "level2", type: "inspiration" },
+  item_shared_notes_link: { stage: "level2", type: "inspiration" },
+  item_signature_inkpad: { stage: "level2", type: "engineering" },
+  item_star_village_badge: { stage: "level2", type: "resonance" },
+  item_star_village_signpost: { stage: "level2", type: "exploration" },
+  item_system_docs: { stage: "level2", type: "engineering" },
+  item_toolbox_key: { stage: "level2", type: "exploration" },
+  item_transparent_proposal: { stage: "level2", type: "resonance" },
+  item_venue_route: { stage: "level2", type: "resonance" },
+}
+
+const ITEM_FUNCTION_META: Record<string, ItemFunctionMeta> = {
+  item_charm_connection: {
+    functionLabel: "功能道具",
+    detailLabel: "探索型小石掉落率 +15%",
+    sortRank: 2,
+  },
+  item_charm_debug: {
+    functionLabel: "功能道具",
+    detailLabel: "工程型答對分數 +10%",
+    sortRank: 2,
+  },
+  item_charm_all_nighter: {
+    functionLabel: "功能道具",
+    detailLabel: "靈光型刪錯選項機率 +20%",
+    sortRank: 2,
+  },
+  item_charm_success: {
+    functionLabel: "功能道具",
+    detailLabel: "娛樂型勝利開源力 +20%",
+    sortRank: 2,
+  },
+  item_charm_harmony: {
+    functionLabel: "功能道具",
+    detailLabel: "共鳴型勝利開源力 +20%",
+    sortRank: 2,
+  },
+  item_postcard_sitcon2024: { functionLabel: "無功能道具", sortRank: 3 },
+  item_postcard_sitcon2026: { functionLabel: "無功能道具", sortRank: 3 },
+  item_postcard_star_village: { functionLabel: "無功能道具", sortRank: 3 },
+  item_tshirt_2026: { functionLabel: "無功能道具", sortRank: 3 },
+  item_wooden_plank: {
+    functionLabel: "合成素材",
+    detailLabel: "可合成星手村路標",
+    sortRank: 1,
+  },
+}
+
 function sitoneSortTags(sitoneID: string): StoneSortTag[] {
   if (CHECKPOINT_STONE_IDS.has(sitoneID)) return ["checkpoint"]
   if (LEVEL1_STONE_IDS.has(sitoneID)) return ["level1"]
@@ -145,6 +238,26 @@ function stoneSortRank(tags: StoneSortTag[]) {
   return 3
 }
 
+function itemEvolutionStageLabel(stage: ItemEvolutionStage) {
+  return stage === "level1" ? "一階" : "二階"
+}
+
+function itemFunctionMeta(item: Item): ItemFunctionMeta {
+  const evolutionMeta = ITEM_EVOLUTION_META[item.id]
+  if (evolutionMeta) {
+    return {
+      functionLabel: `${itemEvolutionStageLabel(evolutionMeta.stage)}${sitoneMeta(evolutionMeta.type).label}型進化道具`,
+      sortRank: evolutionMeta.stage === "level1" ? 0 : 1,
+    }
+  }
+  return (
+    ITEM_FUNCTION_META[item.id] ?? {
+      functionLabel: itemTypeLabel(item.type),
+      sortRank: 4,
+    }
+  )
+}
+
 function primaryStoneSortTag(option: RewardOption) {
   return option.sortTags[0]
 }
@@ -165,15 +278,18 @@ function sitoneOption(sitone: Sitone): RewardOption {
 }
 
 function itemOption(item: Item): RewardOption {
+  const functionMeta = itemFunctionMeta(item)
   return {
     id: item.id,
     name: item.name,
     description: item.description,
     typeLabel: itemTypeLabel(item.type),
     rarityLabel: rarityLabel(item.rarity),
+    functionLabel: functionMeta.functionLabel,
+    detailLabel: functionMeta.detailLabel,
     toneClass: itemTypeClass(item.type),
     sortTags: [],
-    sortRank: 0,
+    sortRank: functionMeta.sortRank,
   }
 }
 
@@ -247,7 +363,14 @@ export function StaffRewardsPanel() {
     [sitonesQuery.data],
   )
   const itemOptions = useMemo(
-    () => (itemsQuery.data ?? []).map(itemOption),
+    () =>
+      (itemsQuery.data ?? [])
+        .map(itemOption)
+        .sort(
+          (left, right) =>
+            left.sortRank - right.sortRank ||
+            left.name.localeCompare(right.name),
+        ),
     [itemsQuery.data],
   )
   const rewardOptions = useMemo(
@@ -277,6 +400,8 @@ export function StaffRewardsPanel() {
             option.name.toLowerCase().includes(keyword) ||
             option.id.toLowerCase().includes(keyword) ||
             option.typeLabel.toLowerCase().includes(keyword) ||
+            option.functionLabel?.toLowerCase().includes(keyword) ||
+            option.detailLabel?.toLowerCase().includes(keyword) ||
             option.sortTags.some((tag) =>
               stoneSortTagLabel(tag).toLowerCase().includes(keyword),
             ),
@@ -768,7 +893,21 @@ export function StaffRewardsPanel() {
                         <>
                           {visibleOptions.map((option) => (
                             <SelectItem key={option.id} value={option.id}>
-                              {option.name}
+                              <div className="flex min-w-0 flex-wrap items-center gap-1.5 pr-4">
+                                <span className="font-black">
+                                  {option.name}
+                                </span>
+                                {option.functionLabel ? (
+                                  <span className="text-muted-foreground text-xs font-bold">
+                                    {option.functionLabel}
+                                  </span>
+                                ) : null}
+                                {option.detailLabel ? (
+                                  <span className="text-muted-foreground text-xs font-bold">
+                                    {option.detailLabel}
+                                  </span>
+                                ) : null}
+                              </div>
                             </SelectItem>
                           ))}
                         </>
@@ -788,6 +927,8 @@ export function StaffRewardsPanel() {
                       <div className="mb-1 flex flex-wrap gap-1.5">
                         {[
                           selectedOption?.typeLabel,
+                          selectedOption?.functionLabel,
+                          selectedOption?.detailLabel,
                           selectedOption?.rarityLabel,
                         ]
                           .filter(Boolean)
