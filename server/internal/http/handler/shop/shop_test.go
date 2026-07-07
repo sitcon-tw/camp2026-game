@@ -16,8 +16,14 @@ func TestShopItemsIncludesAllEnabledPurchasableContentItems(t *testing.T) {
 	store := loadTestContent(t)
 
 	items := shopItems(store)
-	if len(items) != 45 {
-		t.Fatalf("expected 45 shop items, got %#v", items)
+	expectedCount := 0
+	for _, item := range store.ListItems() {
+		if item.Purchasable && item.Enabled {
+			expectedCount++
+		}
+	}
+	if len(items) != expectedCount {
+		t.Fatalf("expected %d shop items, got %#v", expectedCount, items)
 	}
 	if items[0].ID != "item_adventure_backpack" || items[0].PriceOpenPower != 150 {
 		t.Fatalf("unexpected first shop item: %#v", items[0])

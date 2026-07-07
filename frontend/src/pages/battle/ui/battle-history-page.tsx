@@ -116,7 +116,11 @@ export function BattleHistoryPage() {
 
   const pages: number[] = []
   const delta = 2
-  for (let i = Math.max(2, page - delta); i <= Math.min(totalPages - 1, page + delta); i++) {
+  for (
+    let i = Math.max(2, page - delta);
+    i <= Math.min(totalPages - 1, page + delta);
+    i++
+  ) {
     pages.push(i)
   }
 
@@ -126,10 +130,7 @@ export function BattleHistoryPage() {
     if (pages.length > 0 && pages[0] > 1) {
       elements.push(
         <PaginationItem key={1}>
-          <PaginationLink
-            onClick={() => setPage(1)}
-            size="default"
-          >
+          <PaginationLink onClick={() => setPage(1)} size="default">
             1
           </PaginationLink>
         </PaginationItem>,
@@ -167,10 +168,7 @@ export function BattleHistoryPage() {
       }
       elements.push(
         <PaginationItem key={totalPages}>
-          <PaginationLink
-            onClick={() => setPage(totalPages)}
-            size="default"
-          >
+          <PaginationLink onClick={() => setPage(totalPages)} size="default">
             {totalPages}
           </PaginationLink>
         </PaginationItem>,
@@ -244,9 +242,7 @@ export function BattleHistoryPage() {
                             nickname={player.nickname}
                             className="border-ink size-8 rounded-[11px] border"
                           />
-                          <span className="font-black">
-                            {player.nickname}
-                          </span>
+                          <span className="font-black">{player.nickname}</span>
                           <span className="text-xl font-black">
                             {player.score}
                           </span>

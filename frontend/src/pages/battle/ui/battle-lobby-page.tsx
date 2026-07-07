@@ -286,9 +286,7 @@ export function BattleLobbyPage() {
               type="button"
               aria-label="掃描房號 QR Code"
               disabled={
-                Boolean(openMatch) ||
-                openMatchChecking ||
-                battleActionPending
+                Boolean(openMatch) || openMatchChecking || battleActionPending
               }
               onClick={() => setScannerOpen(true)}
             >
