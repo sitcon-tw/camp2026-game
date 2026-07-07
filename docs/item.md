@@ -44,6 +44,7 @@
 | `item_test_sticker` | 測試貼紙 | 測試小石 |
 | `item_tour_flag` | 導遊旗 | 2020 導遊旗小石 |
 | `item_wooden_abacus` | 木製算珠 | 2021 算盤小石 |
+| `item_wooden_plank` | 木板 | 4 個可合成星手村路標 |
 
 ### 原 Stage 2 合成素材（16 個）
 
