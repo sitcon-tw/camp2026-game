@@ -42,6 +42,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Put("/me/sitone-loadout", h.UpdateSitoneLoadout)
 	api.Get("/me/items", h.ListItems)
 	api.Get("/me/qrcode", h.QRCode)
+	api.Get("/me/gift-history", h.GiftHistory)
 	api.Get("/me/matches", h.ListCompletedMatches)
 }
 

@@ -3,6 +3,8 @@ package admin
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -11,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
+	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/gamecontrol"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
@@ -231,6 +234,183 @@ func TestUpdateTeamResponseIncludesAvatarURL(t *testing.T) {
 	if got.TeamID != "T1" || got.Name != "Blue Team" || got.AvatarURL != "/avatar.png" {
 		t.Fatalf("unexpected update team response: %#v", got)
 	}
+}
+
+func TestNormalizeUpdateCommunityStandRequestTrimsFields(t *testing.T) {
+	enabled := true
+	got := normalizeUpdateCommunityStandRequest(UpdateCommunityStandRequest{
+		Name:        "  社群攤位  ",
+		Description: "  介紹社群  ",
+		LogoURL:     "  /game-icons/features/team.png  ",
+		WebsiteURL:  "  https://sitcon.org  ",
+		Enabled:     &enabled,
+		Reward: CommunityStandRewardRequest{
+			Kind:  "  item  ",
+			RefID: "  item_booth_sticker  ",
+		},
+	})
+
+	if got.Name != "社群攤位" || got.Description != "介紹社群" || got.LogoURL != "/game-icons/features/team.png" || got.WebsiteURL != "https://sitcon.org" {
+		t.Fatalf("unexpected normalized community stand request: %#v", got)
+	}
+	if got.Reward.Kind != "item" || got.Reward.RefID != "item_booth_sticker" {
+		t.Fatalf("unexpected normalized reward request: %#v", got.Reward)
+	}
+}
+
+func TestValidateUpdateCommunityStandRequest(t *testing.T) {
+	handler := New(Dependencies{Content: loadAdminTestContent(t)})
+	enabled := true
+	valid := UpdateCommunityStandRequest{
+		Name:        "社群攤位",
+		Description: "介紹學生社群。",
+		LogoURL:     "/game-icons/features/team.png",
+		WebsiteURL:  "https://sitcon.org",
+		Enabled:     &enabled,
+		Reward: CommunityStandRewardRequest{
+			Kind:     standRewardKindItem,
+			RefID:    "item_booth_sticker",
+			Quantity: 1,
+		},
+	}
+	if details := handler.validateUpdateCommunityStandRequest("stand-a", valid); len(details) != 0 {
+		t.Fatalf("expected valid community stand update request, got %#v", details)
+	}
+
+	invalid := UpdateCommunityStandRequest{
+		Name:        strings.Repeat("x", communityStandNameMaxLen+1),
+		Description: "",
+		LogoURL:     "logo.png",
+		WebsiteURL:  "/local/path",
+		Reward: CommunityStandRewardRequest{
+			Kind:     standRewardKindItem,
+			RefID:    "missing-item",
+			Quantity: 0,
+		},
+	}
+	details := handler.validateUpdateCommunityStandRequest("", invalid)
+	if len(details) != 8 {
+		t.Fatalf("expected stand id, enabled, name, description, urls, item ref, and quantity errors, got %#v", details)
+	}
+}
+
+func TestValidateUpdateCommunityStandOpenPowerReward(t *testing.T) {
+	handler := New(Dependencies{Content: loadAdminTestContent(t)})
+	enabled := false
+	valid := UpdateCommunityStandRequest{
+		Name:        "開源力攤位",
+		Description: "完成任務後取得開源力。",
+		Enabled:     &enabled,
+		Reward: CommunityStandRewardRequest{
+			Kind:   standRewardKindOpenPower,
+			Amount: 50,
+		},
+	}
+	if details := handler.validateUpdateCommunityStandRequest("stand-a", valid); len(details) != 0 {
+		t.Fatalf("expected valid open power reward, got %#v", details)
+	}
+
+	valid.Reward.Amount = 0
+	if details := handler.validateUpdateCommunityStandRequest("stand-a", valid); len(details) != 1 {
+		t.Fatalf("expected amount validation error, got %#v", details)
+	}
+}
+
+func TestCommunityStandRewardResponseIncludesContentMetadata(t *testing.T) {
+	handler := New(Dependencies{Content: loadAdminTestContent(t)})
+
+	got, ok := handler.communityStandRewardResponse(mongomodel.StandReward{
+		Kind:     standRewardKindItem,
+		RefID:    "item_booth_sticker",
+		Quantity: 1,
+	})
+	if !ok || got.Name != "攤位貼紙" || got.IconPath != "/game-icons/items/item_booth_sticker.png" {
+		t.Fatalf("unexpected item reward response: %#v, ok=%v", got, ok)
+	}
+
+	got, ok = handler.communityStandRewardResponse(mongomodel.StandReward{
+		Kind:   standRewardKindOpenPower,
+		Amount: 50,
+	})
+	if !ok || got.Name != "開源力" || got.Amount != 50 {
+		t.Fatalf("unexpected open power reward response: %#v, ok=%v", got, ok)
+	}
+}
+
+func loadAdminTestContent(t *testing.T) *content.Store {
+	t.Helper()
+
+	dir := t.TempDir()
+	files := map[string]string{
+		"sitones.toml": strings.TrimSpace(`
+[[sitones]]
+id = "stone_booth"
+name = "攤位小石"
+type = "exploration"
+rarity = "common"
+style = "default"
+description = "完成攤位任務取得的小石。"
+ability_name = "攤位探索"
+ability_kind = "material_drop_rate"
+ability_value = 5
+ability_count = 0
+ability_description = "素材掉落率提高 5%。"
+`),
+		"items.toml": strings.TrimSpace(`
+[[items]]
+id = "item_booth_sticker"
+name = "攤位貼紙"
+type = "material"
+rarity = "common"
+description = "攤位貼紙，可用於小石合成。"
+icon_path = "/game-icons/items/item_booth_sticker.png"
+source = "shop"
+purchasable = true
+enabled = true
+price_open_power = 150
+`),
+		"fusion_recipes.toml": strings.TrimSpace(`
+[[fusion_recipes]]
+id = "recipe_booth_stone"
+name = "Booth Stone"
+description = "Fixture recipe."
+enabled = true
+
+[[fusion_recipes.inputs]]
+kind = "item"
+id = "item_booth_sticker"
+quantity = 1
+
+[[fusion_recipes.outputs]]
+kind = "sitone"
+id = "stone_booth"
+quantity = 1
+`),
+		"quiz_questions.csv": strings.TrimSpace(`
+id,prompt,choice_a,choice_b,choice_c,choice_d,correct_choice,explanation
+quiz-001,Question 1,A,B,C,D,A,Explanation 1
+quiz-002,Question 2,A,B,C,D,B,Explanation 2
+quiz-003,Question 3,A,B,C,D,C,Explanation 3
+quiz-004,Question 4,A,B,C,D,D,Explanation 4
+quiz-005,Question 5,A,B,C,D,A,Explanation 5
+quiz-006,Question 6,A,B,C,D,B,Explanation 6
+quiz-007,Question 7,A,B,C,D,C,Explanation 7
+quiz-008,Question 8,A,B,C,D,D,Explanation 8
+quiz-009,Question 9,A,B,C,D,A,Explanation 9
+quiz-010,Question 10,A,B,C,D,B,Explanation 10
+`),
+	}
+	for name, data := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	store, err := content.Load(dir)
+	if err != nil {
+		t.Fatalf("load test content: %v", err)
+	}
+	return store
 }
 
 func TestDashboardPlayerProjectionFetchesOnlyDashboardFields(t *testing.T) {

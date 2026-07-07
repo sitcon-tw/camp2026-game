@@ -26,6 +26,8 @@ import { toast } from "sonner"
 import { AppError } from "@/shared/api/error"
 import {
   gameApi,
+  type AdminCommunityStand,
+  type AdminCommunityStandUpdateInput,
   type AdminDashboard,
   type AdminDashboardHistory,
   type AdminDashboardInventoryEntry,
@@ -34,6 +36,7 @@ import {
   type AdminDashboardTeam,
   type AdminSettings,
   type GiftHistoryEntry,
+  type StaffRewardKind,
 } from "@/shared/api/game"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Badge } from "@/shared/ui/badge"
@@ -64,6 +67,13 @@ import { Progress } from "@/shared/ui/progress"
 import { Spinner } from "@/shared/ui/spinner"
 import { Switch } from "@/shared/ui/switch"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select"
+import {
   Table,
   TableBody,
   TableCell,
@@ -72,6 +82,7 @@ import {
   TableRow,
 } from "@/shared/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
+import { Textarea } from "@/shared/ui/textarea"
 import { cn } from "@/shared/utils"
 
 const numberFormatter = new Intl.NumberFormat("zh-TW")
@@ -221,6 +232,13 @@ export function AdminPanelPage() {
     retry: false,
     refetchInterval: 30_000,
   })
+  const communityStandsQuery = useQuery({
+    queryKey: ["admin", "community-stands"],
+    queryFn: gameApi.adminCommunityStands,
+    enabled: Boolean(settingsQuery.data),
+    retry: false,
+    refetchInterval: 30_000,
+  })
 
   const loginMutation = useMutation({
     mutationFn: gameApi.adminLogin,
@@ -256,6 +274,40 @@ export function AdminPanelPage() {
     },
   })
 
+  const updateCommunityStandMutation = useMutation({
+    mutationFn: ({
+      standID,
+      input,
+    }: {
+      standID: string
+      input: AdminCommunityStandUpdateInput
+    }) => gameApi.updateAdminCommunityStand(standID, input),
+    onSuccess: (stand) => {
+      queryClient.setQueryData<AdminCommunityStand[]>(
+        ["admin", "community-stands"],
+        (current) => {
+          const stands = current ?? []
+          if (stands.some((entry) => entry.standId === stand.standId)) {
+            return stands.map((entry) =>
+              entry.standId === stand.standId ? stand : entry,
+            )
+          }
+          return [...stands, stand]
+        },
+      )
+      void queryClient.invalidateQueries({
+        queryKey: ["community", "stand", stand.standId],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ["community", "stand", "display", stand.standId],
+      })
+      toast.success("攤位設定已更新")
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "攤位設定更新失敗"))
+    },
+  })
+
   function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     loginMutation.mutate(password)
@@ -273,6 +325,12 @@ export function AdminPanelPage() {
       return base ? { ...base, ...patch } : current
     })
   }
+
+  const operationsRefreshing =
+    dashboardQuery.isFetching ||
+    historyQuery.isFetching ||
+    giftHistoryQuery.isFetching ||
+    communityStandsQuery.isFetching
 
   if (settingsQuery.isPending) {
     return (
@@ -364,24 +422,16 @@ export function AdminPanelPage() {
               variant="outline"
               size="icon"
               aria-label="重新整理 dashboard"
-              disabled={
-                dashboardQuery.isFetching ||
-                historyQuery.isFetching ||
-                giftHistoryQuery.isFetching
-              }
+              disabled={operationsRefreshing}
               onClick={() => {
                 void dashboardQuery.refetch()
                 void historyQuery.refetch()
                 void giftHistoryQuery.refetch()
+                void communityStandsQuery.refetch()
               }}
             >
               <RefreshCw
-                className={cn(
-                  "size-4",
-                  (dashboardQuery.isFetching ||
-                    historyQuery.isFetching ||
-                    giftHistoryQuery.isFetching) && "animate-spin",
-                )}
+                className={cn("size-4", operationsRefreshing && "animate-spin")}
               />
             </Button>
             <Button
@@ -433,6 +483,21 @@ export function AdminPanelPage() {
         isPending={updateMutation.isPending}
         onSubmit={handleUpdate}
         onUpdate={updateDraft}
+      />
+
+      <AdminCommunityStandsPanel
+        stands={communityStandsQuery.data ?? []}
+        error={communityStandsQuery.error}
+        isPending={communityStandsQuery.isPending}
+        pendingStandID={
+          updateCommunityStandMutation.isPending
+            ? updateCommunityStandMutation.variables?.standID
+            : undefined
+        }
+        onRetry={() => communityStandsQuery.refetch()}
+        onSubmit={(standID, input) =>
+          updateCommunityStandMutation.mutate({ standID, input })
+        }
       />
     </GamePageShell>
   )
@@ -1746,6 +1811,386 @@ function EmptyBlock({ label }: { label: string }) {
       {label}
     </div>
   )
+}
+
+const communityStandRewardKindLabels: Record<StaffRewardKind, string> = {
+  item: "道具",
+  sitone: "小石",
+  open_power: "開源力",
+}
+
+function AdminCommunityStandsPanel({
+  stands,
+  error,
+  isPending,
+  pendingStandID,
+  onRetry,
+  onSubmit,
+}: {
+  stands: AdminCommunityStand[]
+  error: unknown
+  isPending: boolean
+  pendingStandID?: string
+  onRetry: () => void
+  onSubmit: (standID: string, input: AdminCommunityStandUpdateInput) => void
+}) {
+  if (isPending) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardContent className="flex items-center gap-3 px-5">
+          <Spinner className="size-5" />
+          <span className="font-black">正在載入攤位設定</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <GameFeatureIcon name="team" className="size-5" />
+            攤位設定
+          </CardTitle>
+          <CardDescription>
+            {errorMessage(error, "攤位設定暫時無法讀取。")}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="px-5">
+          <Button type="button" variant="outline" onClick={onRetry}>
+            重新整理
+          </Button>
+        </CardFooter>
+      </Card>
+    )
+  }
+
+  return (
+    <section className="grid gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-black">攤位設定</h2>
+          <p className="text-muted-foreground text-sm font-semibold">
+            管理社群攤位顯示、啟用狀態與掃描獎勵。
+          </p>
+        </div>
+        <Badge variant="outline">{formatNumber(stands.length)} booths</Badge>
+      </div>
+
+      {stands.length === 0 ? (
+        <EmptyBlock label="目前沒有攤位資料" />
+      ) : (
+        <div className="grid gap-3 xl:grid-cols-3">
+          {stands.map((stand) => (
+            <CommunityStandEditorCard
+              key={`${stand.standId}:${stand.updatedAt}`}
+              stand={stand}
+              isPending={pendingStandID === stand.standId}
+              onSubmit={onSubmit}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function CommunityStandEditorCard({
+  stand,
+  isPending,
+  onSubmit,
+}: {
+  stand: AdminCommunityStand
+  isPending: boolean
+  onSubmit: (standID: string, input: AdminCommunityStandUpdateInput) => void
+}) {
+  const [draft, setDraft] = useState<AdminCommunityStandUpdateInput>(() =>
+    communityStandToDraft(stand),
+  )
+
+  const savedDraft = communityStandToDraft(stand)
+  const dirty =
+    JSON.stringify(sanitizeCommunityStandDraft(draft)) !==
+    JSON.stringify(sanitizeCommunityStandDraft(savedDraft))
+  const formID = `admin-community-stand-${stand.standId}`
+
+  function patchDraft(patch: Partial<AdminCommunityStandUpdateInput>) {
+    setDraft((current) => ({ ...current, ...patch }))
+  }
+
+  function patchReward(
+    patch: Partial<AdminCommunityStandUpdateInput["reward"]>,
+  ) {
+    setDraft((current) => ({
+      ...current,
+      reward: { ...current.reward, ...patch },
+    }))
+  }
+
+  function handleRewardKindChange(kind: StaffRewardKind) {
+    setDraft((current) => ({
+      ...current,
+      reward: communityStandRewardDraftForKind(kind, current.reward),
+    }))
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    onSubmit(stand.standId, sanitizeCommunityStandDraft(draft))
+  }
+
+  return (
+    <Card className="rounded-[18px] py-5">
+      <form id={formID} className="grid gap-3" onSubmit={handleSubmit}>
+        <CardHeader className="gap-3 px-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <CardTitle className="truncate text-lg font-black">
+                {draft.name || stand.name || stand.standId}
+              </CardTitle>
+              <CardDescription>
+                ID {stand.standId} / 更新 {formatDateTime(stand.updatedAt)}
+              </CardDescription>
+            </div>
+            <Badge variant={draft.enabled ? "default" : "secondary"}>
+              {draft.enabled ? "啟用" : "停用"}
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <CardContent className="grid gap-4 px-5">
+          <div className="bg-surface-raised border-border grid grid-cols-[1fr_auto] items-center gap-3 rounded-[18px] border-2 p-3">
+            <div className="grid grid-cols-2 gap-3">
+              <MiniStat label="拜訪" value={stand.visitCount} />
+              <MiniStat label="領取" value={stand.claimCount} />
+            </div>
+            <Switch
+              checked={draft.enabled}
+              onCheckedChange={(checked) => patchDraft({ enabled: checked })}
+              aria-label={`${stand.name} 啟用狀態`}
+            />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field>
+              <Label htmlFor={`${formID}-name`}>名稱</Label>
+              <Input
+                id={`${formID}-name`}
+                value={draft.name}
+                maxLength={96}
+                onChange={(event) => patchDraft({ name: event.target.value })}
+              />
+            </Field>
+            <Field>
+              <Label htmlFor={`${formID}-logo`}>Logo URL</Label>
+              <Input
+                id={`${formID}-logo`}
+                value={draft.logoUrl ?? ""}
+                placeholder="/game-icons/features/team.png"
+                onChange={(event) =>
+                  patchDraft({ logoUrl: event.target.value })
+                }
+              />
+            </Field>
+            <Field className="md:col-span-2">
+              <Label htmlFor={`${formID}-description`}>介紹</Label>
+              <Textarea
+                id={`${formID}-description`}
+                value={draft.description}
+                maxLength={1000}
+                onChange={(event) =>
+                  patchDraft({ description: event.target.value })
+                }
+              />
+            </Field>
+            <Field className="md:col-span-2">
+              <Label htmlFor={`${formID}-website`}>網站 URL</Label>
+              <Input
+                id={`${formID}-website`}
+                value={draft.websiteUrl ?? ""}
+                placeholder="https://sitcon.org"
+                onChange={(event) =>
+                  patchDraft({ websiteUrl: event.target.value })
+                }
+              />
+            </Field>
+          </div>
+
+          <div className="bg-surface-raised border-border grid gap-3 rounded-[18px] border-2 p-3">
+            <div className="grid gap-3 md:grid-cols-[150px_minmax(0,1fr)_120px]">
+              <Field>
+                <Label htmlFor={`${formID}-reward-kind`}>獎勵</Label>
+                <Select
+                  value={draft.reward.kind}
+                  onValueChange={(value) =>
+                    handleRewardKindChange(value as StaffRewardKind)
+                  }
+                >
+                  <SelectTrigger
+                    id={`${formID}-reward-kind`}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="item">道具</SelectItem>
+                    <SelectItem value="sitone">小石</SelectItem>
+                    <SelectItem value="open_power">開源力</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              {draft.reward.kind === "open_power" ? (
+                <Field className="md:col-span-2">
+                  <Label htmlFor={`${formID}-reward-amount`}>開源力數量</Label>
+                  <Input
+                    id={`${formID}-reward-amount`}
+                    type="number"
+                    min={1}
+                    max={100000}
+                    value={draft.reward.amount ?? 0}
+                    onChange={(event) =>
+                      patchReward({ amount: Number(event.target.value) })
+                    }
+                  />
+                </Field>
+              ) : (
+                <>
+                  <Field>
+                    <Label htmlFor={`${formID}-reward-ref`}>Content ID</Label>
+                    <Input
+                      id={`${formID}-reward-ref`}
+                      value={draft.reward.refId ?? ""}
+                      placeholder={
+                        draft.reward.kind === "item"
+                          ? "item_booth_sticker"
+                          : "stone_booth"
+                      }
+                      onChange={(event) =>
+                        patchReward({ refId: event.target.value })
+                      }
+                    />
+                  </Field>
+                  <Field>
+                    <Label htmlFor={`${formID}-reward-quantity`}>數量</Label>
+                    <Input
+                      id={`${formID}-reward-quantity`}
+                      type="number"
+                      min={1}
+                      max={1000}
+                      value={draft.reward.quantity ?? 1}
+                      onChange={(event) =>
+                        patchReward({ quantity: Number(event.target.value) })
+                      }
+                    />
+                  </Field>
+                </>
+              )}
+            </div>
+
+            <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs font-bold">
+              <span>{communityStandRewardKindLabels[stand.reward.kind]}</span>
+              <span>{stand.reward.name}</span>
+              {stand.reward.refId ? <code>{stand.reward.refId}</code> : null}
+            </div>
+          </div>
+        </CardContent>
+
+        <CardFooter className="justify-end gap-2 px-5">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isPending || !dirty}
+            onClick={() => setDraft(savedDraft)}
+          >
+            <X />
+            還原
+          </Button>
+          <Button type="submit" disabled={isPending}>
+            <Save />
+            {isPending ? "儲存中" : "儲存攤位"}
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
+  )
+}
+
+function communityStandToDraft(
+  stand: AdminCommunityStand,
+): AdminCommunityStandUpdateInput {
+  return {
+    name: stand.name,
+    description: stand.description,
+    logoUrl: stand.logoUrl ?? "",
+    websiteUrl: stand.websiteUrl ?? "",
+    enabled: stand.enabled,
+    reward: {
+      kind: stand.reward.kind,
+      refId: stand.reward.refId ?? "",
+      quantity: stand.reward.quantity ?? 1,
+      amount: stand.reward.amount ?? 50,
+    },
+  }
+}
+
+function communityStandRewardDraftForKind(
+  kind: StaffRewardKind,
+  current: AdminCommunityStandUpdateInput["reward"],
+): AdminCommunityStandUpdateInput["reward"] {
+  if (kind === "open_power") {
+    return {
+      kind,
+      amount: positiveInteger(current.amount, 50),
+    }
+  }
+  return {
+    kind,
+    refId: current.kind === kind ? current.refId : "",
+    quantity: positiveInteger(current.quantity, 1),
+  }
+}
+
+function sanitizeCommunityStandDraft(
+  draft: AdminCommunityStandUpdateInput,
+): AdminCommunityStandUpdateInput {
+  const reward =
+    draft.reward.kind === "open_power"
+      ? {
+          kind: draft.reward.kind,
+          amount: integerOrZero(draft.reward.amount),
+        }
+      : {
+          kind: draft.reward.kind,
+          refId: emptyToUndefined(draft.reward.refId),
+          quantity: integerOrZero(draft.reward.quantity),
+        }
+  return {
+    name: draft.name.trim(),
+    description: draft.description.trim(),
+    logoUrl: emptyToUndefined(draft.logoUrl),
+    websiteUrl: emptyToUndefined(draft.websiteUrl),
+    enabled: draft.enabled,
+    reward,
+  }
+}
+
+function emptyToUndefined(value?: string) {
+  const trimmed = value?.trim() ?? ""
+  return trimmed || undefined
+}
+
+function positiveInteger(value: unknown, fallback: number) {
+  const number = Number(value)
+  if (!Number.isFinite(number) || number <= 0) return fallback
+  return Math.floor(number)
+}
+
+function integerOrZero(value: unknown) {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return 0
+  return Math.floor(number)
 }
 
 function AdminSettingsPanel({

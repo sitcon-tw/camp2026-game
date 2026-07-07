@@ -1,5 +1,81 @@
 basePath: /api
 definitions:
+  admin.CommunityStandResponse:
+    properties:
+      claimCount:
+        example: 38
+        type: integer
+      createdAt:
+        type: string
+      description:
+        example: 介紹學生社群與開源參與方式。
+        type: string
+      enabled:
+        example: true
+        type: boolean
+      logoUrl:
+        example: /game-icons/features/team.png
+        type: string
+      name:
+        example: SITCON 社群攤位
+        type: string
+      reward:
+        $ref: '#/definitions/admin.CommunityStandRewardResponse'
+      standId:
+        example: q7m4x2v9
+        type: string
+      updatedAt:
+        type: string
+      visitCount:
+        example: 42
+        type: integer
+      websiteUrl:
+        example: https://sitcon.org
+        type: string
+    type: object
+  admin.CommunityStandRewardRequest:
+    properties:
+      amount:
+        example: 50
+        type: integer
+      kind:
+        example: item
+        type: string
+      quantity:
+        example: 1
+        type: integer
+      refId:
+        example: item_booth_sticker
+        type: string
+    type: object
+  admin.CommunityStandRewardResponse:
+    properties:
+      amount:
+        example: 50
+        type: integer
+      iconPath:
+        example: /game-icons/items/item_booth_sticker.png
+        type: string
+      kind:
+        example: item
+        type: string
+      name:
+        example: 攤位貼紙
+        type: string
+      quantity:
+        example: 1
+        type: integer
+      refId:
+        example: item_booth_sticker
+        type: string
+    type: object
+  admin.CommunityStandsResponse:
+    properties:
+      stands:
+        items:
+          $ref: '#/definitions/admin.CommunityStandResponse'
+        type: array
+    type: object
   admin.DashboardHistoryPointResponse:
     properties:
       openPower:
@@ -458,6 +534,26 @@ definitions:
       sameTeamBattlesEnabled:
         type: boolean
     type: object
+  admin.UpdateCommunityStandRequest:
+    properties:
+      description:
+        example: 介紹學生社群與開源參與方式。
+        type: string
+      enabled:
+        example: true
+        type: boolean
+      logoUrl:
+        example: /game-icons/features/team.png
+        type: string
+      name:
+        example: SITCON 社群攤位
+        type: string
+      reward:
+        $ref: '#/definitions/admin.CommunityStandRewardRequest'
+      websiteUrl:
+        example: https://sitcon.org
+        type: string
+    type: object
   admin.UpdateTeamRequest:
     properties:
       avatarUrl:
@@ -837,6 +933,38 @@ definitions:
       recipes:
         items:
           $ref: '#/definitions/fusions.FusionRecipeResponse'
+        type: array
+    type: object
+  gifthistory.Entry:
+    properties:
+      amount:
+        type: integer
+      createdAt:
+        type: string
+      kind:
+        type: string
+      name:
+        type: string
+      quantity:
+        type: integer
+      recipientNickname:
+        type: string
+      recipientPlayerId:
+        type: string
+      refId:
+        type: string
+      rewardId:
+        type: string
+      staffNickname:
+        type: string
+      staffPlayerId:
+        type: string
+    type: object
+  gifthistory.Response:
+    properties:
+      entries:
+        items:
+          $ref: '#/definitions/gifthistory.Entry'
         type: array
     type: object
   httpx.ErrorDetail:
@@ -2173,6 +2301,84 @@ info:
   title: Camp 2026 Game API
   version: 0.1.0
 paths:
+  /admin/community-stands:
+    get:
+      description: Admin-only endpoint. Returns all community stands, including disabled
+        stands, with counters and editable settings.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.CommunityStandsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: List community stands as admin
+      tags:
+      - admin
+  /admin/community-stands/{standID}:
+    put:
+      consumes:
+      - application/json
+      description: Admin-only endpoint. Updates display settings, enablement, and
+        reward settings for a community stand.
+      parameters:
+      - description: Community stand ID
+        in: path
+        name: standID
+        required: true
+        type: string
+      - description: Community stand update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/admin.UpdateCommunityStandRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.CommunityStandResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Update a community stand as admin
+      tags:
+      - admin
   /admin/dashboard:
     get:
       description: Returns an admin-only operational dashboard with player, inventory,
@@ -2197,6 +2403,31 @@ paths:
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
       summary: Get admin game dashboard
+      tags:
+      - admin
+  /admin/gift-history:
+    get:
+      description: Returns recent staff gift history across all players.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gifthistory.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Get admin gift history
       tags:
       - admin
   /admin/history:
@@ -3303,6 +3534,33 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Stream player events
+      tags:
+      - me
+  /me/gift-history:
+    get:
+      description: Returns the authenticated player's staff gift history.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gifthistory.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get current player gift history
       tags:
       - me
   /me/home:

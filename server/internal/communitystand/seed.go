@@ -65,18 +65,16 @@ func EnsureDefaults(ctx context.Context, db *mongo.Database) error {
 			ctx,
 			bson.M{"_id": stand.ID},
 			bson.M{
-				"$set": bson.M{
+				"$setOnInsert": bson.M{
+					"_id":         stand.ID,
 					"name":        stand.Name,
 					"description": stand.Description,
 					"logo_url":    stand.LogoURL,
 					"website_url": stand.WebsiteURL,
 					"enabled":     stand.Enabled,
 					"reward":      stand.Reward,
+					"created_at":  now,
 					"updated_at":  now,
-				},
-				"$setOnInsert": bson.M{
-					"_id":        stand.ID,
-					"created_at": now,
 				},
 			},
 			options.UpdateOne().SetUpsert(true),
