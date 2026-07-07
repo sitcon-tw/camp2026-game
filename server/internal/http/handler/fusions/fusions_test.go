@@ -121,15 +121,15 @@ func TestTryPurchaseReportsLockedReason(t *testing.T) {
 
 	component := content.FusionComponent{
 		Kind:     content.FusionKindItem,
-		ID:       "item_essence_timer",
+		ID:       "item_wooden_plank",
 		Quantity: 1,
 	}
 	purchased, reason := state.tryPurchase(context.Background(), component)
 	if purchased {
 		t.Fatal("expected locked shop item purchase to fail")
 	}
-	if reason == "" {
-		t.Fatal("expected locked reason")
+	if reason != "材料尚未開放購買" {
+		t.Fatalf("expected locked reason, got %q", reason)
 	}
 }
 

@@ -31,6 +31,9 @@ func TestShopItemsIncludesAllEnabledPurchasableContentItems(t *testing.T) {
 	if item, ok := shopItemByID(store, "item_polaroid_film"); !ok || !item.Locked {
 		t.Fatalf("expected polaroid film item to be listed as locked, got %#v", item)
 	}
+	if item, ok := shopItemByID(store, "item_wooden_plank"); !ok || !item.Locked {
+		t.Fatalf("expected wooden plank item to be listed as locked, got %#v", item)
+	}
 	if _, ok := shopItemByID(store, "item_shared_notes_link"); !ok {
 		t.Fatal("expected shared notes item to be listed")
 	}

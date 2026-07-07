@@ -508,6 +508,7 @@ icon_path = "/game-icons/items/item_wooden_plank.png"
 source = "event"
 purchasable = false
 enabled = true
+locked = true
 price_open_power = 150
 
 [[items]]
