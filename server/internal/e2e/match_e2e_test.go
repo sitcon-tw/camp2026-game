@@ -714,11 +714,29 @@ func assertWaitingRoomLeaveFlow(t *testing.T, ctx context.Context, db *mongo.Dat
 func assertOpponentMatchLimit(t *testing.T, ctx context.Context, db *mongo.Database, serverURL string, hostCookie *http.Cookie, challengerCookie *http.Cookie) {
 	t.Helper()
 
+	insertCompletedPVPMatches(t, ctx, db, "match-limit-yesterday", "Y", time.Now().UTC().Add(-24*time.Hour))
+
+	createdPairing := createPairing(t, serverURL, hostCookie)
+	joined := scanPairing(t, serverURL, createdPairing.Token, challengerCookie, http.StatusOK)
+	if joined.MatchID != createdPairing.Match.MatchID {
+		t.Fatalf("expected previous-day matches not to block join, got %#v", joined)
+	}
+	postJSON(t, serverURL+"/api/matches/"+createdPairing.Match.MatchID+"/leave", nil, []*http.Cookie{hostCookie}, http.StatusNoContent)
+
+	insertCompletedPVPMatches(t, ctx, db, "match-limit-today", "T", time.Now().UTC())
+
+	createdPairing = createPairing(t, serverURL, hostCookie)
+	scanPairing(t, serverURL, createdPairing.Token, challengerCookie, http.StatusForbidden)
+}
+
+func insertCompletedPVPMatches(t *testing.T, ctx context.Context, db *mongo.Database, idPrefix string, codePrefix string, completedAt time.Time) {
+	t.Helper()
+
 	for i := 0; i < opponentMatchLimit; i++ {
-		matchID := fmt.Sprintf("match-limit-%02d", i+1)
+		matchID := fmt.Sprintf("%s-%02d", idPrefix, i+1)
 		_, err := db.Collection(mongomodel.MatchesCollection).InsertOne(ctx, bson.M{
 			"_id":            matchID,
-			"code":           fmt.Sprintf("LIM%02d", i+1),
+			"code":           fmt.Sprintf("%s%02d", codePrefix, i+1),
 			"mode":           mongomodel.MatchModePVP,
 			"status":         mongomodel.MatchStatusCompleted,
 			"host_player_id": playerAID,
@@ -726,16 +744,13 @@ func assertOpponentMatchLimit(t *testing.T, ctx context.Context, db *mongo.Datab
 				bson.M{"player_id": playerAID, "kind": mongomodel.MatchPlayerKindHuman},
 				bson.M{"player_id": playerBID, "kind": mongomodel.MatchPlayerKindHuman},
 			},
-			"created_at":   time.Now().UTC(),
-			"completed_at": time.Now().UTC(),
+			"created_at":   completedAt.Add(-time.Minute),
+			"completed_at": completedAt,
 		})
 		if err != nil {
 			t.Fatalf("insert completed match %d: %v", i+1, err)
 		}
 	}
-
-	createdPairing := createPairing(t, serverURL, hostCookie)
-	scanPairing(t, serverURL, createdPairing.Token, challengerCookie, http.StatusForbidden)
 }
 
 func assertDatabaseState(t *testing.T, ctx context.Context, db *mongo.Database, matchID string, completed matchState) {

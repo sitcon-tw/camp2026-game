@@ -718,6 +718,49 @@ func TestShouldCheckOpponentBattleLimitOnlyForNewPVPHumanOpponent(t *testing.T) 
 	}
 }
 
+func TestOpponentMatchLimitDayRangeUsesTaipeiMidnight(t *testing.T) {
+	now := time.Date(2026, 7, 8, 15, 30, 0, 0, time.UTC)
+	dayStart, dayEnd := opponentMatchLimitDayRange(now)
+
+	wantStart := time.Date(2026, 7, 7, 16, 0, 0, 0, time.UTC)
+	wantEnd := time.Date(2026, 7, 8, 16, 0, 0, 0, time.UTC)
+	if !dayStart.Equal(wantStart) || !dayEnd.Equal(wantEnd) {
+		t.Fatalf("unexpected day range: got %s - %s, want %s - %s", dayStart, dayEnd, wantStart, wantEnd)
+	}
+}
+
+func TestCompletedPVPMatchCountBetweenPlayersFilterUsesCompletedAtDailyRange(t *testing.T) {
+	dayStart := time.Date(2026, 7, 7, 16, 0, 0, 0, time.UTC)
+	dayEnd := time.Date(2026, 7, 8, 16, 0, 0, 0, time.UTC)
+
+	filter := completedPVPMatchCountBetweenPlayersFilter("P1", "P2", dayStart, dayEnd)
+	if filter["mode"] != mongomodel.MatchModePVP || filter["status"] != mongomodel.MatchStatusCompleted {
+		t.Fatalf("unexpected mode/status filter: %#v", filter)
+	}
+
+	playerFilter, ok := filter["players.player_id"].(bson.M)
+	if !ok {
+		t.Fatalf("expected player filter, got %#v", filter["players.player_id"])
+	}
+	players, ok := playerFilter["$all"].(bson.A)
+	if !ok || len(players) != 2 || players[0] != "P1" || players[1] != "P2" {
+		t.Fatalf("unexpected player $all filter: %#v", playerFilter)
+	}
+
+	completedAtFilter, ok := filter["completed_at"].(bson.M)
+	if !ok {
+		t.Fatalf("expected completed_at filter, got %#v", filter["completed_at"])
+	}
+	gte, ok := completedAtFilter["$gte"].(time.Time)
+	if !ok || !gte.Equal(dayStart) {
+		t.Fatalf("unexpected completed_at lower bound: %#v", completedAtFilter["$gte"])
+	}
+	lt, ok := completedAtFilter["$lt"].(time.Time)
+	if !ok || !lt.Equal(dayEnd) {
+		t.Fatalf("unexpected completed_at upper bound: %#v", completedAtFilter["$lt"])
+	}
+}
+
 func TestShouldCheckSameTeamMatchRequiresPVPHumanParticipants(t *testing.T) {
 	match := mongomodel.Match{
 		Mode: mongomodel.MatchModePVP,

@@ -20,7 +20,10 @@ const (
 	matchSessionTickInterval = time.Second
 	matchSessionDBTimeout    = 5 * time.Second
 	maxOpponentMatchCount    = 10
+	opponentMatchLimitTZ     = "Asia/Taipei"
 )
+
+var opponentMatchLimitLocation = time.FixedZone(opponentMatchLimitTZ, 8*60*60)
 
 type MatchSessionManager struct {
 	h *Handler
@@ -374,13 +377,31 @@ func (h *Handler) ensureOpponentBattleLimitAllowed(ctx context.Context, match mo
 }
 
 func (h *Handler) completedPVPMatchCountBetweenPlayers(ctx context.Context, playerAID, playerBID string) (int64, error) {
-	return h.db.Collection(mongomodel.MatchesCollection).CountDocuments(ctx, bson.M{
+	dayStart, dayEnd := opponentMatchLimitDayRange(time.Now().UTC())
+	return h.db.Collection(mongomodel.MatchesCollection).CountDocuments(
+		ctx,
+		completedPVPMatchCountBetweenPlayersFilter(playerAID, playerBID, dayStart, dayEnd),
+	)
+}
+
+func completedPVPMatchCountBetweenPlayersFilter(playerAID, playerBID string, dayStart, dayEnd time.Time) bson.M {
+	return bson.M{
 		"mode":   mongomodel.MatchModePVP,
 		"status": mongomodel.MatchStatusCompleted,
 		"players.player_id": bson.M{
 			"$all": bson.A{playerAID, playerBID},
 		},
-	})
+		"completed_at": bson.M{
+			"$gte": dayStart,
+			"$lt":  dayEnd,
+		},
+	}
+}
+
+func opponentMatchLimitDayRange(now time.Time) (time.Time, time.Time) {
+	local := now.In(opponentMatchLimitLocation)
+	dayStart := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, opponentMatchLimitLocation)
+	return dayStart.UTC(), dayStart.AddDate(0, 0, 1).UTC()
 }
 
 func (h *Handler) matchHasSameTeamOpponent(ctx context.Context, match mongomodel.Match, player mongomodel.Player) (bool, error) {
