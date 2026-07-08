@@ -187,6 +187,22 @@ func TestSettingsResponseIncludesMaintenanceMode(t *testing.T) {
 	}
 }
 
+func TestSettingsResponseIncludesClassTimeBattleLockSessions(t *testing.T) {
+	got := settingsResponse(gamecontrol.Settings{
+		ClassTimeBattleLockSessions: []gamecontrol.ClockTimeRange{
+			{Start: "09:00", End: "10:30"},
+			{Start: "13:00", End: "14:30"},
+		},
+	})
+
+	if len(got.ClassTimeBattleLockSessions) != 2 {
+		t.Fatalf("expected two class time lock sessions, got %#v", got.ClassTimeBattleLockSessions)
+	}
+	if got.ClassTimeBattleLockStart != "09:00" || got.ClassTimeBattleLockEnd != "10:30" {
+		t.Fatalf("expected legacy response fields to mirror first session, got %#v", got)
+	}
+}
+
 func TestDashboardRequiresAdminCookie(t *testing.T) {
 	handler := New(Dependencies{AdminPassword: "secret"})
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/dashboard", nil)
