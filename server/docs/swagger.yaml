@@ -1486,6 +1486,9 @@ definitions:
     properties:
       answeredAt:
         type: string
+      avatarUrl:
+        example: /game-icons/stones/basic_blue.png
+        type: string
       baseScore:
         example: 150
         type: integer
@@ -1541,6 +1544,9 @@ definitions:
       answeredCurrentQuestion:
         example: true
         type: boolean
+      avatarUrl:
+        example: /game-icons/stones/basic_blue.png
+        type: string
       baseOpenPowerReward:
         example: 105
         type: integer
@@ -1887,6 +1893,9 @@ definitions:
     type: object
   me.CompletedMatchPlayerResponse:
     properties:
+      avatarUrl:
+        example: /game-icons/stones/basic_blue.png
+        type: string
       nickname:
         example: Alice
         type: string
@@ -2405,6 +2414,9 @@ definitions:
     type: object
   staff.RewardPlayerResponse:
     properties:
+      avatarUrl:
+        example: https://example.test/avatar/alice.png
+        type: string
       nickname:
         example: Alice
         type: string

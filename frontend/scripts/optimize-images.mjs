@@ -11,7 +11,7 @@ const imageExtensions = new Set([".png", ".jpg", ".jpeg"])
 const textExtensions = new Set([".html", ".css", ".js", ".mjs", ".json"])
 const maxImageWidth = Number(process.env.IMAGE_MAX_WIDTH || 1200)
 const webpQuality = Number(process.env.IMAGE_WEBP_QUALITY || 76)
-const keepOriginalImages = process.env.IMAGE_KEEP_ORIGINALS === "true"
+const keepOriginalImages = process.env.IMAGE_KEEP_ORIGINALS !== "false"
 
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true })

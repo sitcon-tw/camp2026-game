@@ -16,7 +16,13 @@ import {
   Trash2,
   X,
 } from "lucide-react"
-import { type FormEvent, type ReactNode, useState } from "react"
+import {
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 import {
   CartesianGrid,
   Line,
@@ -107,6 +113,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
 import { Textarea } from "@/shared/ui/textarea"
 import { cn } from "@/shared/utils"
+import { imageSrcCandidates } from "@/shared/utils/image-src"
 
 const numberFormatter = new Intl.NumberFormat("zh-TW")
 const compactNumberFormatter = new Intl.NumberFormat("zh-TW", {
@@ -1591,6 +1598,7 @@ function PlayersTable({ players }: { players: AdminDashboardPlayer[] }) {
                   <PlayerAvatar
                     playerId={draft.player.playerId}
                     nickname={draft.player.nickname}
+                    avatarUrl={draft.player.avatarUrl}
                     className="size-12"
                   />
                   <div className="min-w-0">
@@ -2031,15 +2039,27 @@ function TeamAvatar({
   team: TeamAvatarModel
   className?: string
 }) {
+  const avatarSrcs = useMemo(
+    () => imageSrcCandidates(team.avatarUrl),
+    [team.avatarUrl],
+  )
+  const [avatarSrcIndex, setAvatarSrcIndex] = useState(0)
+  const currentAvatarSrc = avatarSrcs[avatarSrcIndex]
+
+  useEffect(() => {
+    setAvatarSrcIndex(0)
+  }, [team.avatarUrl])
+
   return (
     <Avatar className={cn("bg-surface-raised border-ink border", className)}>
-      {team.avatarUrl ? (
+      {currentAvatarSrc ? (
         <AvatarImage
-          src={team.avatarUrl}
+          src={currentAvatarSrc}
           alt=""
           aria-hidden="true"
           draggable={false}
           className="block size-full object-cover"
+          onError={() => setAvatarSrcIndex((index) => index + 1)}
         />
       ) : null}
       <AvatarFallback className="text-xs font-black">
@@ -2052,13 +2072,14 @@ function TeamAvatar({
 function PlayerName({
   player,
 }: {
-  player: Pick<AdminDashboardPlayer, "playerId" | "nickname">
+  player: Pick<AdminDashboardPlayer, "playerId" | "nickname" | "avatarUrl">
 }) {
   return (
     <div className="flex items-center gap-2">
       <PlayerAvatar
         playerId={player.playerId}
         nickname={player.nickname}
+        avatarUrl={player.avatarUrl}
         className="border-ink size-8 rounded-full border"
       />
       <div className="grid">

@@ -485,6 +485,10 @@ func (h *Handler) buildMatchStateWithAnswers(
 			rewardByPlayer[reward.PlayerID] = reward.Amount
 		}
 	}
+	avatarURLs, err := h.matchPlayerAvatarURLs(ctx, match.Players)
+	if err != nil {
+		return MatchStateResponse{}, httpx.InternalServerError("match state unavailable", "match_state_player_avatar_lookup_failed", err)
+	}
 
 	response := MatchStateResponse{
 		MatchID:              match.ID,
@@ -515,7 +519,7 @@ func (h *Handler) buildMatchStateWithAnswers(
 			currentQuestion := questionResponse(question)
 			response.CurrentQuestion = &currentQuestion
 			if phase == mongomodel.MatchPhaseRevealing {
-				result, err := h.matchQuestionResult(match, currentQuestionID, answerByQuestionPlayer)
+				result, err := h.matchQuestionResult(match, currentQuestionID, answerByQuestionPlayer, avatarURLs)
 				if err != nil {
 					return MatchStateResponse{}, err
 				}
@@ -540,6 +544,7 @@ func (h *Handler) buildMatchStateWithAnswers(
 		playerResponse := MatchPlayerResponse{
 			PlayerID:                 player.PlayerID,
 			Nickname:                 player.Nickname,
+			AvatarURL:                avatarURLs[player.PlayerID],
 			Kind:                     matchPlayerKind(player),
 			Ready:                    player.Ready,
 			SitoneIDs:                cloneStrings(player.SitoneIDs),
@@ -572,7 +577,7 @@ func (h *Handler) buildMatchStateWithAnswers(
 	}
 
 	if match.Status == mongomodel.MatchStatusCompleted {
-		results, err := h.matchResults(match, answerByQuestionPlayer)
+		results, err := h.matchResults(match, answerByQuestionPlayer, avatarURLs)
 		if err != nil {
 			return MatchStateResponse{}, err
 		}
@@ -582,13 +587,65 @@ func (h *Handler) buildMatchStateWithAnswers(
 	return response, nil
 }
 
+func (h *Handler) matchPlayerAvatarURLs(ctx context.Context, players []mongomodel.MatchPlayer) (map[string]string, error) {
+	if h.db == nil {
+		return map[string]string{}, nil
+	}
+
+	playerIDs := make([]string, 0, len(players))
+	seen := make(map[string]struct{}, len(players))
+	for _, player := range players {
+		if player.PlayerID == "" {
+			continue
+		}
+		if _, ok := seen[player.PlayerID]; ok {
+			continue
+		}
+		seen[player.PlayerID] = struct{}{}
+		playerIDs = append(playerIDs, player.PlayerID)
+	}
+	if len(playerIDs) == 0 {
+		return map[string]string{}, nil
+	}
+
+	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(
+		ctx,
+		bson.M{"_id": bson.M{"$in": playerIDs}},
+		options.Find().SetProjection(bson.D{
+			{Key: "_id", Value: 1},
+			{Key: "avatar_url", Value: 1},
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var rows []mongomodel.Player
+	if err := cursor.All(ctx, &rows); err != nil {
+		return nil, err
+	}
+
+	avatarURLs := make(map[string]string, len(rows))
+	for _, player := range rows {
+		if player.ID == "" || player.AvatarURL == "" {
+			continue
+		}
+		avatarURLs[player.ID] = player.AvatarURL
+	}
+	return avatarURLs, nil
+}
+
 func (h *Handler) matchResults(
 	match mongomodel.Match,
 	answerByQuestionPlayer map[string]map[string]mongomodel.MatchAnswer,
+	avatarURLs map[string]string,
 ) ([]MatchQuestionResult, error) {
 	results := make([]MatchQuestionResult, 0, len(match.QuestionIDs))
 	for _, questionID := range match.QuestionIDs {
-		result, err := h.matchQuestionResult(match, questionID, answerByQuestionPlayer)
+		result, err := h.matchQuestionResult(match, questionID, answerByQuestionPlayer, avatarURLs)
 		if err != nil {
 			return nil, err
 		}
@@ -601,6 +658,7 @@ func (h *Handler) matchQuestionResult(
 	match mongomodel.Match,
 	questionID string,
 	answerByQuestionPlayer map[string]map[string]mongomodel.MatchAnswer,
+	avatarURLs map[string]string,
 ) (MatchQuestionResult, error) {
 	question, ok := h.content.GetQuizQuestion(questionID)
 	if !ok {
@@ -621,8 +679,9 @@ func (h *Handler) matchQuestionResult(
 	for _, player := range match.Players {
 		answer, ok := answerByQuestionPlayer[questionID][player.PlayerID]
 		answerResponse := MatchAnswerResponse{
-			PlayerID: player.PlayerID,
-			Nickname: player.Nickname,
+			PlayerID:  player.PlayerID,
+			Nickname:  player.Nickname,
+			AvatarURL: avatarURLs[player.PlayerID],
 		}
 		if ok {
 			answeredAt := answer.AnsweredAt

@@ -966,7 +966,7 @@ func TestMapCompletedMatches(t *testing.T) {
 		},
 	}
 
-	matches := mapCompletedMatches(records)
+	matches := mapCompletedMatches(records, map[string]string{"P1": "/avatar/alice.png"})
 	if len(matches) != 1 {
 		t.Fatalf("expected 1 match, got %#v", matches)
 	}
@@ -978,6 +978,9 @@ func TestMapCompletedMatches(t *testing.T) {
 	}
 	if len(matches[0].Players) != 2 || matches[0].Players[0].Score != 850 {
 		t.Fatalf("unexpected completed match players: %#v", matches[0].Players)
+	}
+	if matches[0].Players[0].AvatarURL != "/avatar/alice.png" {
+		t.Fatalf("expected completed match player avatar, got %#v", matches[0].Players[0])
 	}
 }
 

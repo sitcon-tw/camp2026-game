@@ -69,6 +69,11 @@ func (h *Handler) ListCompletedMatches(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("matches unavailable", "me_matches_lookup_failed", err))
 		return
 	}
+	avatarURLs, err := h.completedMatchAvatarURLs(r.Context(), matches)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("matches unavailable", "me_matches_avatar_lookup_failed", err))
+		return
+	}
 
 	totalPages := int(total / completedMatchesPerPage)
 	if total%completedMatchesPerPage > 0 {
@@ -76,7 +81,7 @@ func (h *Handler) ListCompletedMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, CompletedMatchListResponse{
-		Matches:    mapCompletedMatches(matches),
+		Matches:    mapCompletedMatches(matches, avatarURLs),
 		Page:       page,
 		PerPage:    completedMatchesPerPage,
 		Total:      int(total),
@@ -121,14 +126,67 @@ func completedMatchesFilter(playerID string) bson.D {
 	}
 }
 
-func mapCompletedMatches(records []mongomodel.Match) []CompletedMatchResponse {
+func (h *Handler) completedMatchAvatarURLs(ctx context.Context, matches []mongomodel.Match) (map[string]string, error) {
+	if h.db == nil {
+		return map[string]string{}, nil
+	}
+
+	playerIDs := make([]string, 0)
+	seen := make(map[string]struct{})
+	for _, match := range matches {
+		for _, player := range match.Players {
+			if player.PlayerID == "" {
+				continue
+			}
+			if _, ok := seen[player.PlayerID]; ok {
+				continue
+			}
+			seen[player.PlayerID] = struct{}{}
+			playerIDs = append(playerIDs, player.PlayerID)
+		}
+	}
+	if len(playerIDs) == 0 {
+		return map[string]string{}, nil
+	}
+
+	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(
+		ctx,
+		bson.M{"_id": bson.M{"$in": playerIDs}},
+		options.Find().SetProjection(bson.D{
+			{Key: "_id", Value: 1},
+			{Key: "avatar_url", Value: 1},
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var rows []mongomodel.Player
+	if err := cursor.All(ctx, &rows); err != nil {
+		return nil, err
+	}
+
+	avatarURLs := make(map[string]string, len(rows))
+	for _, player := range rows {
+		if player.ID == "" || player.AvatarURL == "" {
+			continue
+		}
+		avatarURLs[player.ID] = player.AvatarURL
+	}
+	return avatarURLs, nil
+}
+
+func mapCompletedMatches(records []mongomodel.Match, avatarURLs map[string]string) []CompletedMatchResponse {
 	matches := make([]CompletedMatchResponse, 0, len(records))
 	for _, record := range records {
 		matches = append(matches, CompletedMatchResponse{
 			MatchID:       record.ID,
 			Status:        record.Status,
 			HostPlayerID:  record.HostPlayerID,
-			Players:       mapCompletedMatchPlayers(record.Players),
+			Players:       mapCompletedMatchPlayers(record.Players, avatarURLs),
 			QuestionCount: len(record.QuestionIDs),
 			CreatedAt:     record.CreatedAt,
 			StartedAt:     optionalTime(record.StartedAt),
@@ -138,12 +196,13 @@ func mapCompletedMatches(records []mongomodel.Match) []CompletedMatchResponse {
 	return matches
 }
 
-func mapCompletedMatchPlayers(records []mongomodel.MatchPlayer) []CompletedMatchPlayerResponse {
+func mapCompletedMatchPlayers(records []mongomodel.MatchPlayer, avatarURLs map[string]string) []CompletedMatchPlayerResponse {
 	players := make([]CompletedMatchPlayerResponse, 0, len(records))
 	for _, record := range records {
 		players = append(players, CompletedMatchPlayerResponse{
 			PlayerID:  record.PlayerID,
 			Nickname:  record.Nickname,
+			AvatarURL: avatarURLs[record.PlayerID],
 			SitoneIDs: cloneStringSlice(record.SitoneIDs),
 			Score:     record.Score,
 		})

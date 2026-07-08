@@ -477,6 +477,7 @@ export function BattleWaitingRoomPage() {
             key={player.playerId}
             playerId={player.playerId}
             name={player.nickname}
+            avatarUrl={player.avatarUrl}
             kind={player.kind}
             team={
               player.kind === "computer"

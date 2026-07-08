@@ -6,6 +6,7 @@ import { Check, Loader2 } from "lucide-react"
 type BattleWaitingPlayerCardType = {
   playerId: string
   name: string
+  avatarUrl?: string
   kind?: "human" | "computer"
   team: string
   ready: boolean
@@ -15,6 +16,7 @@ type BattleWaitingPlayerCardType = {
 export function BattleWaitingPlayerCard({
   playerId,
   name,
+  avatarUrl,
   kind,
   team,
   ready,
@@ -26,6 +28,7 @@ export function BattleWaitingPlayerCard({
         <PlayerAvatar
           playerId={playerId}
           nickname={name}
+          avatarUrl={avatarUrl}
           kind={kind}
           className="bg-pebble-spark border-ink size-20 rounded-[22px] border-2"
         />
