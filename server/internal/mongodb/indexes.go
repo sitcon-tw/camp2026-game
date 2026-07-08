@@ -125,9 +125,9 @@ func matchIndexModels() []mongo.IndexModel {
 func matchPairingIndexModels() []mongo.IndexModel {
 	return []mongo.IndexModel{
 		{
-			Keys: bson.D{{Key: "token", Value: 1}},
+			Keys: bson.D{{Key: "token_hash", Value: 1}},
 			Options: options.Index().
-				SetName("match_pairings_token").
+				SetName("match_pairings_token_hash").
 				SetUnique(true),
 		},
 		{

@@ -733,6 +733,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/student-changes": {
+            "get": {
+                "description": "Admin-only endpoint. Returns recent resource changes across non-staff players, including staff rewards, community stand claims, drops, shop purchases, fusions, balance trims, and direct open power records.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List student resource change records as admin",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of merged records to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.StudentChangesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/teams/{teamID}": {
             "put": {
                 "description": "Admin-only endpoint. Updates the team display name and avatar URL shown in operations dashboards.",
@@ -1648,55 +1694,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/matches": {
-            "post": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Creates a two-player quiz match room for the authenticated player.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "matches"
-                ],
-                "summary": "Create match room",
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/matches.CreateMatchResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
         "/matches/computer": {
             "post": {
                 "security": [
@@ -1716,7 +1713,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/matches.CreateMatchResponse"
+                            "$ref": "#/definitions/matches.MatchStateResponse"
                         }
                     },
                     "401": {
@@ -1770,93 +1767,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/matches/join": {
-            "post": {
-                "security": [
-                    {
-                        "AuthCookieAuth": []
-                    }
-                ],
-                "description": "Joins a waiting two-player quiz match room by invite code.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "matches"
-                ],
-                "summary": "Join match room",
-                "parameters": [
-                    {
-                        "description": "Join match request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/matches.JoinMatchRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/matches.JoinMatchResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.ProblemDetails"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
                         "schema": {
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
@@ -4679,6 +4589,10 @@ const docTemplate = `{
         "admin.SettingsRequest": {
             "type": "object",
             "required": [
+                "battleOpeningOverride",
+                "classTimeBattleLockEnabled",
+                "classTimeBattleLockEnd",
+                "classTimeBattleLockStart",
                 "computerBattlesEnabled",
                 "computerEasyAccuracy",
                 "computerHardAccuracy",
@@ -4686,6 +4600,23 @@ const docTemplate = `{
                 "sameTeamBattlesEnabled"
             ],
             "properties": {
+                "battleOpeningOverride": {
+                    "type": "string",
+                    "enum": [
+                        "schedule",
+                        "force_open",
+                        "force_closed"
+                    ]
+                },
+                "classTimeBattleLockEnabled": {
+                    "type": "boolean"
+                },
+                "classTimeBattleLockEnd": {
+                    "type": "string"
+                },
+                "classTimeBattleLockStart": {
+                    "type": "string"
+                },
                 "computerBattlesEnabled": {
                     "type": "boolean"
                 },
@@ -4712,6 +4643,21 @@ const docTemplate = `{
         "admin.SettingsResponse": {
             "type": "object",
             "properties": {
+                "battleOpeningLocked": {
+                    "type": "boolean"
+                },
+                "battleOpeningOverride": {
+                    "type": "string"
+                },
+                "classTimeBattleLockEnabled": {
+                    "type": "boolean"
+                },
+                "classTimeBattleLockEnd": {
+                    "type": "string"
+                },
+                "classTimeBattleLockStart": {
+                    "type": "string"
+                },
                 "computerBattlesEnabled": {
                     "type": "boolean"
                 },
@@ -4726,6 +4672,71 @@ const docTemplate = `{
                 },
                 "sameTeamBattlesEnabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "admin.StudentChangeEntryResponse": {
+            "type": "object",
+            "properties": {
+                "changeId": {
+                    "type": "string",
+                    "example": "staff_reward_507f1f77bcf86cd799439011"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "delta": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "iconPath": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "sitone"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Booth 小石"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "playerId": {
+                    "type": "string",
+                    "example": "7H9K2Q"
+                },
+                "playerNickname": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "refId": {
+                    "type": "string",
+                    "example": "stone_booth"
+                },
+                "source": {
+                    "type": "string",
+                    "example": "staff_reward"
+                },
+                "sourceLabel": {
+                    "type": "string",
+                    "example": "Staff 發獎"
+                },
+                "teamId": {
+                    "type": "string",
+                    "example": "team-a"
+                }
+            }
+        },
+        "admin.StudentChangesResponse": {
+            "type": "object",
+            "properties": {
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.StudentChangeEntryResponse"
+                    }
                 }
             }
         },
@@ -5783,169 +5794,13 @@ const docTemplate = `{
         "matches.ComputerBattleSettingsResponse": {
             "type": "object",
             "properties": {
+                "battleOpeningLocked": {
+                    "type": "boolean",
+                    "example": false
+                },
                 "enabled": {
                     "type": "boolean",
                     "example": true
-                }
-            }
-        },
-        "matches.CreateMatchResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "ABC123"
-                },
-                "completedAt": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "currentQuestion": {
-                    "$ref": "#/definitions/matches.MatchQuestionResponse"
-                },
-                "currentQuestionIndex": {
-                    "type": "integer",
-                    "example": 0
-                },
-                "currentQuestionResult": {
-                    "$ref": "#/definitions/matches.MatchQuestionResult"
-                },
-                "hostPlayerId": {
-                    "type": "string",
-                    "example": "7H9K2Q"
-                },
-                "matchId": {
-                    "type": "string",
-                    "example": "match_7H9K2Q"
-                },
-                "mode": {
-                    "type": "string",
-                    "example": "pvp"
-                },
-                "phase": {
-                    "type": "string",
-                    "example": "answering"
-                },
-                "players": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/matches.MatchPlayerResponse"
-                    }
-                },
-                "questionCount": {
-                    "type": "integer",
-                    "example": 10
-                },
-                "results": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/matches.MatchQuestionResult"
-                    }
-                },
-                "revealEndsAt": {
-                    "type": "string"
-                },
-                "roundEndsAt": {
-                    "type": "string"
-                },
-                "roundStartedAt": {
-                    "type": "string"
-                },
-                "startedAt": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "active"
-                }
-            }
-        },
-        "matches.JoinMatchRequest": {
-            "type": "object",
-            "required": [
-                "code"
-            ],
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "maxLength": 16,
-                    "minLength": 4,
-                    "example": "ABC123"
-                }
-            }
-        },
-        "matches.JoinMatchResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "ABC123"
-                },
-                "completedAt": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "currentQuestion": {
-                    "$ref": "#/definitions/matches.MatchQuestionResponse"
-                },
-                "currentQuestionIndex": {
-                    "type": "integer",
-                    "example": 0
-                },
-                "currentQuestionResult": {
-                    "$ref": "#/definitions/matches.MatchQuestionResult"
-                },
-                "hostPlayerId": {
-                    "type": "string",
-                    "example": "7H9K2Q"
-                },
-                "matchId": {
-                    "type": "string",
-                    "example": "match_7H9K2Q"
-                },
-                "mode": {
-                    "type": "string",
-                    "example": "pvp"
-                },
-                "phase": {
-                    "type": "string",
-                    "example": "answering"
-                },
-                "players": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/matches.MatchPlayerResponse"
-                    }
-                },
-                "questionCount": {
-                    "type": "integer",
-                    "example": 10
-                },
-                "results": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/matches.MatchQuestionResult"
-                    }
-                },
-                "revealEndsAt": {
-                    "type": "string"
-                },
-                "roundEndsAt": {
-                    "type": "string"
-                },
-                "roundStartedAt": {
-                    "type": "string"
-                },
-                "startedAt": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "active"
                 }
             }
         },

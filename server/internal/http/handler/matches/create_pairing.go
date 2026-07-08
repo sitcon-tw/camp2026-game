@@ -29,6 +29,10 @@ func (h *Handler) CreatePairing(w http.ResponseWriter, r *http.Request) {
 	if !ok || !h.requireDatabase(w, r) || !h.requireContent(w, r) {
 		return
 	}
+	if err := h.ensureBattleOpeningAllowed(r.Context(), "match creation failed"); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
 
 	openMatch, err := h.findOpenParticipantMatch(r.Context(), player.ID)
 	if err == nil {

@@ -6,7 +6,8 @@ const MatchPairingsCollection = "match_pairings"
 
 type MatchPairing struct {
 	ID                 string    `bson:"_id"`
-	Token              string    `bson:"token"`
+	Token              string    `bson:"-"`
+	TokenHash          string    `bson:"token_hash"`
 	MatchID            string    `bson:"match_id"`
 	HostPlayerID       string    `bson:"host_player_id"`
 	ConsumedByPlayerID string    `bson:"consumed_by_player_id,omitempty"`

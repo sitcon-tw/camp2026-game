@@ -396,6 +396,20 @@ func TestMatchCanIssuePairingTokenRequiresWaitingPVPHostOnly(t *testing.T) {
 	}
 }
 
+func TestMatchPairingTokenHashDoesNotExposeToken(t *testing.T) {
+	token := "7H9K2Q8M4RXPA3WZ"
+	hash := matchPairingTokenHash(token)
+	if hash == token {
+		t.Fatal("expected pairing token hash not to expose raw token")
+	}
+	if hash != matchPairingTokenHash(token) {
+		t.Fatal("expected pairing token hash to be stable")
+	}
+	if len(hash) != 64 {
+		t.Fatalf("expected sha256 hex hash length 64, got %d", len(hash))
+	}
+}
+
 func TestOpenMatchUnavailableDetectsStaleOpenRace(t *testing.T) {
 	if !openMatchUnavailable(mongo.ErrNoDocuments) {
 		t.Fatal("expected missing match to be treated as unavailable")

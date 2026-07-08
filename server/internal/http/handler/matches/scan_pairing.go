@@ -73,6 +73,33 @@ func (h *Handler) ScanPairing(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "match is full"))
 		return
 	}
+	if !wasParticipant {
+		if err := h.ensureNoOpenParticipantMatch(r.Context(), player.ID); err != nil {
+			if errors.Is(err, errOpenParticipantMatchExists) {
+				h.writeExistingOpenParticipantMatch(w, r, player.ID)
+				return
+			}
+			httpx.WriteProblem(w, r, httpx.InternalServerError("match pairing failed", "match_open_lookup_failed", err))
+			return
+		}
+		if err := h.ensureSameTeamBattleAllowed(r.Context(), match, player); err != nil {
+			httpx.WriteProblem(w, r, err)
+			return
+		}
+		if err := h.ensureOpponentBattleLimitAllowed(r.Context(), match, player); err != nil {
+			httpx.WriteProblem(w, r, err)
+			return
+		}
+		consumed, err := h.consumePairingToken(r.Context(), pairing, player.ID)
+		if err != nil {
+			httpx.WriteProblem(w, r, httpx.InternalServerError("match pairing failed", "match_pairing_consume_failed", err))
+			return
+		}
+		if !consumed {
+			httpx.WriteProblem(w, r, httpx.NotFound("pairing token not found"))
+			return
+		}
+	}
 
 	session, err := h.sessions.GetOrLoad(r.Context(), match.ID)
 	if err != nil {
@@ -91,9 +118,6 @@ func (h *Handler) ScanPairing(w http.ResponseWriter, r *http.Request) {
 		}
 		httpx.WriteProblem(w, r, err)
 		return
-	}
-	if !wasParticipant {
-		_ = h.consumePairingToken(r.Context(), pairing, player.ID)
 	}
 	httpx.WriteJSON(w, http.StatusOK, state)
 }

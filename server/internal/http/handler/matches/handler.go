@@ -53,10 +53,8 @@ func New(dep Dependencies) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(api chi.Router) {
-	api.Post("/matches", h.Create)
 	api.Get("/matches/computer/settings", h.ComputerSettings)
 	api.Post("/matches/computer", h.CreateComputer)
-	api.Post("/matches/join", h.Join)
 	api.Get("/matches/open", h.Open)
 	api.Post("/matches/pairings", h.CreatePairing)
 	api.Post("/matches/pairings/scan", h.ScanPairing)
