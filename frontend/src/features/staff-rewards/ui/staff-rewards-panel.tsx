@@ -33,6 +33,7 @@ import { staffRewardTokenQrValue } from "@/shared/lib/staff-reward-token"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
+import { GameIcon } from "@/shared/ui/game-icon"
 import { Input } from "@/shared/ui/input"
 import { PlayerAvatar } from "@/shared/ui/player-avatar"
 import {
@@ -56,6 +57,7 @@ type RewardOption = {
   rarityLabel: string
   functionLabel?: string
   detailLabel?: string
+  iconPath?: string
   toneClass: string
   sortTags: StoneSortTag[]
   sortRank: number
@@ -334,6 +336,40 @@ function primaryStoneSortTag(option: RewardOption) {
   return option.sortTags[0]
 }
 
+function RewardOptionIcon({
+  option,
+  rewardKind,
+  className,
+  imageClassName,
+}: {
+  option?: RewardOption
+  rewardKind: StaffRewardKind
+  className?: string
+  imageClassName?: string
+}) {
+  const fallbackName = rewardKind === "item" ? "backpack" : "stones"
+
+  return (
+    <span
+      className={cn(
+        "border-ink grid shrink-0 place-items-center rounded-[14px] border-2",
+        option?.toneClass ?? "bg-card",
+        className,
+      )}
+      aria-hidden
+    >
+      <GameIcon
+        iconPath={option?.iconPath}
+        imageClassName={cn(
+          "p-1 drop-shadow-[0_1px_0_rgba(23,35,58,0.18)]",
+          imageClassName,
+        )}
+        fallback={<GameFeatureIcon name={fallbackName} className="size-5" />}
+      />
+    </span>
+  )
+}
+
 function sitoneOption(sitone: Sitone): RewardOption {
   const meta = sitoneMeta(sitone.type)
   const sortTags = sitoneSortTags(sitone.id)
@@ -343,6 +379,7 @@ function sitoneOption(sitone: Sitone): RewardOption {
     description: sitone.description,
     typeLabel: meta.label,
     rarityLabel: rarityLabel(sitone.rarity),
+    iconPath: sitone.iconPath,
     toneClass: meta.bgClassName,
     sortTags,
     sortRank: stoneSortRank(sortTags),
@@ -359,6 +396,7 @@ function itemOption(item: Item): RewardOption {
     rarityLabel: rarityLabel(item.rarity),
     functionLabel: functionMeta.functionLabel,
     detailLabel: functionMeta.detailLabel,
+    iconPath: item.iconPath,
     toneClass: itemTypeClass(item.type),
     sortTags: [],
     sortRank: functionMeta.sortRank,
@@ -1013,10 +1051,17 @@ export function StaffRewardsPanel() {
                               </SelectLabel>
                               {group.options.map((option) => (
                                 <SelectItem key={option.id} value={option.id}>
-                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5 pr-4">
-                                    <span className="font-black">
-                                      {option.name}
-                                    </span>
+                                  <div className="flex min-w-0 items-center gap-2 pr-4">
+                                    <RewardOptionIcon
+                                      option={option}
+                                      rewardKind={rewardKind}
+                                      className="size-9"
+                                    />
+                                    <div className="min-w-0">
+                                      <span className="block truncate font-black">
+                                        {option.name}
+                                      </span>
+                                    </div>
                                   </div>
                                 </SelectItem>
                               ))}
@@ -1027,20 +1072,27 @@ export function StaffRewardsPanel() {
                         <>
                           {visibleOptions.map((option) => (
                             <SelectItem key={option.id} value={option.id}>
-                              <div className="flex min-w-0 flex-wrap items-center gap-1.5 pr-4">
-                                <span className="font-black">
-                                  {option.name}
-                                </span>
-                                {option.functionLabel ? (
-                                  <span className="text-muted-foreground text-xs font-bold">
-                                    {option.functionLabel}
+                              <div className="flex min-w-0 items-center gap-2 pr-4">
+                                <RewardOptionIcon
+                                  option={option}
+                                  rewardKind={rewardKind}
+                                  className="size-9"
+                                />
+                                <div className="min-w-0">
+                                  <span className="block truncate font-black">
+                                    {option.name}
                                   </span>
-                                ) : null}
-                                {option.detailLabel ? (
-                                  <span className="text-muted-foreground text-xs font-bold">
-                                    {option.detailLabel}
-                                  </span>
-                                ) : null}
+                                  {[option.functionLabel, option.detailLabel]
+                                    .filter(Boolean)
+                                    .map((tag) => (
+                                      <span
+                                        key={tag}
+                                        className="text-muted-foreground mr-1.5 text-xs font-bold"
+                                      >
+                                        {tag}
+                                      </span>
+                                    ))}
+                                </div>
                               </div>
                             </SelectItem>
                           ))}
@@ -1050,12 +1102,11 @@ export function StaffRewardsPanel() {
                   </Select>
 
                   <div className="bg-surface-raised border-border grid min-h-[112px] grid-cols-[64px_1fr] gap-3 rounded-[18px] border-2 p-3">
-                    <div
-                      className={cn(
-                        "border-ink h-16 rounded-[20px_24px_16px_22px] border-2",
-                        selectedOption?.toneClass ?? "bg-card",
-                      )}
-                      aria-hidden
+                    <RewardOptionIcon
+                      option={selectedOption}
+                      rewardKind={rewardKind}
+                      className="size-16 rounded-[20px_24px_16px_22px]"
+                      imageClassName="p-1.5"
                     />
                     <div>
                       <div className="mb-1 flex flex-wrap gap-1.5">
