@@ -31,6 +31,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if !ok || !h.requireDatabase(w, r) || !h.requireContent(w, r) {
 		return
 	}
+	if err := h.ensureBattleOpeningAllowed(r.Context(), "match creation failed"); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
 	if err := h.ensureNoOpenParticipantMatch(r.Context(), player.ID); err != nil {
 		h.writeCreateMatchProblem(w, r, player.ID, err)
 		return

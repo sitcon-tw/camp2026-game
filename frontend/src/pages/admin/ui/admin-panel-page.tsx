@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Activity,
+  ArrowUpDown,
   CheckCircle2,
   Clock,
   ImageIcon,
@@ -42,6 +43,7 @@ import {
   type AdminDashboardPlayer,
   type AdminDashboardPlayerRank,
   type AdminDashboardTeam,
+  type AdminStudentChangeEntry,
   type AdminSettings,
   type GiftHistoryEntry,
   type StaffRewardKind,
@@ -144,6 +146,8 @@ const historyChartConfig = {
     color: "var(--primary)",
   },
 } satisfies ChartConfig
+
+type InventorySortDirection = "asc" | "desc"
 const sitoneOwnershipColors = [
   "var(--pebble-engineer)",
   "var(--pebble-inspiration)",
@@ -194,7 +198,11 @@ function giftRewardAmountLabel(entry: GiftHistoryEntry) {
 }
 
 function giftRewardKindLabel(entry: GiftHistoryEntry) {
-  switch (entry.kind) {
+  return resourceKindLabel(entry.kind)
+}
+
+function resourceKindLabel(kind: StaffRewardKind) {
+  switch (kind) {
     case "item":
       return "道具"
     case "sitone":
@@ -223,6 +231,38 @@ function GiftRewardIcon({ entry }: { entry: GiftHistoryEntry }) {
       fallback={fallback}
     />
   )
+}
+
+function StudentChangeIcon({ entry }: { entry: AdminStudentChangeEntry }) {
+  const fallback = (() => {
+    switch (entry.kind) {
+      case "item":
+        return <GameFeatureIcon name="backpack" className="size-5" />
+      case "sitone":
+        return <GameFeatureIcon name="stones" className="size-5" />
+      case "open_power":
+        return <GameFeatureIcon name="shop" className="size-5" />
+    }
+  })()
+
+  return (
+    <GameIcon
+      iconPath={entry.iconPath}
+      imageClassName="p-0.5"
+      fallback={fallback}
+    />
+  )
+}
+
+function studentChangeDeltaLabel(entry: AdminStudentChangeEntry) {
+  const sign = entry.delta > 0 ? "+" : ""
+  const unit =
+    entry.kind === "open_power"
+      ? " OP"
+      : entry.kind === "sitone"
+        ? " 顆"
+        : " 個"
+  return `${sign}${formatNumber(entry.delta)}${unit}`
 }
 
 function formatHistoryTimestamp(value: string, bucket: "hour" | "day") {
@@ -291,6 +331,13 @@ export function AdminPanelPage() {
   const giftHistoryQuery = useQuery({
     queryKey: ["admin", "gift-history"],
     queryFn: gameApi.adminGiftHistory,
+    enabled: Boolean(settingsQuery.data),
+    retry: false,
+    refetchInterval: 30_000,
+  })
+  const studentChangesQuery = useQuery({
+    queryKey: ["admin", "student-changes"],
+    queryFn: () => gameApi.adminStudentChanges(500),
     enabled: Boolean(settingsQuery.data),
     retry: false,
     refetchInterval: 30_000,
@@ -446,6 +493,7 @@ export function AdminPanelPage() {
     dashboardQuery.isFetching ||
     historyQuery.isFetching ||
     giftHistoryQuery.isFetching ||
+    studentChangesQuery.isFetching ||
     communityStandsQuery.isFetching
 
   if (settingsQuery.isPending) {
@@ -526,13 +574,13 @@ export function AdminPanelPage() {
   return (
     <GamePageShell
       ariaLabel="Admin dashboard"
-      contentClassName="grid max-w-[1440px] content-start gap-y-4 px-5 pb-8 lg:px-8"
+      contentClassName="grid min-w-0 max-w-[1440px] content-start gap-y-4 overflow-x-hidden px-3 pb-8 sm:px-5 lg:px-8"
     >
       <PageHeader
         title="Admin"
         headline="Game Operations"
         rightSlot={
-          <div className="flex items-center gap-2">
+          <div className="flex max-w-full flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
             <Button
               type="button"
               variant="outline"
@@ -543,6 +591,7 @@ export function AdminPanelPage() {
                 void dashboardQuery.refetch()
                 void historyQuery.refetch()
                 void giftHistoryQuery.refetch()
+                void studentChangesQuery.refetch()
                 void communityStandsQuery.refetch()
               }}
             >
@@ -553,11 +602,14 @@ export function AdminPanelPage() {
             <Button
               type="button"
               variant="outline"
+              size="icon"
+              aria-label="登出"
               disabled={logoutMutation.isPending}
               onClick={() => logoutMutation.mutate()}
+              className="sm:h-9 sm:w-auto sm:px-4"
             >
               <LogOut />
-              登出
+              <span className="hidden sm:inline">登出</span>
             </Button>
           </div>
         }
@@ -585,14 +637,25 @@ export function AdminPanelPage() {
           dashboard={dashboardQuery.data}
           history={historyQuery.data}
           giftHistory={giftHistoryQuery.data}
+          studentChanges={studentChangesQuery.data}
           giftHistoryError={giftHistoryQuery.error}
           giftHistoryPending={giftHistoryQuery.isPending}
+          studentChangesError={studentChangesQuery.error}
+          studentChangesPending={studentChangesQuery.isPending}
           historyError={historyQuery.error}
           historyPending={historyQuery.isPending}
           onRetryHistory={() => historyQuery.refetch()}
           onRetryGiftHistory={() => giftHistoryQuery.refetch()}
+          onRetryStudentChanges={() => studentChangesQuery.refetch()}
         />
       ) : null}
+
+      <AdminClassTimeBattleLockPanel
+        settings={settings}
+        isPending={updateMutation.isPending}
+        onSubmit={handleUpdate}
+        onUpdate={updateDraft}
+      />
 
       <AdminSettingsPanel
         settings={settings}
@@ -648,30 +711,38 @@ function AdminDashboardView({
   dashboard,
   history,
   giftHistory,
+  studentChanges,
   giftHistoryError,
   giftHistoryPending,
+  studentChangesError,
+  studentChangesPending,
   historyError,
   historyPending,
   onRetryHistory,
   onRetryGiftHistory,
+  onRetryStudentChanges,
 }: {
   dashboard: AdminDashboard
   history?: AdminDashboardHistory
   giftHistory?: GiftHistoryEntry[]
+  studentChanges?: AdminStudentChangeEntry[]
   giftHistoryError: unknown
   giftHistoryPending: boolean
+  studentChangesError: unknown
+  studentChangesPending: boolean
   historyError: unknown
   historyPending: boolean
   onRetryHistory: () => void
   onRetryGiftHistory: () => void
+  onRetryStudentChanges: () => void
 }) {
   const { summary, matches } = dashboard
   const [statsTab, setStatsTab] = useState("players")
 
   return (
-    <div className="grid gap-4">
-      <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
+    <div className="grid min-w-0 gap-4">
+      <section className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-6">
           <MetricTile
             icon={<GameFeatureIcon name="team" className="size-4" />}
             label="玩家"
@@ -799,9 +870,16 @@ function AdminDashboardView({
         onRetry={onRetryGiftHistory}
       />
 
+      <StudentChangesPanel
+        entries={studentChanges}
+        isPending={studentChangesPending}
+        error={studentChangesError}
+        onRetry={onRetryStudentChanges}
+      />
+
       <MostOwnedPanel inventory={dashboard.inventory} />
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
+      <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] 2xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
         <TopPlayersPanel
           topPlayers={dashboard.topPlayers}
           onOpenPlayers={() => setStatsTab("players")}
@@ -817,7 +895,7 @@ function AdminDashboardView({
               玩家、庫存與對戰活動的營運檢視。
             </p>
           </div>
-          <TabsList className="grid w-full grid-cols-4 md:w-fit">
+          <TabsList className="grid w-full max-w-full grid-cols-[repeat(4,minmax(5rem,1fr))] overflow-x-auto md:w-fit">
             <TabsTrigger value="players">玩家</TabsTrigger>
             <TabsTrigger value="inventory">庫存</TabsTrigger>
             <TabsTrigger value="matches">對戰</TabsTrigger>
@@ -970,6 +1048,156 @@ function AdminGiftHistoryPanel({
                 </TableCell>
                 <TableCell className="text-right font-black">
                   {giftRewardAmountLabel(entry)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+function StudentChangesPanel({
+  entries,
+  isPending,
+  error,
+  onRetry,
+}: {
+  entries?: AdminStudentChangeEntry[]
+  isPending: boolean
+  error: unknown
+  onRetry: () => void
+}) {
+  if (isPending) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardContent className="flex items-center gap-3 px-5">
+          <Spinner className="size-5" />
+          <span className="font-black">正在載入學員變動紀錄</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <GameFeatureIcon name="history" className="size-5" />
+            學員變動紀錄
+          </CardTitle>
+          <CardDescription>
+            {errorMessage(error, "學員變動紀錄暫時無法讀取。")}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="px-5">
+          <Button type="button" variant="outline" onClick={onRetry}>
+            重新整理
+          </Button>
+        </CardFooter>
+      </Card>
+    )
+  }
+
+  if (!entries || entries.length === 0) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <GameFeatureIcon name="history" className="size-5" />
+            學員變動紀錄
+          </CardTitle>
+          <CardDescription>目前還沒有學員資源變動紀錄。</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="rounded-[18px] py-5">
+      <CardHeader className="gap-3 px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg font-black">
+              <GameFeatureIcon name="history" className="size-5" />
+              學員變動紀錄
+            </CardTitle>
+            <CardDescription>
+              顯示最近 {entries.length} 筆非 staff 學員資源變動。
+            </CardDescription>
+          </div>
+          <Badge variant="secondary">{entries.length} 筆</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="px-5">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>時間</TableHead>
+              <TableHead>學員</TableHead>
+              <TableHead>來源</TableHead>
+              <TableHead>類型</TableHead>
+              <TableHead>內容</TableHead>
+              <TableHead className="text-right">變動</TableHead>
+              <TableHead>備註</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {entries.map((entry) => (
+              <TableRow key={entry.changeId}>
+                <TableCell className="font-semibold">
+                  {formatDateTime(entry.createdAt)}
+                </TableCell>
+                <TableCell className="min-w-[180px] whitespace-normal">
+                  <div className="grid min-w-0 gap-1">
+                    <span className="font-semibold break-words">
+                      {entry.playerNickname || entry.playerId}
+                    </span>
+                    <span className="text-muted-foreground text-xs break-all">
+                      {entry.playerId}
+                      {entry.teamId ? ` / ${entry.teamId}` : ""}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{entry.sourceLabel}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {resourceKindLabel(entry.kind)}
+                  </Badge>
+                </TableCell>
+                <TableCell className="min-w-[180px] whitespace-normal">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="bg-surface-raised border-border grid size-8 shrink-0 place-items-center rounded-[10px] border"
+                      aria-hidden
+                    >
+                      <StudentChangeIcon entry={entry} />
+                    </span>
+                    <span className="grid min-w-0">
+                      <strong className="break-words">{entry.name}</strong>
+                      {entry.refId ? (
+                        <span className="text-muted-foreground text-xs break-all">
+                          {entry.refId}
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant={entry.delta < 0 ? "destructive" : "secondary"}
+                  >
+                    {studentChangeDeltaLabel(entry)}
+                  </Badge>
+                </TableCell>
+                <TableCell className="min-w-[160px] whitespace-normal">
+                  <span className="text-muted-foreground text-xs font-bold break-words">
+                    {entry.note || "-"}
+                  </span>
                 </TableCell>
               </TableRow>
             ))}
@@ -1137,29 +1365,20 @@ function MostOwnedPanel({
 }: {
   inventory: AdminDashboard["inventory"]
 }) {
-  const leastOwnedSitones = [...inventory.sitones].sort((a, b) => {
-    if (a.ownerCount !== b.ownerCount) return a.ownerCount - b.ownerCount
-    if (a.quantity !== b.quantity) return a.quantity - b.quantity
-    if (a.name !== b.name) return a.name.localeCompare(b.name)
-    return a.id.localeCompare(b.id)
-  })
+  const [sitoneSortDirection, setSitoneSortDirection] =
+    useState<InventorySortDirection>("desc")
+  const sortedSitones = useMemo(
+    () => sortInventoryEntries(inventory.sitones, sitoneSortDirection),
+    [inventory.sitones, sitoneSortDirection],
+  )
 
   return (
     <section className="grid gap-3">
-      <div className="grid gap-3 xl:grid-cols-3">
-        <MostOwnedListCard
-          icon={<GameFeatureIcon name="stones" className="size-5" />}
-          title="最多拿到的小石"
-          emptyLabel="目前沒有小石持有資料"
-          entries={inventory.sitones.slice(0, 6)}
-          unit="顆"
-        />
-        <MostOwnedListCard
-          icon={<GameFeatureIcon name="leaderboard" className="size-5" />}
-          title="最少拿到的小石"
-          emptyLabel="目前沒有小石 catalog"
-          entries={leastOwnedSitones.slice(0, 6)}
-          unit="顆"
+      <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+        <SitoneInventoryTableCard
+          entries={sortedSitones}
+          sortDirection={sitoneSortDirection}
+          onSortDirectionChange={setSitoneSortDirection}
         />
         <SitoneOwnershipPieCard entries={inventory.sitones} />
       </div>
@@ -1171,6 +1390,120 @@ function MostOwnedPanel({
         unit="個"
       />
     </section>
+  )
+}
+
+function sortInventoryEntries(
+  entries: AdminDashboardInventoryEntry[],
+  direction: InventorySortDirection,
+) {
+  return [...entries].sort((a, b) => {
+    const multiplier = direction === "desc" ? -1 : 1
+    if (a.quantity !== b.quantity) return (a.quantity - b.quantity) * multiplier
+    if (a.ownerCount !== b.ownerCount) {
+      return (a.ownerCount - b.ownerCount) * multiplier
+    }
+    if (a.name !== b.name) return a.name.localeCompare(b.name, "zh-TW")
+    return a.id.localeCompare(b.id, "zh-TW")
+  })
+}
+
+function SitoneInventoryTableCard({
+  entries,
+  sortDirection,
+  onSortDirectionChange,
+}: {
+  entries: AdminDashboardInventoryEntry[]
+  sortDirection: InventorySortDirection
+  onSortDirectionChange: (direction: InventorySortDirection) => void
+}) {
+  return (
+    <Card className="min-w-0 rounded-[18px] py-5">
+      <CardHeader className="gap-3 px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg font-black">
+              <GameFeatureIcon name="stones" className="size-5" />
+              小石取得統計
+            </CardTitle>
+            <CardDescription>
+              合併最多與最少拿到的小石，完整顯示所有小石 catalog。
+            </CardDescription>
+          </div>
+          <div className="flex max-w-full flex-wrap gap-2">
+            <Button
+              type="button"
+              variant={sortDirection === "desc" ? "default" : "outline"}
+              size="sm"
+              onClick={() => onSortDirectionChange("desc")}
+            >
+              <ArrowUpDown className="size-4" />
+              由多至少
+            </Button>
+            <Button
+              type="button"
+              variant={sortDirection === "asc" ? "default" : "outline"}
+              size="sm"
+              onClick={() => onSortDirectionChange("asc")}
+            >
+              <ArrowUpDown className="size-4" />
+              由少至多
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="px-5">
+        {entries.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">#</TableHead>
+                <TableHead>小石</TableHead>
+                <TableHead>分類</TableHead>
+                <TableHead className="text-right">總持有</TableHead>
+                <TableHead className="text-right">持有人</TableHead>
+                <TableHead className="text-right">持有率</TableHead>
+                <TableHead>Catalog</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry, index) => (
+                <TableRow key={entry.id}>
+                  <TableCell className="font-black">#{index + 1}</TableCell>
+                  <TableCell className="min-w-[220px] whitespace-normal">
+                    <div className="grid min-w-0 gap-1">
+                      <strong className="break-words">{entry.name}</strong>
+                      <span className="text-muted-foreground text-xs break-all">
+                        {entry.id}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{catalogLabel(entry)}</TableCell>
+                  <TableCell className="text-right font-black">
+                    {formatNumber(entry.quantity)} 顆
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(entry.ownerCount)} 人
+                  </TableCell>
+                  <TableCell className="text-right font-black">
+                    {formatPercent(entry.ownerPercent)}
+                  </TableCell>
+                  <TableCell>
+                    {entry.catalogMissing ? (
+                      <Badge variant="destructive">Missing</Badge>
+                    ) : (
+                      <Badge variant="secondary">OK</Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyBlock label="目前沒有小石 catalog" />
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -1491,8 +1824,8 @@ function TopPlayersPanel({
         </div>
       </CardHeader>
       <CardContent className="px-5">
-        <Tabs defaultValue="sitones">
-          <TabsList className="grid w-full grid-cols-5">
+        <Tabs defaultValue="sitones" className="min-w-0">
+          <TabsList className="grid w-full max-w-full grid-cols-[repeat(5,minmax(5.75rem,1fr))] overflow-x-auto">
             {groups.map((group) => (
               <TabsTrigger key={group.value} value={group.value}>
                 {group.label}
@@ -3145,6 +3478,162 @@ function integerOrZero(value: unknown) {
   const number = Number(value)
   if (!Number.isFinite(number)) return 0
   return Math.floor(number)
+}
+
+function battleOpeningOverrideLabel(
+  value: AdminSettings["battleOpeningOverride"],
+) {
+  switch (value) {
+    case "force_open":
+      return "強制開放"
+    case "force_closed":
+      return "強制禁止"
+    case "schedule":
+      return "依排程"
+  }
+}
+
+function AdminClassTimeBattleLockPanel({
+  settings,
+  isPending,
+  onSubmit,
+  onUpdate,
+}: {
+  settings: AdminSettings
+  isPending: boolean
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onUpdate: (patch: Partial<AdminSettings>) => void
+}) {
+  const overrideOptions: Array<{
+    value: AdminSettings["battleOpeningOverride"]
+    label: string
+    icon: ReactNode
+  }> = [
+    { value: "schedule", label: "依排程", icon: <Clock className="size-4" /> },
+    {
+      value: "force_open",
+      label: "強制開放",
+      icon: <CheckCircle2 className="size-4" />,
+    },
+    {
+      value: "force_closed",
+      label: "強制禁止",
+      icon: <X className="size-4" />,
+    },
+  ]
+
+  return (
+    <Card className="rounded-[18px] py-5">
+      <form className="grid gap-3" onSubmit={onSubmit}>
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <Clock className="size-5" />
+            上課時間開局限制
+          </CardTitle>
+          <CardDescription>
+            上課時間內禁止建立新房間，也會擋下 waiting room 進入開局。
+          </CardDescription>
+          <CardAction>
+            <Badge
+              variant={settings.battleOpeningLocked ? "destructive" : "outline"}
+            >
+              {settings.battleOpeningLocked ? "禁止開局中" : "可以開局"}
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="grid gap-4 px-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
+          <div className="grid gap-3">
+            <div className="bg-surface-raised border-border flex flex-wrap items-center justify-between gap-3 rounded-[18px] border-2 p-3">
+              <div className="grid gap-1">
+                <Label htmlFor="class-time-battle-lock-enabled">
+                  啟用上課時間禁止開局
+                </Label>
+                <span className="text-muted-foreground text-xs font-semibold">
+                  {settings.classTimeBattleLockStart} -{" "}
+                  {settings.classTimeBattleLockEnd}
+                </span>
+              </div>
+              <Switch
+                id="class-time-battle-lock-enabled"
+                checked={settings.classTimeBattleLockEnabled}
+                onCheckedChange={(checked) =>
+                  onUpdate({ classTimeBattleLockEnabled: checked })
+                }
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field>
+                <Label htmlFor="class-time-battle-lock-start">開始時間</Label>
+                <Input
+                  id="class-time-battle-lock-start"
+                  type="time"
+                  step={60}
+                  value={settings.classTimeBattleLockStart}
+                  onChange={(event) =>
+                    onUpdate({ classTimeBattleLockStart: event.target.value })
+                  }
+                />
+              </Field>
+              <Field>
+                <Label htmlFor="class-time-battle-lock-end">結束時間</Label>
+                <Input
+                  id="class-time-battle-lock-end"
+                  type="time"
+                  step={60}
+                  value={settings.classTimeBattleLockEnd}
+                  onChange={(event) =>
+                    onUpdate({ classTimeBattleLockEnd: event.target.value })
+                  }
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div className="bg-surface-raised border-border grid gap-3 rounded-[18px] border-2 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="font-black">臨時覆寫</h3>
+                <p className="text-muted-foreground text-xs font-semibold">
+                  目前：
+                  {battleOpeningOverrideLabel(settings.battleOpeningOverride)}
+                </p>
+              </div>
+              <Badge variant="secondary">
+                {settings.battleOpeningLocked ? "LOCKED" : "OPEN"}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+              {overrideOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant={
+                    settings.battleOpeningOverride === option.value
+                      ? "default"
+                      : "outline"
+                  }
+                  className="justify-start"
+                  onClick={() =>
+                    onUpdate({ battleOpeningOverride: option.value })
+                  }
+                >
+                  {option.icon}
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="justify-end px-5">
+          <Button type="submit" disabled={isPending}>
+            <Save />
+            {isPending ? "儲存中" : "儲存限制"}
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
+  )
 }
 
 function AdminSettingsPanel({

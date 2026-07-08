@@ -37,7 +37,8 @@ type AnswerAcceptedResponse struct {
 }
 
 type ComputerBattleSettingsResponse struct {
-	Enabled bool `json:"enabled" example:"true"`
+	Enabled             bool `json:"enabled" example:"true"`
+	BattleOpeningLocked bool `json:"battleOpeningLocked" example:"false"`
 }
 
 type MatchStateResponse struct {
