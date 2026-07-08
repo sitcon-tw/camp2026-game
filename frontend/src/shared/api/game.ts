@@ -547,6 +547,20 @@ const AdminCommunityStandsResponseSchema = z.object({
   stands: nullableArray(AdminCommunityStandSchema),
 })
 
+const AdminCommunityStandClaimSchema = z.object({
+  claimId: z.string(),
+  standId: z.string(),
+  standName: z.string().optional(),
+  playerId: z.string(),
+  playerNickname: z.string().optional(),
+  reward: CommunityStandRewardSchema,
+  createdAt: z.string(),
+})
+
+const AdminCommunityStandClaimsResponseSchema = z.object({
+  claims: nullableArray(AdminCommunityStandClaimSchema),
+})
+
 const AdminCommunityStandRewardInputSchema = z.object({
   kind: StaffRewardKindSchema,
   refId: z.string().optional(),
@@ -795,6 +809,9 @@ export type CommunityStandClaimResponse = z.infer<
 >
 export type AdminSettings = z.infer<typeof AdminSettingsSchema>
 export type AdminCommunityStand = z.infer<typeof AdminCommunityStandSchema>
+export type AdminCommunityStandClaim = z.infer<
+  typeof AdminCommunityStandClaimSchema
+>
 export type AdminCommunityStandUpdateInput = z.input<
   typeof AdminCommunityStandUpdateInputSchema
 >
@@ -1157,6 +1174,13 @@ export const gameApi = {
   async adminCommunityStands() {
     const json = await apiClient.get("/api/admin/community-stands")
     return AdminCommunityStandsResponseSchema.parse(json).stands
+  },
+
+  async adminCommunityStandClaims(standID?: string) {
+    const json = await apiClient.get("/api/admin/community-stand-claims", {
+      searchParams: standID ? { standId: standID } : undefined,
+    })
+    return AdminCommunityStandClaimsResponseSchema.parse(json).claims
   },
 
   async updateAdminSettings(settings: AdminSettings) {

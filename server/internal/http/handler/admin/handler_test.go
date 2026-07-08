@@ -413,6 +413,39 @@ func TestCommunityStandRewardResponseIncludesContentMetadata(t *testing.T) {
 	}
 }
 
+func TestCommunityStandClaimResponseIncludesClaimDetails(t *testing.T) {
+	handler := New(Dependencies{Content: loadAdminTestContent(t)})
+	createdAt := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
+	claim := mongomodel.CommunityStandClaim{
+		ID:        "community_claim_1",
+		StandID:   "stand-a",
+		PlayerID:  "player-a",
+		RewardID:  "community_claim_1",
+		CreatedAt: createdAt,
+		Reward: mongomodel.StandReward{
+			Kind:     standRewardKindItem,
+			RefID:    "item_booth_sticker",
+			Quantity: 2,
+		},
+	}
+
+	got := handler.communityStandClaimResponse(
+		claim,
+		map[string]mongomodel.Player{"player-a": {ID: "player-a", Nickname: "Alice"}},
+		map[string]mongomodel.CommunityStand{"stand-a": {ID: "stand-a", Name: "社群攤位"}},
+	)
+
+	if got.ClaimID != "community_claim_1" || got.StandID != "stand-a" || got.StandName != "社群攤位" {
+		t.Fatalf("unexpected stand claim identifiers: %#v", got)
+	}
+	if got.PlayerID != "player-a" || got.PlayerNickname != "Alice" || !got.CreatedAt.Equal(createdAt) {
+		t.Fatalf("unexpected stand claim player/time: %#v", got)
+	}
+	if got.Reward.Kind != standRewardKindItem || got.Reward.RefID != "item_booth_sticker" || got.Reward.Quantity != 2 || got.Reward.Name != "攤位貼紙" {
+		t.Fatalf("unexpected stand claim reward: %#v", got.Reward)
+	}
+}
+
 func loadAdminTestContent(t *testing.T) *content.Store {
 	t.Helper()
 

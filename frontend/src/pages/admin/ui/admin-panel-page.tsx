@@ -39,6 +39,7 @@ import { AppError } from "@/shared/api/error"
 import {
   gameApi,
   type AdminCommunityStand,
+  type AdminCommunityStandClaim,
   type AdminCommunityStandCreateInput,
   type AdminCommunityStandUpdateInput,
   type AdminDashboard,
@@ -307,6 +308,13 @@ export function AdminPanelPage() {
     retry: false,
     refetchInterval: 30_000,
   })
+  const communityStandClaimsQuery = useQuery({
+    queryKey: ["admin", "community-stand-claims"],
+    queryFn: () => gameApi.adminCommunityStandClaims(),
+    enabled: Boolean(settingsQuery.data),
+    retry: false,
+    refetchInterval: 30_000,
+  })
 
   const loginMutation = useMutation({
     mutationFn: gameApi.adminLogin,
@@ -375,6 +383,9 @@ export function AdminPanelPage() {
       queryClient.removeQueries({
         queryKey: ["community", "stand", "display", standID],
       })
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "community-stand-claims"],
+      })
       toast.success("攤位已刪除")
     },
     onError: (error) => {
@@ -408,6 +419,9 @@ export function AdminPanelPage() {
       })
       void queryClient.invalidateQueries({
         queryKey: ["community", "stand", "display", stand.standId],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "community-stand-claims"],
       })
       toast.success("攤位設定已更新")
     },
@@ -595,6 +609,9 @@ export function AdminPanelPage() {
 
       <AdminCommunityStandsPanel
         stands={communityStandsQuery.data ?? []}
+        claims={communityStandClaimsQuery.data ?? []}
+        claimsError={communityStandClaimsQuery.error}
+        claimsPending={communityStandClaimsQuery.isPending}
         error={communityStandsQuery.error}
         isPending={communityStandsQuery.isPending}
         isCreateFormOpen={creatingCommunityStand}
@@ -609,6 +626,7 @@ export function AdminPanelPage() {
             ? updateCommunityStandMutation.variables?.standID
             : undefined
         }
+        onRetryClaims={() => communityStandClaimsQuery.refetch()}
         onRetry={() => communityStandsQuery.refetch()}
         onToggleCreate={() => setCreatingCommunityStand((current) => !current)}
         onCreate={(input) => createCommunityStandMutation.mutate(input)}
@@ -2274,6 +2292,9 @@ const communityStandRewardKindLabels: Record<StaffRewardKind, string> = {
 
 function AdminCommunityStandsPanel({
   stands,
+  claims,
+  claimsError,
+  claimsPending,
   error,
   isPending,
   isCreateFormOpen,
@@ -2284,9 +2305,13 @@ function AdminCommunityStandsPanel({
   onToggleCreate,
   onCreate,
   onDelete,
+  onRetryClaims,
   onSubmit,
 }: {
   stands: AdminCommunityStand[]
+  claims: AdminCommunityStandClaim[]
+  claimsError: unknown
+  claimsPending: boolean
   error: unknown
   isPending: boolean
   isCreateFormOpen: boolean
@@ -2297,6 +2322,7 @@ function AdminCommunityStandsPanel({
   onToggleCreate: () => void
   onCreate: (input: AdminCommunityStandCreateInput) => void
   onDelete: (standID: string) => void
+  onRetryClaims: () => void
   onSubmit: (standID: string, input: AdminCommunityStandUpdateInput) => void
 }) {
   if (isPending) {
@@ -2375,8 +2401,182 @@ function AdminCommunityStandsPanel({
           ))}
         </div>
       )}
+
+      <CommunityStandClaimsPanel
+        claims={claims}
+        error={claimsError}
+        isPending={claimsPending}
+        onRetry={onRetryClaims}
+      />
     </section>
   )
+}
+
+function CommunityStandClaimsPanel({
+  claims,
+  error,
+  isPending,
+  onRetry,
+}: {
+  claims: AdminCommunityStandClaim[]
+  error: unknown
+  isPending: boolean
+  onRetry: () => void
+}) {
+  if (isPending) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardContent className="flex items-center gap-3 px-5">
+          <Spinner className="size-5" />
+          <span className="font-black">正在載入攤位領取紀錄</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <GameFeatureIcon name="history" className="size-5" />
+            攤位領取紀錄
+          </CardTitle>
+          <CardDescription>
+            {errorMessage(error, "攤位領取紀錄暫時無法讀取。")}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="px-5">
+          <Button type="button" variant="outline" onClick={onRetry}>
+            重新整理
+          </Button>
+        </CardFooter>
+      </Card>
+    )
+  }
+
+  if (claims.length === 0) {
+    return <EmptyBlock label="目前沒有攤位領取紀錄" />
+  }
+
+  const visibleClaims = claims.slice(0, 50)
+
+  return (
+    <Card className="rounded-[18px] py-5">
+      <CardHeader className="gap-3 px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg font-black">
+              <GameFeatureIcon name="history" className="size-5" />
+              攤位領取紀錄
+            </CardTitle>
+            <CardDescription>
+              顯示最近 {visibleClaims.length} 筆社群攤位領取紀錄。
+            </CardDescription>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+            <RefreshCw className="size-4" />
+            更新
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="px-5">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>時間</TableHead>
+              <TableHead>攤位</TableHead>
+              <TableHead>領取者</TableHead>
+              <TableHead>類型</TableHead>
+              <TableHead>內容</TableHead>
+              <TableHead className="text-right">數量</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visibleClaims.map((claim) => (
+              <TableRow key={claim.claimId}>
+                <TableCell className="font-semibold">
+                  {formatDateTime(claim.createdAt)}
+                </TableCell>
+                <TableCell className="min-w-[180px] whitespace-normal">
+                  <div className="grid min-w-0 gap-1">
+                    <span className="font-semibold break-words">
+                      {claim.standName || claim.standId}
+                    </span>
+                    <span className="text-muted-foreground text-xs break-all">
+                      {claim.standId}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="min-w-[160px] whitespace-normal">
+                  <div className="grid min-w-0 gap-1">
+                    <span className="font-semibold break-words">
+                      {claim.playerNickname || claim.playerId}
+                    </span>
+                    <span className="text-muted-foreground text-xs break-all">
+                      {claim.playerId}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {communityStandRewardKindLabels[claim.reward.kind]}
+                  </Badge>
+                </TableCell>
+                <TableCell className="min-w-[160px] whitespace-normal">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="bg-surface-raised border-border grid size-8 shrink-0 place-items-center overflow-hidden rounded-[10px] border"
+                      aria-hidden
+                    >
+                      <CommunityStandClaimRewardIcon claim={claim} />
+                    </span>
+                    <div className="grid min-w-0 gap-1">
+                      <span className="font-semibold break-words">
+                        {claim.reward.name}
+                      </span>
+                      {claim.reward.refId ? (
+                        <span className="text-muted-foreground text-xs break-all">
+                          {claim.reward.refId}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-black">
+                  {communityStandClaimAmountLabel(claim)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+function CommunityStandClaimRewardIcon({
+  claim,
+}: {
+  claim: AdminCommunityStandClaim
+}) {
+  if (claim.reward.iconPath) {
+    return (
+      <img
+        src={claim.reward.iconPath}
+        alt=""
+        className="size-full object-cover"
+      />
+    )
+  }
+  return <ImageIcon className="text-muted-foreground size-4" />
+}
+
+function communityStandClaimAmountLabel(claim: AdminCommunityStandClaim) {
+  if (claim.reward.kind === "open_power") {
+    return `${formatNumber(claim.reward.amount ?? 0)} OP`
+  }
+  return `x${formatNumber(claim.reward.quantity ?? 1)}`
 }
 
 function CommunityStandCreateCard({

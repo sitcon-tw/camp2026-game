@@ -12,6 +12,52 @@
     },
     "basePath": "/api",
     "paths": {
+        "/admin/community-stand-claims": {
+            "get": {
+                "description": "Admin-only endpoint. Returns recent community stand claim records, including claimant, stand, reward snapshot, and claim time.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List community stand claim records as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by community stand ID",
+                        "name": "standId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.CommunityStandClaimsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/community-stands": {
             "get": {
                 "description": "Admin-only endpoint. Returns all community stands, including disabled stands, with counters and editable settings.",
@@ -3548,6 +3594,48 @@
         }
     },
     "definitions": {
+        "admin.CommunityStandClaimResponse": {
+            "type": "object",
+            "properties": {
+                "claimId": {
+                    "type": "string",
+                    "example": "community_claim_507f1f77bcf86cd799439011"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "playerId": {
+                    "type": "string",
+                    "example": "7H9K2Q"
+                },
+                "playerNickname": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "reward": {
+                    "$ref": "#/definitions/admin.CommunityStandRewardResponse"
+                },
+                "standId": {
+                    "type": "string",
+                    "example": "00000000-0000-4000-8000-000000000000"
+                },
+                "standName": {
+                    "type": "string",
+                    "example": "SITCON 社群攤位"
+                }
+            }
+        },
+        "admin.CommunityStandClaimsResponse": {
+            "type": "object",
+            "properties": {
+                "claims": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.CommunityStandClaimResponse"
+                    }
+                }
+            }
+        },
         "admin.CommunityStandResponse": {
             "type": "object",
             "properties": {

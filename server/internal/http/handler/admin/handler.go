@@ -60,6 +60,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/admin/settings", h.GetSettings)
 	api.Put("/admin/settings", h.UpdateSettings)
 	api.Get("/admin/community-stands", h.ListCommunityStands)
+	api.Get("/admin/community-stand-claims", h.ListCommunityStandClaims)
 	api.Post("/admin/community-stands", h.CreateCommunityStand)
 	api.Put("/admin/community-stands/{standID}", h.UpdateCommunityStand)
 	api.Delete("/admin/community-stands/{standID}", h.DeleteCommunityStand)
