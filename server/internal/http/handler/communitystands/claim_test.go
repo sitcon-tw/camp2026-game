@@ -10,7 +10,7 @@ import (
 func TestNewCommunityStandClaimRecordsClaimSnapshot(t *testing.T) {
 	createdAt := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
 	stand := mongomodel.CommunityStand{
-		ID: "ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791",
+		ID: "00000000-0000-4000-8000-000000000000",
 		Reward: mongomodel.StandReward{
 			Kind:     rewardKindItem,
 			RefID:    "item_booth_sticker",

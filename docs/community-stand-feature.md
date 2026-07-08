@@ -4,8 +4,8 @@
 
 這個功能新增社群攤位 QRCode 獎勵流程：
 
-- 後端寫死社群攤位資料，啟動時同步到 MongoDB。
-- 每個社群攤位有固定 UUID ID，例如 `/community/ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791`。
+- 後端不會在部署或啟動時自動建立預設攤位。
+- 每個社群攤位建立時會由後端產生 UUID ID，例如 `/community/{standId}`。
 - 社群攤位夥伴可開啟 `/community/$standId` 看板頁，顯示攤位資訊、短效 QRCode、來過學員數、已領獎數。
 - 學員不直接使用 `/community/$standId` 領獎，而是在「冒險者通行證」內掃描攤位 QRCode。
 - 學員掃描成功後會在 modal 顯示攤位資訊與獎勵，點擊「領取獎勵」後取得對應道具。
@@ -13,23 +13,11 @@
 
 ## 開發組說明
 
-### 固定攤位資料
+### 攤位資料建立方式
 
-攤位資料寫在：
+部署與 API 啟動不會自動新增預設攤位。`make seed` 也不會建立社群攤位資料。
 
-`server/internal/communitystand/seed.go`
-
-目前固定攤位：
-
-| ID | 名稱 | 獎勵 |
-| --- | --- | --- |
-| `ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791` | SITCON 學生計算機年會 | `item_student_community_card` x1 |
-| `dc00c410-6a37-4d2a-9a1a-a3a9e626aef7` | 開源路線攤位 | `item_open_source_roadmap` x1 |
-| `4e7f1371-4720-435b-87f8-3db51f9202e5` | 社群交流攤位 | `item_star_village_badge` x1 |
-
-`app` 啟動與 `cmd/seed` 都會呼叫 `communitystand.EnsureDefaults`，把這些固定資料 upsert 到 MongoDB。
-
-如果之後要改攤位名稱、介紹、Logo、網站或獎勵，直接修改 `server/internal/communitystand/seed.go`。
+社群攤位必須透過 admin API 或管理介面建立，建立時後端會產生 UUID `standId`。如果資料庫沒有攤位資料，社群攤位列表會維持空白，直到管理員新增攤位。
 
 ### MongoDB Collections
 
@@ -39,7 +27,7 @@
 
 主要欄位：
 
-- `_id`: 攤位 UUID，例如 `ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791`
+- `_id`: 攤位 UUID，由後端建立攤位時產生
 - `name`: 攤位名稱
 - `description`: 攤位介紹
 - `logo_url`: Logo URL
@@ -142,11 +130,9 @@
 
 ### 這個 feature 怎麼運作
 
-每個社群攤位會有一個專屬網址，例如：
+每個社群攤位會有一個由 admin 建立後取得的專屬網址，例如：
 
-- `https://camp.sitcon.party/community/ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791`
-- `https://camp.sitcon.party/community/dc00c410-6a37-4d2a-9a1a-a3a9e626aef7`
-- `https://camp.sitcon.party/community/4e7f1371-4720-435b-87f8-3db51f9202e5`
+- `https://camp.sitcon.party/community/{standId}`
 
 社群攤位夥伴打開這個網址後，會看到：
 

@@ -3582,7 +3582,7 @@ const docTemplate = `{
                 },
                 "standId": {
                     "type": "string",
-                    "example": "ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791"
+                    "example": "00000000-0000-4000-8000-000000000000"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -4787,7 +4787,7 @@ const docTemplate = `{
                 },
                 "standId": {
                     "type": "string",
-                    "example": "ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791"
+                    "example": "00000000-0000-4000-8000-000000000000"
                 },
                 "websiteUrl": {
                     "type": "string",

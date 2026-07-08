@@ -61,7 +61,7 @@ type CommunityStandRewardResponse struct {
 }
 
 type CommunityStandResponse struct {
-	StandID     string                       `json:"standId" example:"ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791"`
+	StandID     string                       `json:"standId" example:"00000000-0000-4000-8000-000000000000"`
 	Name        string                       `json:"name" example:"SITCON 社群攤位"`
 	Description string                       `json:"description" example:"介紹學生社群與開源參與方式。"`
 	LogoURL     string                       `json:"logoUrl,omitempty" example:"/game-icons/features/team.png"`

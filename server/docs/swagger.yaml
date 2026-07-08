@@ -22,7 +22,7 @@ definitions:
       reward:
         $ref: '#/definitions/admin.CommunityStandRewardResponse'
       standId:
-        example: ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791
+        example: 00000000-0000-4000-8000-000000000000
         type: string
       updatedAt:
         type: string
@@ -881,7 +881,7 @@ definitions:
       reward:
         $ref: '#/definitions/communitystands.RewardResponse'
       standId:
-        example: ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791
+        example: 00000000-0000-4000-8000-000000000000
         type: string
       websiteUrl:
         example: https://sitcon.org
