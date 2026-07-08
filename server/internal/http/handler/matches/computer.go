@@ -50,7 +50,7 @@ func (h *Handler) ComputerSettings(w http.ResponseWriter, r *http.Request) {
 // @Tags matches
 // @Produce json
 // @Security AuthCookieAuth
-// @Success 201 {object} CreateMatchResponse
+// @Success 201 {object} MatchStateResponse
 // @Failure 401 {object} httpx.ProblemDetails
 // @Failure 409 {object} httpx.ProblemDetails
 // @Failure 500 {object} httpx.ProblemDetails

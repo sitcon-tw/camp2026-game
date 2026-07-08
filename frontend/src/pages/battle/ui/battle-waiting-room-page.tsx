@@ -232,7 +232,7 @@ export function BattleWaitingRoomPage() {
       return pairing
     },
     enabled: hostCanPair,
-    refetchInterval: 8_000,
+    refetchInterval: 3_000,
     retry: false,
     staleTime: 0,
   })
@@ -328,7 +328,7 @@ export function BattleWaitingRoomPage() {
                 ? "QR 更新失敗，稍後會再試一次。"
                 : pairingTokenQuery.isFetching
                   ? "正在更新 QR"
-                  : "QR Code 每 8 秒更新一次。"}
+                  : "QR Code 每 3 秒更新一次。"}
             </span>
           </CardContent>
         </Card>

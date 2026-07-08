@@ -1037,11 +1037,6 @@ export const gameApi = {
     return LeaderboardPlayerInventoryResponseSchema.parse(json)
   },
 
-  async createMatch() {
-    const json = await apiClient.post("/api/matches")
-    return MatchStateSchema.parse(json)
-  },
-
   async createMatchPairing() {
     const json = await apiClient.post("/api/matches/pairings")
     return MatchPairingResponseSchema.parse(json)
@@ -1054,13 +1049,6 @@ export const gameApi = {
 
   async createComputerMatch() {
     const json = await apiClient.post("/api/matches/computer")
-    return MatchStateSchema.parse(json)
-  },
-
-  async joinMatch(code: string) {
-    const json = await apiClient.post("/api/matches/join", {
-      json: { code },
-    })
     return MatchStateSchema.parse(json)
   },
 

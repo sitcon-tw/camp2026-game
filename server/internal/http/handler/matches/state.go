@@ -27,17 +27,6 @@ func (h *Handler) findMatchByID(ctx context.Context, matchID string) (mongomodel
 	return match, err
 }
 
-func (h *Handler) findMatchByCode(ctx context.Context, code string) (mongomodel.Match, error) {
-	var match mongomodel.Match
-	err := h.db.Collection(mongomodel.MatchesCollection).
-		FindOne(ctx, bson.M{
-			"code":   code,
-			"status": bson.M{"$ne": mongomodel.MatchStatusCompleted},
-		}).
-		Decode(&match)
-	return match, err
-}
-
 func (h *Handler) findOpenParticipantMatch(ctx context.Context, playerID string) (mongomodel.Match, error) {
 	var match mongomodel.Match
 	err := h.db.Collection(mongomodel.MatchesCollection).

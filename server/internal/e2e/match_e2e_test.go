@@ -6,6 +6,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -53,32 +55,28 @@ func TestMatchFlowE2E(t *testing.T) {
 
 	assertShopPurchaseFlow(t, ctx, db, server.URL, playerACookie)
 
-	var created matchState
-	body := postJSON(t, server.URL+"/api/matches", nil, []*http.Cookie{playerACookie}, http.StatusCreated)
-	decodeJSON(t, body, &created)
+	createdPairing := createPairing(t, server.URL, playerACookie)
+	created := createdPairing.Match
 	if created.Status != "waiting" {
 		t.Fatalf("expected created match status waiting, got %q", created.Status)
 	}
-	if created.MatchID == "" || created.Code == "" {
-		t.Fatalf("expected match id and code, got %#v", created)
+	if created.MatchID == "" || created.Code != "" {
+		t.Fatalf("expected pairing match id without public code, got %#v", created)
 	}
 	if len(created.Players) != 1 || created.Players[0].PlayerID != playerAID || created.Players[0].Ready {
 		t.Fatalf("unexpected created players: %#v", created.Players)
 	}
 
-	var joined matchState
-	body = postJSON(t, server.URL+"/api/matches/join", map[string]string{
-		"code": created.Code,
-	}, []*http.Cookie{playerBCookie}, http.StatusOK)
-	decodeJSON(t, body, &joined)
+	joined := scanPairing(t, server.URL, createdPairing.Token, playerBCookie, http.StatusOK)
 	if joined.Status != "waiting" || len(joined.Players) != 2 {
 		t.Fatalf("expected joined waiting match with 2 players, got %#v", joined)
 	}
+	scanPairing(t, server.URL, createdPairing.Token, playerCCookie, http.StatusNotFound)
 
 	assertInitialSSEEvent(t, server.URL, created.MatchID, playerACookie)
 
 	var readyA matchState
-	body = postJSON(t, server.URL+"/api/matches/"+created.MatchID+"/ready", nil, []*http.Cookie{playerACookie}, http.StatusOK)
+	body := postJSON(t, server.URL+"/api/matches/"+created.MatchID+"/ready", nil, []*http.Cookie{playerACookie}, http.StatusOK)
 	decodeJSON(t, body, &readyA)
 	if readyA.Status != "waiting" {
 		t.Fatalf("expected match to wait for second ready, got %q", readyA.Status)
@@ -113,19 +111,6 @@ func TestMatchFlowE2E(t *testing.T) {
 	if openB.MatchID != created.MatchID || openB.Status != "active" {
 		t.Fatalf("expected player B open match to be active %s, got %#v", created.MatchID, openB)
 	}
-
-	body = postJSON(t, server.URL+"/api/matches/join", map[string]string{
-		"code": created.Code,
-	}, []*http.Cookie{playerBCookie}, http.StatusOK)
-	var rejoined matchState
-	decodeJSON(t, body, &rejoined)
-	if rejoined.MatchID != created.MatchID || rejoined.Status != "active" || len(rejoined.Players) != 2 {
-		t.Fatalf("expected participant to rejoin active match, got %#v", rejoined)
-	}
-
-	postJSON(t, server.URL+"/api/matches/join", map[string]string{
-		"code": created.Code,
-	}, []*http.Cookie{playerCCookie}, http.StatusConflict)
 
 	for i := 0; i < 10; i++ {
 		state := waitForAnsweringQuestion(t, server.URL, created.MatchID, playerACookie, i)
@@ -206,6 +191,7 @@ func TestMatchPairingFlowE2E(t *testing.T) {
 	if len(created.Match.Players) != 1 || created.Match.Players[0].PlayerID != playerAID {
 		t.Fatalf("unexpected created pairing players: %#v", created.Match.Players)
 	}
+	assertStoredPairingTokenHashed(t, ctx, db, created.Match.MatchID, created.Token)
 
 	postJSON(t, server.URL+"/api/matches/pairings/scan", map[string]string{
 		"token": created.Token,
@@ -217,6 +203,7 @@ func TestMatchPairingFlowE2E(t *testing.T) {
 	if refreshed.Match.MatchID != created.Match.MatchID || refreshed.Token == "" || refreshed.ExpiresAt == "" {
 		t.Fatalf("expected refreshed pairing token for same match, got %#v", refreshed)
 	}
+	assertStoredPairingTokenHashed(t, ctx, db, created.Match.MatchID, refreshed.Token)
 
 	var joined matchState
 	body = postJSON(t, server.URL+"/api/matches/pairings/scan", map[string]string{
@@ -231,6 +218,57 @@ func TestMatchPairingFlowE2E(t *testing.T) {
 	postJSON(t, server.URL+"/api/matches/pairings/scan", map[string]string{
 		"token": refreshed.Token,
 	}, []*http.Cookie{playerBCookie}, http.StatusNotFound)
+}
+
+func assertStoredPairingTokenHashed(t *testing.T, ctx context.Context, db *mongo.Database, matchID string, token string) {
+	t.Helper()
+
+	var stored bson.M
+	if err := db.Collection(mongomodel.MatchPairingsCollection).FindOne(ctx, bson.M{
+		"match_id":   matchID,
+		"token_hash": pairingTokenHashForTest(token),
+	}).Decode(&stored); err != nil {
+		t.Fatalf("find stored pairing token hash: %v", err)
+	}
+	if rawToken, ok := stored["token"]; ok {
+		t.Fatalf("expected stored pairing to omit raw token, got token=%#v in %#v", rawToken, stored)
+	}
+}
+
+func pairingTokenHashForTest(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+func createPairing(t *testing.T, serverURL string, hostCookie *http.Cookie) matchPairing {
+	t.Helper()
+
+	var pairing matchPairing
+	body := postJSON(t, serverURL+"/api/matches/pairings", nil, []*http.Cookie{hostCookie}, http.StatusCreated)
+	decodeJSON(t, body, &pairing)
+	return pairing
+}
+
+func refreshPairing(t *testing.T, serverURL string, matchID string, hostCookie *http.Cookie) matchPairing {
+	t.Helper()
+
+	var pairing matchPairing
+	body := postJSON(t, serverURL+"/api/matches/"+matchID+"/pairing-token", nil, []*http.Cookie{hostCookie}, http.StatusOK)
+	decodeJSON(t, body, &pairing)
+	return pairing
+}
+
+func scanPairing(t *testing.T, serverURL string, token string, playerCookie *http.Cookie, wantStatus int) matchState {
+	t.Helper()
+
+	body := postJSON(t, serverURL+"/api/matches/pairings/scan", map[string]string{
+		"token": token,
+	}, []*http.Cookie{playerCookie}, wantStatus)
+	var state matchState
+	if wantStatus == http.StatusOK {
+		decodeJSON(t, body, &state)
+	}
+	return state
 }
 
 func startMongo(t *testing.T, ctx context.Context) (*mongo.Client, *mongo.Database) {
@@ -636,15 +674,10 @@ func expectedShopItemCount(t *testing.T) int {
 func assertWaitingRoomLeaveFlow(t *testing.T, ctx context.Context, db *mongo.Database, serverURL string, hostCookie *http.Cookie, challengerCookie *http.Cookie) {
 	t.Helper()
 
-	var created matchState
-	body := postJSON(t, serverURL+"/api/matches", nil, []*http.Cookie{hostCookie}, http.StatusCreated)
-	decodeJSON(t, body, &created)
+	createdPairing := createPairing(t, serverURL, hostCookie)
+	created := createdPairing.Match
 
-	body = postJSON(t, serverURL+"/api/matches/join", map[string]string{
-		"code": created.Code,
-	}, []*http.Cookie{challengerCookie}, http.StatusOK)
-	var joined matchState
-	decodeJSON(t, body, &joined)
+	joined := scanPairing(t, serverURL, createdPairing.Token, challengerCookie, http.StatusOK)
 	if len(joined.Players) != 2 {
 		t.Fatalf("expected challenger to join waiting room, got %#v", joined.Players)
 	}
@@ -652,17 +685,15 @@ func assertWaitingRoomLeaveFlow(t *testing.T, ctx context.Context, db *mongo.Dat
 	postJSON(t, serverURL+"/api/matches/"+created.MatchID+"/leave", nil, []*http.Cookie{challengerCookie}, http.StatusNoContent)
 	getJSON(t, serverURL+"/api/matches/open", []*http.Cookie{challengerCookie}, http.StatusNotFound)
 
-	body = getJSON(t, serverURL+"/api/matches/"+created.MatchID, []*http.Cookie{hostCookie}, http.StatusOK)
+	body := getJSON(t, serverURL+"/api/matches/"+created.MatchID, []*http.Cookie{hostCookie}, http.StatusOK)
 	var afterChallengerLeft matchState
 	decodeJSON(t, body, &afterChallengerLeft)
 	if len(afterChallengerLeft.Players) != 1 || afterChallengerLeft.Players[0].PlayerID != playerAID {
 		t.Fatalf("expected waiting room to keep only host after challenger leaves, got %#v", afterChallengerLeft.Players)
 	}
 
-	body = postJSON(t, serverURL+"/api/matches/join", map[string]string{
-		"code": created.Code,
-	}, []*http.Cookie{challengerCookie}, http.StatusOK)
-	decodeJSON(t, body, &joined)
+	refreshedPairing := refreshPairing(t, serverURL, created.MatchID, hostCookie)
+	joined = scanPairing(t, serverURL, refreshedPairing.Token, challengerCookie, http.StatusOK)
 	if len(joined.Players) != 2 {
 		t.Fatalf("expected challenger to rejoin waiting room, got %#v", joined.Players)
 	}
@@ -703,13 +734,8 @@ func assertOpponentMatchLimit(t *testing.T, ctx context.Context, db *mongo.Datab
 		}
 	}
 
-	var created matchState
-	body := postJSON(t, serverURL+"/api/matches", nil, []*http.Cookie{hostCookie}, http.StatusCreated)
-	decodeJSON(t, body, &created)
-
-	postJSON(t, serverURL+"/api/matches/join", map[string]string{
-		"code": created.Code,
-	}, []*http.Cookie{challengerCookie}, http.StatusForbidden)
+	createdPairing := createPairing(t, serverURL, hostCookie)
+	scanPairing(t, serverURL, createdPairing.Token, challengerCookie, http.StatusForbidden)
 }
 
 func assertDatabaseState(t *testing.T, ctx context.Context, db *mongo.Database, matchID string, completed matchState) {

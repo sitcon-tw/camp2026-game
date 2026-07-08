@@ -25,10 +25,6 @@ func newID(prefix string) (string, error) {
 	return prefix + "_" + value, nil
 }
 
-func newMatchCode() (string, error) {
-	return randomString(codeAlphabet, 6)
-}
-
 func newMatchPairingToken() (string, error) {
 	return randomString(codeAlphabet, 16)
 }

@@ -1409,118 +1409,6 @@ definitions:
         example: true
         type: boolean
     type: object
-  matches.CreateMatchResponse:
-    properties:
-      code:
-        example: ABC123
-        type: string
-      completedAt:
-        type: string
-      createdAt:
-        type: string
-      currentQuestion:
-        $ref: '#/definitions/matches.MatchQuestionResponse'
-      currentQuestionIndex:
-        example: 0
-        type: integer
-      currentQuestionResult:
-        $ref: '#/definitions/matches.MatchQuestionResult'
-      hostPlayerId:
-        example: 7H9K2Q
-        type: string
-      matchId:
-        example: match_7H9K2Q
-        type: string
-      mode:
-        example: pvp
-        type: string
-      phase:
-        example: answering
-        type: string
-      players:
-        items:
-          $ref: '#/definitions/matches.MatchPlayerResponse'
-        type: array
-      questionCount:
-        example: 10
-        type: integer
-      results:
-        items:
-          $ref: '#/definitions/matches.MatchQuestionResult'
-        type: array
-      revealEndsAt:
-        type: string
-      roundEndsAt:
-        type: string
-      roundStartedAt:
-        type: string
-      startedAt:
-        type: string
-      status:
-        example: active
-        type: string
-    type: object
-  matches.JoinMatchRequest:
-    properties:
-      code:
-        example: ABC123
-        maxLength: 16
-        minLength: 4
-        type: string
-    required:
-    - code
-    type: object
-  matches.JoinMatchResponse:
-    properties:
-      code:
-        example: ABC123
-        type: string
-      completedAt:
-        type: string
-      createdAt:
-        type: string
-      currentQuestion:
-        $ref: '#/definitions/matches.MatchQuestionResponse'
-      currentQuestionIndex:
-        example: 0
-        type: integer
-      currentQuestionResult:
-        $ref: '#/definitions/matches.MatchQuestionResult'
-      hostPlayerId:
-        example: 7H9K2Q
-        type: string
-      matchId:
-        example: match_7H9K2Q
-        type: string
-      mode:
-        example: pvp
-        type: string
-      phase:
-        example: answering
-        type: string
-      players:
-        items:
-          $ref: '#/definitions/matches.MatchPlayerResponse'
-        type: array
-      questionCount:
-        example: 10
-        type: integer
-      results:
-        items:
-          $ref: '#/definitions/matches.MatchQuestionResult'
-        type: array
-      revealEndsAt:
-        type: string
-      roundEndsAt:
-        type: string
-      roundStartedAt:
-        type: string
-      startedAt:
-        type: string
-      status:
-        example: active
-        type: string
-    type: object
   matches.MatchAnswerResponse:
     properties:
       answeredAt:
@@ -3761,37 +3649,6 @@ paths:
       summary: List leaderboard team players
       tags:
       - leaderboards
-  /matches:
-    post:
-      description: Creates a two-player quiz match room for the authenticated player.
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/matches.CreateMatchResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "503":
-          description: Service Unavailable
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: Create match room
-      tags:
-      - matches
   /matches/{matchID}:
     get:
       description: Returns the current match state for a participant. Active matches
@@ -4088,7 +3945,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/matches.CreateMatchResponse'
+            $ref: '#/definitions/matches.MatchStateResponse'
         "401":
           description: Unauthorized
           schema:
@@ -4135,62 +3992,6 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Get computer battle availability
-      tags:
-      - matches
-  /matches/join:
-    post:
-      consumes:
-      - application/json
-      description: Joins a waiting two-player quiz match room by invite code.
-      parameters:
-      - description: Join match request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/matches.JoinMatchRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/matches.JoinMatchResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-        "503":
-          description: Service Unavailable
-          schema:
-            $ref: '#/definitions/httpx.ProblemDetails'
-      security:
-      - AuthCookieAuth: []
-      summary: Join match room
       tags:
       - matches
   /matches/open:
