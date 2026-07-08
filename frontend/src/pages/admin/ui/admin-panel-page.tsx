@@ -2447,18 +2447,6 @@ function CommunityStandCreateCard({
 
           <div className="grid gap-3">
             <Field>
-              <Label htmlFor={`${formID}-id`}>攤位 ID</Label>
-              <Input
-                id={`${formID}-id`}
-                value={draft.standId}
-                maxLength={128}
-                placeholder="community-booth"
-                onChange={(event) =>
-                  patchDraft({ standId: event.target.value })
-                }
-              />
-            </Field>
-            <Field>
               <Label htmlFor={`${formID}-name`}>名稱</Label>
               <Input
                 id={`${formID}-name`}
@@ -2861,7 +2849,6 @@ function sortCommunityStands(stands: AdminCommunityStand[]) {
 
 function newCommunityStandDraft(): AdminCommunityStandCreateInput {
   return {
-    standId: "",
     name: "",
     description: "",
     logoUrl: "",
@@ -2878,10 +2865,7 @@ function newCommunityStandDraft(): AdminCommunityStandCreateInput {
 function sanitizeCommunityStandCreateDraft(
   draft: AdminCommunityStandCreateInput,
 ): AdminCommunityStandCreateInput {
-  return {
-    ...sanitizeCommunityStandDraft(draft),
-    standId: draft.standId.trim(),
-  }
+  return sanitizeCommunityStandDraft(draft)
 }
 
 function communityStandToDraft(

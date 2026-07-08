@@ -3577,16 +3577,12 @@ const docTemplate = `{
                     "type": "string",
                     "example": "SITCON 社群攤位"
                 },
-                "qrToken": {
-                    "type": "string",
-                    "example": "cst_abcd1234"
-                },
                 "reward": {
                     "$ref": "#/definitions/admin.CommunityStandRewardResponse"
                 },
                 "standId": {
                     "type": "string",
-                    "example": "q7m4x2v9"
+                    "example": "ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -3683,10 +3679,6 @@ const docTemplate = `{
                 },
                 "reward": {
                     "$ref": "#/definitions/admin.CommunityStandRewardRequest"
-                },
-                "standId": {
-                    "type": "string",
-                    "example": "q7m4x2v9"
                 },
                 "websiteUrl": {
                     "type": "string",
@@ -4734,6 +4726,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "cst_abcd1234"
                 },
+                "qrTokenExpiresAt": {
+                    "type": "string"
+                },
                 "stand": {
                     "$ref": "#/definitions/communitystands.StandResponse"
                 },
@@ -4792,7 +4787,7 @@ const docTemplate = `{
                 },
                 "standId": {
                     "type": "string",
-                    "example": "q7m4x2v9"
+                    "example": "ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791"
                 },
                 "websiteUrl": {
                     "type": "string",

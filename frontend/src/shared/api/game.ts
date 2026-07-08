@@ -513,6 +513,7 @@ const CommunityStandDisplayResponseSchema = z.object({
   visitCount: z.number(),
   claimCount: z.number(),
   qrToken: z.string(),
+  qrTokenExpiresAt: z.string(),
 })
 
 const CommunityStandClaimResponseSchema = z.object({
@@ -538,7 +539,6 @@ const AdminCommunityStandSchema = CommunityStandSchema.extend({
   enabled: z.boolean(),
   visitCount: z.number(),
   claimCount: z.number(),
-  qrToken: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
@@ -563,10 +563,7 @@ const AdminCommunityStandUpdateInputSchema = z.object({
   reward: AdminCommunityStandRewardInputSchema,
 })
 
-const AdminCommunityStandCreateInputSchema =
-  AdminCommunityStandUpdateInputSchema.extend({
-    standId: z.string(),
-  })
+const AdminCommunityStandCreateInputSchema = AdminCommunityStandUpdateInputSchema
 
 const AdminDashboardTeamSummarySchema = z.object({
   teamId: z.string(),

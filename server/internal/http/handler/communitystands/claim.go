@@ -78,13 +78,7 @@ func (h *Handler) Claim(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) claimStandReward(ctx context.Context, playerID string, stand mongomodel.CommunityStand) (string, error) {
 	claimID := newID("community_claim")
-	claim := mongomodel.CommunityStandClaim{
-		ID:        claimID,
-		StandID:   stand.ID,
-		PlayerID:  playerID,
-		RewardID:  claimID,
-		CreatedAt: time.Now().UTC(),
-	}
+	claim := newCommunityStandClaim(claimID, playerID, stand, time.Now().UTC())
 	if err := h.insertClaim(ctx, claim); err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return "", errCommunityStandAlreadyClaimed
@@ -96,6 +90,17 @@ func (h *Handler) claimStandReward(ctx context.Context, playerID string, stand m
 		return "", err
 	}
 	return claimID, nil
+}
+
+func newCommunityStandClaim(claimID string, playerID string, stand mongomodel.CommunityStand, createdAt time.Time) mongomodel.CommunityStandClaim {
+	return mongomodel.CommunityStandClaim{
+		ID:        claimID,
+		StandID:   stand.ID,
+		PlayerID:  playerID,
+		RewardID:  claimID,
+		Reward:    stand.Reward,
+		CreatedAt: createdAt,
+	}
 }
 
 func (h *Handler) insertClaim(ctx context.Context, claim mongomodel.CommunityStandClaim) error {

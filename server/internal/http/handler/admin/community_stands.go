@@ -48,7 +48,6 @@ type UpdateCommunityStandRequest struct {
 }
 
 type CreateCommunityStandRequest struct {
-	StandID string `json:"standId" example:"q7m4x2v9"`
 	UpdateCommunityStandRequest
 }
 
@@ -62,12 +61,11 @@ type CommunityStandRewardResponse struct {
 }
 
 type CommunityStandResponse struct {
-	StandID     string                       `json:"standId" example:"q7m4x2v9"`
+	StandID     string                       `json:"standId" example:"ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791"`
 	Name        string                       `json:"name" example:"SITCON 社群攤位"`
 	Description string                       `json:"description" example:"介紹學生社群與開源參與方式。"`
 	LogoURL     string                       `json:"logoUrl,omitempty" example:"/game-icons/features/team.png"`
 	WebsiteURL  string                       `json:"websiteUrl,omitempty" example:"https://sitcon.org"`
-	QRToken     string                       `json:"qrToken" example:"cst_abcd1234"`
 	Enabled     bool                         `json:"enabled" example:"true"`
 	Reward      CommunityStandRewardResponse `json:"reward"`
 	VisitCount  int64                        `json:"visitCount" example:"42"`
@@ -267,14 +265,12 @@ func normalizeUpdateCommunityStandRequest(body UpdateCommunityStandRequest) Upda
 }
 
 func normalizeCreateCommunityStandRequest(body CreateCommunityStandRequest) CreateCommunityStandRequest {
-	body.StandID = strings.TrimSpace(body.StandID)
 	body.UpdateCommunityStandRequest = normalizeUpdateCommunityStandRequest(body.UpdateCommunityStandRequest)
 	return body
 }
 
 func (h *Handler) validateCreateCommunityStandRequest(body CreateCommunityStandRequest) []httpx.ErrorDetail {
 	details := make([]httpx.ErrorDetail, 0, 8)
-	details = append(details, validateCommunityStandID("body.standId", body.StandID)...)
 	details = append(details, h.validateCommunityStandPayload(body.UpdateCommunityStandRequest)...)
 	return details
 }
@@ -380,17 +376,16 @@ func validHTTPURL(value string) bool {
 
 func (h *Handler) createCommunityStand(ctx context.Context, body CreateCommunityStandRequest) (mongomodel.CommunityStand, error) {
 	now := time.Now().UTC()
-	qrToken, err := communitystand.NewQRToken()
+	standID, err := communitystand.NewStandID()
 	if err != nil {
 		return mongomodel.CommunityStand{}, err
 	}
 	stand := mongomodel.CommunityStand{
-		ID:          body.StandID,
+		ID:          standID,
 		Name:        body.Name,
 		Description: body.Description,
 		LogoURL:     body.LogoURL,
 		WebsiteURL:  body.WebsiteURL,
-		QRToken:     qrToken,
 		Enabled:     *body.Enabled,
 		Reward:      communityStandRewardModel(body.Reward),
 		CreatedAt:   now,
@@ -482,7 +477,6 @@ func (h *Handler) communityStandResponse(ctx context.Context, stand mongomodel.C
 		Description: stand.Description,
 		LogoURL:     stand.LogoURL,
 		WebsiteURL:  stand.WebsiteURL,
-		QRToken:     stand.QRToken,
 		Enabled:     stand.Enabled,
 		Reward:      reward,
 		VisitCount:  visitCount,

@@ -9,16 +9,17 @@ const (
 )
 
 type CommunityStand struct {
-	ID          string      `bson:"_id"`
-	Name        string      `bson:"name"`
-	Description string      `bson:"description"`
-	LogoURL     string      `bson:"logo_url,omitempty"`
-	WebsiteURL  string      `bson:"website_url,omitempty"`
-	QRToken     string      `bson:"qr_token,omitempty"`
-	Enabled     bool        `bson:"enabled"`
-	Reward      StandReward `bson:"reward"`
-	CreatedAt   time.Time   `bson:"created_at"`
-	UpdatedAt   time.Time   `bson:"updated_at"`
+	ID               string      `bson:"_id"`
+	Name             string      `bson:"name"`
+	Description      string      `bson:"description"`
+	LogoURL          string      `bson:"logo_url,omitempty"`
+	WebsiteURL       string      `bson:"website_url,omitempty"`
+	QRToken          string      `bson:"qr_token,omitempty"`
+	QRTokenExpiresAt time.Time   `bson:"qr_token_expires_at,omitempty"`
+	Enabled          bool        `bson:"enabled"`
+	Reward           StandReward `bson:"reward"`
+	CreatedAt        time.Time   `bson:"created_at"`
+	UpdatedAt        time.Time   `bson:"updated_at"`
 }
 
 type StandReward struct {
@@ -29,11 +30,12 @@ type StandReward struct {
 }
 
 type CommunityStandClaim struct {
-	ID        string    `bson:"_id"`
-	StandID   string    `bson:"stand_id"`
-	PlayerID  string    `bson:"player_id"`
-	RewardID  string    `bson:"reward_id"`
-	CreatedAt time.Time `bson:"created_at"`
+	ID        string      `bson:"_id"`
+	StandID   string      `bson:"stand_id"`
+	PlayerID  string      `bson:"player_id"`
+	RewardID  string      `bson:"reward_id"`
+	Reward    StandReward `bson:"reward"`
+	CreatedAt time.Time   `bson:"created_at"`
 }
 
 type CommunityStandVisit struct {

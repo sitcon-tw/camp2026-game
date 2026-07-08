@@ -1,6 +1,10 @@
 package communitystands
 
-import mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
+import (
+	"time"
+
+	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
+)
 
 const (
 	rewardKindItem      = "item"
@@ -18,7 +22,7 @@ type RewardResponse struct {
 }
 
 type StandResponse struct {
-	StandID     string         `json:"standId" example:"q7m4x2v9"`
+	StandID     string         `json:"standId" example:"ab93e6b7-aea7-4cf5-b2a9-c34b3efe0791"`
 	Name        string         `json:"name" example:"SITCON 社群攤位"`
 	Description string         `json:"description" example:"介紹學生社群與開源參與方式。"`
 	LogoURL     string         `json:"logoUrl,omitempty" example:"/game-icons/features/team.png"`
@@ -39,10 +43,11 @@ type ClaimResponse struct {
 }
 
 type DisplayResponse struct {
-	Stand      StandResponse `json:"stand"`
-	VisitCount int64         `json:"visitCount" example:"42"`
-	ClaimCount int64         `json:"claimCount" example:"38"`
-	QRToken    string        `json:"qrToken" example:"cst_abcd1234"`
+	Stand            StandResponse `json:"stand"`
+	VisitCount       int64         `json:"visitCount" example:"42"`
+	ClaimCount       int64         `json:"claimCount" example:"38"`
+	QRToken          string        `json:"qrToken" example:"cst_abcd1234"`
+	QRTokenExpiresAt time.Time     `json:"qrTokenExpiresAt"`
 }
 
 func standResponse(stand mongomodel.CommunityStand, reward RewardResponse) StandResponse {
