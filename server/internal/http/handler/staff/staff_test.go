@@ -240,6 +240,11 @@ func TestValidateRewardTarget(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: "all players target",
+			body: CreateRewardRequest{AllPlayers: true},
+			want: 0,
+		},
+		{
 			name: "missing target",
 			body: CreateRewardRequest{},
 			want: 1,
@@ -247,6 +252,11 @@ func TestValidateRewardTarget(t *testing.T) {
 		{
 			name: "mixed target modes",
 			body: CreateRewardRequest{PlayerID: "P1", TeamID: "T1"},
+			want: 1,
+		},
+		{
+			name: "all players mixed with team",
+			body: CreateRewardRequest{AllPlayers: true, TeamID: "T1"},
 			want: 1,
 		},
 	}

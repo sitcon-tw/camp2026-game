@@ -426,6 +426,7 @@ const StaffTeamsResponseSchema = z.object({
 const StaffRewardResponseSchema = z.object({
   rewardIds: nullableArray(z.string()),
   grantedCount: z.number(),
+  allPlayers: z.boolean().optional(),
   player: z
     .object({
       playerId: z.string(),
@@ -1023,6 +1024,7 @@ export const gameApi = {
     playerId?: string
     qrcodeToken?: string
     teamId?: string
+    allPlayers?: boolean
     kind: StaffRewardKind
     refId?: string
     quantity?: number

@@ -3267,7 +3267,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Staff-only endpoint. Grants one sitone, item, or open power reward to a player selected by player ID or QR code identifier, or to every player in a team, and records the staff grant.",
+                "description": "Staff-only endpoint. Grants one sitone, item, or open power reward to a player selected by player ID or QR code identifier, every player in a team, or all players, and records the staff grant.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6703,6 +6703,10 @@ const docTemplate = `{
                 "kind"
             ],
             "properties": {
+                "allPlayers": {
+                    "type": "boolean",
+                    "example": false
+                },
                 "amount": {
                     "type": "integer",
                     "maximum": 99999,
@@ -6753,6 +6757,10 @@ const docTemplate = `{
         "staff.CreateRewardResponse": {
             "type": "object",
             "properties": {
+                "allPlayers": {
+                    "type": "boolean",
+                    "example": false
+                },
                 "grantedCount": {
                     "type": "integer",
                     "example": 1

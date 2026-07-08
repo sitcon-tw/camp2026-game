@@ -76,6 +76,8 @@ type ItemFunctionMeta = {
   sortRank: number
 }
 
+const ALL_PLAYERS_TEAM_ID = "__all_players__"
+
 const CHECKPOINT_STONE_IDS = new Set([
   "stone_command_blind_trip",
   "stone_human_llm",
@@ -417,6 +419,7 @@ export function StaffRewardsPanel() {
   }, [rewardOptions, search, selectedOption])
   const selectedTeam =
     teamOptions.find((team) => team.teamId === selectedTeamID) ?? null
+  const allPlayersSelected = selectedTeamID === ALL_PLAYERS_TEAM_ID
   const groupedVisibleSitoneOptions = useMemo(
     () =>
       [
@@ -449,7 +452,13 @@ export function StaffRewardsPanel() {
   const rewardMutation = useMutation({
     mutationFn: gameApi.createStaffReward,
     onSuccess: (result) => {
-      if (result.team) {
+      if (result.allPlayers) {
+        toast.success(
+          result.reward.kind === "open_power"
+            ? `已發送 ${result.reward.amount} 開源力給所有人 (${result.grantedCount} 人)`
+            : `已發送 ${result.reward.name} x${result.reward.quantity} 給所有人 (${result.grantedCount} 人)`,
+        )
+      } else if (result.team) {
         toast.success(
           result.reward.kind === "open_power"
             ? `已發送 ${result.reward.amount} 開源力給 ${result.team.name} 全組 (${result.grantedCount} 人)`
@@ -474,7 +483,7 @@ export function StaffRewardsPanel() {
     isStaff &&
     (targetMode === "player"
       ? !!targetPlayer?.playerId
-      : !!selectedTeam?.teamId) &&
+      : allPlayersSelected || !!selectedTeam?.teamId) &&
     (rewardKind === "open_power" ? openPowerAmount >= 1 : !!selectedOption) &&
     (rewardKind === "open_power" || quantity >= 1) &&
     !rewardMutation.isPending
@@ -513,6 +522,24 @@ export function StaffRewardsPanel() {
       if (!selectedOption) return
       rewardMutation.mutate({
         playerId: targetPlayer.playerId,
+        kind: rewardKind,
+        refId: selectedOption.id,
+        quantity,
+      })
+      return
+    }
+    if (allPlayersSelected) {
+      if (rewardKind === "open_power") {
+        rewardMutation.mutate({
+          allPlayers: true,
+          kind: rewardKind,
+          amount: openPowerAmount,
+        })
+        return
+      }
+      if (!selectedOption) return
+      rewardMutation.mutate({
+        allPlayers: true,
         kind: rewardKind,
         refId: selectedOption.id,
         quantity,
@@ -731,7 +758,7 @@ export function StaffRewardsPanel() {
                 <Select
                   value={selectedTeamID}
                   onValueChange={setSelectedTeamID}
-                  disabled={teamsQuery.isPending || teamOptions.length === 0}
+                  disabled={teamsQuery.isPending}
                 >
                   <SelectTrigger className="h-12 w-full">
                     <SelectValue
@@ -741,6 +768,8 @@ export function StaffRewardsPanel() {
                     />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={ALL_PLAYERS_TEAM_ID}>所有人</SelectItem>
+                    {teamOptions.length > 0 ? <SelectSeparator /> : null}
                     {teamOptions.map((team) => (
                       <SelectItem key={team.teamId} value={team.teamId}>
                         {team.name} ({team.memberCount} 人)
@@ -761,12 +790,16 @@ export function StaffRewardsPanel() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-muted-foreground text-xs font-black">
-                      {selectedTeam
-                        ? `${selectedTeam.memberCount} 人`
-                        : "尚未選擇組別"}
+                      {allPlayersSelected
+                        ? "所有玩家"
+                        : selectedTeam
+                          ? `${selectedTeam.memberCount} 人`
+                          : "尚未選擇組別"}
                     </p>
                     <strong className="mt-1 block text-[22px] leading-tight font-black break-words">
-                      {selectedTeam?.name ?? "等待選擇"}
+                      {allPlayersSelected
+                        ? "所有人"
+                        : (selectedTeam?.name ?? "等待選擇")}
                     </strong>
                   </div>
                 </div>

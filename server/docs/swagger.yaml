@@ -2327,6 +2327,9 @@ definitions:
     type: object
   staff.CreateRewardRequest:
     properties:
+      allPlayers:
+        example: false
+        type: boolean
       amount:
         example: 100
         maximum: 99999
@@ -2369,6 +2372,9 @@ definitions:
     type: object
   staff.CreateRewardResponse:
     properties:
+      allPlayers:
+        example: false
+        type: boolean
       grantedCount:
         example: 1
         type: integer
@@ -4613,8 +4619,8 @@ paths:
       consumes:
       - application/json
       description: Staff-only endpoint. Grants one sitone, item, or open power reward
-        to a player selected by player ID or QR code identifier, or to every player
-        in a team, and records the staff grant.
+        to a player selected by player ID or QR code identifier, every player in a
+        team, or all players, and records the staff grant.
       parameters:
       - description: Staff reward request
         in: body

@@ -31,7 +31,7 @@ type rewardDefinition struct {
 
 // CreateReward godoc
 // @Summary Grant sitone, item, or open power as staff
-// @Description Staff-only endpoint. Grants one sitone, item, or open power reward to a player selected by player ID or QR code identifier, or to every player in a team, and records the staff grant.
+// @Description Staff-only endpoint. Grants one sitone, item, or open power reward to a player selected by player ID or QR code identifier, every player in a team, or all players, and records the staff grant.
 // @Tags staff
 // @Accept json
 // @Produce json
@@ -174,6 +174,38 @@ func (h *Handler) findPlayersByTeamID(ctx context.Context, teamID string) ([]mon
 	return players, nil
 }
 
+func (h *Handler) findAllPlayers(ctx context.Context) ([]mongomodel.Player, error) {
+	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(
+		ctx,
+		bson.M{},
+		options.Find().
+			SetProjection(bson.D{
+				{Key: "auth_token", Value: 0},
+				{Key: "qrcode_token", Value: 0},
+				{Key: "default_sitone_ids", Value: 0},
+			}).
+			SetSort(bson.D{
+				{Key: "nickname", Value: 1},
+				{Key: "_id", Value: 1},
+			}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var players []mongomodel.Player
+	if err := cursor.All(ctx, &players); err != nil {
+		return nil, err
+	}
+	if players == nil {
+		return []mongomodel.Player{}, nil
+	}
+	return players, nil
+}
+
 func (h *Handler) createReward(ctx context.Context, staffPlayerID string, recipientPlayerID string, reward rewardDefinition, quantity int) (mongomodel.StaffReward, error) {
 	record := mongomodel.StaffReward{
 		ID:                  newID("staff_reward"),
@@ -259,15 +291,20 @@ func newID(prefix string) string {
 
 func validateRewardTarget(body CreateRewardRequest) []httpx.ErrorDetail {
 	switch {
+	case body.AllPlayers && (body.TeamID != "" || body.PlayerID != "" || body.QRCodeToken != ""):
+		return []httpx.ErrorDetail{{
+			Location: "body.allPlayers",
+			Message:  "allPlayers cannot be combined with playerId, qrcodeToken, or teamId",
+		}}
 	case body.TeamID != "" && (body.PlayerID != "" || body.QRCodeToken != ""):
 		return []httpx.ErrorDetail{{
 			Location: "body.teamId",
 			Message:  "teamId cannot be combined with playerId or qrcodeToken",
 		}}
-	case body.TeamID == "" && body.PlayerID == "" && body.QRCodeToken == "":
+	case !body.AllPlayers && body.TeamID == "" && body.PlayerID == "" && body.QRCodeToken == "":
 		return []httpx.ErrorDetail{{
 			Location: "body.playerId",
-			Message:  "playerId, qrcodeToken, or teamId is required",
+			Message:  "playerId, qrcodeToken, teamId, or allPlayers is required",
 		}}
 	default:
 		return nil
@@ -309,10 +346,36 @@ func (h *Handler) createRewardResponse(
 	reward rewardDefinition,
 	body CreateRewardRequest,
 ) (CreateRewardResponse, int, error) {
+	if body.AllPlayers {
+		return h.createAllPlayersRewardResponse(ctx, staffPlayer, reward, body)
+	}
 	if body.TeamID != "" {
 		return h.createTeamRewardResponse(ctx, staffPlayer, reward, body)
 	}
 	return h.createPlayerRewardResponse(ctx, staffPlayer, reward, body)
+}
+
+func (h *Handler) createAllPlayersRewardResponse(
+	ctx context.Context,
+	staffPlayer mongomodel.Player,
+	reward rewardDefinition,
+	body CreateRewardRequest,
+) (CreateRewardResponse, int, error) {
+	recipients, err := h.findAllPlayers(ctx)
+	if err != nil {
+		return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_player_lookup_failed", err)
+	}
+	if len(recipients) == 0 {
+		return CreateRewardResponse{}, 0, httpx.UnprocessableEntity(
+			"invalid request body",
+			httpx.ErrorDetail{
+				Location: "body.allPlayers",
+				Message:  "no players found",
+			},
+		)
+	}
+
+	return h.createMultiPlayerRewardResponse(ctx, staffPlayer, reward, body, recipients, CreateRewardResponse{AllPlayers: true}, "body.allPlayers", "no players found")
 }
 
 func (h *Handler) createPlayerRewardResponse(
@@ -397,6 +460,24 @@ func (h *Handler) createTeamRewardResponse(
 		)
 	}
 
+	return h.createMultiPlayerRewardResponse(ctx, staffPlayer, reward, body, recipients, CreateRewardResponse{
+		Team: &RewardTeamResponse{
+			TeamID: team.ID,
+			Name:   team.Name,
+		},
+	}, "body.teamId", "team has no players")
+}
+
+func (h *Handler) createMultiPlayerRewardResponse(
+	ctx context.Context,
+	staffPlayer mongomodel.Player,
+	reward rewardDefinition,
+	body CreateRewardRequest,
+	recipients []mongomodel.Player,
+	response CreateRewardResponse,
+	emptyLocation string,
+	emptyMessage string,
+) (CreateRewardResponse, int, error) {
 	rewardIDs := make([]string, 0, len(recipients))
 	rewardValue := body.Quantity
 	if body.Kind == rewardKindOpenPower {
@@ -417,28 +498,23 @@ func (h *Handler) createTeamRewardResponse(
 		return CreateRewardResponse{}, 0, httpx.UnprocessableEntity(
 			"invalid request body",
 			httpx.ErrorDetail{
-				Location: "body.teamId",
-				Message:  "team has no players",
+				Location: emptyLocation,
+				Message:  emptyMessage,
 			},
 		)
 	}
 	slices.Sort(rewardIDs)
 
-	return CreateRewardResponse{
-		RewardIDs:    rewardIDs,
-		GrantedCount: len(rewardIDs),
-		Team: &RewardTeamResponse{
-			TeamID: team.ID,
-			Name:   team.Name,
-		},
-		Reward: RewardResponse{
-			Kind:     reward.kind,
-			ID:       reward.id,
-			Name:     reward.name,
-			Quantity: body.Quantity,
-			Amount:   body.Amount,
-		},
-	}, http.StatusCreated, nil
+	response.RewardIDs = rewardIDs
+	response.GrantedCount = len(rewardIDs)
+	response.Reward = RewardResponse{
+		Kind:     reward.kind,
+		ID:       reward.id,
+		Name:     reward.name,
+		Quantity: body.Quantity,
+		Amount:   body.Amount,
+	}
+	return response, http.StatusCreated, nil
 }
 
 func (h *Handler) publishRewardGranted(ctx context.Context, playerID string, staffPlayer mongomodel.Player, reward mongomodel.StaffReward) {
