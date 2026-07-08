@@ -22,7 +22,7 @@ export function SitoneIcon({
   return (
     <span
       className={cn(
-        "border-ink grid size-9 place-items-center rounded-[12px] border-2 text-[10px] font-black",
+        "border-ink grid size-9 place-items-center overflow-hidden rounded-[12px] border-2 text-[10px] font-black",
         meta.bgClassName,
         className,
       )}
