@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -58,9 +60,9 @@ func run() error {
 	tgClient := telegram.NewClient(&http.Client{
 		Timeout: cfg.HTTPClientTimeout,
 	}, cfg.BotToken, cfg.APIBaseURL)
-	me, err := tgClient.GetMe(ctx)
+	me, err := getTelegramBotProfile(ctx, tgClient, log)
 	if err != nil {
-		return fmt.Errorf("get telegram bot profile: %w", err)
+		return err
 	}
 	if me.Username == "" {
 		return errors.New("telegram bot profile is missing username")
@@ -85,6 +87,51 @@ func run() error {
 		"group_count", len(cfg.GroupTeamMap),
 	)
 	return bot.NewRunner(tgClient, service, cfg.PollTimeout, log).Run(ctx)
+}
+
+type botProfileGetter interface {
+	GetMe(ctx context.Context) (telegram.User, error)
+}
+
+func getTelegramBotProfile(ctx context.Context, getter botProfileGetter, log *slog.Logger) (telegram.User, error) {
+	backoff := time.Second
+	for {
+		me, err := getter.GetMe(ctx)
+		if err == nil {
+			return me, nil
+		}
+		if ctx.Err() != nil {
+			return telegram.User{}, ctx.Err()
+		}
+		if !transientTelegramError(err) {
+			return telegram.User{}, fmt.Errorf("get telegram bot profile: %w", err)
+		}
+		log.Warn("telegram getMe failed; retrying", "error", err, "retry_after", backoff)
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return telegram.User{}, ctx.Err()
+		}
+		if backoff < 30*time.Second {
+			backoff *= 2
+		}
+	}
+}
+
+func transientTelegramError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "bad gateway") ||
+		strings.Contains(message, "gateway timeout") ||
+		strings.Contains(message, "service unavailable") ||
+		strings.Contains(message, "too many requests") ||
+		strings.Contains(message, "telegram getme request failed") ||
+		strings.Contains(message, "timeout") ||
+		strings.Contains(message, "temporary") ||
+		strings.Contains(message, "connection reset") ||
+		strings.Contains(message, "eof")
 }
 
 func connectMongo(ctx context.Context, uri string) (*mongo.Client, error) {
