@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { AppError } from "@/shared/api/error"
 import {
   gameApi,
+  type HomeResponse,
   type PlayerSitone,
   type PlayerStatus,
 } from "@/shared/api/game"
@@ -39,8 +40,23 @@ export function ProfileQrPanel() {
   })
   const avatarMutation = useMutation({
     mutationFn: gameApi.updateAvatar,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["me", "status"] })
+    onSuccess: (result) => {
+      const nextAvatarUrl = result.avatarUrl
+      queryClient.setQueryData<PlayerStatus>(["me", "status"], (current) =>
+        current ? { ...current, avatarUrl: nextAvatarUrl } : current,
+      )
+      queryClient.setQueryData<HomeResponse>(["me", "home"], (current) =>
+        current
+          ? {
+              ...current,
+              player: { ...current.player, avatarUrl: nextAvatarUrl },
+            }
+          : current,
+      )
+      void queryClient.invalidateQueries({ queryKey: ["me"] })
+      void queryClient.invalidateQueries({ queryKey: ["leaderboards"] })
+      void queryClient.invalidateQueries({ queryKey: ["staff", "players"] })
+      void queryClient.invalidateQueries({ queryKey: ["matches"] })
       toast.success("頭貼已更新")
     },
     onError: (error) => {
@@ -66,10 +82,21 @@ export function ProfileQrPanel() {
   })
   const teamAvatarMutation = useMutation({
     mutationFn: gameApi.updateTeamAvatar,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["me", "status"] })
-      void queryClient.invalidateQueries({ queryKey: ["me", "home"] })
+    onSuccess: (result) => {
+      queryClient.setQueryData<PlayerStatus>(["me", "status"], (current) =>
+        current ? { ...current, team: result.team } : current,
+      )
+      queryClient.setQueryData<HomeResponse>(["me", "home"], (current) =>
+        current
+          ? {
+              ...current,
+              player: { ...current.player, team: result.team },
+            }
+          : current,
+      )
+      void queryClient.invalidateQueries({ queryKey: ["me"] })
       void queryClient.invalidateQueries({ queryKey: ["leaderboards"] })
+      void queryClient.invalidateQueries({ queryKey: ["staff", "teams"] })
       toast.success("小隊頭貼已更新")
     },
     onError: (error) => {

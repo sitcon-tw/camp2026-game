@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import {
   gameApi,
@@ -24,6 +24,7 @@ import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { GameIcon } from "@/shared/ui/game-icon"
 import { PageHeader } from "@/shared/ui/page-header"
 import { PlayerAvatar } from "@/shared/ui/player-avatar"
+import { imageSrcCandidates } from "@/shared/utils/image-src"
 
 const TABS: { key: LeaderboardScope; label: string }[] = [
   { key: "teams", label: "團隊" },
@@ -274,23 +275,60 @@ function TeamAvatar({
   avatarUrl?: string
   fallbackClassName: string
 }) {
+  const avatarSrcs = useMemo(() => imageSrcCandidates(avatarUrl), [avatarUrl])
+  const [avatarSrcIndex, setAvatarSrcIndex] = useState(0)
+  const currentAvatarSrc = avatarSrcs[avatarSrcIndex]
+
+  useEffect(() => {
+    setAvatarSrcIndex(0)
+  }, [avatarUrl])
+
   return (
     <div
       className={[
         "border-ink grid size-[42px] rotate-[-6deg] place-items-center overflow-hidden rounded-[14px_18px_12px_16px] border-2",
-        avatarUrl ? "bg-card p-1" : fallbackClassName,
+        currentAvatarSrc ? "bg-card p-1" : fallbackClassName,
       ].join(" ")}
       aria-hidden
     >
-      {avatarUrl ? (
+      {currentAvatarSrc ? (
         <img
-          src={avatarUrl}
+          src={currentAvatarSrc}
           alt=""
           draggable={false}
           className="size-full object-contain"
+          onError={() => setAvatarSrcIndex((index) => index + 1)}
         />
       ) : null}
     </div>
+  )
+}
+
+function TeamPanelIcon({
+  avatarUrl,
+  fallback,
+}: {
+  avatarUrl?: string
+  fallback: React.ReactNode
+}) {
+  const avatarSrcs = useMemo(() => imageSrcCandidates(avatarUrl), [avatarUrl])
+  const [avatarSrcIndex, setAvatarSrcIndex] = useState(0)
+  const currentAvatarSrc = avatarSrcs[avatarSrcIndex]
+
+  useEffect(() => {
+    setAvatarSrcIndex(0)
+  }, [avatarUrl])
+
+  if (!currentAvatarSrc) return fallback
+
+  return (
+    <img
+      src={currentAvatarSrc}
+      alt=""
+      draggable={false}
+      className="size-full object-contain p-0.5"
+      onError={() => setAvatarSrcIndex((index) => index + 1)}
+    />
   )
 }
 
@@ -310,16 +348,10 @@ function TeamPlayersPanel({
     <>
       <PanelTitle
         icon={
-          data?.team.avatarUrl ? (
-            <img
-              src={data.team.avatarUrl}
-              alt=""
-              draggable={false}
-              className="size-full object-contain p-0.5"
-            />
-          ) : (
-            <GameFeatureIcon name="team" className="size-4" />
-          )
+          <TeamPanelIcon
+            avatarUrl={data?.team.avatarUrl}
+            fallback={<GameFeatureIcon name="team" className="size-4" />}
+          />
         }
         title={data?.team.name ?? "隊伍成員"}
         subtitle={
@@ -385,6 +417,7 @@ function TeamPlayerRow({
         <PlayerAvatar
           playerId={player.playerId}
           nickname={player.nickname}
+          avatarUrl={player.avatarUrl}
           className="border-ink size-9 rounded-[13px] border-2"
         />
         <div className="min-w-0">
@@ -421,6 +454,7 @@ function PlayerInventoryPanel({ playerID }: { playerID: string }) {
             <PlayerAvatar
               playerId={data.player.playerId}
               nickname={data.player.nickname}
+              avatarUrl={data.player.avatarUrl}
               className="size-7 rounded-[10px]"
             />
           ) : (

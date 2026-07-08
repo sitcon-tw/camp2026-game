@@ -240,6 +240,7 @@ export function BattleHistoryPage() {
                           <PlayerAvatar
                             playerId={player.playerId}
                             nickname={player.nickname}
+                            avatarUrl={player.avatarUrl}
                             className="border-ink size-8 rounded-[11px] border"
                           />
                           <span className="font-black">{player.nickname}</span>

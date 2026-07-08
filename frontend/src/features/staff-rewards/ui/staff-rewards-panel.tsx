@@ -67,6 +67,7 @@ type TargetPlayer = {
   playerId: string
   nickname: string
   team?: PlayerStatus["team"]
+  avatarUrl?: string
 }
 
 type TargetMode = "player" | "team"
@@ -819,6 +820,7 @@ export function StaffRewardsPanel() {
                                   <PlayerAvatar
                                     playerId={player.playerId}
                                     nickname={player.nickname}
+                                    avatarUrl={player.avatarUrl}
                                     className="border-ink size-9 rounded-[13px] border-2"
                                   />
                                   <span className="min-w-0 flex-1">
@@ -856,6 +858,7 @@ export function StaffRewardsPanel() {
                   <PlayerAvatar
                     playerId={targetPlayer?.playerId}
                     nickname={targetPlayer?.nickname}
+                    avatarUrl={targetPlayer?.avatarUrl}
                     className="border-ink size-[52px] rounded-[18px] border-2"
                   />
                   <div className="min-w-0">
@@ -1228,6 +1231,7 @@ export function StaffRewardsPanel() {
                       <PlayerAvatar
                         playerId={rewardMutation.data.player.playerId}
                         nickname={rewardMutation.data.player.nickname}
+                        avatarUrl={rewardMutation.data.player.avatarUrl}
                         className="border-ink size-6 rounded-[9px] border"
                       />
                       {rewardMutation.data.player.nickname}

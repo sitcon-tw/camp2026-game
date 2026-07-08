@@ -141,6 +141,7 @@ export function BattleResultPage() {
                     <PlayerAvatar
                       playerId={player.playerId}
                       nickname={player.nickname}
+                      avatarUrl={player.avatarUrl}
                       kind={player.kind}
                       className="border-ink mx-auto size-14 rounded-[20px] border-2"
                     />
@@ -198,6 +199,7 @@ export function BattleResultPage() {
                   <PlayerAvatar
                     playerId={player.playerId}
                     nickname={player.nickname}
+                    avatarUrl={player.avatarUrl}
                     kind={player.kind}
                     className="border-ink size-7 rounded-[10px] border"
                   />
@@ -236,6 +238,7 @@ export function BattleResultPage() {
                   <PlayerAvatar
                     playerId={player.playerId}
                     nickname={player.nickname}
+                    avatarUrl={player.avatarUrl}
                     kind={player.kind}
                     className="border-ink size-7 rounded-[10px] border"
                   />
@@ -307,6 +310,7 @@ export function BattleResultPage() {
                         <PlayerAvatar
                           playerId={answer.playerId}
                           nickname={answer.nickname}
+                          avatarUrl={answer.avatarUrl}
                           className="border-ink size-6 rounded-[9px] border"
                         />
                         {answer.nickname}

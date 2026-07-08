@@ -159,6 +159,7 @@ type CompletedMatchResponse struct {
 type CompletedMatchPlayerResponse struct {
 	PlayerID  string   `json:"playerId" example:"7H9K2Q"`
 	Nickname  string   `json:"nickname" example:"Alice"`
+	AvatarURL string   `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
 	SitoneIDs []string `json:"sitoneIds,omitempty" example:"stone_engineering_base,stone_explorer_base"`
 	Score     int      `json:"score" example:"850"`
 }

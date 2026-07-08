@@ -2,8 +2,8 @@ import { createAvatar } from "@dicebear/core"
 import * as thumbs from "@dicebear/thumbs"
 import * as React from "react"
 
-import { Avatar, AvatarImage } from "@/shared/ui/avatar"
-import { toOptimizedImageSrc } from "@/shared/utils/image-src"
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
+import { imageSrcCandidates } from "@/shared/utils/image-src"
 import { cn } from "@/shared/utils"
 
 const COMPUTER_AVATAR_SRC = "/game-icons/avatars/computer-opponent.png"
@@ -54,6 +54,20 @@ export function PlayerAvatar({
           : svgDataUrl(createAvatar(thumbs, { seed }).toString()),
     [avatarUrl, isComputer, seed],
   )
+  const avatarSrcs = React.useMemo(
+    () => imageSrcCandidates(avatarSrc),
+    [avatarSrc],
+  )
+  const [avatarSrcIndex, setAvatarSrcIndex] = React.useState(0)
+  const fallbackSrc = React.useMemo(
+    () => svgDataUrl(createAvatar(thumbs, { seed }).toString()),
+    [seed],
+  )
+  const currentAvatarSrc = avatarSrcs[avatarSrcIndex]
+
+  React.useEffect(() => {
+    setAvatarSrcIndex(0)
+  }, [avatarSrcs])
 
   return (
     <Avatar
@@ -63,13 +77,25 @@ export function PlayerAvatar({
       className={cn("bg-surface-raised", className)}
       {...props}
     >
-      <AvatarImage
-        src={toOptimizedImageSrc(avatarSrc)}
-        alt=""
-        aria-hidden="true"
-        draggable={false}
-        className={cn("block size-full object-cover", svgClassName)}
-      />
+      {currentAvatarSrc ? (
+        <AvatarImage
+          src={currentAvatarSrc}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          className={cn("block size-full object-cover", svgClassName)}
+          onError={() => setAvatarSrcIndex((index) => index + 1)}
+        />
+      ) : null}
+      <AvatarFallback className="bg-transparent">
+        <img
+          src={fallbackSrc}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          className={cn("block size-full object-cover", svgClassName)}
+        />
+      </AvatarFallback>
     </Avatar>
   )
 }

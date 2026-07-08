@@ -53,6 +53,7 @@ type MatchStateResponse struct {
 type MatchPlayerResponse struct {
 	PlayerID                 string                 `json:"playerId" example:"7H9K2Q"`
 	Nickname                 string                 `json:"nickname" example:"Alice"`
+	AvatarURL                string                 `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
 	Kind                     string                 `json:"kind" example:"human"`
 	Ready                    bool                   `json:"ready" example:"true"`
 	AnsweredCurrentQuestion  bool                   `json:"answeredCurrentQuestion,omitempty" example:"true"`
@@ -95,6 +96,7 @@ type MatchQuestionResult struct {
 type MatchAnswerResponse struct {
 	PlayerID      string     `json:"playerId" example:"7H9K2Q"`
 	Nickname      string     `json:"nickname" example:"Alice"`
+	AvatarURL     string     `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
 	Choice        string     `json:"choice,omitempty" example:"A"`
 	Correct       bool       `json:"correct" example:"true"`
 	BaseScore     int        `json:"baseScore" example:"150"`

@@ -62,9 +62,10 @@ type ClaimRewardTokenResponse struct {
 }
 
 type RewardPlayerResponse struct {
-	PlayerID string              `json:"playerId" example:"7H9K2Q"`
-	Nickname string              `json:"nickname" example:"Alice"`
-	Team     *RewardTeamResponse `json:"team,omitempty"`
+	PlayerID  string              `json:"playerId" example:"7H9K2Q"`
+	Nickname  string              `json:"nickname" example:"Alice"`
+	AvatarURL string              `json:"avatarUrl,omitempty" example:"https://example.test/avatar/alice.png"`
+	Team      *RewardTeamResponse `json:"team,omitempty"`
 }
 
 type RewardTeamResponse struct {

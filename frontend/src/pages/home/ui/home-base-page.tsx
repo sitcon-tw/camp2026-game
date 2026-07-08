@@ -138,6 +138,7 @@ export function HomeBasePage() {
           <PlayerAvatar
             playerId={player?.playerId}
             nickname={displayName}
+            avatarUrl={player?.avatarUrl}
             size="lg"
             className="bg-pebble-spark border-ink size-16 rounded-[22px] border-2 text-[26px]"
           />
@@ -289,6 +290,7 @@ export function HomeBasePage() {
                     <PlayerAvatar
                       playerId={member.playerId}
                       nickname={member.nickname}
+                      avatarUrl={member.avatarUrl}
                       size="lg"
                       className="border-ink bg-pebble-resonate border-2"
                     />

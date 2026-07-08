@@ -869,7 +869,7 @@ func TestMatchResultsRevealCompletedAnswers(t *testing.T) {
 		},
 	}
 
-	results, err := handler.matchResults(match, answers)
+	results, err := handler.matchResults(match, answers, map[string]string{"P1": "/avatar/alice.png"})
 	if err != nil {
 		t.Fatalf("match results: %v", err)
 	}
@@ -887,6 +887,9 @@ func TestMatchResultsRevealCompletedAnswers(t *testing.T) {
 	}
 	if results[0].Answers[0].Nickname != "Alice" || results[0].Answers[1].Nickname != "Bob" {
 		t.Fatalf("expected answer rows to include nicknames, got %#v", results[0].Answers)
+	}
+	if results[0].Answers[0].AvatarURL != "/avatar/alice.png" {
+		t.Fatalf("expected answer row to include avatar URL, got %#v", results[0].Answers[0])
 	}
 }
 
@@ -917,7 +920,7 @@ func TestMatchQuestionResultRevealsCurrentRoundAnswers(t *testing.T) {
 		},
 	}
 
-	result, err := handler.matchQuestionResult(match, "quiz-001", answers)
+	result, err := handler.matchQuestionResult(match, "quiz-001", answers, map[string]string{"P1": "/avatar/alice.png"})
 	if err != nil {
 		t.Fatalf("match question result: %v", err)
 	}
@@ -932,6 +935,9 @@ func TestMatchQuestionResultRevealsCurrentRoundAnswers(t *testing.T) {
 	}
 	if result.Answers[1].Choice != "" || result.Answers[1].Correct || result.Answers[1].Score != 0 {
 		t.Fatalf("expected unanswered player row with zero score, got %#v", result.Answers[1])
+	}
+	if result.Answers[0].AvatarURL != "/avatar/alice.png" {
+		t.Fatalf("expected answer row to include avatar URL, got %#v", result.Answers[0])
 	}
 }
 

@@ -17,6 +17,7 @@ const TeamSchema = z.object({
 const TeamMemberSchema = z.object({
   playerId: z.string(),
   nickname: z.string(),
+  avatarUrl: z.string().optional(),
   role: z.string().optional(),
 })
 
@@ -260,6 +261,7 @@ const LeaderboardResponseSchema = z.object({
 const LeaderboardTeamPlayerSchema = z.object({
   playerId: z.string(),
   nickname: z.string(),
+  avatarUrl: z.string().optional(),
   sitoneCount: z.number(),
   itemCount: z.number(),
   openPower: z.number(),
@@ -274,6 +276,7 @@ const LeaderboardTeamPlayersResponseSchema = z.object({
 const LeaderboardInventoryPlayerSchema = z.object({
   playerId: z.string(),
   nickname: z.string(),
+  avatarUrl: z.string().optional(),
   sitoneCount: z.number(),
   itemCount: z.number(),
   openPower: z.number(),
@@ -290,6 +293,7 @@ const LeaderboardPlayerInventoryResponseSchema = z.object({
 const MatchPlayerSchema = z.object({
   playerId: z.string(),
   nickname: z.string(),
+  avatarUrl: z.string().optional(),
   kind: z.enum(["human", "computer"]).default("human"),
   ready: z.boolean(),
   answeredCurrentQuestion: z.boolean().optional(),
@@ -330,6 +334,7 @@ const MatchQuestionSchema = z.object({
 const MatchAnswerResultSchema = z.object({
   playerId: z.string(),
   nickname: z.string(),
+  avatarUrl: z.string().optional(),
   choice: z.string().optional(),
   correct: z.boolean(),
   baseScore: z.number(),
@@ -369,6 +374,7 @@ export const MatchStateSchema = z.object({
 const CompletedMatchPlayerSchema = z.object({
   playerId: z.string(),
   nickname: z.string(),
+  avatarUrl: z.string().optional(),
   sitoneIds: nullableArray(z.string()),
   score: z.number(),
 })
@@ -406,6 +412,7 @@ const StaffPlayerSchema = z.object({
   playerId: z.string(),
   nickname: z.string(),
   team: TeamSchema.optional(),
+  avatarUrl: z.string().optional(),
 })
 
 const StaffTeamSchema = z.object({
@@ -431,6 +438,7 @@ const StaffRewardResponseSchema = z.object({
     .object({
       playerId: z.string(),
       nickname: z.string(),
+      avatarUrl: z.string().optional(),
       team: TeamSchema.optional(),
     })
     .optional(),
@@ -564,6 +572,7 @@ const AdminDashboardPlayerSchema = z.object({
   rank: z.number(),
   playerId: z.string(),
   nickname: z.string(),
+  avatarUrl: z.string().optional(),
   team: AdminDashboardTeamSummarySchema.optional(),
   role: z.string().optional(),
   sitoneCount: z.number(),

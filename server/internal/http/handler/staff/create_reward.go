@@ -422,9 +422,10 @@ func (h *Handler) createPlayerRewardResponse(
 		RewardIDs:    []string{rewardRecord.ID},
 		GrantedCount: 1,
 		Player: &RewardPlayerResponse{
-			PlayerID: recipient.ID,
-			Nickname: recipient.Nickname,
-			Team:     team,
+			PlayerID:  recipient.ID,
+			Nickname:  recipient.Nickname,
+			AvatarURL: recipient.AvatarURL,
+			Team:      team,
 		},
 		Reward: RewardResponse{
 			Kind:     reward.kind,

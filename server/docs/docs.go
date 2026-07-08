@@ -5502,6 +5502,10 @@ const docTemplate = `{
                 "answeredAt": {
                     "type": "string"
                 },
+                "avatarUrl": {
+                    "type": "string",
+                    "example": "/game-icons/stones/basic_blue.png"
+                },
                 "baseScore": {
                     "type": "integer",
                     "example": 150
@@ -5577,6 +5581,10 @@ const docTemplate = `{
                 "answeredCurrentQuestion": {
                     "type": "boolean",
                     "example": true
+                },
+                "avatarUrl": {
+                    "type": "string",
+                    "example": "/game-icons/stones/basic_blue.png"
                 },
                 "baseOpenPowerReward": {
                     "type": "integer",
@@ -6070,6 +6078,10 @@ const docTemplate = `{
         "me.CompletedMatchPlayerResponse": {
             "type": "object",
             "properties": {
+                "avatarUrl": {
+                    "type": "string",
+                    "example": "/game-icons/stones/basic_blue.png"
+                },
                 "nickname": {
                     "type": "string",
                     "example": "Alice"
@@ -6807,6 +6819,10 @@ const docTemplate = `{
         "staff.RewardPlayerResponse": {
             "type": "object",
             "properties": {
+                "avatarUrl": {
+                    "type": "string",
+                    "example": "https://example.test/avatar/alice.png"
+                },
                 "nickname": {
                     "type": "string",
                     "example": "Alice"

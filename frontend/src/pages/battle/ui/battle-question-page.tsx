@@ -186,6 +186,7 @@ function PlayerRail({
           <PlayerAvatar
             playerId={player?.playerId}
             nickname={player?.nickname ?? label}
+            avatarUrl={player?.avatarUrl}
             kind={player?.kind}
             className={cn(
               "border-ink size-11 rounded-[16px] border-2",
@@ -239,6 +240,7 @@ function ChoiceAnswerBadges({
           <PlayerAvatar
             playerId={answer.playerId}
             nickname={answer.nickname}
+            avatarUrl={answer.avatarUrl}
             className="size-4 rounded-full"
           />
           <span className="truncate">{answer.nickname}</span>
