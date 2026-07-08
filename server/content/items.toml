@@ -577,7 +577,7 @@ description = "看起來好像有什麼功能..."
 icon_path = "/game-icons/items/item_postcard_sitcon2026.png"
 source = "shop"
 purchasable = true
-enabled = false
+enabled = true
 price_open_power = 300
 
 [[items]]
@@ -589,7 +589,7 @@ description = "看起來好像有什麼功能..."
 icon_path = "/game-icons/items/item_postcard_star_village.png"
 source = "shop"
 purchasable = true
-enabled = false
+enabled = true
 price_open_power = 300
 
 [[items]]
@@ -601,5 +601,5 @@ description = "看起來好像有什麼功能..."
 icon_path = "/game-icons/items/item_tshirt_2026.png"
 source = "shop"
 purchasable = true
-enabled = false
+enabled = true
 price_open_power = 1200
