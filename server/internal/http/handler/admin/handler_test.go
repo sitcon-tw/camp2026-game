@@ -757,6 +757,9 @@ func TestBuildDashboardResponseIncludesStaffWithTeamsAndRanksPlayers(t *testing.
 	if response.Summary.TotalSitones != 102 || response.Summary.TotalItems != 102 || response.Summary.TotalOpenPower != 1059 {
 		t.Fatalf("expected staff inventory and power to be included, got %#v", response.Summary)
 	}
+	if response.Summary.MedianOpenPower != 30 {
+		t.Fatalf("unexpected median open power: %#v", response.Summary)
+	}
 	if response.Summary.AnswerCount != 3 || response.Summary.CorrectAnswerCount != 2 || response.Summary.AnswerAccuracy != 67 {
 		t.Fatalf("unexpected answer summary: %#v", response.Summary)
 	}

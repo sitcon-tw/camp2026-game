@@ -29,25 +29,26 @@ type DashboardHistoryPointResponse struct {
 }
 
 type DashboardSummaryResponse struct {
-	PlayerCount          int `json:"playerCount" example:"120"`
-	StaffCount           int `json:"staffCount" example:"18"`
-	TeamCount            int `json:"teamCount" example:"12"`
-	UngroupedPlayerCount int `json:"ungroupedPlayerCount" example:"3"`
-	TotalSitones         int `json:"totalSitones" example:"420"`
-	TotalItems           int `json:"totalItems" example:"188"`
-	TotalOpenPower       int `json:"totalOpenPower" example:"98220"`
-	TotalMatches         int `json:"totalMatches" example:"64"`
-	WaitingMatches       int `json:"waitingMatches" example:"2"`
-	ActiveMatches        int `json:"activeMatches" example:"4"`
-	CompletedMatches     int `json:"completedMatches" example:"58"`
-	AnswerCount          int `json:"answerCount" example:"240"`
-	CorrectAnswerCount   int `json:"correctAnswerCount" example:"180"`
-	AnswerAccuracy       int `json:"answerAccuracy" example:"75"`
-	ShopPurchaseCount    int `json:"shopPurchaseCount" example:"44"`
-	FusionCount          int `json:"fusionCount" example:"21"`
-	StaffRewardCount     int `json:"staffRewardCount" example:"88"`
-	ItemDropCount        int `json:"itemDropCount" example:"114"`
-	DroppedItemCount     int `json:"droppedItemCount" example:"39"`
+	PlayerCount          int     `json:"playerCount" example:"120"`
+	StaffCount           int     `json:"staffCount" example:"18"`
+	TeamCount            int     `json:"teamCount" example:"12"`
+	UngroupedPlayerCount int     `json:"ungroupedPlayerCount" example:"3"`
+	TotalSitones         int     `json:"totalSitones" example:"420"`
+	TotalItems           int     `json:"totalItems" example:"188"`
+	TotalOpenPower       int     `json:"totalOpenPower" example:"98220"`
+	MedianOpenPower      float64 `json:"medianOpenPower" example:"818.5"`
+	TotalMatches         int     `json:"totalMatches" example:"64"`
+	WaitingMatches       int     `json:"waitingMatches" example:"2"`
+	ActiveMatches        int     `json:"activeMatches" example:"4"`
+	CompletedMatches     int     `json:"completedMatches" example:"58"`
+	AnswerCount          int     `json:"answerCount" example:"240"`
+	CorrectAnswerCount   int     `json:"correctAnswerCount" example:"180"`
+	AnswerAccuracy       int     `json:"answerAccuracy" example:"75"`
+	ShopPurchaseCount    int     `json:"shopPurchaseCount" example:"44"`
+	FusionCount          int     `json:"fusionCount" example:"21"`
+	StaffRewardCount     int     `json:"staffRewardCount" example:"88"`
+	ItemDropCount        int     `json:"itemDropCount" example:"114"`
+	DroppedItemCount     int     `json:"droppedItemCount" example:"39"`
 }
 
 type DashboardTopPlayersResponse struct {

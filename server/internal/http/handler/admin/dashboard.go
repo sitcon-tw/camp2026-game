@@ -584,6 +584,7 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 			TotalSitones:         dashboardTotalPlayers(players, func(player DashboardPlayerResponse) int { return player.SitoneCount }),
 			TotalItems:           dashboardTotalPlayers(players, func(player DashboardPlayerResponse) int { return player.ItemCount }),
 			TotalOpenPower:       dashboardTotalPlayers(players, func(player DashboardPlayerResponse) int { return player.OpenPower }),
+			MedianOpenPower:      dashboardMedianPlayers(players, func(player DashboardPlayerResponse) int { return player.OpenPower }),
 			TotalMatches:         matchSummary.Total,
 			WaitingMatches:       matchSummary.Waiting,
 			ActiveMatches:        matchSummary.Active,
@@ -1073,6 +1074,24 @@ func dashboardTotalPlayers(players []DashboardPlayerResponse, pick func(Dashboar
 		total += pick(player)
 	}
 	return total
+}
+
+func dashboardMedianPlayers(players []DashboardPlayerResponse, pick func(DashboardPlayerResponse) int) float64 {
+	if len(players) == 0 {
+		return 0
+	}
+
+	values := make([]int, len(players))
+	for i, player := range players {
+		values[i] = pick(player)
+	}
+	sort.Ints(values)
+
+	mid := len(values) / 2
+	if len(values)%2 == 1 {
+		return float64(values[mid])
+	}
+	return float64(values[mid-1]+values[mid]) / 2
 }
 
 func dashboardPercent(part int, total int) int {
