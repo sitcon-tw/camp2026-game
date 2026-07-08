@@ -1246,7 +1246,7 @@ definitions:
         type: array
       gapToPrevious:
         example: 3
-        type: integer
+        type: number
       scope:
         example: teams
         type: string
@@ -1271,6 +1271,12 @@ definitions:
       avatarUrl:
         example: /game-icons/stones/basic_blue.png
         type: string
+      averageOpenPower:
+        example: 118.8
+        type: number
+      averageSitones:
+        example: 1.8
+        type: number
       current:
         example: true
         type: boolean
@@ -1282,6 +1288,9 @@ definitions:
         type: string
       openPower:
         example: 1188
+        type: integer
+      playerCount:
+        example: 10
         type: integer
       rank:
         example: 2
@@ -2154,14 +2163,23 @@ definitions:
       avatarUrl:
         example: /game-icons/stones/basic_blue.png
         type: string
+      averageOpenPower:
+        example: 118.8
+        type: number
+      averageSitones:
+        example: 1.8
+        type: number
       gapToPrevious:
         example: 3
-        type: integer
+        type: number
       name:
         example: Blue Team
         type: string
       openPower:
         example: 1188
+        type: integer
+      playerCount:
+        example: 10
         type: integer
       rank:
         example: 2
@@ -3442,7 +3460,7 @@ paths:
       - system
   /leaderboards:
     get:
-      description: Lists team or player rankings by sitone count, then open power.
+      description: Lists team rankings by per-player average sitone count, then average open power, or player rankings by sitone count, then open power.
       parameters:
       - description: Leaderboard scope
         enum:
@@ -4069,7 +4087,8 @@ paths:
   /me/home:
     get:
       description: Returns the authenticated player's home page summary, resource
-        counts, and team rank by sitone count and open power.
+        counts, and team rank by per-player average sitone count and average open
+        power.
       produces:
       - application/json
       responses:

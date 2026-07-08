@@ -26,7 +26,7 @@ func TestIsValidScope(t *testing.T) {
 	}
 }
 
-func TestTeamEntriesRankBySitoneThenOpenPowerThenName(t *testing.T) {
+func TestTeamEntriesRankByAverageSitonesThenAverageOpenPowerThenName(t *testing.T) {
 	teams := []mongomodel.Team{
 		{ID: "team-a", Name: "Alpha"},
 		{ID: "team-b", Name: "Beta"},
@@ -35,23 +35,23 @@ func TestTeamEntriesRankBySitoneThenOpenPowerThenName(t *testing.T) {
 	}
 	players := []mongomodel.Player{
 		{ID: "player-a", Nickname: "Alice", TeamID: "team-a"},
-		{ID: "player-b", Nickname: "Bob", TeamID: "team-b"},
-		{ID: "player-c", Nickname: "Cody", TeamID: "team-c"},
-		{ID: "player-d", Nickname: "Dana", TeamID: "team-d"},
-		{ID: "staff-a", Nickname: "Staff", TeamID: "team-d", Role: authctx.PlayerRoleStaff},
+		{ID: "player-b", Nickname: "Bob", TeamID: "team-a"},
+		{ID: "player-c", Nickname: "Cody", TeamID: "team-b"},
+		{ID: "player-d", Nickname: "Dana", TeamID: "team-c"},
+		{ID: "player-e", Nickname: "Eve", TeamID: "team-c"},
 	}
 	stats := map[string]rankStats{
 		"player-a": {SitoneCount: 2, OpenPower: 100},
-		"player-b": {SitoneCount: 3, OpenPower: 10},
-		"player-c": {SitoneCount: 2, OpenPower: 150},
-		"player-d": {SitoneCount: 2, OpenPower: 150},
-		"staff-a":  {SitoneCount: 99, OpenPower: 99},
+		"player-b": {SitoneCount: 2, OpenPower: 100},
+		"player-c": {SitoneCount: 4, OpenPower: 20},
+		"player-d": {SitoneCount: 4, OpenPower: 50},
+		"player-e": {SitoneCount: 4, OpenPower: 50},
 	}
 
-	entries := teamEntries(teams, players, stats, "team-c")
-	current, gap := currentEntryAndGap(entries)
+	entries := teamEntries(teams, players, stats, "team-a")
+	current, gap := currentEntryAndGap(entries, true)
 
-	wantIDs := []string{"team-d", "team-b", "team-c", "team-a"}
+	wantIDs := []string{"team-c", "team-b", "team-a", "team-d"}
 	if len(entries) != len(wantIDs) {
 		t.Fatalf("expected %d entries, got %#v", len(wantIDs), entries)
 	}
@@ -60,17 +60,17 @@ func TestTeamEntriesRankBySitoneThenOpenPowerThenName(t *testing.T) {
 			t.Fatalf("unexpected entry at %d: got %#v want id %q rank %d", index, entries[index], wantID, index+1)
 		}
 	}
-	if entries[0].SitoneCount != 101 || entries[0].OpenPower != 249 {
-		t.Fatalf("expected staff stats to be included in team-d, got %#v", entries[0])
+	if entries[0].SitoneCount != 8 || entries[0].PlayerCount != 2 || entries[0].AverageSitones != 4 {
+		t.Fatalf("expected team-c to rank by average open power tie-breaker, got %#v", entries[0])
 	}
-	if entries[0].AvatarURL != "/game-icons/stones/basic_blue.png" {
-		t.Fatalf("expected team avatar url, got %#v", entries[0])
+	if entries[1].SitoneCount != 4 || entries[1].PlayerCount != 1 || entries[1].AverageSitones != 4 {
+		t.Fatalf("expected team-b totals with balanced average, got %#v", entries[1])
 	}
-	if current == nil || current.ID != "team-c" || !current.Current {
-		t.Fatalf("expected current team-c entry, got %#v", current)
+	if current == nil || current.ID != "team-a" || !current.Current {
+		t.Fatalf("expected current team-a entry, got %#v", current)
 	}
-	if gap != 1 {
-		t.Fatalf("expected sitone-count gap 1, got %d", gap)
+	if gap != 2 {
+		t.Fatalf("expected average sitone gap 2, got %v", gap)
 	}
 }
 
@@ -107,7 +107,7 @@ func TestPlayerEntriesRankBySitoneThenOpenPowerThenName(t *testing.T) {
 	}
 
 	entries := playerEntries(players, teams, stats, "player-a")
-	current, gap := currentEntryAndGap(entries)
+	current, gap := currentEntryAndGap(entries, false)
 
 	wantIDs := []string{"staff-a", "player-b", "player-a", "player-c"}
 	if len(entries) != len(wantIDs) {
@@ -125,7 +125,7 @@ func TestPlayerEntriesRankBySitoneThenOpenPowerThenName(t *testing.T) {
 		t.Fatalf("expected current player-a entry, got %#v", current)
 	}
 	if gap != 0 {
-		t.Fatalf("expected same sitone-count gap 0, got %d", gap)
+		t.Fatalf("expected same sitone-count gap 0, got %v", gap)
 	}
 }
 
@@ -135,12 +135,27 @@ func TestCurrentEntryGapUsesSitoneCount(t *testing.T) {
 		{ID: "current", SitoneCount: 4, Rank: 2, Current: true},
 	}
 
-	current, gap := currentEntryAndGap(entries)
+	current, gap := currentEntryAndGap(entries, false)
 	if current == nil || current.ID != "current" {
 		t.Fatalf("expected current entry, got %#v", current)
 	}
 	if gap != 3 {
-		t.Fatalf("expected gap 3, got %d", gap)
+		t.Fatalf("expected gap 3, got %v", gap)
+	}
+}
+
+func TestCurrentEntryGapUsesAverageSitonesForTeams(t *testing.T) {
+	entries := []RankEntryResponse{
+		{ID: "first", SitoneCount: 7, PlayerCount: 2, Rank: 1},
+		{ID: "current", SitoneCount: 6, PlayerCount: 2, Rank: 2, Current: true},
+	}
+
+	current, gap := currentEntryAndGap(entries, true)
+	if current == nil || current.ID != "current" {
+		t.Fatalf("expected current entry, got %#v", current)
+	}
+	if gap != 0.5 {
+		t.Fatalf("expected average gap 0.5, got %v", gap)
 	}
 }
 

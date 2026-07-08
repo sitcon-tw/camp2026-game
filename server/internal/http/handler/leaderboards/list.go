@@ -2,6 +2,7 @@ package leaderboards
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"sort"
 	"strings"
@@ -24,9 +25,14 @@ type rankStats struct {
 	OpenPower   int
 }
 
+type teamRankStats struct {
+	rankStats
+	PlayerCount int
+}
+
 // List godoc
 // @Summary List leaderboard
-// @Description Lists team or player rankings by sitone count, then open power.
+// @Description Lists team rankings by per-player average sitone count, then average open power, or player rankings by sitone count, then open power.
 // @Tags leaderboards
 // @Produce json
 // @Security AuthCookieAuth
@@ -97,7 +103,7 @@ func (h *Handler) leaderboard(ctx context.Context, scope string, currentPlayer m
 	default:
 		entries = []RankEntryResponse{}
 	}
-	currentEntry, gapToPrevious := currentEntryAndGap(entries)
+	currentEntry, gapToPrevious := currentEntryAndGap(entries, scope == ScopeTeams)
 
 	return ListResponse{
 		Scope:         scope,
@@ -233,7 +239,7 @@ func scoreMapFromCursor(ctx context.Context, cursor *mongo.Cursor) (map[string]i
 }
 
 func teamEntries(teams []mongomodel.Team, players []mongomodel.Player, stats map[string]rankStats, currentTeamID string) []RankEntryResponse {
-	statsByTeam := make(map[string]rankStats, len(teams))
+	statsByTeam := make(map[string]teamRankStats, len(teams))
 	for _, player := range players {
 		if !isLeaderboardPlayer(player) {
 			continue
@@ -242,6 +248,7 @@ func teamEntries(teams []mongomodel.Team, players []mongomodel.Player, stats map
 		playerStats := stats[player.ID]
 		current.SitoneCount += playerStats.SitoneCount
 		current.OpenPower += playerStats.OpenPower
+		current.PlayerCount++
 		statsByTeam[player.TeamID] = current
 	}
 
@@ -256,12 +263,21 @@ func teamEntries(teams []mongomodel.Team, players []mongomodel.Player, stats map
 			TeamID:      team.ID,
 			Name:        team.Name,
 			AvatarURL:   team.AvatarURL,
+			PlayerCount: teamStats.PlayerCount,
 			SitoneCount: teamStats.SitoneCount,
-			OpenPower:   teamStats.OpenPower,
-			Current:     team.ID == currentTeamID,
+			AverageSitones: balancedAverage(
+				teamStats.SitoneCount,
+				teamStats.PlayerCount,
+			),
+			OpenPower: teamStats.OpenPower,
+			AverageOpenPower: balancedAverage(
+				teamStats.OpenPower,
+				teamStats.PlayerCount,
+			),
+			Current: team.ID == currentTeamID,
 		})
 	}
-	sortRankEntries(entries)
+	sortTeamRankEntries(entries)
 	assignRanks(entries)
 	return entries
 }
@@ -320,13 +336,76 @@ func sortRankEntries(entries []RankEntryResponse) {
 	})
 }
 
+func sortTeamRankEntries(entries []RankEntryResponse) {
+	sort.Slice(entries, func(i, j int) bool {
+		if comparison := compareBalancedTotals(
+			entries[i].SitoneCount,
+			entries[i].PlayerCount,
+			entries[j].SitoneCount,
+			entries[j].PlayerCount,
+		); comparison != 0 {
+			return comparison > 0
+		}
+		if comparison := compareBalancedTotals(
+			entries[i].OpenPower,
+			entries[i].PlayerCount,
+			entries[j].OpenPower,
+			entries[j].PlayerCount,
+		); comparison != 0 {
+			return comparison > 0
+		}
+		if entries[i].Name != entries[j].Name {
+			return entries[i].Name < entries[j].Name
+		}
+		return entries[i].ID < entries[j].ID
+	})
+}
+
+func compareBalancedTotals(leftTotal int, leftPlayerCount int, rightTotal int, rightPlayerCount int) int {
+	leftDenominator := balancedDenominator(leftPlayerCount)
+	rightDenominator := balancedDenominator(rightPlayerCount)
+	left := int64(leftTotal) * int64(rightDenominator)
+	right := int64(rightTotal) * int64(leftDenominator)
+	if left > right {
+		return 1
+	}
+	if left < right {
+		return -1
+	}
+	return 0
+}
+
+func balancedAverage(total int, playerCount int) float64 {
+	if playerCount <= 0 {
+		return 0
+	}
+	return roundOneDecimal(float64(total) / float64(playerCount))
+}
+
+func balancedAverageGap(previous RankEntryResponse, current RankEntryResponse) float64 {
+	previousAverage := float64(previous.SitoneCount) / float64(balancedDenominator(previous.PlayerCount))
+	currentAverage := float64(current.SitoneCount) / float64(balancedDenominator(current.PlayerCount))
+	return roundOneDecimal(previousAverage - currentAverage)
+}
+
+func balancedDenominator(playerCount int) int {
+	if playerCount <= 0 {
+		return 1
+	}
+	return playerCount
+}
+
+func roundOneDecimal(value float64) float64 {
+	return math.Round(value*10) / 10
+}
+
 func assignRanks(entries []RankEntryResponse) {
 	for i := range entries {
 		entries[i].Rank = i + 1
 	}
 }
 
-func currentEntryAndGap(entries []RankEntryResponse) (*RankEntryResponse, int) {
+func currentEntryAndGap(entries []RankEntryResponse, balanced bool) (*RankEntryResponse, float64) {
 	for i := range entries {
 		if !entries[i].Current {
 			continue
@@ -334,7 +413,10 @@ func currentEntryAndGap(entries []RankEntryResponse) (*RankEntryResponse, int) {
 		if i == 0 {
 			return &entries[i], 0
 		}
-		return &entries[i], entries[i-1].SitoneCount - entries[i].SitoneCount
+		if balanced {
+			return &entries[i], balancedAverageGap(entries[i-1], entries[i])
+		}
+		return &entries[i], float64(entries[i-1].SitoneCount - entries[i].SitoneCount)
 	}
 	return nil, 0
 }

@@ -41,8 +41,11 @@ const HomeTeamRankSchema = z.object({
   rank: z.number(),
   teamId: z.string(),
   name: z.string(),
+  playerCount: z.number(),
   sitoneCount: z.number(),
+  averageSitones: z.number(),
   openPower: z.number(),
+  averageOpenPower: z.number(),
   gapToPrevious: z.number(),
 })
 
@@ -246,8 +249,11 @@ const LeaderboardEntrySchema = z.object({
   teamId: z.string().optional(),
   teamName: z.string().optional(),
   avatarUrl: z.string().optional(),
+  playerCount: z.number().optional(),
   sitoneCount: z.number(),
+  averageSitones: z.number().optional(),
   openPower: z.number(),
+  averageOpenPower: z.number().optional(),
   current: z.boolean(),
 })
 

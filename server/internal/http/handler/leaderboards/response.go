@@ -4,19 +4,22 @@ type ListResponse struct {
 	Scope         string              `json:"scope" example:"teams"`
 	Entries       []RankEntryResponse `json:"entries"`
 	CurrentEntry  *RankEntryResponse  `json:"currentEntry,omitempty"`
-	GapToPrevious int                 `json:"gapToPrevious" example:"3"`
+	GapToPrevious float64             `json:"gapToPrevious" example:"3"`
 }
 
 type RankEntryResponse struct {
-	Rank        int    `json:"rank" example:"2"`
-	ID          string `json:"id" example:"8M4RXP"`
-	Name        string `json:"name" example:"Blue Team"`
-	TeamID      string `json:"teamId,omitempty" example:"8M4RXP"`
-	TeamName    string `json:"teamName,omitempty" example:"Blue Team"`
-	AvatarURL   string `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
-	SitoneCount int    `json:"sitoneCount" example:"18"`
-	OpenPower   int    `json:"openPower" example:"1188"`
-	Current     bool   `json:"current" example:"true"`
+	Rank             int     `json:"rank" example:"2"`
+	ID               string  `json:"id" example:"8M4RXP"`
+	Name             string  `json:"name" example:"Blue Team"`
+	TeamID           string  `json:"teamId,omitempty" example:"8M4RXP"`
+	TeamName         string  `json:"teamName,omitempty" example:"Blue Team"`
+	AvatarURL        string  `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
+	PlayerCount      int     `json:"playerCount,omitempty" example:"10"`
+	SitoneCount      int     `json:"sitoneCount" example:"18"`
+	AverageSitones   float64 `json:"averageSitones,omitempty" example:"1.8"`
+	OpenPower        int     `json:"openPower" example:"1188"`
+	AverageOpenPower float64 `json:"averageOpenPower,omitempty" example:"118.8"`
+	Current          bool    `json:"current" example:"true"`
 }
 
 type TeamSummaryResponse struct {
