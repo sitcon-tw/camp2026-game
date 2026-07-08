@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowUpDown,
   CheckCircle2,
+  ChevronDown,
   Clock,
   ImageIcon,
   LogOut,
@@ -85,6 +86,11 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/shared/ui/chart"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/shared/ui/collapsible"
 import { Field } from "@/shared/ui/field"
 import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GameIcon } from "@/shared/ui/game-icon"
@@ -574,7 +580,7 @@ export function AdminPanelPage() {
   return (
     <GamePageShell
       ariaLabel="Admin dashboard"
-      contentClassName="grid min-w-0 max-w-[1440px] content-start gap-y-4 overflow-x-hidden px-3 pb-8 sm:px-5 lg:px-8"
+      contentClassName="grid min-w-0 max-w-[1440px] content-start gap-y-4 overflow-x-hidden px-3 pb-8 sm:px-5 lg:px-8 [&_[data-slot=card-content]]:min-w-0 [&_[data-slot=card-header]]:min-w-0 [&_[data-slot=card]]:min-w-0 [&_[data-slot=table-container]]:max-w-full"
     >
       <PageHeader
         title="Admin"
@@ -615,83 +621,111 @@ export function AdminPanelPage() {
         }
       />
 
-      {dashboardQuery.isPending ? (
-        <DashboardLoadingCard />
-      ) : dashboardQuery.error ? (
-        <Card className="rounded-[18px] py-5">
-          <CardHeader>
-            <CardTitle>Dashboard 無法讀取</CardTitle>
-            <CardDescription>
-              {errorMessage(
-                dashboardQuery.error,
-                "請確認後端服務與資料庫狀態。",
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button onClick={() => dashboardQuery.refetch()}>重新整理</Button>
-          </CardFooter>
-        </Card>
-      ) : dashboardQuery.data ? (
-        <AdminDashboardView
-          dashboard={dashboardQuery.data}
-          history={historyQuery.data}
-          giftHistory={giftHistoryQuery.data}
-          studentChanges={studentChangesQuery.data}
-          giftHistoryError={giftHistoryQuery.error}
-          giftHistoryPending={giftHistoryQuery.isPending}
-          studentChangesError={studentChangesQuery.error}
-          studentChangesPending={studentChangesQuery.isPending}
-          historyError={historyQuery.error}
-          historyPending={historyQuery.isPending}
-          onRetryHistory={() => historyQuery.refetch()}
-          onRetryGiftHistory={() => giftHistoryQuery.refetch()}
-          onRetryStudentChanges={() => studentChangesQuery.refetch()}
+      <AdminCollapsibleSection
+        title="營運總覽"
+        description="玩家、資源、紀錄與排行榜。"
+        badge={dashboardQuery.data ? "Live" : undefined}
+        defaultOpen
+      >
+        {dashboardQuery.isPending ? (
+          <DashboardLoadingCard />
+        ) : dashboardQuery.error ? (
+          <Card className="rounded-[18px] py-5">
+            <CardHeader>
+              <CardTitle>Dashboard 無法讀取</CardTitle>
+              <CardDescription>
+                {errorMessage(
+                  dashboardQuery.error,
+                  "請確認後端服務與資料庫狀態。",
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button onClick={() => dashboardQuery.refetch()}>重新整理</Button>
+            </CardFooter>
+          </Card>
+        ) : dashboardQuery.data ? (
+          <AdminDashboardView
+            dashboard={dashboardQuery.data}
+            history={historyQuery.data}
+            giftHistory={giftHistoryQuery.data}
+            studentChanges={studentChangesQuery.data}
+            giftHistoryError={giftHistoryQuery.error}
+            giftHistoryPending={giftHistoryQuery.isPending}
+            studentChangesError={studentChangesQuery.error}
+            studentChangesPending={studentChangesQuery.isPending}
+            historyError={historyQuery.error}
+            historyPending={historyQuery.isPending}
+            onRetryHistory={() => historyQuery.refetch()}
+            onRetryGiftHistory={() => giftHistoryQuery.refetch()}
+            onRetryStudentChanges={() => studentChangesQuery.refetch()}
+          />
+        ) : null}
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="上課時間開局限制"
+        description="控制課堂期間是否可以建立與開始對戰。"
+        badge={settings.battleOpeningLocked ? "LOCKED" : "OPEN"}
+        defaultOpen={settings.battleOpeningLocked}
+      >
+        <AdminClassTimeBattleLockPanel
+          settings={settings}
+          isPending={updateMutation.isPending}
+          onSubmit={handleUpdate}
+          onUpdate={updateDraft}
         />
-      ) : null}
+      </AdminCollapsibleSection>
 
-      <AdminClassTimeBattleLockPanel
-        settings={settings}
-        isPending={updateMutation.isPending}
-        onSubmit={handleUpdate}
-        onUpdate={updateDraft}
-      />
+      <AdminCollapsibleSection
+        title="管理設定"
+        description="電腦對戰、同隊對戰與電腦答對率。"
+        badge="Admin only"
+      >
+        <AdminSettingsPanel
+          settings={settings}
+          isPending={updateMutation.isPending}
+          onSubmit={handleUpdate}
+          onUpdate={updateDraft}
+        />
+      </AdminCollapsibleSection>
 
-      <AdminSettingsPanel
-        settings={settings}
-        isPending={updateMutation.isPending}
-        onSubmit={handleUpdate}
-        onUpdate={updateDraft}
-      />
-
-      <AdminCommunityStandsPanel
-        stands={communityStandsQuery.data ?? []}
-        claims={communityStandClaimsQuery.data ?? []}
-        claimsError={communityStandClaimsQuery.error}
-        claimsPending={communityStandClaimsQuery.isPending}
-        error={communityStandsQuery.error}
-        isPending={communityStandsQuery.isPending}
-        isCreateFormOpen={creatingCommunityStand}
-        isCreating={createCommunityStandMutation.isPending}
-        deletingStandID={
-          deleteCommunityStandMutation.isPending
-            ? deleteCommunityStandMutation.variables
-            : undefined
-        }
-        pendingStandID={
-          updateCommunityStandMutation.isPending
-            ? updateCommunityStandMutation.variables?.standID
-            : undefined
-        }
-        onRetryClaims={() => communityStandClaimsQuery.refetch()}
-        onRetry={() => communityStandsQuery.refetch()}
-        onToggleCreate={() => setCreatingCommunityStand((current) => !current)}
-        onCreate={(input) => createCommunityStandMutation.mutate(input)}
-        onDelete={(standID) => deleteCommunityStandMutation.mutate(standID)}
-        onSubmit={(standID, input) =>
-          updateCommunityStandMutation.mutate({ standID, input })
-        }
-      />
+      <AdminCollapsibleSection
+        title="攤位設定"
+        description="社群攤位顯示、啟用狀態與掃描獎勵。"
+        badge={`${formatNumber(communityStandsQuery.data?.length ?? 0)} booths`}
+      >
+        <AdminCommunityStandsPanel
+          stands={communityStandsQuery.data ?? []}
+          claims={communityStandClaimsQuery.data ?? []}
+          claimsError={communityStandClaimsQuery.error}
+          claimsPending={communityStandClaimsQuery.isPending}
+          error={communityStandsQuery.error}
+          isPending={communityStandsQuery.isPending}
+          isCreateFormOpen={creatingCommunityStand}
+          isCreating={createCommunityStandMutation.isPending}
+          deletingStandID={
+            deleteCommunityStandMutation.isPending
+              ? deleteCommunityStandMutation.variables
+              : undefined
+          }
+          pendingStandID={
+            updateCommunityStandMutation.isPending
+              ? updateCommunityStandMutation.variables?.standID
+              : undefined
+          }
+          onRetryClaims={() => communityStandClaimsQuery.refetch()}
+          onRetry={() => communityStandsQuery.refetch()}
+          onToggleCreate={() =>
+            setCreatingCommunityStand((current) => !current)
+          }
+          onCreate={(input) => createCommunityStandMutation.mutate(input)}
+          onDelete={(standID) => deleteCommunityStandMutation.mutate(standID)}
+          onSubmit={(standID, input) =>
+            updateCommunityStandMutation.mutate({ standID, input })
+          }
+        />
+      </AdminCollapsibleSection>
     </GamePageShell>
   )
 }
@@ -704,6 +738,70 @@ function DashboardLoadingCard() {
         <span className="font-black">正在載入 dashboard 統計</span>
       </CardContent>
     </Card>
+  )
+}
+
+function AdminCollapsibleSection({
+  title,
+  description,
+  badge,
+  defaultOpen = false,
+  open,
+  onOpenChange,
+  children,
+}: {
+  title: string
+  description?: string
+  badge?: string
+  defaultOpen?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  children: ReactNode
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
+  const isOpen = open ?? uncontrolledOpen
+  const handleOpenChange = onOpenChange ?? setUncontrolledOpen
+
+  return (
+    <Collapsible
+      open={isOpen}
+      onOpenChange={handleOpenChange}
+      className="grid min-w-0 gap-3"
+    >
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="border-ink bg-card text-foreground focus-visible:outline-power grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border-2 p-4 text-left shadow-[3px_3px_0_rgba(23,35,58,0.12)] transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
+        >
+          <span className="grid min-w-0 gap-1">
+            <span className="truncate text-lg leading-tight font-black">
+              {title}
+            </span>
+            {description ? (
+              <span className="text-muted-foreground text-sm font-semibold break-words">
+                {description}
+              </span>
+            ) : null}
+          </span>
+          <span className="flex min-w-0 items-center justify-end gap-2">
+            {badge ? (
+              <Badge variant="outline" className="max-w-[9rem] truncate">
+                {badge}
+              </Badge>
+            ) : null}
+            <ChevronDown
+              className={cn(
+                "size-5 shrink-0 transition-transform duration-200",
+                isOpen && "rotate-180",
+              )}
+            />
+          </span>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down grid min-w-0 gap-3 overflow-hidden">
+        <div className="grid min-w-0 gap-3">{children}</div>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
@@ -738,6 +836,12 @@ function AdminDashboardView({
 }) {
   const { summary, matches } = dashboard
   const [statsTab, setStatsTab] = useState("players")
+  const [statsOpen, setStatsOpen] = useState(false)
+
+  function openPlayersStats() {
+    setStatsTab("players")
+    setStatsOpen(true)
+  }
 
   return (
     <div className="grid min-w-0 gap-4">
@@ -856,65 +960,88 @@ function AdminDashboardView({
         </Card>
       </section>
 
-      <ResourceHistoryPanel
-        history={history}
-        isPending={historyPending}
-        error={historyError}
-        onRetry={onRetryHistory}
-      />
-
-      <AdminGiftHistoryPanel
-        entries={giftHistory}
-        isPending={giftHistoryPending}
-        error={giftHistoryError}
-        onRetry={onRetryGiftHistory}
-      />
-
-      <StudentChangesPanel
-        entries={studentChanges}
-        isPending={studentChangesPending}
-        error={studentChangesError}
-        onRetry={onRetryStudentChanges}
-      />
-
-      <MostOwnedPanel inventory={dashboard.inventory} />
-
-      <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] 2xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
-        <TopPlayersPanel
-          topPlayers={dashboard.topPlayers}
-          onOpenPlayers={() => setStatsTab("players")}
+      <AdminCollapsibleSection
+        title="紀錄與曲線"
+        description="資源曲線、staff 發獎與學員資源變動。"
+        badge={`${formatNumber((giftHistory?.length ?? 0) + (studentChanges?.length ?? 0))} records`}
+      >
+        <ResourceHistoryPanel
+          history={history}
+          isPending={historyPending}
+          error={historyError}
+          onRetry={onRetryHistory}
         />
-        <TeamsPanel teams={dashboard.teams} />
-      </section>
 
-      <Tabs value={statsTab} onValueChange={setStatsTab} className="gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-black">完整統計</h2>
-            <p className="text-muted-foreground text-sm font-semibold">
-              玩家、庫存與對戰活動的營運檢視。
-            </p>
+        <AdminGiftHistoryPanel
+          entries={giftHistory}
+          isPending={giftHistoryPending}
+          error={giftHistoryError}
+          onRetry={onRetryGiftHistory}
+        />
+
+        <StudentChangesPanel
+          entries={studentChanges}
+          isPending={studentChangesPending}
+          error={studentChangesError}
+          onRetry={onRetryStudentChanges}
+        />
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="庫存與排行榜"
+        description="小石取得統計、持有率、玩家排行與團隊狀態。"
+      >
+        <MostOwnedPanel inventory={dashboard.inventory} />
+
+        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] 2xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
+          <TopPlayersPanel
+            topPlayers={dashboard.topPlayers}
+            onOpenPlayers={openPlayersStats}
+          />
+          <TeamsPanel teams={dashboard.teams} />
+        </section>
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="完整統計"
+        description="玩家、庫存、對戰活動與隊伍明細。"
+        badge={`${formatNumber(dashboard.players.length)} players`}
+        open={statsOpen}
+        onOpenChange={setStatsOpen}
+      >
+        <Tabs
+          value={statsTab}
+          onValueChange={setStatsTab}
+          className="min-w-0 gap-3"
+        >
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-xl font-black">完整統計</h2>
+              <p className="text-muted-foreground text-sm font-semibold">
+                玩家、庫存與對戰活動的營運檢視。
+              </p>
+            </div>
+            <TabsList className="grid w-full max-w-full grid-cols-2 overflow-x-auto sm:grid-cols-[repeat(4,minmax(5rem,1fr))] md:w-fit">
+              <TabsTrigger value="players">玩家</TabsTrigger>
+              <TabsTrigger value="inventory">庫存</TabsTrigger>
+              <TabsTrigger value="matches">對戰</TabsTrigger>
+              <TabsTrigger value="teams">隊伍</TabsTrigger>
+            </TabsList>
           </div>
-          <TabsList className="grid w-full max-w-full grid-cols-[repeat(4,minmax(5rem,1fr))] overflow-x-auto md:w-fit">
-            <TabsTrigger value="players">玩家</TabsTrigger>
-            <TabsTrigger value="inventory">庫存</TabsTrigger>
-            <TabsTrigger value="matches">對戰</TabsTrigger>
-            <TabsTrigger value="teams">隊伍</TabsTrigger>
-          </TabsList>
-        </div>
-        <TabsContent value="players">
-          <PlayersTable players={dashboard.players} />
-        </TabsContent>
-        <TabsContent value="inventory">
-          <InventoryPanel inventory={dashboard.inventory} />
-        </TabsContent>
-        <TabsContent value="matches">
-          <MatchesPanel matches={dashboard.matches} />
-        </TabsContent>
-        <TabsContent value="teams">
-          <TeamsDetailTable teams={dashboard.teams} />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="players" className="min-w-0">
+            <PlayersTable players={dashboard.players} />
+          </TabsContent>
+          <TabsContent value="inventory" className="min-w-0">
+            <InventoryPanel inventory={dashboard.inventory} />
+          </TabsContent>
+          <TabsContent value="matches" className="min-w-0">
+            <MatchesPanel matches={dashboard.matches} />
+          </TabsContent>
+          <TabsContent value="teams" className="min-w-0">
+            <TeamsDetailTable teams={dashboard.teams} />
+          </TabsContent>
+        </Tabs>
+      </AdminCollapsibleSection>
     </div>
   )
 }
@@ -1825,7 +1952,7 @@ function TopPlayersPanel({
       </CardHeader>
       <CardContent className="px-5">
         <Tabs defaultValue="sitones" className="min-w-0">
-          <TabsList className="grid w-full max-w-full grid-cols-[repeat(5,minmax(5.75rem,1fr))] overflow-x-auto">
+          <TabsList className="grid w-full max-w-full grid-cols-[repeat(2,minmax(0,1fr))] overflow-x-auto sm:grid-cols-[repeat(5,minmax(5.75rem,1fr))]">
             {groups.map((group) => (
               <TabsTrigger key={group.value} value={group.value}>
                 {group.label}
@@ -2702,7 +2829,7 @@ function AdminCommunityStandsPanel({
             管理社群攤位顯示、啟用狀態與掃描獎勵。
           </p>
         </div>
-        <div className="grid w-full grid-cols-[1fr_auto] items-center gap-2">
+        <div className="grid w-full grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto]">
           <Badge variant="outline" className="justify-self-start">
             {formatNumber(stands.length)} booths
           </Badge>
@@ -2972,7 +3099,7 @@ function CommunityStandCreateCard({
         </CardHeader>
 
         <CardContent className="grid gap-4 px-5">
-          <div className="bg-surface-raised border-border grid grid-cols-[1fr_auto] items-center gap-3 rounded-[18px] border-2 p-3">
+          <div className="bg-surface-raised border-border grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border-2 p-3">
             <span className="text-sm font-black">建立後開放攤位看板</span>
             <Switch
               checked={draft.enabled}
@@ -3100,7 +3227,7 @@ function CommunityStandCreateCard({
           </div>
         </CardContent>
 
-        <CardFooter className="grid grid-cols-2 gap-2 px-5">
+        <CardFooter className="grid grid-cols-1 gap-2 px-5 sm:grid-cols-2">
           <Button
             type="button"
             variant="outline"
@@ -3188,7 +3315,7 @@ function CommunityStandEditorCard({
         </CardHeader>
 
         <CardContent className="grid gap-4 px-5">
-          <div className="bg-surface-raised border-border grid grid-cols-[1fr_auto] items-center gap-3 rounded-[18px] border-2 p-3">
+          <div className="bg-surface-raised border-border grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border-2 p-3">
             <div className="grid grid-cols-2 gap-3">
               <MiniStat label="拜訪" value={stand.visitCount} />
               <MiniStat label="領取" value={stand.claimCount} />
@@ -3325,7 +3452,7 @@ function CommunityStandEditorCard({
           </div>
         </CardContent>
 
-        <CardFooter className="justify-end gap-2 px-5">
+        <CardFooter className="flex-wrap justify-end gap-2 px-5">
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
