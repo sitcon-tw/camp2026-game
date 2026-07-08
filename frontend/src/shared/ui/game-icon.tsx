@@ -21,7 +21,7 @@ export function GameIcon({
   return (
     <span
       className={cn(
-        "relative grid size-full min-h-0 min-w-0 place-items-center overflow-hidden",
+        "relative grid size-full min-h-0 min-w-0 place-items-center overflow-hidden rounded-[inherit]",
         className,
       )}
     >

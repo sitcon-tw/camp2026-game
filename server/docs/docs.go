@@ -733,6 +733,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/student-changes": {
+            "get": {
+                "description": "Admin-only endpoint. Returns recent resource changes across non-staff players, including staff rewards, community stand claims, drops, shop purchases, fusions, balance trims, and direct open power records.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List student resource change records as admin",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of merged records to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.StudentChangesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/teams/{teamID}": {
             "put": {
                 "description": "Admin-only endpoint. Updates the team display name and avatar URL shown in operations dashboards.",
@@ -4543,6 +4589,10 @@ const docTemplate = `{
         "admin.SettingsRequest": {
             "type": "object",
             "required": [
+                "battleOpeningOverride",
+                "classTimeBattleLockEnabled",
+                "classTimeBattleLockEnd",
+                "classTimeBattleLockStart",
                 "computerBattlesEnabled",
                 "computerEasyAccuracy",
                 "computerHardAccuracy",
@@ -4550,6 +4600,23 @@ const docTemplate = `{
                 "sameTeamBattlesEnabled"
             ],
             "properties": {
+                "battleOpeningOverride": {
+                    "type": "string",
+                    "enum": [
+                        "schedule",
+                        "force_open",
+                        "force_closed"
+                    ]
+                },
+                "classTimeBattleLockEnabled": {
+                    "type": "boolean"
+                },
+                "classTimeBattleLockEnd": {
+                    "type": "string"
+                },
+                "classTimeBattleLockStart": {
+                    "type": "string"
+                },
                 "computerBattlesEnabled": {
                     "type": "boolean"
                 },
@@ -4576,6 +4643,21 @@ const docTemplate = `{
         "admin.SettingsResponse": {
             "type": "object",
             "properties": {
+                "battleOpeningLocked": {
+                    "type": "boolean"
+                },
+                "battleOpeningOverride": {
+                    "type": "string"
+                },
+                "classTimeBattleLockEnabled": {
+                    "type": "boolean"
+                },
+                "classTimeBattleLockEnd": {
+                    "type": "string"
+                },
+                "classTimeBattleLockStart": {
+                    "type": "string"
+                },
                 "computerBattlesEnabled": {
                     "type": "boolean"
                 },
@@ -4590,6 +4672,71 @@ const docTemplate = `{
                 },
                 "sameTeamBattlesEnabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "admin.StudentChangeEntryResponse": {
+            "type": "object",
+            "properties": {
+                "changeId": {
+                    "type": "string",
+                    "example": "staff_reward_507f1f77bcf86cd799439011"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "delta": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "iconPath": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "sitone"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Booth 小石"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "playerId": {
+                    "type": "string",
+                    "example": "7H9K2Q"
+                },
+                "playerNickname": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "refId": {
+                    "type": "string",
+                    "example": "stone_booth"
+                },
+                "source": {
+                    "type": "string",
+                    "example": "staff_reward"
+                },
+                "sourceLabel": {
+                    "type": "string",
+                    "example": "Staff 發獎"
+                },
+                "teamId": {
+                    "type": "string",
+                    "example": "team-a"
+                }
+            }
+        },
+        "admin.StudentChangesResponse": {
+            "type": "object",
+            "properties": {
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.StudentChangeEntryResponse"
+                    }
                 }
             }
         },
@@ -5647,6 +5794,10 @@ const docTemplate = `{
         "matches.ComputerBattleSettingsResponse": {
             "type": "object",
             "properties": {
+                "battleOpeningLocked": {
+                    "type": "boolean",
+                    "example": false
+                },
                 "enabled": {
                     "type": "boolean",
                     "example": true

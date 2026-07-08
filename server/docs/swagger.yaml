@@ -625,6 +625,18 @@ definitions:
     type: object
   admin.SettingsRequest:
     properties:
+      battleOpeningOverride:
+        enum:
+        - schedule
+        - force_open
+        - force_closed
+        type: string
+      classTimeBattleLockEnabled:
+        type: boolean
+      classTimeBattleLockEnd:
+        type: string
+      classTimeBattleLockStart:
+        type: string
       computerBattlesEnabled:
         type: boolean
       computerEasyAccuracy:
@@ -642,6 +654,10 @@ definitions:
       sameTeamBattlesEnabled:
         type: boolean
     required:
+    - battleOpeningOverride
+    - classTimeBattleLockEnabled
+    - classTimeBattleLockEnd
+    - classTimeBattleLockStart
     - computerBattlesEnabled
     - computerEasyAccuracy
     - computerHardAccuracy
@@ -650,6 +666,16 @@ definitions:
     type: object
   admin.SettingsResponse:
     properties:
+      battleOpeningLocked:
+        type: boolean
+      battleOpeningOverride:
+        type: string
+      classTimeBattleLockEnabled:
+        type: boolean
+      classTimeBattleLockEnd:
+        type: string
+      classTimeBattleLockStart:
+        type: string
       computerBattlesEnabled:
         type: boolean
       computerEasyAccuracy:
@@ -660,6 +686,52 @@ definitions:
         type: integer
       sameTeamBattlesEnabled:
         type: boolean
+    type: object
+  admin.StudentChangeEntryResponse:
+    properties:
+      changeId:
+        example: staff_reward_507f1f77bcf86cd799439011
+        type: string
+      createdAt:
+        type: string
+      delta:
+        example: 1
+        type: integer
+      iconPath:
+        type: string
+      kind:
+        example: sitone
+        type: string
+      name:
+        example: Booth 小石
+        type: string
+      note:
+        type: string
+      playerId:
+        example: 7H9K2Q
+        type: string
+      playerNickname:
+        example: Alice
+        type: string
+      refId:
+        example: stone_booth
+        type: string
+      source:
+        example: staff_reward
+        type: string
+      sourceLabel:
+        example: Staff 發獎
+        type: string
+      teamId:
+        example: team-a
+        type: string
+    type: object
+  admin.StudentChangesResponse:
+    properties:
+      entries:
+        items:
+          $ref: '#/definitions/admin.StudentChangeEntryResponse'
+        type: array
     type: object
   admin.UpdateCommunityStandRequest:
     properties:
@@ -1405,6 +1477,9 @@ definitions:
     type: object
   matches.ComputerBattleSettingsResponse:
     properties:
+      battleOpeningLocked:
+        example: false
+        type: boolean
       enabled:
         example: true
         type: boolean
@@ -3044,6 +3119,38 @@ paths:
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
       summary: Update admin game settings
+      tags:
+      - admin
+  /admin/student-changes:
+    get:
+      description: Admin-only endpoint. Returns recent resource changes across non-staff
+        players, including staff rewards, community stand claims, drops, shop purchases,
+        fusions, balance trims, and direct open power records.
+      parameters:
+      - description: Maximum number of merged records to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.StudentChangesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: List student resource change records as admin
       tags:
       - admin
   /admin/teams/{teamID}:

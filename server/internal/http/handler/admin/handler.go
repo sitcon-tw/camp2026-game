@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -55,6 +56,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/admin/dashboard", h.Dashboard)
 	api.Get("/admin/gift-history", h.GiftHistory)
 	api.Get("/admin/history", h.History)
+	api.Get("/admin/student-changes", h.ListStudentChanges)
 	api.Post("/admin/inventory-trims", h.CreateInventoryTrim)
 	api.Put("/admin/players/{playerID}/balance", h.UpdatePlayerBalance)
 	api.Get("/admin/settings", h.GetSettings)
@@ -76,19 +78,28 @@ type LoginResponse struct {
 }
 
 type SettingsRequest struct {
-	ComputerBattlesEnabled *bool `json:"computerBattlesEnabled" validate:"required"`
-	SameTeamBattlesEnabled *bool `json:"sameTeamBattlesEnabled" validate:"required"`
-	ComputerEasyAccuracy   *int  `json:"computerEasyAccuracy" validate:"required,min=0,max=100"`
-	ComputerNormalAccuracy *int  `json:"computerNormalAccuracy" validate:"required,min=0,max=100"`
-	ComputerHardAccuracy   *int  `json:"computerHardAccuracy" validate:"required,min=0,max=100"`
+	ComputerBattlesEnabled     *bool  `json:"computerBattlesEnabled" validate:"required"`
+	SameTeamBattlesEnabled     *bool  `json:"sameTeamBattlesEnabled" validate:"required"`
+	ComputerEasyAccuracy       *int   `json:"computerEasyAccuracy" validate:"required,min=0,max=100"`
+	ComputerNormalAccuracy     *int   `json:"computerNormalAccuracy" validate:"required,min=0,max=100"`
+	ComputerHardAccuracy       *int   `json:"computerHardAccuracy" validate:"required,min=0,max=100"`
+	ClassTimeBattleLockEnabled *bool  `json:"classTimeBattleLockEnabled" validate:"required"`
+	ClassTimeBattleLockStart   string `json:"classTimeBattleLockStart" validate:"required"`
+	ClassTimeBattleLockEnd     string `json:"classTimeBattleLockEnd" validate:"required"`
+	BattleOpeningOverride      string `json:"battleOpeningOverride" validate:"required,oneof=schedule force_open force_closed"`
 }
 
 type SettingsResponse struct {
-	ComputerBattlesEnabled bool `json:"computerBattlesEnabled"`
-	SameTeamBattlesEnabled bool `json:"sameTeamBattlesEnabled"`
-	ComputerEasyAccuracy   int  `json:"computerEasyAccuracy"`
-	ComputerNormalAccuracy int  `json:"computerNormalAccuracy"`
-	ComputerHardAccuracy   int  `json:"computerHardAccuracy"`
+	ComputerBattlesEnabled     bool   `json:"computerBattlesEnabled"`
+	SameTeamBattlesEnabled     bool   `json:"sameTeamBattlesEnabled"`
+	ComputerEasyAccuracy       int    `json:"computerEasyAccuracy"`
+	ComputerNormalAccuracy     int    `json:"computerNormalAccuracy"`
+	ComputerHardAccuracy       int    `json:"computerHardAccuracy"`
+	ClassTimeBattleLockEnabled bool   `json:"classTimeBattleLockEnabled"`
+	ClassTimeBattleLockStart   string `json:"classTimeBattleLockStart"`
+	ClassTimeBattleLockEnd     string `json:"classTimeBattleLockEnd"`
+	BattleOpeningOverride      string `json:"battleOpeningOverride"`
+	BattleOpeningLocked        bool   `json:"battleOpeningLocked"`
 }
 
 // Login godoc
@@ -186,13 +197,21 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
+	if err := validateSettingsRequest(body); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
 
 	settings, err := gamecontrol.SaveSettings(r.Context(), h.db, gamecontrol.Settings{
-		ComputerBattlesEnabled:  *body.ComputerBattlesEnabled,
-		SameTeamBattlesDisabled: !*body.SameTeamBattlesEnabled,
-		ComputerEasyAccuracy:    *body.ComputerEasyAccuracy,
-		ComputerNormalAccuracy:  *body.ComputerNormalAccuracy,
-		ComputerHardAccuracy:    *body.ComputerHardAccuracy,
+		ComputerBattlesEnabled:     *body.ComputerBattlesEnabled,
+		SameTeamBattlesDisabled:    !*body.SameTeamBattlesEnabled,
+		ComputerEasyAccuracy:       *body.ComputerEasyAccuracy,
+		ComputerNormalAccuracy:     *body.ComputerNormalAccuracy,
+		ComputerHardAccuracy:       *body.ComputerHardAccuracy,
+		ClassTimeBattleLockEnabled: *body.ClassTimeBattleLockEnabled,
+		ClassTimeBattleLockStart:   body.ClassTimeBattleLockStart,
+		ClassTimeBattleLockEnd:     body.ClassTimeBattleLockEnd,
+		BattleOpeningOverride:      body.BattleOpeningOverride,
 	})
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("settings update failed", "admin_settings_update_failed", err))
@@ -235,6 +254,32 @@ func (h *Handler) requireDatabase(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 
+func validateSettingsRequest(body SettingsRequest) error {
+	var details []httpx.ErrorDetail
+	if !gamecontrol.ValidClockTime(body.ClassTimeBattleLockStart) {
+		details = append(details, httpx.ErrorDetail{
+			Location: "body.classTimeBattleLockStart",
+			Message:  "classTimeBattleLockStart must use HH:MM format",
+		})
+	}
+	if !gamecontrol.ValidClockTime(body.ClassTimeBattleLockEnd) {
+		details = append(details, httpx.ErrorDetail{
+			Location: "body.classTimeBattleLockEnd",
+			Message:  "classTimeBattleLockEnd must use HH:MM format",
+		})
+	}
+	if !gamecontrol.ValidBattleOpeningOverride(body.BattleOpeningOverride) {
+		details = append(details, httpx.ErrorDetail{
+			Location: "body.battleOpeningOverride",
+			Message:  "battleOpeningOverride must be one of: schedule force_open force_closed",
+		})
+	}
+	if len(details) > 0 {
+		return httpx.UnprocessableEntity("invalid request body", details...)
+	}
+	return nil
+}
+
 func (h *Handler) requireContent(w http.ResponseWriter, r *http.Request) bool {
 	if h.content != nil {
 		return true
@@ -262,11 +307,17 @@ func adminSessionValue(password string) string {
 }
 
 func settingsResponse(settings gamecontrol.Settings) SettingsResponse {
+	settings.Normalize()
 	return SettingsResponse{
-		ComputerBattlesEnabled: settings.ComputerBattlesEnabled,
-		SameTeamBattlesEnabled: settings.SameTeamBattlesEnabled(),
-		ComputerEasyAccuracy:   settings.ComputerEasyAccuracy,
-		ComputerNormalAccuracy: settings.ComputerNormalAccuracy,
-		ComputerHardAccuracy:   settings.ComputerHardAccuracy,
+		ComputerBattlesEnabled:     settings.ComputerBattlesEnabled,
+		SameTeamBattlesEnabled:     settings.SameTeamBattlesEnabled(),
+		ComputerEasyAccuracy:       settings.ComputerEasyAccuracy,
+		ComputerNormalAccuracy:     settings.ComputerNormalAccuracy,
+		ComputerHardAccuracy:       settings.ComputerHardAccuracy,
+		ClassTimeBattleLockEnabled: settings.ClassTimeBattleLockEnabled,
+		ClassTimeBattleLockStart:   settings.ClassTimeBattleLockStart,
+		ClassTimeBattleLockEnd:     settings.ClassTimeBattleLockEnd,
+		BattleOpeningOverride:      settings.BattleOpeningOverride,
+		BattleOpeningLocked:        settings.BattleOpeningLocked(time.Now()),
 	}
 }

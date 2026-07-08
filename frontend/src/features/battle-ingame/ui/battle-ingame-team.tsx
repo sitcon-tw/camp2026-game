@@ -31,17 +31,31 @@ export function BattleIngameTeam({
         {team.map((item, index) => {
           if (index !== highlight)
             return (
-              <div>
+              <div
+                key={`${item.name}-${index}`}
+                className="grid size-10 place-items-center overflow-hidden"
+              >
                 <img
                   src={toOptimizedImageSrc(item.pictureSrc)}
-                  className="h-10"
+                  alt=""
+                  className="size-full object-contain"
+                  loading="lazy"
+                  draggable={false}
                 />
               </div>
             )
         })}
       </div>
       <div className="grid gap-y-2">
-        <img src={toOptimizedImageSrc(highlightedSitone.pictureSrc)} />
+        <div className="grid h-[180px] max-h-[30vh] w-[160px] place-items-center overflow-hidden sm:h-[220px] sm:w-[190px]">
+          <img
+            src={toOptimizedImageSrc(highlightedSitone.pictureSrc)}
+            alt=""
+            className="size-full object-contain"
+            loading="lazy"
+            draggable={false}
+          />
+        </div>
         <span className="text-center text-lg">{highlightedSitone.name}</span>
         <Badge className="mx-auto">{highlightedSitone.type}型小石</Badge>
       </div>

@@ -440,6 +440,11 @@ func (s *MatchSession) Ready(ctx context.Context, player mongomodel.Player) (Mat
 	events = append(events, s.eventSnapshotLocked("player_ready"))
 
 	if allPlayersReady(s.match) {
+		if err := s.h.ensureBattleOpeningAllowed(ctx, "match start failed"); err != nil {
+			s.match.Players[idx].Ready = wasReady
+			s.mu.Unlock()
+			return MatchStateResponse{}, err
+		}
 		if err := s.h.ensureMatchSameTeamBattleAllowed(ctx, s.match); err != nil {
 			s.match.Players[idx].Ready = wasReady
 			s.mu.Unlock()
