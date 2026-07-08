@@ -24,37 +24,46 @@ const (
 
 	defaultClassTimeBattleLockStart = "09:00"
 	defaultClassTimeBattleLockEnd   = "17:00"
+
+	maxClassTimeBattleLockSessions = 12
 )
 
 var classTimeLocation = time.FixedZone("Asia/Taipei", 8*60*60)
 
 type Settings struct {
-	ID                         string    `bson:"_id"`
-	ComputerBattlesEnabled     bool      `bson:"computer_battles_enabled"`
-	SameTeamBattlesDisabled    bool      `bson:"same_team_battles_disabled"`
-	ComputerEasyAccuracy       int       `bson:"computer_easy_accuracy"`
-	ComputerNormalAccuracy     int       `bson:"computer_normal_accuracy"`
-	ComputerHardAccuracy       int       `bson:"computer_hard_accuracy"`
-	ClassTimeBattleLockEnabled bool      `bson:"class_time_battle_lock_enabled"`
-	ClassTimeBattleLockStart   string    `bson:"class_time_battle_lock_start"`
-	ClassTimeBattleLockEnd     string    `bson:"class_time_battle_lock_end"`
-	BattleOpeningOverride      string    `bson:"battle_opening_override"`
-	MaintenanceMode            string    `bson:"maintenance_mode"`
-	MaintenanceMessage         string    `bson:"maintenance_message,omitempty"`
-	MaintenanceStartedAt       time.Time `bson:"maintenance_started_at,omitempty"`
-	UpdatedAt                  time.Time `bson:"updated_at,omitempty"`
+	ID                          string           `bson:"_id"`
+	ComputerBattlesEnabled      bool             `bson:"computer_battles_enabled"`
+	SameTeamBattlesDisabled     bool             `bson:"same_team_battles_disabled"`
+	ComputerEasyAccuracy        int              `bson:"computer_easy_accuracy"`
+	ComputerNormalAccuracy      int              `bson:"computer_normal_accuracy"`
+	ComputerHardAccuracy        int              `bson:"computer_hard_accuracy"`
+	ClassTimeBattleLockEnabled  bool             `bson:"class_time_battle_lock_enabled"`
+	ClassTimeBattleLockStart    string           `bson:"class_time_battle_lock_start"`
+	ClassTimeBattleLockEnd      string           `bson:"class_time_battle_lock_end"`
+	ClassTimeBattleLockSessions []ClockTimeRange `bson:"class_time_battle_lock_sessions,omitempty"`
+	BattleOpeningOverride       string           `bson:"battle_opening_override"`
+	MaintenanceMode             string           `bson:"maintenance_mode"`
+	MaintenanceMessage          string           `bson:"maintenance_message,omitempty"`
+	MaintenanceStartedAt        time.Time        `bson:"maintenance_started_at,omitempty"`
+	UpdatedAt                   time.Time        `bson:"updated_at,omitempty"`
+}
+
+type ClockTimeRange struct {
+	Start string `bson:"start"`
+	End   string `bson:"end"`
 }
 
 func DefaultSettings() Settings {
 	return Settings{
-		ID:                       SettingsID,
-		ComputerEasyAccuracy:     35,
-		ComputerNormalAccuracy:   55,
-		ComputerHardAccuracy:     75,
-		ClassTimeBattleLockStart: defaultClassTimeBattleLockStart,
-		ClassTimeBattleLockEnd:   defaultClassTimeBattleLockEnd,
-		BattleOpeningOverride:    BattleOpeningOverrideSchedule,
-		MaintenanceMode:          MaintenanceModeOff,
+		ID:                          SettingsID,
+		ComputerEasyAccuracy:        35,
+		ComputerNormalAccuracy:      55,
+		ComputerHardAccuracy:        75,
+		ClassTimeBattleLockStart:    defaultClassTimeBattleLockStart,
+		ClassTimeBattleLockEnd:      defaultClassTimeBattleLockEnd,
+		ClassTimeBattleLockSessions: defaultClassTimeBattleLockSessions(),
+		BattleOpeningOverride:       BattleOpeningOverrideSchedule,
+		MaintenanceMode:             MaintenanceModeOff,
 	}
 }
 
@@ -107,6 +116,17 @@ func (settings *Settings) Normalize() {
 	if !ValidClockTime(settings.ClassTimeBattleLockEnd) {
 		settings.ClassTimeBattleLockEnd = defaultClassTimeBattleLockEnd
 	}
+	settings.ClassTimeBattleLockSessions = normalizeClockTimeRanges(
+		settings.ClassTimeBattleLockSessions,
+		ClockTimeRange{
+			Start: settings.ClassTimeBattleLockStart,
+			End:   settings.ClassTimeBattleLockEnd,
+		},
+	)
+	if len(settings.ClassTimeBattleLockSessions) > 0 {
+		settings.ClassTimeBattleLockStart = settings.ClassTimeBattleLockSessions[0].Start
+		settings.ClassTimeBattleLockEnd = settings.ClassTimeBattleLockSessions[0].End
+	}
 	if !ValidBattleOpeningOverride(settings.BattleOpeningOverride) {
 		settings.BattleOpeningOverride = BattleOpeningOverrideSchedule
 	}
@@ -136,7 +156,12 @@ func (settings Settings) BattleOpeningLocked(now time.Time) bool {
 	if !settings.ClassTimeBattleLockEnabled {
 		return false
 	}
-	return clockTimeInRange(settings.ClassTimeBattleLockStart, settings.ClassTimeBattleLockEnd, now)
+	for _, session := range settings.ClassTimeBattleLockSessions {
+		if clockTimeInRange(session.Start, session.End, now) {
+			return true
+		}
+	}
+	return false
 }
 
 func (settings Settings) MaintenanceActive() bool {
@@ -175,6 +200,12 @@ func ValidClockTime(value string) bool {
 	return ok
 }
 
+func ValidClockTimeRange(session ClockTimeRange) bool {
+	start, startOK := parseClockMinutes(session.Start)
+	end, endOK := parseClockMinutes(session.End)
+	return startOK && endOK && start != end
+}
+
 func clampPercent(value int) int {
 	if value < 0 {
 		return 0
@@ -197,6 +228,35 @@ func clockTimeInRange(startValue string, endValue string, now time.Time) bool {
 		return current >= start && current < end
 	}
 	return current >= start || current < end
+}
+
+func defaultClassTimeBattleLockSessions() []ClockTimeRange {
+	return []ClockTimeRange{
+		{
+			Start: defaultClassTimeBattleLockStart,
+			End:   defaultClassTimeBattleLockEnd,
+		},
+	}
+}
+
+func normalizeClockTimeRanges(sessions []ClockTimeRange, fallback ClockTimeRange) []ClockTimeRange {
+	out := make([]ClockTimeRange, 0, len(sessions))
+	for _, session := range sessions {
+		if !ValidClockTimeRange(session) {
+			continue
+		}
+		out = append(out, session)
+		if len(out) >= maxClassTimeBattleLockSessions {
+			return out
+		}
+	}
+	if len(out) > 0 {
+		return out
+	}
+	if ValidClockTimeRange(fallback) {
+		return []ClockTimeRange{fallback}
+	}
+	return defaultClassTimeBattleLockSessions()
 }
 
 func parseClockMinutes(value string) (int, bool) {

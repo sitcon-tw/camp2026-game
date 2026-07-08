@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -78,33 +79,45 @@ type LoginResponse struct {
 }
 
 type SettingsRequest struct {
-	ComputerBattlesEnabled     *bool  `json:"computerBattlesEnabled" validate:"required"`
-	SameTeamBattlesEnabled     *bool  `json:"sameTeamBattlesEnabled" validate:"required"`
-	ComputerEasyAccuracy       *int   `json:"computerEasyAccuracy" validate:"required,min=0,max=100"`
-	ComputerNormalAccuracy     *int   `json:"computerNormalAccuracy" validate:"required,min=0,max=100"`
-	ComputerHardAccuracy       *int   `json:"computerHardAccuracy" validate:"required,min=0,max=100"`
-	ClassTimeBattleLockEnabled *bool  `json:"classTimeBattleLockEnabled" validate:"required"`
-	ClassTimeBattleLockStart   string `json:"classTimeBattleLockStart" validate:"required"`
-	ClassTimeBattleLockEnd     string `json:"classTimeBattleLockEnd" validate:"required"`
-	BattleOpeningOverride      string `json:"battleOpeningOverride" validate:"required,oneof=schedule force_open force_closed"`
-	MaintenanceMode            string `json:"maintenanceMode"`
-	MaintenanceMessage         string `json:"maintenanceMessage"`
+	ComputerBattlesEnabled      *bool                               `json:"computerBattlesEnabled" validate:"required"`
+	SameTeamBattlesEnabled      *bool                               `json:"sameTeamBattlesEnabled" validate:"required"`
+	ComputerEasyAccuracy        *int                                `json:"computerEasyAccuracy" validate:"required,min=0,max=100"`
+	ComputerNormalAccuracy      *int                                `json:"computerNormalAccuracy" validate:"required,min=0,max=100"`
+	ComputerHardAccuracy        *int                                `json:"computerHardAccuracy" validate:"required,min=0,max=100"`
+	ClassTimeBattleLockEnabled  *bool                               `json:"classTimeBattleLockEnabled" validate:"required"`
+	ClassTimeBattleLockStart    string                              `json:"classTimeBattleLockStart"`
+	ClassTimeBattleLockEnd      string                              `json:"classTimeBattleLockEnd"`
+	ClassTimeBattleLockSessions []ClassTimeBattleLockSessionRequest `json:"classTimeBattleLockSessions"`
+	BattleOpeningOverride       string                              `json:"battleOpeningOverride" validate:"required,oneof=schedule force_open force_closed"`
+	MaintenanceMode             string                              `json:"maintenanceMode"`
+	MaintenanceMessage          string                              `json:"maintenanceMessage"`
+}
+
+type ClassTimeBattleLockSessionRequest struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
 }
 
 type SettingsResponse struct {
-	ComputerBattlesEnabled     bool   `json:"computerBattlesEnabled"`
-	SameTeamBattlesEnabled     bool   `json:"sameTeamBattlesEnabled"`
-	ComputerEasyAccuracy       int    `json:"computerEasyAccuracy"`
-	ComputerNormalAccuracy     int    `json:"computerNormalAccuracy"`
-	ComputerHardAccuracy       int    `json:"computerHardAccuracy"`
-	ClassTimeBattleLockEnabled bool   `json:"classTimeBattleLockEnabled"`
-	ClassTimeBattleLockStart   string `json:"classTimeBattleLockStart"`
-	ClassTimeBattleLockEnd     string `json:"classTimeBattleLockEnd"`
-	BattleOpeningOverride      string `json:"battleOpeningOverride"`
-	BattleOpeningLocked        bool   `json:"battleOpeningLocked"`
-	MaintenanceMode            string `json:"maintenanceMode"`
-	MaintenanceMessage         string `json:"maintenanceMessage"`
-	MaintenanceActive          bool   `json:"maintenanceActive"`
+	ComputerBattlesEnabled      bool                                 `json:"computerBattlesEnabled"`
+	SameTeamBattlesEnabled      bool                                 `json:"sameTeamBattlesEnabled"`
+	ComputerEasyAccuracy        int                                  `json:"computerEasyAccuracy"`
+	ComputerNormalAccuracy      int                                  `json:"computerNormalAccuracy"`
+	ComputerHardAccuracy        int                                  `json:"computerHardAccuracy"`
+	ClassTimeBattleLockEnabled  bool                                 `json:"classTimeBattleLockEnabled"`
+	ClassTimeBattleLockStart    string                               `json:"classTimeBattleLockStart"`
+	ClassTimeBattleLockEnd      string                               `json:"classTimeBattleLockEnd"`
+	ClassTimeBattleLockSessions []ClassTimeBattleLockSessionResponse `json:"classTimeBattleLockSessions"`
+	BattleOpeningOverride       string                               `json:"battleOpeningOverride"`
+	BattleOpeningLocked         bool                                 `json:"battleOpeningLocked"`
+	MaintenanceMode             string                               `json:"maintenanceMode"`
+	MaintenanceMessage          string                               `json:"maintenanceMessage"`
+	MaintenanceActive           bool                                 `json:"maintenanceActive"`
+}
+
+type ClassTimeBattleLockSessionResponse struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
 }
 
 // Login godoc
@@ -213,18 +226,17 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	settings, err := gamecontrol.SaveSettings(r.Context(), h.db, gamecontrol.Settings{
-		ComputerBattlesEnabled:     *body.ComputerBattlesEnabled,
-		SameTeamBattlesDisabled:    !*body.SameTeamBattlesEnabled,
-		ComputerEasyAccuracy:       *body.ComputerEasyAccuracy,
-		ComputerNormalAccuracy:     *body.ComputerNormalAccuracy,
-		ComputerHardAccuracy:       *body.ComputerHardAccuracy,
-		ClassTimeBattleLockEnabled: *body.ClassTimeBattleLockEnabled,
-		ClassTimeBattleLockStart:   body.ClassTimeBattleLockStart,
-		ClassTimeBattleLockEnd:     body.ClassTimeBattleLockEnd,
-		BattleOpeningOverride:      body.BattleOpeningOverride,
-		MaintenanceMode:            maintenanceMode,
-		MaintenanceMessage:         strings.TrimSpace(body.MaintenanceMessage),
-		MaintenanceStartedAt:       maintenanceStartedAt(maintenanceMode),
+		ComputerBattlesEnabled:      *body.ComputerBattlesEnabled,
+		SameTeamBattlesDisabled:     !*body.SameTeamBattlesEnabled,
+		ComputerEasyAccuracy:        *body.ComputerEasyAccuracy,
+		ComputerNormalAccuracy:      *body.ComputerNormalAccuracy,
+		ComputerHardAccuracy:        *body.ComputerHardAccuracy,
+		ClassTimeBattleLockEnabled:  *body.ClassTimeBattleLockEnabled,
+		ClassTimeBattleLockSessions: classTimeBattleLockSessionsFromRequest(body),
+		BattleOpeningOverride:       body.BattleOpeningOverride,
+		MaintenanceMode:             maintenanceMode,
+		MaintenanceMessage:          strings.TrimSpace(body.MaintenanceMessage),
+		MaintenanceStartedAt:        maintenanceStartedAt(maintenanceMode),
 	})
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("settings update failed", "admin_settings_update_failed", err))
@@ -269,17 +281,14 @@ func (h *Handler) requireDatabase(w http.ResponseWriter, r *http.Request) bool {
 
 func validateSettingsRequest(body SettingsRequest) error {
 	var details []httpx.ErrorDetail
-	if !gamecontrol.ValidClockTime(body.ClassTimeBattleLockStart) {
-		details = append(details, httpx.ErrorDetail{
-			Location: "body.classTimeBattleLockStart",
-			Message:  "classTimeBattleLockStart must use HH:MM format",
-		})
-	}
-	if !gamecontrol.ValidClockTime(body.ClassTimeBattleLockEnd) {
-		details = append(details, httpx.ErrorDetail{
-			Location: "body.classTimeBattleLockEnd",
-			Message:  "classTimeBattleLockEnd must use HH:MM format",
-		})
+	sessions := classTimeBattleLockSessionsFromRequest(body)
+	for i, session := range sessions {
+		if !gamecontrol.ValidClockTimeRange(session) {
+			details = append(details, httpx.ErrorDetail{
+				Location: "body.classTimeBattleLockSessions",
+				Message:  fmt.Sprintf("classTimeBattleLockSessions[%d] must use valid HH:MM start/end values", i),
+			})
+		}
 	}
 	if !gamecontrol.ValidBattleOpeningOverride(body.BattleOpeningOverride) {
 		details = append(details, httpx.ErrorDetail{
@@ -328,20 +337,51 @@ func adminSessionValue(password string) string {
 func settingsResponse(settings gamecontrol.Settings) SettingsResponse {
 	settings.Normalize()
 	return SettingsResponse{
-		ComputerBattlesEnabled:     settings.ComputerBattlesEnabled,
-		SameTeamBattlesEnabled:     settings.SameTeamBattlesEnabled(),
-		ComputerEasyAccuracy:       settings.ComputerEasyAccuracy,
-		ComputerNormalAccuracy:     settings.ComputerNormalAccuracy,
-		ComputerHardAccuracy:       settings.ComputerHardAccuracy,
-		ClassTimeBattleLockEnabled: settings.ClassTimeBattleLockEnabled,
-		ClassTimeBattleLockStart:   settings.ClassTimeBattleLockStart,
-		ClassTimeBattleLockEnd:     settings.ClassTimeBattleLockEnd,
-		BattleOpeningOverride:      settings.BattleOpeningOverride,
-		BattleOpeningLocked:        settings.BattleOpeningLocked(time.Now()),
-		MaintenanceMode:            settings.MaintenanceMode,
-		MaintenanceMessage:         settings.MaintenanceMessage,
-		MaintenanceActive:          settings.MaintenanceActive(),
+		ComputerBattlesEnabled:      settings.ComputerBattlesEnabled,
+		SameTeamBattlesEnabled:      settings.SameTeamBattlesEnabled(),
+		ComputerEasyAccuracy:        settings.ComputerEasyAccuracy,
+		ComputerNormalAccuracy:      settings.ComputerNormalAccuracy,
+		ComputerHardAccuracy:        settings.ComputerHardAccuracy,
+		ClassTimeBattleLockEnabled:  settings.ClassTimeBattleLockEnabled,
+		ClassTimeBattleLockStart:    settings.ClassTimeBattleLockStart,
+		ClassTimeBattleLockEnd:      settings.ClassTimeBattleLockEnd,
+		ClassTimeBattleLockSessions: classTimeBattleLockSessionsResponse(settings.ClassTimeBattleLockSessions),
+		BattleOpeningOverride:       settings.BattleOpeningOverride,
+		BattleOpeningLocked:         settings.BattleOpeningLocked(time.Now()),
+		MaintenanceMode:             settings.MaintenanceMode,
+		MaintenanceMessage:          settings.MaintenanceMessage,
+		MaintenanceActive:           settings.MaintenanceActive(),
 	}
+}
+
+func classTimeBattleLockSessionsFromRequest(body SettingsRequest) []gamecontrol.ClockTimeRange {
+	if len(body.ClassTimeBattleLockSessions) > 0 {
+		sessions := make([]gamecontrol.ClockTimeRange, 0, len(body.ClassTimeBattleLockSessions))
+		for _, session := range body.ClassTimeBattleLockSessions {
+			sessions = append(sessions, gamecontrol.ClockTimeRange{
+				Start: strings.TrimSpace(session.Start),
+				End:   strings.TrimSpace(session.End),
+			})
+		}
+		return sessions
+	}
+	return []gamecontrol.ClockTimeRange{
+		{
+			Start: strings.TrimSpace(body.ClassTimeBattleLockStart),
+			End:   strings.TrimSpace(body.ClassTimeBattleLockEnd),
+		},
+	}
+}
+
+func classTimeBattleLockSessionsResponse(sessions []gamecontrol.ClockTimeRange) []ClassTimeBattleLockSessionResponse {
+	out := make([]ClassTimeBattleLockSessionResponse, 0, len(sessions))
+	for _, session := range sessions {
+		out = append(out, ClassTimeBattleLockSessionResponse{
+			Start: session.Start,
+			End:   session.End,
+		})
+	}
+	return out
 }
 
 func maintenanceStartedAt(mode string) time.Time {

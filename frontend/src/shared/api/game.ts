@@ -533,6 +533,11 @@ const AdminLoginResponseSchema = z.object({
   authenticated: z.boolean(),
 })
 
+const AdminClassTimeBattleLockSessionSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+})
+
 const AdminSettingsSchema = z.object({
   computerBattlesEnabled: z.boolean(),
   sameTeamBattlesEnabled: z.boolean(),
@@ -542,6 +547,9 @@ const AdminSettingsSchema = z.object({
   classTimeBattleLockEnabled: z.boolean().default(false),
   classTimeBattleLockStart: z.string().default("09:00"),
   classTimeBattleLockEnd: z.string().default("17:00"),
+  classTimeBattleLockSessions: z
+    .array(AdminClassTimeBattleLockSessionSchema)
+    .default([]),
   battleOpeningOverride: z
     .enum(["schedule", "force_open", "force_closed"])
     .default("schedule"),

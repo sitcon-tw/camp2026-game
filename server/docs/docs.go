@@ -3713,6 +3713,28 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "admin.ClassTimeBattleLockSessionRequest": {
+            "type": "object",
+            "properties": {
+                "end": {
+                    "type": "string"
+                },
+                "start": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.ClassTimeBattleLockSessionResponse": {
+            "type": "object",
+            "properties": {
+                "end": {
+                    "type": "string"
+                },
+                "start": {
+                    "type": "string"
+                }
+            }
+        },
         "admin.CommunityStandClaimResponse": {
             "type": "object",
             "properties": {
@@ -4368,6 +4390,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 114
                 },
+                "medianOpenPower": {
+                    "type": "number",
+                    "example": 818.5
+                },
                 "playerCount": {
                     "type": "integer",
                     "example": 120
@@ -4591,8 +4617,6 @@ const docTemplate = `{
             "required": [
                 "battleOpeningOverride",
                 "classTimeBattleLockEnabled",
-                "classTimeBattleLockEnd",
-                "classTimeBattleLockStart",
                 "computerBattlesEnabled",
                 "computerEasyAccuracy",
                 "computerHardAccuracy",
@@ -4614,6 +4638,12 @@ const docTemplate = `{
                 "classTimeBattleLockEnd": {
                     "type": "string"
                 },
+                "classTimeBattleLockSessions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.ClassTimeBattleLockSessionRequest"
+                    }
+                },
                 "classTimeBattleLockStart": {
                     "type": "string"
                 },
@@ -4634,6 +4664,12 @@ const docTemplate = `{
                     "type": "integer",
                     "maximum": 100,
                     "minimum": 0
+                },
+                "maintenanceMessage": {
+                    "type": "string"
+                },
+                "maintenanceMode": {
+                    "type": "string"
                 },
                 "sameTeamBattlesEnabled": {
                     "type": "boolean"
@@ -4655,6 +4691,12 @@ const docTemplate = `{
                 "classTimeBattleLockEnd": {
                     "type": "string"
                 },
+                "classTimeBattleLockSessions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.ClassTimeBattleLockSessionResponse"
+                    }
+                },
                 "classTimeBattleLockStart": {
                     "type": "string"
                 },
@@ -4669,6 +4711,15 @@ const docTemplate = `{
                 },
                 "computerNormalAccuracy": {
                     "type": "integer"
+                },
+                "maintenanceActive": {
+                    "type": "boolean"
+                },
+                "maintenanceMessage": {
+                    "type": "string"
+                },
+                "maintenanceMode": {
+                    "type": "string"
                 },
                 "sameTeamBattlesEnabled": {
                     "type": "boolean"

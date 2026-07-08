@@ -128,6 +128,7 @@ const compactNumberFormatter = new Intl.NumberFormat("zh-TW", {
   notation: "compact",
   maximumFractionDigits: 1,
 })
+const maxClassTimeBattleLockSessions = 12
 const dateTimeFormatter = new Intl.DateTimeFormat("zh-TW", {
   month: "2-digit",
   day: "2-digit",
@@ -3632,6 +3633,44 @@ function maintenanceModeLabel(value: AdminSettings["maintenanceMode"]) {
   }
 }
 
+function classTimeBattleLockSessions(settings: AdminSettings) {
+  if (settings.classTimeBattleLockSessions.length > 0) {
+    return settings.classTimeBattleLockSessions
+  }
+  return [
+    {
+      start: settings.classTimeBattleLockStart,
+      end: settings.classTimeBattleLockEnd,
+    },
+  ]
+}
+
+function classTimeBattleLockSessionSummary(settings: AdminSettings) {
+  const sessions = classTimeBattleLockSessions(settings)
+  if (sessions.length === 0) return "未設定時段"
+  if (sessions.length === 1) {
+    return `${sessions[0].start} - ${sessions[0].end}`
+  }
+  return `${sessions[0].start} - ${sessions[0].end} 等 ${sessions.length} 個時段`
+}
+
+function classTimeBattleLockSessionPatch(
+  sessions: AdminSettings["classTimeBattleLockSessions"],
+): Pick<
+  AdminSettings,
+  | "classTimeBattleLockSessions"
+  | "classTimeBattleLockStart"
+  | "classTimeBattleLockEnd"
+> {
+  const normalized =
+    sessions.length > 0 ? sessions : [{ start: "09:00", end: "17:00" }]
+  return {
+    classTimeBattleLockSessions: normalized,
+    classTimeBattleLockStart: normalized[0].start,
+    classTimeBattleLockEnd: normalized[0].end,
+  }
+}
+
 function AdminClassTimeBattleLockPanel({
   settings,
   isPending,
@@ -3660,6 +3699,43 @@ function AdminClassTimeBattleLockPanel({
       icon: <X className="size-4" />,
     },
   ]
+  const sessions = classTimeBattleLockSessions(settings)
+
+  function updateSession(
+    index: number,
+    patch: Partial<AdminSettings["classTimeBattleLockSessions"][number]>,
+  ) {
+    onUpdate(
+      classTimeBattleLockSessionPatch(
+        sessions.map((session, sessionIndex) =>
+          sessionIndex === index ? { ...session, ...patch } : session,
+        ),
+      ),
+    )
+  }
+
+  function addSession() {
+    if (sessions.length >= maxClassTimeBattleLockSessions) return
+    const previous = sessions[sessions.length - 1]
+    onUpdate(
+      classTimeBattleLockSessionPatch([
+        ...sessions,
+        {
+          start: previous?.start ?? "09:00",
+          end: previous?.end ?? "10:00",
+        },
+      ]),
+    )
+  }
+
+  function removeSession(index: number) {
+    if (sessions.length <= 1) return
+    onUpdate(
+      classTimeBattleLockSessionPatch(
+        sessions.filter((_session, sessionIndex) => sessionIndex !== index),
+      ),
+    )
+  }
 
   return (
     <Card className="rounded-[18px] py-5">
@@ -3688,8 +3764,8 @@ function AdminClassTimeBattleLockPanel({
                   啟用上課時間禁止開局
                 </Label>
                 <span className="text-muted-foreground text-xs font-semibold">
-                  {settings.classTimeBattleLockStart} -{" "}
-                  {settings.classTimeBattleLockEnd}
+                  每日以 UTC+8 零時切換；
+                  {classTimeBattleLockSessionSummary(settings)}
                 </span>
               </div>
               <Switch
@@ -3701,31 +3777,61 @@ function AdminClassTimeBattleLockPanel({
               />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field>
-                <Label htmlFor="class-time-battle-lock-start">開始時間</Label>
-                <Input
-                  id="class-time-battle-lock-start"
-                  type="time"
-                  step={60}
-                  value={settings.classTimeBattleLockStart}
-                  onChange={(event) =>
-                    onUpdate({ classTimeBattleLockStart: event.target.value })
-                  }
-                />
-              </Field>
-              <Field>
-                <Label htmlFor="class-time-battle-lock-end">結束時間</Label>
-                <Input
-                  id="class-time-battle-lock-end"
-                  type="time"
-                  step={60}
-                  value={settings.classTimeBattleLockEnd}
-                  onChange={(event) =>
-                    onUpdate({ classTimeBattleLockEnd: event.target.value })
-                  }
-                />
-              </Field>
+            <div className="grid gap-2">
+              {sessions.map((session, index) => (
+                <div
+                  key={index}
+                  className="bg-surface-raised border-border grid gap-3 rounded-[18px] border-2 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end"
+                >
+                  <Field>
+                    <Label htmlFor={`class-time-battle-lock-${index}-start`}>
+                      第 {index + 1} 堂開始
+                    </Label>
+                    <Input
+                      id={`class-time-battle-lock-${index}-start`}
+                      type="time"
+                      step={60}
+                      value={session.start}
+                      onChange={(event) =>
+                        updateSession(index, { start: event.target.value })
+                      }
+                    />
+                  </Field>
+                  <Field>
+                    <Label htmlFor={`class-time-battle-lock-${index}-end`}>
+                      第 {index + 1} 堂結束
+                    </Label>
+                    <Input
+                      id={`class-time-battle-lock-${index}-end`}
+                      type="time"
+                      step={60}
+                      value={session.end}
+                      onChange={(event) =>
+                        updateSession(index, { end: event.target.value })
+                      }
+                    />
+                  </Field>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label={`移除第 ${index + 1} 堂`}
+                    disabled={sessions.length <= 1}
+                    onClick={() => removeSession(index)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                disabled={sessions.length >= maxClassTimeBattleLockSessions}
+                onClick={addSession}
+              >
+                <Plus className="size-4" />
+                新增時段
+              </Button>
             </div>
           </div>
 

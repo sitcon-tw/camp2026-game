@@ -1,5 +1,19 @@
 basePath: /api
 definitions:
+  admin.ClassTimeBattleLockSessionRequest:
+    properties:
+      end:
+        type: string
+      start:
+        type: string
+    type: object
+  admin.ClassTimeBattleLockSessionResponse:
+    properties:
+      end:
+        type: string
+      start:
+        type: string
+    type: object
   admin.CommunityStandClaimResponse:
     properties:
       claimId:
@@ -468,6 +482,9 @@ definitions:
       itemDropCount:
         example: 114
         type: integer
+      medianOpenPower:
+        example: 818.5
+        type: number
       playerCount:
         example: 120
         type: integer
@@ -635,6 +652,10 @@ definitions:
         type: boolean
       classTimeBattleLockEnd:
         type: string
+      classTimeBattleLockSessions:
+        items:
+          $ref: '#/definitions/admin.ClassTimeBattleLockSessionRequest'
+        type: array
       classTimeBattleLockStart:
         type: string
       computerBattlesEnabled:
@@ -651,13 +672,15 @@ definitions:
         maximum: 100
         minimum: 0
         type: integer
+      maintenanceMessage:
+        type: string
+      maintenanceMode:
+        type: string
       sameTeamBattlesEnabled:
         type: boolean
     required:
     - battleOpeningOverride
     - classTimeBattleLockEnabled
-    - classTimeBattleLockEnd
-    - classTimeBattleLockStart
     - computerBattlesEnabled
     - computerEasyAccuracy
     - computerHardAccuracy
@@ -674,6 +697,10 @@ definitions:
         type: boolean
       classTimeBattleLockEnd:
         type: string
+      classTimeBattleLockSessions:
+        items:
+          $ref: '#/definitions/admin.ClassTimeBattleLockSessionResponse'
+        type: array
       classTimeBattleLockStart:
         type: string
       computerBattlesEnabled:
@@ -684,6 +711,12 @@ definitions:
         type: integer
       computerNormalAccuracy:
         type: integer
+      maintenanceActive:
+        type: boolean
+      maintenanceMessage:
+        type: string
+      maintenanceMode:
+        type: string
       sameTeamBattlesEnabled:
         type: boolean
     type: object
