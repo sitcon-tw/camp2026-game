@@ -128,12 +128,7 @@ func TestMatchFlowE2E(t *testing.T) {
 	}, []*http.Cookie{playerCCookie}, http.StatusConflict)
 
 	for i := 0; i < 10; i++ {
-		var state matchState
-		body = getJSON(t, server.URL+"/api/matches/"+created.MatchID, []*http.Cookie{playerACookie}, http.StatusOK)
-		decodeJSON(t, body, &state)
-		if state.Status != "active" || state.CurrentQuestion == nil {
-			t.Fatalf("question %d: expected active state with current question, got %#v", i, state)
-		}
+		state := waitForAnsweringQuestion(t, server.URL, created.MatchID, playerACookie, i)
 
 		questionID := state.CurrentQuestion.QuestionID
 		postJSON(t, server.URL+"/api/matches/"+created.MatchID+"/answers", map[string]string{
@@ -153,12 +148,7 @@ func TestMatchFlowE2E(t *testing.T) {
 		}, []*http.Cookie{playerBCookie}, http.StatusAccepted)
 	}
 
-	body = getJSON(t, server.URL+"/api/matches/"+created.MatchID, []*http.Cookie{playerACookie}, http.StatusOK)
-	var completed matchState
-	decodeJSON(t, body, &completed)
-	if completed.Status != "completed" {
-		t.Fatalf("expected completed match, got %#v", completed)
-	}
+	completed := waitForCompletedMatch(t, server.URL, created.MatchID, playerACookie)
 	if len(completed.Results) != 10 {
 		t.Fatalf("expected 10 results, got %d", len(completed.Results))
 	}
@@ -194,6 +184,53 @@ func TestWaitingRoomLeaveFlowE2E(t *testing.T) {
 
 	assertWaitingRoomLeaveFlow(t, ctx, db, server.URL, playerACookie, playerBCookie)
 	assertOpponentMatchLimit(t, ctx, db, server.URL, playerACookie, playerBCookie)
+}
+
+func TestMatchPairingFlowE2E(t *testing.T) {
+	ctx := t.Context()
+	mongoClient, db := startMongo(t, ctx)
+	seedPlayersAndTeams(t, ctx, db)
+
+	server := newE2EServer(t, mongoClient, db)
+	defer server.Close()
+
+	playerACookie := login(t, server.URL, playerAToken)
+	playerBCookie := login(t, server.URL, playerBToken)
+
+	var created matchPairing
+	body := postJSON(t, server.URL+"/api/matches/pairings", nil, []*http.Cookie{playerACookie}, http.StatusCreated)
+	decodeJSON(t, body, &created)
+	if created.Match.MatchID == "" || created.Match.Code != "" || created.Token == "" || created.ExpiresAt == "" {
+		t.Fatalf("expected pairing with match id, token, expiry, and no public code, got %#v", created)
+	}
+	if len(created.Match.Players) != 1 || created.Match.Players[0].PlayerID != playerAID {
+		t.Fatalf("unexpected created pairing players: %#v", created.Match.Players)
+	}
+
+	postJSON(t, server.URL+"/api/matches/pairings/scan", map[string]string{
+		"token": created.Token,
+	}, []*http.Cookie{playerACookie}, http.StatusConflict)
+
+	var refreshed matchPairing
+	body = postJSON(t, server.URL+"/api/matches/"+created.Match.MatchID+"/pairing-token", nil, []*http.Cookie{playerACookie}, http.StatusOK)
+	decodeJSON(t, body, &refreshed)
+	if refreshed.Match.MatchID != created.Match.MatchID || refreshed.Token == "" || refreshed.ExpiresAt == "" {
+		t.Fatalf("expected refreshed pairing token for same match, got %#v", refreshed)
+	}
+
+	var joined matchState
+	body = postJSON(t, server.URL+"/api/matches/pairings/scan", map[string]string{
+		"token": refreshed.Token,
+	}, []*http.Cookie{playerBCookie}, http.StatusOK)
+	decodeJSON(t, body, &joined)
+	if joined.MatchID != created.Match.MatchID || joined.Status != "waiting" || len(joined.Players) != 2 {
+		t.Fatalf("expected scanned pairing to join waiting match, got %#v", joined)
+	}
+
+	postJSON(t, server.URL+"/api/matches/"+created.Match.MatchID+"/pairing-token", nil, []*http.Cookie{playerACookie}, http.StatusConflict)
+	postJSON(t, server.URL+"/api/matches/pairings/scan", map[string]string{
+		"token": refreshed.Token,
+	}, []*http.Cookie{playerBCookie}, http.StatusNotFound)
 }
 
 func startMongo(t *testing.T, ctx context.Context) (*mongo.Client, *mongo.Database) {
@@ -466,14 +503,60 @@ func assertInitialSSEEvent(t *testing.T, serverURL string, matchID string, cooki
 	}
 }
 
+func waitForAnsweringQuestion(t *testing.T, serverURL string, matchID string, cookie *http.Cookie, questionIndex int) matchState {
+	t.Helper()
+
+	deadline := time.Now().Add(6 * time.Second)
+	for {
+		body := getJSON(t, serverURL+"/api/matches/"+matchID, []*http.Cookie{cookie}, http.StatusOK)
+		var state matchState
+		decodeJSON(t, body, &state)
+		if state.Status == "active" && state.Phase == "answering" && state.CurrentQuestion != nil {
+			return state
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("question %d: expected answering state with current question, got %#v", questionIndex, state)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func waitForCompletedMatch(t *testing.T, serverURL string, matchID string, cookie *http.Cookie) matchState {
+	t.Helper()
+
+	deadline := time.Now().Add(6 * time.Second)
+	for {
+		body := getJSON(t, serverURL+"/api/matches/"+matchID, []*http.Cookie{cookie}, http.StatusOK)
+		var state matchState
+		decodeJSON(t, body, &state)
+		if state.Status == "completed" && completedStateHasPositiveReward(state) {
+			return state
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("expected completed match, got %#v", state)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func completedStateHasPositiveReward(state matchState) bool {
+	for _, player := range state.Players {
+		if player.OpenPowerReward != nil && *player.OpenPowerReward > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func assertShopPurchaseFlow(t *testing.T, ctx context.Context, db *mongo.Database, serverURL string, cookie *http.Cookie) {
 	t.Helper()
 
 	body := getJSON(t, serverURL+"/api/shop/items", []*http.Cookie{cookie}, http.StatusOK)
 	var list shopItemList
 	decodeJSON(t, body, &list)
-	if len(list.Items) != 49 {
-		t.Fatalf("expected 49 shop items, got %#v", list.Items)
+	expectedCount := expectedShopItemCount(t)
+	if len(list.Items) != expectedCount {
+		t.Fatalf("expected %d shop items, got %#v", expectedCount, list.Items)
 	}
 	if list.Items[0].ID != "item_adventure_backpack" || list.Items[0].PriceOpenPower != 150 {
 		t.Fatalf("unexpected first shop item: %#v", list.Items[0])
@@ -535,6 +618,19 @@ func assertShopPurchaseFlow(t *testing.T, ctx context.Context, db *mongo.Databas
 	if len(meItems.Items) != 1 || meItems.Items[0].ItemID != "item_adventure_backpack" || meItems.Items[0].Quantity != 4 {
 		t.Fatalf("expected me items to include purchased item, got %#v", meItems.Items)
 	}
+}
+
+func expectedShopItemCount(t *testing.T) int {
+	t.Helper()
+
+	store := testcontent.Load(t)
+	count := 0
+	for _, item := range store.ListItems() {
+		if item.Purchasable && item.Enabled {
+			count++
+		}
+	}
+	return count
 }
 
 func assertWaitingRoomLeaveFlow(t *testing.T, ctx context.Context, db *mongo.Database, serverURL string, hostCookie *http.Cookie, challengerCookie *http.Cookie) {
@@ -700,11 +796,18 @@ type matchState struct {
 	MatchID              string         `json:"matchId"`
 	Code                 string         `json:"code"`
 	Status               string         `json:"status"`
+	Phase                string         `json:"phase"`
 	Players              []matchPlayer  `json:"players"`
 	CurrentQuestionIndex int            `json:"currentQuestionIndex"`
 	QuestionCount        int            `json:"questionCount"`
 	CurrentQuestion      *matchQuestion `json:"currentQuestion"`
 	Results              []matchResult  `json:"results"`
+}
+
+type matchPairing struct {
+	Match     matchState `json:"match"`
+	Token     string     `json:"token"`
+	ExpiresAt string     `json:"expiresAt"`
 }
 
 func (s matchState) player(playerID string) matchPlayer {

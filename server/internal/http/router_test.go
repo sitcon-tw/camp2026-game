@@ -220,7 +220,10 @@ func TestMatchRoutesRequireAuthentication(t *testing.T) {
 		{method: http.MethodGet, path: "/api/matches/computer/settings"},
 		{method: http.MethodPost, path: "/api/matches/computer"},
 		{method: http.MethodPost, path: "/api/matches/join"},
+		{method: http.MethodPost, path: "/api/matches/pairings"},
+		{method: http.MethodPost, path: "/api/matches/pairings/scan"},
 		{method: http.MethodGet, path: "/api/matches/M8RXP2"},
+		{method: http.MethodPost, path: "/api/matches/M8RXP2/pairing-token"},
 		{method: http.MethodPost, path: "/api/matches/M8RXP2/leave"},
 		{method: http.MethodPut, path: "/api/matches/M8RXP2/loadout"},
 		{method: http.MethodPost, path: "/api/matches/M8RXP2/ready"},
@@ -248,7 +251,10 @@ func TestMatchRoutesRequireDatabase(t *testing.T) {
 		{method: http.MethodGet, path: "/api/matches/computer/settings"},
 		{method: http.MethodPost, path: "/api/matches/computer"},
 		{method: http.MethodPost, path: "/api/matches/join"},
+		{method: http.MethodPost, path: "/api/matches/pairings"},
+		{method: http.MethodPost, path: "/api/matches/pairings/scan"},
 		{method: http.MethodGet, path: "/api/matches/M8RXP2"},
+		{method: http.MethodPost, path: "/api/matches/M8RXP2/pairing-token"},
 		{method: http.MethodPost, path: "/api/matches/M8RXP2/leave"},
 		{method: http.MethodPut, path: "/api/matches/M8RXP2/loadout"},
 		{method: http.MethodPost, path: "/api/matches/M8RXP2/ready"},
@@ -522,10 +528,13 @@ func TestSwaggerJSON(t *testing.T) {
 		"/me/status",
 		"/matches",
 		"/matches/join",
+		"/matches/pairings",
+		"/matches/pairings/scan",
 		"/matches/{matchID}",
 		"/matches/{matchID}/answers",
 		"/matches/{matchID}/events",
 		"/matches/{matchID}/leave",
+		"/matches/{matchID}/pairing-token",
 		"/matches/{matchID}/ready",
 		"/shop/items",
 		"/shop/items/{itemID}",
@@ -609,7 +618,10 @@ func TestSwaggerJSON(t *testing.T) {
 	assertSwaggerSecurity(t, spec.Paths, "/me/matches", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/matches", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/matches/join", http.MethodPost, true)
+	assertSwaggerSecurity(t, spec.Paths, "/matches/pairings", http.MethodPost, true)
+	assertSwaggerSecurity(t, spec.Paths, "/matches/pairings/scan", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/matches/{matchID}", http.MethodGet, true)
+	assertSwaggerSecurity(t, spec.Paths, "/matches/{matchID}/pairing-token", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/matches/{matchID}/ready", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/matches/{matchID}/answers", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/matches/{matchID}/events", http.MethodGet, true)

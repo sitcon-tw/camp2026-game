@@ -361,6 +361,41 @@ func TestOpenParticipantMatchFilterMatchesWaitingAndActiveParticipant(t *testing
 	}
 }
 
+func TestMatchCanIssuePairingTokenRequiresWaitingPVPHostOnly(t *testing.T) {
+	match := mongomodel.Match{
+		Mode:         mongomodel.MatchModePVP,
+		Status:       mongomodel.MatchStatusWaiting,
+		HostPlayerID: "P1",
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: "P1", Kind: mongomodel.MatchPlayerKindHuman},
+		},
+	}
+	if !matchCanIssuePairingToken(match, "P1") {
+		t.Fatal("expected waiting PVP host to issue pairing token")
+	}
+
+	if matchCanIssuePairingToken(match, "P2") {
+		t.Fatal("expected non-host to be unable to issue pairing token")
+	}
+
+	match.Players = append(match.Players, mongomodel.MatchPlayer{PlayerID: "P2", Kind: mongomodel.MatchPlayerKindHuman})
+	if matchCanIssuePairingToken(match, "P1") {
+		t.Fatal("expected full human match to be unable to issue pairing token")
+	}
+
+	match.Players = match.Players[:1]
+	match.Status = mongomodel.MatchStatusActive
+	if matchCanIssuePairingToken(match, "P1") {
+		t.Fatal("expected active match to be unable to issue pairing token")
+	}
+
+	match.Status = mongomodel.MatchStatusWaiting
+	match.Mode = mongomodel.MatchModeComputer
+	if matchCanIssuePairingToken(match, "P1") {
+		t.Fatal("expected computer match to be unable to issue pairing token")
+	}
+}
+
 func TestOpenMatchUnavailableDetectsStaleOpenRace(t *testing.T) {
 	if !openMatchUnavailable(mongo.ErrNoDocuments) {
 		t.Fatal("expected missing match to be treated as unavailable")

@@ -1,13 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { ArrowRight, ScanQrCode } from "lucide-react"
+import { QrCode, ScanQrCode } from "lucide-react"
 import { type ReactNode, useEffect, useState } from "react"
 import { toast } from "sonner"
 
-import {
-  MatchCodeScannerDialog,
-  normalizeMatchCode,
-} from "@/features/battle-qr"
+import { MatchCodeScannerDialog } from "@/features/battle-qr"
 import { AppError, isTerminalClientError } from "@/shared/api/error"
 import { gameApi, type MatchState } from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
@@ -21,7 +18,6 @@ import {
 } from "@/shared/ui/card"
 import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
-import { Input } from "@/shared/ui/input"
 import { PageHeader } from "@/shared/ui/page-header"
 
 function storeMatch(match: MatchState) {
@@ -70,7 +66,6 @@ function LobbyActionCard({
 export function BattleLobbyPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [code, setCode] = useState("")
   const [scannerOpen, setScannerOpen] = useState(false)
   const onMatchReady = (match: MatchState) => {
     storeMatch(match)
@@ -108,16 +103,16 @@ export function BattleLobbyPage() {
     }
     clearStoredMatch()
   }, [openMatch, openMatchQuery.isError, openMatchQuery.isFetchedAfterMount])
-  const createMutation = useMutation({
-    mutationFn: gameApi.createMatch,
-    onSuccess: onMatchReady,
+  const createPairingMutation = useMutation({
+    mutationFn: gameApi.createMatchPairing,
+    onSuccess: (pairing) => onMatchReady(pairing.match),
     onError: (error) => {
       if (error instanceof AppError && error.status === 409) {
         queryClient.invalidateQueries({ queryKey: ["matches", "open"] })
         toast.error("已有進行中的對戰，請重新加入")
         return
       }
-      toast.error(error instanceof Error ? error.message : "建立房間失敗")
+      toast.error(error instanceof Error ? error.message : "建立現場配對失敗")
     },
   })
   const computerSettingsQuery = useQuery({
@@ -136,8 +131,8 @@ export function BattleLobbyPage() {
       toast.error(error instanceof Error ? error.message : "建立電腦對戰失敗")
     },
   })
-  const joinMutation = useMutation({
-    mutationFn: gameApi.joinMatch,
+  const scanPairingMutation = useMutation({
+    mutationFn: gameApi.scanMatchPairingToken,
     onSuccess: onMatchReady,
     onError: (error) => {
       if (error instanceof AppError && error.status === 409) {
@@ -145,39 +140,34 @@ export function BattleLobbyPage() {
         toast.error("已有進行中的對戰，請重新加入")
         return
       }
-      toast.error(error instanceof Error ? error.message : "加入房間失敗")
+      if (error instanceof AppError && error.status === 404) {
+        toast.error("QR Code 已失效，請掃描新的現場配對 QR")
+        return
+      }
+      toast.error(error instanceof Error ? error.message : "加入現場配對失敗")
     },
   })
   const battleActionPending =
-    createMutation.isPending ||
+    createPairingMutation.isPending ||
     createComputerMutation.isPending ||
-    joinMutation.isPending
+    scanPairingMutation.isPending
 
-  function handleJoinCode(value: string) {
+  function handleStartPairing() {
     if (battleActionPending) return
     if (openMatch) {
       onMatchReady(openMatch)
       return
     }
-    const normalizedCode = normalizeMatchCode(value)
-    if (!normalizedCode) {
-      toast.error("請先輸入房號")
-      return
-    }
-    joinMutation.mutate(normalizedCode)
+    createPairingMutation.mutate()
   }
 
-  function handleJoin() {
-    handleJoinCode(code)
-  }
-
-  function handleQuickStart() {
+  function handleScanToken(token: string) {
     if (battleActionPending) return
     if (openMatch) {
       onMatchReady(openMatch)
       return
     }
-    createMutation.mutate()
+    scanPairingMutation.mutate(token)
   }
 
   function handleComputerBattle() {
@@ -192,6 +182,49 @@ export function BattleLobbyPage() {
   return (
     <GamePageShell contentClassName="grid content-start gap-y-3">
       <PageHeader title="知識王" headline="Battle Lobby" />
+      <LobbyActionCard
+        title="現場配對"
+        description={
+          openMatch
+            ? "回到尚未結束的知識王對戰"
+            : "用短效 QR Code 當面加入雙人知識王"
+        }
+        action={
+          <div className="grid w-full gap-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              className={actionButtonClassName}
+              disabled={openMatchChecking || battleActionPending}
+              onClick={handleStartPairing}
+            >
+              <QrCode className="size-4" />
+              {openMatchChecking
+                ? "同步中"
+                : openMatch
+                  ? "回到目前對戰"
+                  : createPairingMutation.isPending
+                    ? "建立中"
+                    : "顯示配對 QR"}
+            </Button>
+            <Button
+              type="button"
+              className={actionButtonClassName}
+              variant="secondary"
+              disabled={
+                Boolean(openMatch) || openMatchChecking || battleActionPending
+              }
+              onClick={() => setScannerOpen(true)}
+            >
+              <ScanQrCode className="size-4" />
+              {scanPairingMutation.isPending ? "加入中" : "掃描配對 QR"}
+            </Button>
+          </div>
+        }
+      >
+        {openMatch
+          ? "對戰已經開始或仍在等待房，可以直接回到原本的對戰。"
+          : "一位玩家顯示 QR Code，另一位玩家在現場掃描加入；QR Code 會持續更新。"}
+      </LobbyActionCard>
       <LobbyActionCard
         title="電腦對戰"
         description={
@@ -235,90 +268,13 @@ export function BattleLobbyPage() {
             : "你目前有尚未結束的對戰，先回到原本的對戰再開始電腦對戰。"
           : "沒有真人對手時，也可以完成對戰並取得結算獎勵。"}
       </LobbyActionCard>
-
-      <LobbyActionCard
-        title="快速開始"
-        description={
-          openMatch ? "回到尚未結束的知識王對戰" : "建立一個雙人知識王房間"
-        }
-        action={
-          <Button
-            type="button"
-            className={actionButtonClassName}
-            disabled={openMatchChecking || battleActionPending}
-            onClick={handleQuickStart}
-          >
-            <GameFeatureIcon name="battle" className="size-4" />
-            {openMatchChecking
-              ? "同步中"
-              : openMatch
-                ? "重新加入對戰"
-                : createMutation.isPending
-                  ? "建立中"
-                  : "建立房間"}
-          </Button>
-        }
-      >
-        {openMatch
-          ? "對戰已經開始或仍在等待房，可以直接回到原本的對戰。"
-          : "建立房間後，把房號分享給另一位學員加入對戰。"}
-      </LobbyActionCard>
-
-      <LobbyActionCard
-        title="多人連線"
-        description="使用房號加入或回到對戰"
-        action={
-          <div className="grid w-full grid-cols-[minmax(0,1fr)_44px_minmax(104px,1fr)] items-center gap-2">
-            <Input
-              id="input-room-id"
-              type="text"
-              className="h-11 rounded-[14px] px-3 text-[15px] font-black"
-              value={code}
-              onChange={(event) =>
-                setCode(normalizeMatchCode(event.target.value))
-              }
-              disabled={Boolean(openMatch) || openMatchChecking}
-              placeholder="請輸入房號"
-            />
-            <Button
-              className="size-11 rounded-[14px]"
-              size="icon"
-              type="button"
-              aria-label="掃描房號 QR Code"
-              disabled={
-                Boolean(openMatch) || openMatchChecking || battleActionPending
-              }
-              onClick={() => setScannerOpen(true)}
-            >
-              <ScanQrCode />
-            </Button>
-            <Button
-              className="h-11 rounded-[14px] px-3 text-[15px] font-black"
-              variant="secondary"
-              type="button"
-              disabled={openMatchChecking || battleActionPending}
-              onClick={handleJoin}
-            >
-              {openMatch
-                ? "回到目前對戰"
-                : joinMutation.isPending
-                  ? "加入中"
-                  : "加入房間"}
-              <ArrowRight />
-            </Button>
-          </div>
-        }
-      >
-        和其他學員連線對戰，比拼誰才是知識王。
-      </LobbyActionCard>
       {scannerOpen ? (
         <MatchCodeScannerDialog
           open={scannerOpen}
           onOpenChange={setScannerOpen}
-          onCode={(scannedCode) => {
-            setCode(scannedCode)
+          onCode={(scannedToken) => {
             setScannerOpen(false)
-            handleJoinCode(scannedCode)
+            handleScanToken(scannedToken)
           }}
         />
       ) : null}

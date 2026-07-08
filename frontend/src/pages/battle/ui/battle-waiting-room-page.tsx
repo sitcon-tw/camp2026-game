@@ -212,6 +212,30 @@ export function BattleWaitingRoomPage() {
     ownedSitonesQuery.isPending ||
     defaultLoadoutQuery.isPending ||
     statusQuery.isPending
+  const currentPlayerID = statusQuery.data?.playerId
+  const computerMatch = match?.mode === "computer"
+  const humanPlayerCount = (match?.players ?? []).filter(
+    (player) => player.kind !== "computer",
+  ).length
+  const hostCanPair = Boolean(
+    matchID &&
+    match?.status === "waiting" &&
+    !computerMatch &&
+    match.hostPlayerId === currentPlayerID &&
+    humanPlayerCount < 2,
+  )
+  const pairingTokenQuery = useQuery({
+    queryKey: ["matches", matchID, "pairing-token"],
+    queryFn: async () => {
+      const pairing = await gameApi.createMatchPairingToken(matchID)
+      queryClient.setQueryData(["matches", matchID], pairing.match)
+      return pairing
+    },
+    enabled: hostCanPair,
+    refetchInterval: 8_000,
+    retry: false,
+    staleTime: 0,
+  })
 
   function addSitone(record: PlayerSitone) {
     if (loadoutLocked) return
@@ -282,30 +306,33 @@ export function BattleWaitingRoomPage() {
     )
   }
 
-  const computerMatch = match?.mode === "computer"
-
   return (
     <GamePageShell contentClassName="grid content-start gap-y-2">
       <PageHeader title="等待房間" headline="Battle Room" />
-      {computerMatch ? null : (
+      {hostCanPair ? (
         <Card>
           <CardHeader>
-            <CardTitle>房號</CardTitle>
+            <CardTitle>現場配對 QR</CardTitle>
             <CardDescription>
-              將這個房號分享給其他學員，加入後兩位玩家都準備即可開始。
+              請讓另一位玩家在現場掃描；QR Code 會持續更新，截圖很快失效。
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid justify-items-center gap-4">
-            <span className="block pl-[0.5rem] text-4xl font-bold tracking-[0.5rem]">
-              {match?.code ?? "------"}
-            </span>
+          <CardContent className="grid justify-items-center gap-3">
             <MatchCodeQr
-              value={match?.code ?? ""}
+              value={pairingTokenQuery.data?.token ?? ""}
+              label="現場配對 QR Code"
               className="size-[168px] rounded-[24px] p-2"
             />
+            <span className="text-muted-foreground text-center text-sm font-bold">
+              {pairingTokenQuery.isError
+                ? "QR 更新失敗，稍後會再試一次。"
+                : pairingTokenQuery.isFetching
+                  ? "正在更新 QR"
+                  : "QR Code 每 8 秒更新一次。"}
+            </span>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       <Card>
         <CardHeader>

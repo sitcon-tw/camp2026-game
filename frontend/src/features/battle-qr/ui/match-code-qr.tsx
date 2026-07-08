@@ -6,11 +6,16 @@ import { cn } from "@/shared/utils"
 type MatchCodeQrProps = {
   value: string
   className?: string
+  label?: string
 }
 
 const quietZone = 4
 
-export function MatchCodeQr({ value, className }: MatchCodeQrProps) {
+export function MatchCodeQr({
+  value,
+  className,
+  label = "現場配對 QR Code",
+}: MatchCodeQrProps) {
   const matrix = useMemo(() => {
     if (!value) return null
     return createQrMatrix(value)
@@ -34,7 +39,7 @@ export function MatchCodeQr({ value, className }: MatchCodeQrProps) {
   return (
     <svg
       role="img"
-      aria-label={`房號 QR Code：${value}`}
+      aria-label={label}
       viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
       className={cn(
         "bg-card border-ink aspect-square rounded-lg border-2 p-1",

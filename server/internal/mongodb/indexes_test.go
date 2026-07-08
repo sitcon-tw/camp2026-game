@@ -77,6 +77,26 @@ func TestIndexModelsByCollection(t *testing.T) {
 			partial:    bson.M{"open_player_locks": bson.M{"$exists": true}},
 		},
 		{
+			collection: mongomodel.MatchPairingsCollection,
+			name:       "match_pairings_token",
+			keys:       bson.D{{Key: "token", Value: 1}},
+			unique:     true,
+		},
+		{
+			collection: mongomodel.MatchPairingsCollection,
+			name:       "match_pairings_match_created",
+			keys: bson.D{
+				{Key: "match_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+		},
+		{
+			collection:         mongomodel.MatchPairingsCollection,
+			name:               "match_pairings_expires_at_ttl",
+			keys:               bson.D{{Key: "expires_at", Value: 1}},
+			expireAfterSeconds: int32Pointer(0),
+		},
+		{
 			collection: mongomodel.MatchAnswersCollection,
 			name:       "match_answers_match_player_question",
 			keys: bson.D{
