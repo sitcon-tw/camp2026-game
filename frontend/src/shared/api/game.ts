@@ -606,6 +606,7 @@ const AdminDashboardInventoryEntrySchema = z.object({
   source: z.string().optional(),
   quantity: z.number(),
   ownerCount: z.number(),
+  ownerPercent: z.number(),
   catalogMissing: z.boolean(),
 })
 

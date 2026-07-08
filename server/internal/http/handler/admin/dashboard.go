@@ -607,8 +607,8 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 		Teams:   teams,
 		Players: players,
 		Inventory: DashboardInventoryResponse{
-			Sitones: dashboardSitoneInventoryResponses(store, raw.SitoneInventory),
-			Items:   dashboardItemInventoryResponses(store, raw.ItemInventory),
+			Sitones: dashboardSitoneInventoryResponses(store, raw.SitoneInventory, len(statsByPlayer)),
+			Items:   dashboardItemInventoryResponses(store, raw.ItemInventory, len(statsByPlayer)),
 		},
 		Matches: matchSummary,
 	}
@@ -979,8 +979,22 @@ func dashboardPlayerNameLess(a DashboardPlayerResponse, b DashboardPlayerRespons
 	return a.PlayerID < b.PlayerID
 }
 
-func dashboardSitoneInventoryResponses(store *content.Store, inventory []dashboardInventoryStat) []DashboardInventoryEntryResponse {
-	entries := make([]DashboardInventoryEntryResponse, 0, len(inventory))
+func dashboardSitoneInventoryResponses(store *content.Store, inventory []dashboardInventoryStat, playerCount int) []DashboardInventoryEntryResponse {
+	entriesByID := make(map[string]DashboardInventoryEntryResponse, len(inventory))
+	for _, sitone := range store.ListSitones() {
+		if sitone.ID == "" {
+			continue
+		}
+		entriesByID[sitone.ID] = DashboardInventoryEntryResponse{
+			ID:             sitone.ID,
+			Name:           sitone.Name,
+			Type:           sitone.Type,
+			Rarity:         sitone.Rarity,
+			IconPath:       sitone.IconPath,
+			CatalogMissing: false,
+		}
+	}
+
 	for _, stats := range inventory {
 		if stats.ID == "" || stats.Quantity <= 0 {
 			continue
@@ -990,6 +1004,7 @@ func dashboardSitoneInventoryResponses(store *content.Store, inventory []dashboa
 			Name:           stats.ID,
 			Quantity:       stats.Quantity,
 			OwnerCount:     stats.OwnerCount,
+			OwnerPercent:   dashboardPercent(stats.OwnerCount, playerCount),
 			CatalogMissing: true,
 		}
 		if sitone, ok := store.GetSitone(stats.ID); ok {
@@ -999,13 +1014,17 @@ func dashboardSitoneInventoryResponses(store *content.Store, inventory []dashboa
 			entry.IconPath = sitone.IconPath
 			entry.CatalogMissing = false
 		}
+		entriesByID[stats.ID] = entry
+	}
+	entries := make([]DashboardInventoryEntryResponse, 0, len(entriesByID))
+	for _, entry := range entriesByID {
 		entries = append(entries, entry)
 	}
 	sortDashboardInventory(entries)
 	return entries
 }
 
-func dashboardItemInventoryResponses(store *content.Store, inventory []dashboardInventoryStat) []DashboardInventoryEntryResponse {
+func dashboardItemInventoryResponses(store *content.Store, inventory []dashboardInventoryStat, playerCount int) []DashboardInventoryEntryResponse {
 	entries := make([]DashboardInventoryEntryResponse, 0, len(inventory))
 	for _, stats := range inventory {
 		if stats.ID == "" || stats.Quantity <= 0 {
@@ -1016,6 +1035,7 @@ func dashboardItemInventoryResponses(store *content.Store, inventory []dashboard
 			Name:           stats.ID,
 			Quantity:       stats.Quantity,
 			OwnerCount:     stats.OwnerCount,
+			OwnerPercent:   dashboardPercent(stats.OwnerCount, playerCount),
 			CatalogMissing: true,
 		}
 		if item, ok := store.GetItem(stats.ID); ok {

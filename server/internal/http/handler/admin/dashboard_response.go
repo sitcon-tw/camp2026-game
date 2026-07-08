@@ -130,6 +130,7 @@ type DashboardInventoryEntryResponse struct {
 	Source         string `json:"source,omitempty" example:"drop"`
 	Quantity       int    `json:"quantity" example:"30"`
 	OwnerCount     int    `json:"ownerCount" example:"18"`
+	OwnerPercent   int    `json:"ownerPercent" example:"15"`
 	CatalogMissing bool   `json:"catalogMissing" example:"false"`
 }
 

@@ -19,8 +19,11 @@ import {
 import { type FormEvent, type ReactNode, useState } from "react"
 import {
   CartesianGrid,
+  Cell,
   Line,
   LineChart as RechartsLineChart,
+  Pie,
+  PieChart,
   XAxis,
   YAxis,
 } from "recharts"
@@ -138,6 +141,18 @@ const historyChartConfig = {
     color: "var(--primary)",
   },
 } satisfies ChartConfig
+const sitoneOwnershipColors = [
+  "var(--pebble-engineer)",
+  "var(--pebble-inspiration)",
+  "var(--pebble-harmony)",
+  "var(--pebble-entertainment)",
+  "var(--pebble-explorer)",
+  "var(--primary)",
+  "var(--accent)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+]
 
 function errorMessage(error: unknown, fallback: string) {
   if (error instanceof AppError) return error.message
@@ -1071,15 +1086,32 @@ function MostOwnedPanel({
 }: {
   inventory: AdminDashboard["inventory"]
 }) {
+  const leastOwnedSitones = [...inventory.sitones].sort((a, b) => {
+    if (a.ownerCount !== b.ownerCount) return a.ownerCount - b.ownerCount
+    if (a.quantity !== b.quantity) return a.quantity - b.quantity
+    if (a.name !== b.name) return a.name.localeCompare(b.name)
+    return a.id.localeCompare(b.id)
+  })
+
   return (
-    <section className="grid gap-3 lg:grid-cols-2">
-      <MostOwnedListCard
-        icon={<GameFeatureIcon name="stones" className="size-5" />}
-        title="最多拿到的小石"
-        emptyLabel="目前沒有小石持有資料"
-        entries={inventory.sitones.slice(0, 6)}
-        unit="顆"
-      />
+    <section className="grid gap-3">
+      <div className="grid gap-3 xl:grid-cols-3">
+        <MostOwnedListCard
+          icon={<GameFeatureIcon name="stones" className="size-5" />}
+          title="最多拿到的小石"
+          emptyLabel="目前沒有小石持有資料"
+          entries={inventory.sitones.slice(0, 6)}
+          unit="顆"
+        />
+        <MostOwnedListCard
+          icon={<GameFeatureIcon name="leaderboard" className="size-5" />}
+          title="最少拿到的小石"
+          emptyLabel="目前沒有小石 catalog"
+          entries={leastOwnedSitones.slice(0, 6)}
+          unit="顆"
+        />
+        <SitoneOwnershipPieCard entries={inventory.sitones} />
+      </div>
       <MostOwnedListCard
         icon={<GameFeatureIcon name="backpack" className="size-5" />}
         title="最多拿到的道具"
@@ -1088,6 +1120,103 @@ function MostOwnedPanel({
         unit="個"
       />
     </section>
+  )
+}
+
+function SitoneOwnershipPieCard({
+  entries,
+}: {
+  entries: AdminDashboardInventoryEntry[]
+}) {
+  const chartEntries = entries.filter((entry) => entry.ownerCount > 0)
+
+  return (
+    <Card className="rounded-[18px] py-5">
+      <CardHeader className="px-5">
+        <CardTitle className="flex items-center gap-2 text-lg font-black">
+          <Percent className="size-5" />
+          小石持有率
+        </CardTitle>
+        <CardDescription>圓餅大小依持有人數，標籤顯示玩家持有率。</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3 px-5">
+        {chartEntries.length > 0 ? (
+          <>
+            <ChartContainer
+              config={{ owners: { label: "持有人", color: "var(--primary)" } }}
+              className="mx-auto aspect-square h-[260px] w-full"
+              initialDimension={{ width: 260, height: 260 }}
+            >
+              <PieChart>
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      hideLabel
+                      formatter={(_value, _name, item) => {
+                        const entry =
+                          item.payload as AdminDashboardInventoryEntry
+                        return (
+                          <div className="grid gap-0.5">
+                            <span className="font-black">{entry.name}</span>
+                            <span className="text-muted-foreground font-bold">
+                              {formatNumber(entry.ownerCount)} 人持有 /{" "}
+                              {formatPercent(entry.ownerPercent)}
+                            </span>
+                          </div>
+                        )
+                      }}
+                    />
+                  }
+                />
+                <Pie
+                  data={chartEntries}
+                  dataKey="ownerCount"
+                  nameKey="name"
+                  innerRadius={58}
+                  outerRadius={104}
+                  paddingAngle={1}
+                  strokeWidth={2}
+                >
+                  {chartEntries.map((entry, index) => (
+                    <Cell
+                      key={entry.id}
+                      fill={
+                        sitoneOwnershipColors[
+                          index % sitoneOwnershipColors.length
+                        ]
+                      }
+                    />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ChartContainer>
+            <div className="grid max-h-[180px] gap-2 overflow-auto pr-1">
+              {entries.slice(0, 12).map((entry, index) => (
+                <div
+                  key={entry.id}
+                  className="grid grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-2 text-xs font-bold"
+                >
+                  <span
+                    className="size-3 rounded-full border"
+                    style={{
+                      background:
+                        sitoneOwnershipColors[
+                          index % sitoneOwnershipColors.length
+                        ],
+                    }}
+                  />
+                  <span className="truncate">{entry.name}</span>
+                  <span>{formatPercent(entry.ownerPercent)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <EmptyBlock label="目前沒有任何小石持有人" />
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -1178,6 +1307,9 @@ function MostOwnedListRow({
             {formatNumber(entry.ownerCount)}
             <span className="ml-1 text-sm">人</span>
           </div>
+          <span className="text-muted-foreground text-xs font-bold">
+            {formatPercent(entry.ownerPercent)}
+          </span>
         </div>
       </div>
     </div>
@@ -1711,6 +1843,7 @@ function InventoryTable({
           <TableHead>分類</TableHead>
           <TableHead className="text-right">總量</TableHead>
           <TableHead className="text-right">持有人</TableHead>
+          <TableHead className="text-right">持有率</TableHead>
           <TableHead>Catalog</TableHead>
         </TableRow>
       </TableHeader>
@@ -1731,6 +1864,9 @@ function InventoryTable({
             </TableCell>
             <TableCell className="text-right">
               {formatNumber(entry.ownerCount)}
+            </TableCell>
+            <TableCell className="text-right font-black">
+              {formatPercent(entry.ownerPercent)}
             </TableCell>
             <TableCell>
               {entry.catalogMissing ? (
