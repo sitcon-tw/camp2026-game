@@ -110,6 +110,9 @@ func TestPlayerGiftHistoryAPIReturnsRecipientScopedSingleRecord(t *testing.T) {
 	if entry.Name != "冒險背包" || entry.Quantity != 2 {
 		t.Fatalf("expected item name and quantity, got %#v", entry)
 	}
+	if entry.IconPath != "/game-icons/items/item_adventure_backpack.png" {
+		t.Fatalf("expected item icon path, got %#v", entry)
+	}
 	if !entry.CreatedAt.Equal(recordTime) {
 		t.Fatalf("expected timestamp %s, got %s", recordTime.Format(time.RFC3339), entry.CreatedAt.Format(time.RFC3339))
 	}
@@ -212,6 +215,9 @@ func TestAdminGiftHistoryAPIReturnsMultipleOrderedRecords(t *testing.T) {
 	if first.Name != "工程型小石" || first.Quantity != 3 {
 		t.Fatalf("expected sitone record with resolved name and quantity, got %#v", first)
 	}
+	if first.IconPath != "/game-icons/stones/basic_blue.png" {
+		t.Fatalf("expected sitone icon path, got %#v", first)
+	}
 	if first.StaffPlayerID != testGiftHistoryPlayerBID || first.StaffNickname != "Bob" {
 		t.Fatalf("expected first sender fields to be populated, got %#v", first)
 	}
@@ -223,6 +229,9 @@ func TestAdminGiftHistoryAPIReturnsMultipleOrderedRecords(t *testing.T) {
 	}
 	if second.Name != "冒險背包" || second.Quantity != 1 {
 		t.Fatalf("expected item record with resolved name and quantity, got %#v", second)
+	}
+	if second.IconPath != "/game-icons/items/item_adventure_backpack.png" {
+		t.Fatalf("expected item icon path, got %#v", second)
 	}
 	if second.StaffPlayerID != testGiftHistoryStaffID || second.StaffNickname != "Staff One" {
 		t.Fatalf("expected second sender fields to be populated, got %#v", second)

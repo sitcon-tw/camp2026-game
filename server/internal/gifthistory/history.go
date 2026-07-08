@@ -20,6 +20,7 @@ type Entry struct {
 	Kind              string    `json:"kind"`
 	RefID             string    `json:"refId,omitempty"`
 	Name              string    `json:"name"`
+	IconPath          string    `json:"iconPath,omitempty"`
 	Quantity          int       `json:"quantity,omitempty"`
 	Amount            int       `json:"amount,omitempty"`
 	StaffPlayerID     string    `json:"staffPlayerId"`
@@ -82,7 +83,7 @@ func List(ctx context.Context, db *mongo.Database, store *content.Store, filter 
 
 	entries := make([]Entry, 0, len(records))
 	for _, record := range records {
-		name, err := rewardName(store, record.Kind, record.RefID)
+		details, err := rewardDetailsFor(store, record.Kind, record.RefID)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +91,8 @@ func List(ctx context.Context, db *mongo.Database, store *content.Store, filter 
 			RewardID:          record.ID,
 			Kind:              record.Kind,
 			RefID:             record.RefID,
-			Name:              name,
+			Name:              details.Name,
+			IconPath:          details.IconPath,
 			StaffPlayerID:     record.StaffPlayerID,
 			RecipientPlayerID: record.RecipientPlayerID,
 			CreatedAt:         record.CreatedAt,
@@ -145,23 +147,28 @@ func loadPlayersByID(ctx context.Context, db *mongo.Database, ids map[string]str
 	return out, nil
 }
 
-func rewardName(store *content.Store, kind, refID string) (string, error) {
+type rewardDetails struct {
+	Name     string
+	IconPath string
+}
+
+func rewardDetailsFor(store *content.Store, kind, refID string) (rewardDetails, error) {
 	switch kind {
 	case "item":
 		item, ok := store.GetItem(refID)
 		if !ok {
-			return "", fmt.Errorf("gift history item %q not found", refID)
+			return rewardDetails{}, fmt.Errorf("gift history item %q not found", refID)
 		}
-		return item.Name, nil
+		return rewardDetails{Name: item.Name, IconPath: item.IconPath}, nil
 	case "sitone":
 		sitone, ok := store.GetSitone(refID)
 		if !ok {
-			return "", fmt.Errorf("gift history sitone %q not found", refID)
+			return rewardDetails{}, fmt.Errorf("gift history sitone %q not found", refID)
 		}
-		return sitone.Name, nil
+		return rewardDetails{Name: sitone.Name, IconPath: sitone.IconPath}, nil
 	case rewardKindOpenPower:
-		return "開源力", nil
+		return rewardDetails{Name: "開源力"}, nil
 	default:
-		return "", fmt.Errorf("unsupported gift history kind %q", kind)
+		return rewardDetails{}, fmt.Errorf("unsupported gift history kind %q", kind)
 	}
 }

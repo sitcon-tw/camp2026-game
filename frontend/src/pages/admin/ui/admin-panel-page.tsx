@@ -90,6 +90,7 @@ import {
 } from "@/shared/ui/chart"
 import { Field } from "@/shared/ui/field"
 import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
+import { GameIcon } from "@/shared/ui/game-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
@@ -206,6 +207,27 @@ function giftRewardKindLabel(entry: GiftHistoryEntry) {
     case "open_power":
       return "開源力"
   }
+}
+
+function GiftRewardIcon({ entry }: { entry: GiftHistoryEntry }) {
+  const fallback = (() => {
+    switch (entry.kind) {
+      case "item":
+        return <GameFeatureIcon name="backpack" className="size-5" />
+      case "sitone":
+        return <GameFeatureIcon name="stones" className="size-5" />
+      case "open_power":
+        return <GameFeatureIcon name="giftHistory" className="size-5" />
+    }
+  })()
+
+  return (
+    <GameIcon
+      iconPath={entry.iconPath}
+      imageClassName="p-0.5"
+      fallback={fallback}
+    />
+  )
 }
 
 function formatHistoryTimestamp(value: string, bucket: "hour" | "day") {
@@ -921,8 +943,18 @@ function AdminGiftHistoryPanel({
                 <TableCell>
                   <Badge variant="outline">{giftRewardKindLabel(entry)}</Badge>
                 </TableCell>
-                <TableCell className="min-w-[160px] font-semibold break-words whitespace-normal">
-                  {entry.name}
+                <TableCell className="min-w-[160px] whitespace-normal">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="bg-surface-raised border-border grid size-8 shrink-0 place-items-center rounded-[10px] border"
+                      aria-hidden
+                    >
+                      <GiftRewardIcon entry={entry} />
+                    </span>
+                    <span className="font-semibold break-words">
+                      {entry.name}
+                    </span>
+                  </div>
                 </TableCell>
                 <TableCell className="text-right font-black">
                   {giftRewardAmountLabel(entry)}
