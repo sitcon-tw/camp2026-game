@@ -1,5 +1,34 @@
 basePath: /api
 definitions:
+  admin.CommunityStandClaimResponse:
+    properties:
+      claimId:
+        example: community_claim_507f1f77bcf86cd799439011
+        type: string
+      createdAt:
+        type: string
+      playerId:
+        example: 7H9K2Q
+        type: string
+      playerNickname:
+        example: Alice
+        type: string
+      reward:
+        $ref: '#/definitions/admin.CommunityStandRewardResponse'
+      standId:
+        example: 00000000-0000-4000-8000-000000000000
+        type: string
+      standName:
+        example: SITCON 社群攤位
+        type: string
+    type: object
+  admin.CommunityStandClaimsResponse:
+    properties:
+      claims:
+        items:
+          $ref: '#/definitions/admin.CommunityStandClaimResponse'
+        type: array
+    type: object
   admin.CommunityStandResponse:
     properties:
       claimCount:
@@ -2576,6 +2605,37 @@ info:
   title: Camp 2026 Game API
   version: 0.1.0
 paths:
+  /admin/community-stand-claims:
+    get:
+      description: Admin-only endpoint. Returns recent community stand claim records,
+        including claimant, stand, reward snapshot, and claim time.
+      parameters:
+      - description: Filter by community stand ID
+        in: query
+        name: standId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.CommunityStandClaimsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: List community stand claim records as admin
+      tags:
+      - admin
   /admin/community-stands:
     get:
       description: Admin-only endpoint. Returns all community stands, including disabled

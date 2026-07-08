@@ -126,6 +126,18 @@
 - QRCode 內容使用 `camp2026-community-stand|{qrToken}` 掃描 payload，不放入 `/community/{standID}` 看板網址。
 - `qrToken` 只會在攤位看板頁讀取 display API 時簽發，且兩分鐘後由後端強制失效。
 
+#### 管理員查看攤位領取紀錄
+
+`GET /api/admin/community-stand-claims`
+
+需要管理員登入。
+
+用途：
+
+- 管理員面板使用。
+- 回傳最近社群攤位領取紀錄，包含領取者、領取時間、攤位 ID、攤位名稱與領取當下的獎勵快照。
+- 可用 `standId` query parameter 篩選單一攤位。
+
 ## 課活組說明
 
 ### 這個 feature 怎麼運作
