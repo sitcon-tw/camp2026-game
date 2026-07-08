@@ -577,7 +577,8 @@ const AdminCommunityStandUpdateInputSchema = z.object({
   reward: AdminCommunityStandRewardInputSchema,
 })
 
-const AdminCommunityStandCreateInputSchema = AdminCommunityStandUpdateInputSchema
+const AdminCommunityStandCreateInputSchema =
+  AdminCommunityStandUpdateInputSchema
 
 const AdminDashboardTeamSummarySchema = z.object({
   teamId: z.string(),

@@ -16,13 +16,7 @@ import {
   Trash2,
   X,
 } from "lucide-react"
-import {
-  type FormEvent,
-  type ReactNode,
-  useEffect,
-  useMemo,
-  useState,
-} from "react"
+import { type FormEvent, type ReactNode, useMemo, useState } from "react"
 import {
   CartesianGrid,
   Cell,
@@ -1194,7 +1188,9 @@ function SitoneOwnershipPieCard({
           <Percent className="size-5" />
           小石持有率
         </CardTitle>
-        <CardDescription>圓餅大小依持有人數，標籤顯示玩家持有率。</CardDescription>
+        <CardDescription>
+          圓餅大小依持有人數，標籤顯示玩家持有率。
+        </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 px-5">
         {chartEntries.length > 0 ? (
@@ -2229,12 +2225,14 @@ function TeamAvatar({
     () => imageSrcCandidates(team.avatarUrl),
     [team.avatarUrl],
   )
-  const [avatarSrcIndex, setAvatarSrcIndex] = useState(0)
+  const avatarSrcKey = useMemo(() => avatarSrcs.join("\n"), [avatarSrcs])
+  const [avatarErrorState, setAvatarErrorState] = useState({
+    key: "",
+    index: 0,
+  })
+  const avatarSrcIndex =
+    avatarErrorState.key === avatarSrcKey ? avatarErrorState.index : 0
   const currentAvatarSrc = avatarSrcs[avatarSrcIndex]
-
-  useEffect(() => {
-    setAvatarSrcIndex(0)
-  }, [team.avatarUrl])
 
   return (
     <Avatar className={cn("bg-surface-raised border-ink border", className)}>
@@ -2245,7 +2243,12 @@ function TeamAvatar({
           aria-hidden="true"
           draggable={false}
           className="block size-full object-cover"
-          onError={() => setAvatarSrcIndex((index) => index + 1)}
+          onError={() =>
+            setAvatarErrorState((state) => ({
+              key: avatarSrcKey,
+              index: state.key === avatarSrcKey ? state.index + 1 : 1,
+            }))
+          }
         />
       ) : null}
       <AvatarFallback className="text-xs font-black">

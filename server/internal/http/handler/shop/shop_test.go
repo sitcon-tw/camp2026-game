@@ -31,16 +31,16 @@ func TestShopItemsIncludesAllEnabledPurchasableContentItems(t *testing.T) {
 	if item, ok := shopItemByID(store, "item_polaroid_film"); !ok || !item.Locked {
 		t.Fatalf("expected polaroid film item to be listed as locked, got %#v", item)
 	}
-	if item, ok := shopItemByID(store, "item_wooden_plank"); !ok || !item.Locked {
-		t.Fatalf("expected wooden plank item to be listed as locked, got %#v", item)
+	if _, ok := shopItemByID(store, "item_wooden_plank"); ok {
+		t.Fatal("expected event-only wooden plank item not to be listed")
 	}
-	if _, ok := shopItemByID(store, "item_shared_notes_link"); !ok {
-		t.Fatal("expected shared notes item to be listed")
+	if _, ok := shopItemByID(store, "item_shared_notes_link"); ok {
+		t.Fatal("expected non-purchasable shared notes item not to be listed")
 	}
 	if _, ok := shopItemByID(store, "item_charm_debug"); !ok {
 		t.Fatal("expected charm item to be purchasable")
 	}
-	if _, ok := shopItemByID(store, "item_tshirt_2026"); ok {
+	if _, ok := shopItemByID(store, "item_postcard_sitcon2024"); ok {
 		t.Fatal("expected disabled cosmetic item not to be listed")
 	}
 }
