@@ -58,16 +58,18 @@ export function PlayerAvatar({
     () => imageSrcCandidates(avatarSrc),
     [avatarSrc],
   )
-  const [avatarSrcIndex, setAvatarSrcIndex] = React.useState(0)
+  const avatarSrcKey = React.useMemo(() => avatarSrcs.join("\n"), [avatarSrcs])
+  const [avatarErrorState, setAvatarErrorState] = React.useState({
+    key: "",
+    index: 0,
+  })
+  const avatarSrcIndex =
+    avatarErrorState.key === avatarSrcKey ? avatarErrorState.index : 0
   const fallbackSrc = React.useMemo(
     () => svgDataUrl(createAvatar(thumbs, { seed }).toString()),
     [seed],
   )
   const currentAvatarSrc = avatarSrcs[avatarSrcIndex]
-
-  React.useEffect(() => {
-    setAvatarSrcIndex(0)
-  }, [avatarSrcs])
 
   return (
     <Avatar
@@ -84,7 +86,12 @@ export function PlayerAvatar({
           aria-hidden="true"
           draggable={false}
           className={cn("block size-full object-cover", svgClassName)}
-          onError={() => setAvatarSrcIndex((index) => index + 1)}
+          onError={() =>
+            setAvatarErrorState((state) => ({
+              key: avatarSrcKey,
+              index: state.key === avatarSrcKey ? state.index + 1 : 1,
+            }))
+          }
         />
       ) : null}
       <AvatarFallback className="bg-transparent">

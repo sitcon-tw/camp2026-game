@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 
 import {
   gameApi,
@@ -294,12 +294,14 @@ function TeamAvatar({
   fallbackClassName: string
 }) {
   const avatarSrcs = useMemo(() => imageSrcCandidates(avatarUrl), [avatarUrl])
-  const [avatarSrcIndex, setAvatarSrcIndex] = useState(0)
+  const avatarSrcKey = useMemo(() => avatarSrcs.join("\n"), [avatarSrcs])
+  const [avatarErrorState, setAvatarErrorState] = useState({
+    key: "",
+    index: 0,
+  })
+  const avatarSrcIndex =
+    avatarErrorState.key === avatarSrcKey ? avatarErrorState.index : 0
   const currentAvatarSrc = avatarSrcs[avatarSrcIndex]
-
-  useEffect(() => {
-    setAvatarSrcIndex(0)
-  }, [avatarUrl])
 
   return (
     <div
@@ -315,7 +317,12 @@ function TeamAvatar({
           alt=""
           draggable={false}
           className="size-full object-contain"
-          onError={() => setAvatarSrcIndex((index) => index + 1)}
+          onError={() =>
+            setAvatarErrorState((state) => ({
+              key: avatarSrcKey,
+              index: state.key === avatarSrcKey ? state.index + 1 : 1,
+            }))
+          }
         />
       ) : null}
     </div>
@@ -330,12 +337,14 @@ function TeamPanelIcon({
   fallback: React.ReactNode
 }) {
   const avatarSrcs = useMemo(() => imageSrcCandidates(avatarUrl), [avatarUrl])
-  const [avatarSrcIndex, setAvatarSrcIndex] = useState(0)
+  const avatarSrcKey = useMemo(() => avatarSrcs.join("\n"), [avatarSrcs])
+  const [avatarErrorState, setAvatarErrorState] = useState({
+    key: "",
+    index: 0,
+  })
+  const avatarSrcIndex =
+    avatarErrorState.key === avatarSrcKey ? avatarErrorState.index : 0
   const currentAvatarSrc = avatarSrcs[avatarSrcIndex]
-
-  useEffect(() => {
-    setAvatarSrcIndex(0)
-  }, [avatarUrl])
 
   if (!currentAvatarSrc) return fallback
 
@@ -345,7 +354,12 @@ function TeamPanelIcon({
       alt=""
       draggable={false}
       className="size-full object-contain p-0.5"
-      onError={() => setAvatarSrcIndex((index) => index + 1)}
+      onError={() =>
+        setAvatarErrorState((state) => ({
+          key: avatarSrcKey,
+          index: state.key === avatarSrcKey ? state.index + 1 : 1,
+        }))
+      }
     />
   )
 }

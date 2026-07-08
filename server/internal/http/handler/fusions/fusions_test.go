@@ -121,7 +121,7 @@ func TestTryPurchaseReportsLockedReason(t *testing.T) {
 
 	component := content.FusionComponent{
 		Kind:     content.FusionKindItem,
-		ID:       "item_wooden_plank",
+		ID:       "item_polaroid_film",
 		Quantity: 1,
 	}
 	purchased, reason := state.tryPurchase(context.Background(), component)
