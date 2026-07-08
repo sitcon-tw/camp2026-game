@@ -19,13 +19,10 @@ definitions:
       name:
         example: SITCON 社群攤位
         type: string
-      qrToken:
-        example: cst_abcd1234
-        type: string
       reward:
         $ref: '#/definitions/admin.CommunityStandRewardResponse'
       standId:
-        example: q7m4x2v9
+        example: 00000000-0000-4000-8000-000000000000
         type: string
       updatedAt:
         type: string
@@ -95,9 +92,6 @@ definitions:
         type: string
       reward:
         $ref: '#/definitions/admin.CommunityStandRewardRequest'
-      standId:
-        example: q7m4x2v9
-        type: string
       websiteUrl:
         example: https://sitcon.org
         type: string
@@ -844,6 +838,8 @@ definitions:
       qrToken:
         example: cst_abcd1234
         type: string
+      qrTokenExpiresAt:
+        type: string
       stand:
         $ref: '#/definitions/communitystands.StandResponse'
       visitCount:
@@ -885,7 +881,7 @@ definitions:
       reward:
         $ref: '#/definitions/communitystands.RewardResponse'
       standId:
-        example: q7m4x2v9
+        example: 00000000-0000-4000-8000-000000000000
         type: string
       websiteUrl:
         example: https://sitcon.org
@@ -3522,7 +3518,8 @@ paths:
       - system
   /leaderboards:
     get:
-      description: Lists team rankings by per-player average sitone count, then average open power, or player rankings by sitone count, then open power.
+      description: Lists team rankings by per-player average sitone count, then average
+        open power, or player rankings by sitone count, then open power.
       parameters:
       - description: Leaderboard scope
         enum:

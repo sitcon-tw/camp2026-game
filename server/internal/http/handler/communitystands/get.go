@@ -15,6 +15,8 @@ import (
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
 
+const communityStandQRTokenTTL = 2 * time.Minute
+
 // Get godoc
 // @Summary Get community stand by fixed stand ID
 // @Description Returns the community stand shown after a player scans its QR code, including whether the current player already claimed the reward.
@@ -89,7 +91,7 @@ func (h *Handler) Display(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand unavailable", "community_stand_lookup_failed", err))
 		return
 	}
-	stand, err = h.ensureStandQRToken(r.Context(), stand)
+	stand, err = h.ensureStandQRToken(r.Context(), stand, time.Now().UTC())
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand QR token unavailable", "community_stand_qr_token_failed", err))
 		return
@@ -106,10 +108,11 @@ func (h *Handler) Display(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, DisplayResponse{
-		Stand:      standResponse(stand, reward),
-		VisitCount: visitCount,
-		ClaimCount: claimCount,
-		QRToken:    stand.QRToken,
+		Stand:            standResponse(stand, reward),
+		VisitCount:       visitCount,
+		ClaimCount:       claimCount,
+		QRToken:          stand.QRToken,
+		QRTokenExpiresAt: stand.QRTokenExpiresAt,
 	})
 }
 

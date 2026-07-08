@@ -35,7 +35,7 @@ func (h *Handler) ScanGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stand, err := h.findEnabledStandByQRToken(r.Context(), chi.URLParam(r, "qrToken"))
+	stand, err := h.findEnabledStandByQRToken(r.Context(), chi.URLParam(r, "qrToken"), time.Now().UTC())
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		httpx.WriteProblem(w, r, httpx.NotFound("community stand not found"))
 		return
@@ -67,7 +67,7 @@ func (h *Handler) ScanClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stand, err := h.findEnabledStandByQRToken(r.Context(), chi.URLParam(r, "qrToken"))
+	stand, err := h.findEnabledStandByQRToken(r.Context(), chi.URLParam(r, "qrToken"), time.Now().UTC())
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		httpx.WriteProblem(w, r, httpx.NotFound("community stand not found"))
 		return
@@ -131,16 +131,24 @@ func (h *Handler) writeStandClaim(w http.ResponseWriter, r *http.Request, player
 	})
 }
 
-func (h *Handler) findEnabledStandByQRToken(ctx context.Context, qrToken string) (mongomodel.CommunityStand, error) {
+func (h *Handler) findEnabledStandByQRToken(ctx context.Context, qrToken string, now time.Time) (mongomodel.CommunityStand, error) {
 	var stand mongomodel.CommunityStand
 	err := h.db.Collection(mongomodel.CommunityStandsCollection).
-		FindOne(ctx, bson.M{"qr_token": qrToken, "enabled": true}).
+		FindOne(ctx, enabledStandByQRTokenFilter(qrToken, now)).
 		Decode(&stand)
 	return stand, err
 }
 
-func (h *Handler) ensureStandQRToken(ctx context.Context, stand mongomodel.CommunityStand) (mongomodel.CommunityStand, error) {
-	if stand.QRToken != "" {
+func enabledStandByQRTokenFilter(qrToken string, now time.Time) bson.M {
+	return bson.M{
+		"qr_token":            qrToken,
+		"enabled":             true,
+		"qr_token_expires_at": bson.M{"$gt": now},
+	}
+}
+
+func (h *Handler) ensureStandQRToken(ctx context.Context, stand mongomodel.CommunityStand, now time.Time) (mongomodel.CommunityStand, error) {
+	if standQRTokenActive(stand, now) {
 		return stand, nil
 	}
 
@@ -153,23 +161,35 @@ func (h *Handler) ensureStandQRToken(ctx context.Context, stand mongomodel.Commu
 	err = h.db.Collection(mongomodel.CommunityStandsCollection).FindOneAndUpdate(
 		ctx,
 		bson.M{
-			"_id": stand.ID,
+			"_id":     stand.ID,
+			"enabled": true,
 			"$or": []bson.M{
 				{"qr_token": bson.M{"$exists": false}},
 				{"qr_token": ""},
+				{"qr_token_expires_at": bson.M{"$exists": false}},
+				{"qr_token_expires_at": bson.M{"$lte": now}},
 			},
 		},
 		bson.M{"$set": bson.M{
-			"qr_token":   qrToken,
-			"updated_at": time.Now().UTC(),
+			"qr_token":            qrToken,
+			"qr_token_expires_at": now.Add(communityStandQRTokenTTL),
+			"updated_at":          now,
 		}},
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	).Decode(&updated)
 	if errors.Is(err, mongo.ErrNoDocuments) {
-		return h.findEnabledStandByID(ctx, stand.ID)
+		current, findErr := h.findEnabledStandByID(ctx, stand.ID)
+		if findErr != nil {
+			return mongomodel.CommunityStand{}, findErr
+		}
+		return current, nil
 	}
 	if err != nil {
 		return mongomodel.CommunityStand{}, err
 	}
 	return updated, nil
+}
+
+func standQRTokenActive(stand mongomodel.CommunityStand, now time.Time) bool {
+	return stand.QRToken != "" && stand.QRTokenExpiresAt.After(now)
 }

@@ -322,9 +322,9 @@ func TestCommunityStandRoutesRequireAuthentication(t *testing.T) {
 		method string
 		path   string
 	}{
-		{method: http.MethodGet, path: "/api/community/q7m4x2v9"},
+		{method: http.MethodGet, path: "/api/community/community-stand-id"},
 		{method: http.MethodGet, path: "/api/community/scans/cst_token"},
-		{method: http.MethodPost, path: "/api/community/q7m4x2v9/claim"},
+		{method: http.MethodPost, path: "/api/community/community-stand-id/claim"},
 		{method: http.MethodPost, path: "/api/community/scans/cst_token/claim"},
 	} {
 		res := performRequest(router, route.method, route.path, nil)
@@ -340,7 +340,7 @@ func TestCommunityStandDisplayRouteDoesNotRequireAuthentication(t *testing.T) {
 		Content: loadTestContent(t),
 	})
 
-	res := performRequest(router, http.MethodGet, "/api/community/q7m4x2v9/display", nil)
+	res := performRequest(router, http.MethodGet, "/api/community/community-stand-id/display", nil)
 	problem := assertProblem(t, res, http.StatusServiceUnavailable, "")
 	if problem.Status != http.StatusServiceUnavailable {
 		t.Fatalf("expected problem status %d, got %d", http.StatusServiceUnavailable, problem.Status)
@@ -356,9 +356,9 @@ func TestCommunityStandRoutesRequireDatabase(t *testing.T) {
 		method string
 		path   string
 	}{
-		{method: http.MethodGet, path: "/api/community/q7m4x2v9"},
+		{method: http.MethodGet, path: "/api/community/community-stand-id"},
 		{method: http.MethodGet, path: "/api/community/scans/cst_token"},
-		{method: http.MethodPost, path: "/api/community/q7m4x2v9/claim"},
+		{method: http.MethodPost, path: "/api/community/community-stand-id/claim"},
 		{method: http.MethodPost, path: "/api/community/scans/cst_token/claim"},
 	} {
 		res := performRequestWithCookie(router, route.method, route.path, nil, "auth_token_123456")

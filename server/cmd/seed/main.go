@@ -10,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	"github.com/sitcon-tw/camp2026-game/internal/communitystand"
 	"github.com/sitcon-tw/camp2026-game/internal/config"
 	"github.com/sitcon-tw/camp2026-game/internal/mongodb"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
@@ -131,10 +130,6 @@ func run(ctx context.Context) error {
 		},
 	}); err != nil {
 		return err
-	}
-
-	if err := communitystand.EnsureDefaults(ctx, db); err != nil {
-		return fmt.Errorf("ensure community stands: %w", err)
 	}
 
 	fmt.Println("seed complete")

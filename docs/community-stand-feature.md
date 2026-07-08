@@ -4,32 +4,20 @@
 
 這個功能新增社群攤位 QRCode 獎勵流程：
 
-- 後端寫死社群攤位資料，啟動時同步到 MongoDB。
-- 每個社群攤位有固定亂碼 ID，例如 `/community/q7m4x2v9`。
-- 社群攤位夥伴可開啟 `/community/$standId` 看板頁，顯示攤位資訊、QRCode、來過學員數、已領獎數。
+- 後端不會在部署或啟動時自動建立預設攤位。
+- 每個社群攤位建立時會由後端產生 UUID ID，例如 `/community/{standId}`。
+- 社群攤位夥伴可開啟 `/community/$standId` 看板頁，顯示攤位資訊、短效 QRCode、來過學員數、已領獎數。
 - 學員不直接使用 `/community/$standId` 領獎，而是在「冒險者通行證」內掃描攤位 QRCode。
 - 學員掃描成功後會在 modal 顯示攤位資訊與獎勵，點擊「領取獎勵」後取得對應道具。
 - 每位學員每個攤位只能領取一次。
 
 ## 開發組說明
 
-### 固定攤位資料
+### 攤位資料建立方式
 
-攤位資料寫在：
+部署與 API 啟動不會自動新增預設攤位。`make seed` 也不會建立社群攤位資料。
 
-`server/internal/communitystand/seed.go`
-
-目前固定攤位：
-
-| ID | 名稱 | 獎勵 |
-| --- | --- | --- |
-| `q7m4x2v9` | SITCON 學生計算機年會 | `item_student_community_card` x1 |
-| `r2k8p6n3` | 開源路線攤位 | `item_open_source_roadmap` x1 |
-| `z5h9t1c7` | 社群交流攤位 | `item_star_village_badge` x1 |
-
-`app` 啟動與 `cmd/seed` 都會呼叫 `communitystand.EnsureDefaults`，把這些固定資料 upsert 到 MongoDB。
-
-如果之後要改攤位名稱、介紹、Logo、網站或獎勵，直接修改 `server/internal/communitystand/seed.go`。
+社群攤位必須透過 admin API 或管理介面建立，建立時後端會產生 UUID `standId`。如果資料庫沒有攤位資料，社群攤位列表會維持空白，直到管理員新增攤位。
 
 ### MongoDB Collections
 
@@ -39,11 +27,13 @@
 
 主要欄位：
 
-- `_id`: 攤位 ID，例如 `q7m4x2v9`
+- `_id`: 攤位 UUID，由後端建立攤位時產生
 - `name`: 攤位名稱
 - `description`: 攤位介紹
 - `logo_url`: Logo URL
 - `website_url`: 社群網站
+- `qr_token`: 攤位看板頁簽發的短效 QR token
+- `qr_token_expires_at`: QR token 強制失效時間
 - `enabled`: 是否啟用
 - `reward`: 獎勵設定
   - `kind`: `item` / `sitone` / `open_power`
@@ -83,6 +73,11 @@
 - `stand_id`
 - `player_id`
 - `reward_id`
+- `reward`: 領取當下的獎勵快照
+  - `kind`: `item` / `sitone` / `open_power`
+  - `ref_id`: item 或 sitone id
+  - `quantity`: 數量
+  - `amount`: open power 數量
 - `created_at`
 
 有 unique index：
@@ -129,16 +124,15 @@
 - 回傳攤位資訊、來過學員數、已領獎數。
 - 給社群攤位夥伴現場展示 QRCode 與查看統計。
 - QRCode 內容使用 `camp2026-community-stand|{qrToken}` 掃描 payload，不放入 `/community/{standID}` 看板網址。
+- `qrToken` 只會在攤位看板頁讀取 display API 時簽發，且兩分鐘後由後端強制失效。
 
 ## 課活組說明
 
 ### 這個 feature 怎麼運作
 
-每個社群攤位會有一個專屬網址，例如：
+每個社群攤位會有一個由 admin 建立後取得的專屬網址，例如：
 
-- `https://camp.sitcon.party/community/q7m4x2v9`
-- `https://camp.sitcon.party/community/r2k8p6n3`
-- `https://camp.sitcon.party/community/z5h9t1c7`
+- `https://camp.sitcon.party/community/{standId}`
 
 社群攤位夥伴打開這個網址後，會看到：
 
@@ -184,4 +178,4 @@
 - 學員必須登入遊戲才能掃描與領獎。
 - 攤位看板頁不需要登入，方便社群夥伴直接展示。
 - 若相機權限無法開啟，學員可手動輸入 QRCode 內容。
-- QRCode 對應的是不透明 qrToken，不是攤位網址，也不是學員自己的個人 QRCode。
+- QRCode 對應的是兩分鐘有效的不透明 qrToken，不是攤位網址，也不是學員自己的個人 QRCode。
