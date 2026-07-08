@@ -402,16 +402,18 @@ function StoneShape({
       aria-hidden
     >
       {iconPath ? (
-        <img
-          src={toOptimizedImageSrc(iconPath)}
-          alt=""
-          className={cn(
-            "relative z-10 size-[54px] object-contain drop-shadow-[0_2px_0_rgba(23,35,58,0.18)]",
-            !owned && "opacity-45 brightness-0 grayscale",
-          )}
-          loading="lazy"
-          draggable={false}
-        />
+        <span className="relative z-10 grid size-[54px] place-items-center overflow-hidden rounded-[16px_22px_14px_24px]">
+          <img
+            src={toOptimizedImageSrc(iconPath)}
+            alt=""
+            className={cn(
+              "size-full object-contain drop-shadow-[0_2px_0_rgba(23,35,58,0.18)]",
+              !owned && "opacity-45 brightness-0 grayscale",
+            )}
+            loading="lazy"
+            draggable={false}
+          />
+        </span>
       ) : (
         <>
           <span className="border-ink/30 bg-card/45 absolute top-2 left-2 h-3.5 w-6 rotate-[-18deg] rounded-[12px_8px_10px_7px] border" />
