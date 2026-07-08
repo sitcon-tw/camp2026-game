@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { Check, Pencil, RotateCcw, ScanLine, X } from "lucide-react"
+import { Check, Pencil, RefreshCcw, RotateCcw, ScanLine, X } from "lucide-react"
+import { QRCodeSVG } from "qrcode.react"
 import { FormEvent, useMemo, useState } from "react"
 import { toast } from "sonner"
 
@@ -28,6 +29,12 @@ export function ProfileQrPanel() {
   const statusQuery = useQuery({
     queryKey: ["me", "status"],
     queryFn: gameApi.status,
+  })
+  const qrcodeQuery = useQuery({
+    queryKey: ["me", "qrcode"],
+    queryFn: gameApi.qrcode,
+    enabled: statusQuery.isSuccess,
+    throwOnError: false,
   })
   const sitonesQuery = useQuery({
     queryKey: ["me", "sitones"],
@@ -158,21 +165,44 @@ export function ProfileQrPanel() {
   return (
     <div className="flex flex-col gap-3.5">
       <Card className="border-ink rounded-[32px] border-2 py-0 shadow-[5px_5px_0_rgba(23,35,58,0.16)]">
-        <CardContent className="px-[22px] pt-7 pb-6 text-center">
-          <div className="bg-paper border-ink mx-auto mb-5 grid aspect-square w-full max-w-[306px] place-items-center rounded-[18px] border-4 p-[18px]">
-            <div className="bg-surface-raised border-ink grid h-full w-full place-items-center rounded-[12px] border-2">
-              <ScanLine className="text-ink size-20" aria-hidden />
-            </div>
+        <CardContent className="grid gap-5 px-[22px] pt-7 pb-6 text-center">
+          <PersonalQRCode
+            token={qrcodeQuery.data?.qrcodeToken}
+            loading={statusQuery.isPending || qrcodeQuery.isPending}
+            error={qrcodeQuery.error}
+            retrying={qrcodeQuery.isFetching}
+            onRetry={() => void qrcodeQuery.refetch()}
+          />
+          <div>
+            <p className="text-muted-foreground mb-1 text-xs font-black tracking-[0.08em] uppercase">
+              PLAYER QR
+            </p>
+            <h2 className="mb-2 text-[26px] font-black tracking-tight">
+              個人 QR Code
+            </h2>
+            <p className="text-muted-foreground mx-auto max-w-[16rem] leading-relaxed">
+              給工作人員掃描，將獎勵發送到你的通行證。
+            </p>
           </div>
-          <h2 className="mb-2 text-[26px] font-black tracking-tight">
-            開啟 QRCode 掃描器
-          </h2>
-          <p className="text-muted-foreground mx-auto max-w-[15rem] leading-relaxed">
-            掃描工作人員或社群攤位 QR Code，領取對應獎勵。
-          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-ink rounded-[24px] border-2 py-0 shadow-[4px_4px_0_rgba(23,35,58,0.14)]">
+        <CardContent className="grid gap-3 p-4">
+          <div>
+            <p className="text-muted-foreground mb-1 text-xs font-black tracking-[0.08em] uppercase">
+              SCANNER
+            </p>
+            <h2 className="mb-2 text-[26px] font-black tracking-tight">
+              開啟 QRCode 掃描器
+            </h2>
+            <p className="text-muted-foreground leading-relaxed">
+              掃描工作人員或社群攤位 QR Code，領取對應獎勵。
+            </p>
+          </div>
           <Button
             type="button"
-            className="mt-5 w-full"
+            className="w-full"
             onClick={() => setCommunityScannerOpen(true)}
           >
             <ScanLine className="size-4" aria-hidden />
@@ -310,6 +340,77 @@ export function ProfileQrPanel() {
       <CommunityStandScannerDialog
         open={communityScannerOpen}
         onOpenChange={setCommunityScannerOpen}
+      />
+    </div>
+  )
+}
+
+type PersonalQRCodeProps = {
+  token?: string
+  loading: boolean
+  error: unknown
+  retrying: boolean
+  onRetry: () => void
+}
+
+function PersonalQRCode({
+  token,
+  loading,
+  error,
+  retrying,
+  onRetry,
+}: PersonalQRCodeProps) {
+  if (loading) {
+    return (
+      <div
+        className="bg-paper border-ink mx-auto grid aspect-square w-full max-w-[306px] place-items-center rounded-[18px] border-4 p-[18px]"
+        aria-label="載入個人 QR Code"
+      >
+        <Skeleton className="h-full w-full rounded-[12px]" />
+      </div>
+    )
+  }
+
+  if (error || !token) {
+    return (
+      <div className="bg-paper border-ink mx-auto grid aspect-square w-full max-w-[306px] place-items-center rounded-[18px] border-4 p-[18px]">
+        <div className="bg-surface-raised border-ink grid h-full w-full place-items-center rounded-[12px] border-2 p-5 text-center">
+          <div className="grid justify-items-center gap-3">
+            <p className="text-[20px] leading-tight font-black">
+              QR Code 暫時無法顯示
+            </p>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              {error instanceof AppError ? error.message : "請稍後再重新整理。"}
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={retrying}
+              onClick={onRetry}
+            >
+              <RefreshCcw className="size-4" aria-hidden />
+              重新整理
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-paper border-ink mx-auto grid aspect-square w-full max-w-[306px] place-items-center rounded-[18px] border-4 p-[18px]">
+      <QRCodeSVG
+        aria-label="個人 QR Code"
+        bgColor="var(--paper)"
+        className="h-full w-full"
+        fgColor="var(--ink)"
+        level="M"
+        marginSize={4}
+        role="img"
+        size={256}
+        title="個人 QR Code"
+        value={token}
       />
     </div>
   )
