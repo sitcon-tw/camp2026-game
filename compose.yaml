@@ -17,7 +17,7 @@ services:
           "--quiet",
           "--tries=1",
           "--spider",
-          "http://localhost/api/healthz",
+          "http://127.0.0.1/api/healthz",
         ]
       interval: 10s
       timeout: 5s
