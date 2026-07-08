@@ -72,44 +72,47 @@ func TestRemovedRoutes(t *testing.T) {
 	router := NewRouter(Dependencies{})
 
 	for _, route := range []struct {
-		method string
-		path   string
+		method     string
+		path       string
+		wantStatus int
 	}{
-		{method: http.MethodGet, path: "/api/"},
-		{method: http.MethodGet, path: "/api/me"},
-		{method: http.MethodGet, path: "/api/me/state"},
-		{method: http.MethodGet, path: "/api/me/sitones/S9K2QA"},
-		{method: http.MethodGet, path: "/api/me/items/I8M4RX"},
-		{method: http.MethodGet, path: "/api/me/open-power"},
-		{method: http.MethodGet, path: "/api/me/open-power/records"},
-		{method: http.MethodGet, path: "/api/users/state"},
-		{method: http.MethodPost, path: "/api/qrcode/scans"},
-		{method: http.MethodGet, path: "/api/activities"},
-		{method: http.MethodGet, path: "/api/activities/booth-linux-101"},
-		{method: http.MethodPost, path: "/api/activities/booth-linux-101/claims"},
-		{method: http.MethodGet, path: "/api/bingo/boards"},
-		{method: http.MethodPost, path: "/api/bingo/missions/mission_daily_match_3/complete"},
-		{method: http.MethodGet, path: "/api/qrcode/me"},
-		{method: http.MethodGet, path: "/api/world-bosses"},
-		{method: http.MethodPost, path: "/api/match-pairings"},
-		{method: http.MethodPost, path: "/api/matches/M8RXP2/finish"},
-		{method: http.MethodGet, path: "/api/matches/M8RXP2/ws"},
-		{method: http.MethodGet, path: "/api/storage"},
-		{method: http.MethodGet, path: "/api/storage/sitones"},
-		{method: http.MethodGet, path: "/api/storage/recipes"},
-		{method: http.MethodGet, path: "/api/crafting/recipes"},
-		{method: http.MethodGet, path: "/api/crafting/recipes/recipe_engineering_skin"},
-		{method: http.MethodPost, path: "/api/crafting"},
-		{method: http.MethodGet, path: "/api/catalog/crafting-recipes"},
-		{method: http.MethodGet, path: "/api/catalog/recipes"},
-		{method: http.MethodPost, path: "/api/staff/activity-verifications"},
-		{method: http.MethodGet, path: "/api/readyz"},
-		{method: http.MethodGet, path: "/api/ping"},
-		{method: http.MethodPost, path: "/api/examples/validation"},
+		{method: http.MethodGet, path: "/api/", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/me", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/me/state", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/me/sitones/S9K2QA", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/me/items/I8M4RX", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/me/open-power", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/me/open-power/records", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/users/state", wantStatus: http.StatusNotFound},
+		{method: http.MethodPost, path: "/api/qrcode/scans", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/activities", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/activities/booth-linux-101", wantStatus: http.StatusNotFound},
+		{method: http.MethodPost, path: "/api/activities/booth-linux-101/claims", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/bingo/boards", wantStatus: http.StatusNotFound},
+		{method: http.MethodPost, path: "/api/bingo/missions/mission_daily_match_3/complete", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/qrcode/me", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/world-bosses", wantStatus: http.StatusNotFound},
+		{method: http.MethodPost, path: "/api/match-pairings", wantStatus: http.StatusNotFound},
+		{method: http.MethodPost, path: "/api/matches", wantStatus: http.StatusNotFound},
+		{method: http.MethodPost, path: "/api/matches/join", wantStatus: http.StatusMethodNotAllowed},
+		{method: http.MethodPost, path: "/api/matches/M8RXP2/finish", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/matches/M8RXP2/ws", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/storage", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/storage/sitones", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/storage/recipes", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/crafting/recipes", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/crafting/recipes/recipe_engineering_skin", wantStatus: http.StatusNotFound},
+		{method: http.MethodPost, path: "/api/crafting", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/catalog/crafting-recipes", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/catalog/recipes", wantStatus: http.StatusNotFound},
+		{method: http.MethodPost, path: "/api/staff/activity-verifications", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/readyz", wantStatus: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/ping", wantStatus: http.StatusNotFound},
+		{method: http.MethodPost, path: "/api/examples/validation", wantStatus: http.StatusNotFound},
 	} {
 		res := performRequest(router, route.method, route.path, nil)
-		if res.Code != http.StatusNotFound {
-			t.Fatalf("%s %s: expected status %d, got %d", route.method, route.path, http.StatusNotFound, res.Code)
+		if res.Code != route.wantStatus {
+			t.Fatalf("%s %s: expected status %d, got %d", route.method, route.path, route.wantStatus, res.Code)
 		}
 	}
 }
@@ -216,10 +219,8 @@ func TestMatchRoutesRequireAuthentication(t *testing.T) {
 		method string
 		path   string
 	}{
-		{method: http.MethodPost, path: "/api/matches"},
 		{method: http.MethodGet, path: "/api/matches/computer/settings"},
 		{method: http.MethodPost, path: "/api/matches/computer"},
-		{method: http.MethodPost, path: "/api/matches/join"},
 		{method: http.MethodPost, path: "/api/matches/pairings"},
 		{method: http.MethodPost, path: "/api/matches/pairings/scan"},
 		{method: http.MethodGet, path: "/api/matches/M8RXP2"},
@@ -247,10 +248,8 @@ func TestMatchRoutesRequireDatabase(t *testing.T) {
 		method string
 		path   string
 	}{
-		{method: http.MethodPost, path: "/api/matches"},
 		{method: http.MethodGet, path: "/api/matches/computer/settings"},
 		{method: http.MethodPost, path: "/api/matches/computer"},
-		{method: http.MethodPost, path: "/api/matches/join"},
 		{method: http.MethodPost, path: "/api/matches/pairings"},
 		{method: http.MethodPost, path: "/api/matches/pairings/scan"},
 		{method: http.MethodGet, path: "/api/matches/M8RXP2"},
@@ -526,8 +525,6 @@ func TestSwaggerJSON(t *testing.T) {
 		"/me/sitones",
 		"/me/team/sitones",
 		"/me/status",
-		"/matches",
-		"/matches/join",
 		"/matches/pairings",
 		"/matches/pairings/scan",
 		"/matches/{matchID}",
@@ -573,6 +570,8 @@ func TestSwaggerJSON(t *testing.T) {
 		"/activities/{activityID}/claims",
 		"/bingo/boards",
 		"/match-pairings",
+		"/matches",
+		"/matches/join",
 		"/matches/{matchID}/finish",
 		"/qrcode/me",
 		"/qrcode/scans",
@@ -616,8 +615,6 @@ func TestSwaggerJSON(t *testing.T) {
 	assertSwaggerSecurity(t, spec.Paths, "/me/team/sitones", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/items", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/matches", http.MethodGet, true)
-	assertSwaggerSecurity(t, spec.Paths, "/matches", http.MethodPost, true)
-	assertSwaggerSecurity(t, spec.Paths, "/matches/join", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/matches/pairings", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/matches/pairings/scan", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/matches/{matchID}", http.MethodGet, true)

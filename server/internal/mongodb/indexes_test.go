@@ -78,8 +78,8 @@ func TestIndexModelsByCollection(t *testing.T) {
 		},
 		{
 			collection: mongomodel.MatchPairingsCollection,
-			name:       "match_pairings_token",
-			keys:       bson.D{{Key: "token", Value: 1}},
+			name:       "match_pairings_token_hash",
+			keys:       bson.D{{Key: "token_hash", Value: 1}},
 			unique:     true,
 		},
 		{
