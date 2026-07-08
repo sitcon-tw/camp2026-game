@@ -13,6 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sitcon-tw/camp2026-game/internal/content"
+	"github.com/sitcon-tw/camp2026-game/internal/gamecontrol"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	adminhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/admin"
 	authhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/auth"
@@ -105,6 +106,7 @@ func registerRoutes(api chi.Router, dep Dependencies) {
 	}).RegisterRoutes(api)
 	systemhandler.New(systemhandler.Dependencies{
 		MongoClient: dep.MongoClient,
+		MongoDB:     dep.MongoDB,
 	}).RegisterRoutes(api)
 	authhandler.New(authhandler.Dependencies{
 		MongoDB: dep.MongoDB,
@@ -115,47 +117,76 @@ func registerRoutes(api chi.Router, dep Dependencies) {
 	qrhandler.New(qrhandler.Dependencies{
 		MongoDB: dep.MongoDB,
 	}).RegisterRoutes(api.With(authctx.RequireStaff(dep.MongoDB)))
+	playerAPI := api.With(authctx.RequirePlayer(dep.MongoDB))
+	maintenanceGuardedPlayerAPI := api.With(
+		authctx.RequirePlayer(dep.MongoDB),
+		maintenanceWriteGuard(dep.MongoDB),
+	)
+
 	mehandler.New(mehandler.Dependencies{
 		Content: dep.Content,
 		MongoDB: dep.MongoDB,
 		Broker:  playerEventsBroker,
-	}).RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
+	}).RegisterRoutes(maintenanceGuardedPlayerAPI)
 	leaderboardshandler.New(leaderboardshandler.Dependencies{
 		Content: dep.Content,
 		MongoDB: dep.MongoDB,
-	}).RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
+	}).RegisterRoutes(playerAPI)
 	matcheshandler.New(matcheshandler.Dependencies{
 		Content:            dep.Content,
 		MongoClient:        dep.MongoClient,
 		MongoDB:            dep.MongoDB,
 		RecoverOpenMatches: dep.RecoverMatchSessions,
-	}).RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
+	}).RegisterRoutes(playerAPI)
 	fusionshandler.New(fusionshandler.Dependencies{
 		Content:     dep.Content,
 		MongoClient: dep.MongoClient,
 		MongoDB:     dep.MongoDB,
 		Broker:      playerEventsBroker,
-	}).RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
+	}).RegisterRoutes(maintenanceGuardedPlayerAPI)
 	shophandler.New(shophandler.Dependencies{
 		Content:     dep.Content,
 		MongoClient: dep.MongoClient,
 		MongoDB:     dep.MongoDB,
 		Broker:      playerEventsBroker,
-	}).RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
+	}).RegisterRoutes(maintenanceGuardedPlayerAPI)
 	communityStandsHandler := communitystandshandler.New(communitystandshandler.Dependencies{
 		Content: dep.Content,
 		MongoDB: dep.MongoDB,
 		Broker:  playerEventsBroker,
 	})
 	communityStandsHandler.RegisterPublicRoutes(api)
-	communityStandsHandler.RegisterRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
+	communityStandsHandler.RegisterRoutes(maintenanceGuardedPlayerAPI)
 	staffHandler := staffhandler.New(staffhandler.Dependencies{
 		Content: dep.Content,
 		MongoDB: dep.MongoDB,
 		Broker:  playerEventsBroker,
 	})
-	staffHandler.RegisterPlayerRoutes(api.With(authctx.RequirePlayer(dep.MongoDB)))
+	staffHandler.RegisterPlayerRoutes(maintenanceGuardedPlayerAPI)
 	staffHandler.RegisterRoutes(api.With(authctx.RequireStaff(dep.MongoDB)))
 
 	registerSwaggerRoutes(api)
+}
+
+func maintenanceWriteGuard(db *mongo.Database) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if isSafeMethod(r.Method) || db == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			settings, err := gamecontrol.ReadSettings(r.Context(), db)
+			if err != nil {
+				httpx.WriteProblem(w, r, httpx.InternalServerError("maintenance state unavailable", "maintenance_settings_lookup_failed", err))
+				return
+			}
+			if settings.MaintenanceBlocksWrites() {
+				httpx.WriteProblem(w, r, httpx.NewError(http.StatusServiceUnavailable, "maintenance is active"))
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }

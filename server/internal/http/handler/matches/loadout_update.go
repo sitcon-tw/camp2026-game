@@ -41,6 +41,10 @@ func (h *Handler) UpdateLoadout(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
+	if err := h.ensureMaintenanceAllowsWrites(r.Context(), "loadout update failed"); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
 	sitoneIDs, err := h.validateOwnedSitoneLoadout(r.Context(), player.ID, body.SitoneIDs)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)

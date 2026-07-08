@@ -53,6 +53,38 @@ func TestBattleOpeningOverrideWinsOverSchedule(t *testing.T) {
 	}
 }
 
+func TestMaintenanceBlocksOpeningAndWrites(t *testing.T) {
+	settings := DefaultSettings()
+	settings.BattleOpeningOverride = BattleOpeningOverrideForceOpen
+	settings.MaintenanceMode = MaintenanceModeDraining
+
+	if !settings.BattleOpeningLocked(clockAt(20, 30)) {
+		t.Fatal("expected maintenance to block battle opening")
+	}
+	if !settings.MaintenanceBlocksNewMatches() || !settings.MaintenanceBlocksWrites() {
+		t.Fatal("expected draining maintenance to block new matches and writes")
+	}
+
+	settings.MaintenanceMode = MaintenanceModeOff
+	if settings.MaintenanceBlocksNewMatches() || settings.MaintenanceBlocksWrites() {
+		t.Fatal("expected disabled maintenance to allow new matches and writes")
+	}
+}
+
+func TestNormalizeMaintenanceMode(t *testing.T) {
+	settings := DefaultSettings()
+	settings.MaintenanceMode = "broken"
+	settings.MaintenanceStartedAt = time.Now()
+	settings.Normalize()
+
+	if settings.MaintenanceMode != MaintenanceModeOff {
+		t.Fatalf("expected invalid maintenance mode to reset to off, got %q", settings.MaintenanceMode)
+	}
+	if !settings.MaintenanceStartedAt.IsZero() {
+		t.Fatal("expected disabled maintenance to clear started time")
+	}
+}
+
 func clockAt(hour int, minute int) time.Time {
 	return time.Date(2026, 7, 8, hour, minute, 0, 0, classTimeLocation)
 }

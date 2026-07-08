@@ -18,6 +18,10 @@ const (
 	BattleOpeningOverrideForceOpen   = "force_open"
 	BattleOpeningOverrideForceClosed = "force_closed"
 
+	MaintenanceModeOff      = "off"
+	MaintenanceModeDraining = "draining"
+	MaintenanceModeActive   = "active"
+
 	defaultClassTimeBattleLockStart = "09:00"
 	defaultClassTimeBattleLockEnd   = "17:00"
 )
@@ -35,6 +39,9 @@ type Settings struct {
 	ClassTimeBattleLockStart   string    `bson:"class_time_battle_lock_start"`
 	ClassTimeBattleLockEnd     string    `bson:"class_time_battle_lock_end"`
 	BattleOpeningOverride      string    `bson:"battle_opening_override"`
+	MaintenanceMode            string    `bson:"maintenance_mode"`
+	MaintenanceMessage         string    `bson:"maintenance_message,omitempty"`
+	MaintenanceStartedAt       time.Time `bson:"maintenance_started_at,omitempty"`
 	UpdatedAt                  time.Time `bson:"updated_at,omitempty"`
 }
 
@@ -47,6 +54,7 @@ func DefaultSettings() Settings {
 		ClassTimeBattleLockStart: defaultClassTimeBattleLockStart,
 		ClassTimeBattleLockEnd:   defaultClassTimeBattleLockEnd,
 		BattleOpeningOverride:    BattleOpeningOverrideSchedule,
+		MaintenanceMode:          MaintenanceModeOff,
 	}
 }
 
@@ -102,6 +110,12 @@ func (settings *Settings) Normalize() {
 	if !ValidBattleOpeningOverride(settings.BattleOpeningOverride) {
 		settings.BattleOpeningOverride = BattleOpeningOverrideSchedule
 	}
+	if !ValidMaintenanceMode(settings.MaintenanceMode) {
+		settings.MaintenanceMode = MaintenanceModeOff
+	}
+	if !settings.MaintenanceActive() {
+		settings.MaintenanceStartedAt = time.Time{}
+	}
 }
 
 func (settings Settings) SameTeamBattlesEnabled() bool {
@@ -110,6 +124,9 @@ func (settings Settings) SameTeamBattlesEnabled() bool {
 
 func (settings Settings) BattleOpeningLocked(now time.Time) bool {
 	settings.Normalize()
+	if settings.MaintenanceBlocksNewMatches() {
+		return true
+	}
 	switch settings.BattleOpeningOverride {
 	case BattleOpeningOverrideForceOpen:
 		return false
@@ -122,9 +139,31 @@ func (settings Settings) BattleOpeningLocked(now time.Time) bool {
 	return clockTimeInRange(settings.ClassTimeBattleLockStart, settings.ClassTimeBattleLockEnd, now)
 }
 
+func (settings Settings) MaintenanceActive() bool {
+	return settings.MaintenanceMode == MaintenanceModeDraining ||
+		settings.MaintenanceMode == MaintenanceModeActive
+}
+
+func (settings Settings) MaintenanceBlocksNewMatches() bool {
+	return settings.MaintenanceActive()
+}
+
+func (settings Settings) MaintenanceBlocksWrites() bool {
+	return settings.MaintenanceActive()
+}
+
 func ValidBattleOpeningOverride(value string) bool {
 	switch value {
 	case BattleOpeningOverrideSchedule, BattleOpeningOverrideForceOpen, BattleOpeningOverrideForceClosed:
+		return true
+	default:
+		return false
+	}
+}
+
+func ValidMaintenanceMode(value string) bool {
+	switch value {
+	case MaintenanceModeOff, MaintenanceModeDraining, MaintenanceModeActive:
 		return true
 	default:
 		return false

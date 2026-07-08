@@ -74,6 +74,10 @@ func (h *Handler) ScanPairing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !wasParticipant {
+		if err := h.ensureMaintenanceAllowsNewMatch(r.Context(), "match pairing failed"); err != nil {
+			httpx.WriteProblem(w, r, err)
+			return
+		}
 		if err := h.ensureNoOpenParticipantMatch(r.Context(), player.ID); err != nil {
 			if errors.Is(err, errOpenParticipantMatchExists) {
 				h.writeExistingOpenParticipantMatch(w, r, player.ID)

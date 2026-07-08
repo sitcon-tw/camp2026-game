@@ -87,6 +87,8 @@ type SettingsRequest struct {
 	ClassTimeBattleLockStart   string `json:"classTimeBattleLockStart" validate:"required"`
 	ClassTimeBattleLockEnd     string `json:"classTimeBattleLockEnd" validate:"required"`
 	BattleOpeningOverride      string `json:"battleOpeningOverride" validate:"required,oneof=schedule force_open force_closed"`
+	MaintenanceMode            string `json:"maintenanceMode"`
+	MaintenanceMessage         string `json:"maintenanceMessage"`
 }
 
 type SettingsResponse struct {
@@ -100,6 +102,9 @@ type SettingsResponse struct {
 	ClassTimeBattleLockEnd     string `json:"classTimeBattleLockEnd"`
 	BattleOpeningOverride      string `json:"battleOpeningOverride"`
 	BattleOpeningLocked        bool   `json:"battleOpeningLocked"`
+	MaintenanceMode            string `json:"maintenanceMode"`
+	MaintenanceMessage         string `json:"maintenanceMessage"`
+	MaintenanceActive          bool   `json:"maintenanceActive"`
 }
 
 // Login godoc
@@ -202,6 +207,11 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	maintenanceMode := body.MaintenanceMode
+	if maintenanceMode == "" {
+		maintenanceMode = gamecontrol.MaintenanceModeOff
+	}
+
 	settings, err := gamecontrol.SaveSettings(r.Context(), h.db, gamecontrol.Settings{
 		ComputerBattlesEnabled:     *body.ComputerBattlesEnabled,
 		SameTeamBattlesDisabled:    !*body.SameTeamBattlesEnabled,
@@ -212,6 +222,9 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		ClassTimeBattleLockStart:   body.ClassTimeBattleLockStart,
 		ClassTimeBattleLockEnd:     body.ClassTimeBattleLockEnd,
 		BattleOpeningOverride:      body.BattleOpeningOverride,
+		MaintenanceMode:            maintenanceMode,
+		MaintenanceMessage:         strings.TrimSpace(body.MaintenanceMessage),
+		MaintenanceStartedAt:       maintenanceStartedAt(maintenanceMode),
 	})
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("settings update failed", "admin_settings_update_failed", err))
@@ -274,6 +287,12 @@ func validateSettingsRequest(body SettingsRequest) error {
 			Message:  "battleOpeningOverride must be one of: schedule force_open force_closed",
 		})
 	}
+	if body.MaintenanceMode != "" && !gamecontrol.ValidMaintenanceMode(body.MaintenanceMode) {
+		details = append(details, httpx.ErrorDetail{
+			Location: "body.maintenanceMode",
+			Message:  "maintenanceMode must be one of: off draining active",
+		})
+	}
 	if len(details) > 0 {
 		return httpx.UnprocessableEntity("invalid request body", details...)
 	}
@@ -319,5 +338,15 @@ func settingsResponse(settings gamecontrol.Settings) SettingsResponse {
 		ClassTimeBattleLockEnd:     settings.ClassTimeBattleLockEnd,
 		BattleOpeningOverride:      settings.BattleOpeningOverride,
 		BattleOpeningLocked:        settings.BattleOpeningLocked(time.Now()),
+		MaintenanceMode:            settings.MaintenanceMode,
+		MaintenanceMessage:         settings.MaintenanceMessage,
+		MaintenanceActive:          settings.MaintenanceActive(),
 	}
+}
+
+func maintenanceStartedAt(mode string) time.Time {
+	if mode == gamecontrol.MaintenanceModeOff {
+		return time.Time{}
+	}
+	return time.Now().UTC()
 }

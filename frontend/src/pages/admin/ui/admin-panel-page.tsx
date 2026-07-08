@@ -7,6 +7,7 @@ import {
   Clock,
   ImageIcon,
   LogOut,
+  Megaphone,
   Pencil,
   Percent,
   Plus,
@@ -3620,6 +3621,17 @@ function battleOpeningOverrideLabel(
   }
 }
 
+function maintenanceModeLabel(value: AdminSettings["maintenanceMode"]) {
+  switch (value) {
+    case "draining":
+      return "等待對戰結束"
+    case "active":
+      return "維護中"
+    case "off":
+      return "關閉"
+  }
+}
+
 function AdminClassTimeBattleLockPanel({
   settings,
   isPending,
@@ -3774,6 +3786,32 @@ function AdminSettingsPanel({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onUpdate: (patch: Partial<AdminSettings>) => void
 }) {
+  const maintenanceOptions: Array<{
+    value: AdminSettings["maintenanceMode"]
+    label: string
+    description: string
+    icon: ReactNode
+  }> = [
+    {
+      value: "off",
+      label: "關閉",
+      description: "恢復玩家操作",
+      icon: <CheckCircle2 className="size-4" />,
+    },
+    {
+      value: "draining",
+      label: "等待對戰結束",
+      description: "公告並停止新場次",
+      icon: <Clock className="size-4" />,
+    },
+    {
+      value: "active",
+      label: "維護中",
+      description: "阻擋玩家寫入操作",
+      icon: <Megaphone className="size-4" />,
+    },
+  ]
+
   return (
     <Card className="rounded-[18px] py-5">
       <form className="grid gap-3" onSubmit={onSubmit}>
@@ -3862,6 +3900,58 @@ function AdminSettingsPanel({
                     ),
                   })
                 }
+              />
+            </Field>
+          </div>
+          <div className="bg-surface-raised border-border grid gap-3 rounded-[18px] border-2 p-3 xl:col-span-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="font-black">維護公告</h3>
+                <p className="text-muted-foreground text-xs font-semibold">
+                  目前：{maintenanceModeLabel(settings.maintenanceMode)}
+                </p>
+              </div>
+              <Badge
+                variant={
+                  settings.maintenanceActive ? "destructive" : "secondary"
+                }
+              >
+                {settings.maintenanceActive ? "公告中" : "未啟用"}
+              </Badge>
+            </div>
+            <div className="grid gap-2 md:grid-cols-3">
+              {maintenanceOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant={
+                    settings.maintenanceMode === option.value
+                      ? "default"
+                      : "outline"
+                  }
+                  className="h-auto justify-start py-3 text-left"
+                  onClick={() => onUpdate({ maintenanceMode: option.value })}
+                >
+                  {option.icon}
+                  <span className="grid gap-0.5">
+                    <span>{option.label}</span>
+                    <span className="text-xs font-semibold opacity-75">
+                      {option.description}
+                    </span>
+                  </span>
+                </Button>
+              ))}
+            </div>
+            <Field>
+              <Label htmlFor="maintenance-message">公告內容</Label>
+              <Textarea
+                id="maintenance-message"
+                value={settings.maintenanceMessage}
+                onChange={(event) =>
+                  onUpdate({ maintenanceMessage: event.target.value })
+                }
+                placeholder="系統即將進行更新，請完成目前對戰並暫停新的操作。"
+                rows={3}
               />
             </Field>
           </div>

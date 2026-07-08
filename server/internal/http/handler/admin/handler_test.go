@@ -173,6 +173,20 @@ func TestSettingsResponseIncludesSameTeamBattleToggle(t *testing.T) {
 	}
 }
 
+func TestSettingsResponseIncludesMaintenanceMode(t *testing.T) {
+	got := settingsResponse(gamecontrol.Settings{
+		MaintenanceMode:    gamecontrol.MaintenanceModeDraining,
+		MaintenanceMessage: "Deploying",
+	})
+
+	if !got.MaintenanceActive || got.MaintenanceMode != gamecontrol.MaintenanceModeDraining {
+		t.Fatalf("expected draining maintenance response, got %#v", got)
+	}
+	if got.MaintenanceMessage != "Deploying" || !got.BattleOpeningLocked {
+		t.Fatalf("expected maintenance message and battle lock, got %#v", got)
+	}
+}
+
 func TestDashboardRequiresAdminCookie(t *testing.T) {
 	handler := New(Dependencies{AdminPassword: "secret"})
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/dashboard", nil)
