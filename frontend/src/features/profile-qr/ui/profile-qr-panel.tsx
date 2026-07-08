@@ -211,31 +211,6 @@ export function ProfileQrPanel() {
         </CardContent>
       </Card>
 
-      <Card className="border-ink rounded-[24px] border-2 py-0 shadow-[4px_4px_0_rgba(23,35,58,0.14)]">
-        <CardContent className="grid gap-3 p-4">
-          <div>
-            <p className="text-muted-foreground mb-1 text-xs font-black tracking-[0.08em] uppercase">
-              COMMUNITY
-            </p>
-            <h2 className="text-[24px] leading-tight font-black">
-              社群攤位獎勵
-            </h2>
-            <p className="text-muted-foreground mt-1 leading-relaxed">
-              掃描攤位 QR Code，查看社群資訊並領取對應道具。
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full"
-            onClick={() => setCommunityScannerOpen(true)}
-          >
-            <ScanLine className="size-4" aria-hidden />
-            掃描社群攤位
-          </Button>
-        </CardContent>
-      </Card>
-
       <Card className="border-ink rounded-[var(--radius)] border-2 py-0 shadow-[4px_4px_0_rgba(23,35,58,0.14)]">
         <CardContent className="grid grid-cols-[70px_1fr] items-center gap-3.5 p-4">
           <PlayerAvatar
