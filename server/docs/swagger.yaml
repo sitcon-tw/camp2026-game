@@ -1575,6 +1575,16 @@ definitions:
         example: 探索型小石
         type: string
     type: object
+  matches.MatchPairingResponse:
+    properties:
+      expiresAt:
+        type: string
+      match:
+        $ref: '#/definitions/matches.MatchStateResponse'
+      token:
+        example: 7H9K2Q8M4RXPA3WZ
+        type: string
+    type: object
   matches.MatchPlayerResponse:
     properties:
       answerScoreBonusPercent:
@@ -1800,6 +1810,67 @@ definitions:
         type: string
     type: object
   matches.ReadyMatchResponse:
+    properties:
+      code:
+        example: ABC123
+        type: string
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      currentQuestion:
+        $ref: '#/definitions/matches.MatchQuestionResponse'
+      currentQuestionIndex:
+        example: 0
+        type: integer
+      currentQuestionResult:
+        $ref: '#/definitions/matches.MatchQuestionResult'
+      hostPlayerId:
+        example: 7H9K2Q
+        type: string
+      matchId:
+        example: match_7H9K2Q
+        type: string
+      mode:
+        example: pvp
+        type: string
+      phase:
+        example: answering
+        type: string
+      players:
+        items:
+          $ref: '#/definitions/matches.MatchPlayerResponse'
+        type: array
+      questionCount:
+        example: 10
+        type: integer
+      results:
+        items:
+          $ref: '#/definitions/matches.MatchQuestionResult'
+        type: array
+      revealEndsAt:
+        type: string
+      roundEndsAt:
+        type: string
+      roundStartedAt:
+        type: string
+      startedAt:
+        type: string
+      status:
+        example: active
+        type: string
+    type: object
+  matches.ScanMatchPairingRequest:
+    properties:
+      token:
+        example: 7H9K2Q8M4RXPA3WZ
+        maxLength: 24
+        minLength: 8
+        type: string
+    required:
+    - token
+    type: object
+  matches.ScanMatchPairingResponse:
     properties:
       code:
         example: ABC123
@@ -3925,6 +3996,48 @@ paths:
       summary: Update match sitone loadout
       tags:
       - matches
+  /matches/{matchID}/pairing-token:
+    post:
+      description: Returns a new short-lived QR pairing token for the authenticated
+        host of a waiting match.
+      parameters:
+      - description: Match ID
+        in: path
+        name: matchID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/matches.MatchPairingResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Refresh on-site match pairing token
+      tags:
+      - matches
   /matches/{matchID}/ready:
     post:
       description: Marks the authenticated player ready. The match starts automatically
@@ -4110,6 +4223,99 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Get current open match
+      tags:
+      - matches
+  /matches/pairings:
+    post:
+      description: Creates a two-player quiz match and returns a short-lived QR pairing
+        token for the authenticated host.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/matches.MatchPairingResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/matches.MatchPairingResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Create on-site match pairing
+      tags:
+      - matches
+  /matches/pairings/scan:
+    post:
+      consumes:
+      - application/json
+      description: Joins a waiting two-player quiz match by scanning a short-lived
+        QR pairing token.
+      parameters:
+      - description: Scan pairing request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/matches.ScanMatchPairingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/matches.ScanMatchPairingResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Join on-site match pairing
       tags:
       - matches
   /me/avatar:

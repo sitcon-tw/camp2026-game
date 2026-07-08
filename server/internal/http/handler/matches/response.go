@@ -4,12 +4,23 @@ import "time"
 
 type CreateMatchResponse = MatchStateResponse
 type JoinMatchResponse = MatchStateResponse
+type ScanMatchPairingResponse = MatchStateResponse
 type OpenMatchResponse = MatchStateResponse
 type ReadyMatchResponse = MatchStateResponse
 type UpdateLoadoutResponse = MatchStateResponse
 
 type JoinMatchRequest struct {
 	Code string `json:"code" validate:"required,min=4,max=16" example:"ABC123"`
+}
+
+type ScanMatchPairingRequest struct {
+	Token string `json:"token" validate:"required,min=8,max=24" example:"7H9K2Q8M4RXPA3WZ"`
+}
+
+type MatchPairingResponse struct {
+	Match     MatchStateResponse `json:"match"`
+	Token     string             `json:"token" example:"7H9K2Q8M4RXPA3WZ"`
+	ExpiresAt time.Time          `json:"expiresAt"`
 }
 
 type UpdateLoadoutRequest struct {

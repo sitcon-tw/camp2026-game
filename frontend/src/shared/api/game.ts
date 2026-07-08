@@ -412,6 +412,12 @@ const ComputerBattleSettingsSchema = z.object({
   enabled: z.boolean(),
 })
 
+const MatchPairingResponseSchema = z.object({
+  match: MatchStateSchema,
+  token: z.string(),
+  expiresAt: z.string(),
+})
+
 const StaffRewardKindSchema = z.enum(["item", "sitone", "open_power"])
 
 const StaffPlayerSchema = z.object({
@@ -782,6 +788,7 @@ export type LeaderboardPlayerInventoryResponse = z.infer<
   typeof LeaderboardPlayerInventoryResponseSchema
 >
 export type MatchState = z.infer<typeof MatchStateSchema>
+export type MatchPairing = z.infer<typeof MatchPairingResponseSchema>
 export type MatchPlayer = z.infer<typeof MatchPlayerSchema>
 export type MatchQuestion = z.infer<typeof MatchQuestionSchema>
 export type MatchQuestionResult = z.infer<typeof MatchQuestionResultSchema>
@@ -1035,6 +1042,11 @@ export const gameApi = {
     return MatchStateSchema.parse(json)
   },
 
+  async createMatchPairing() {
+    const json = await apiClient.post("/api/matches/pairings")
+    return MatchPairingResponseSchema.parse(json)
+  },
+
   async computerBattleSettings() {
     const json = await apiClient.get("/api/matches/computer/settings")
     return ComputerBattleSettingsSchema.parse(json)
@@ -1052,6 +1064,13 @@ export const gameApi = {
     return MatchStateSchema.parse(json)
   },
 
+  async scanMatchPairingToken(token: string) {
+    const json = await apiClient.post("/api/matches/pairings/scan", {
+      json: { token },
+    })
+    return MatchStateSchema.parse(json)
+  },
+
   async openMatch() {
     const json = await apiClient.get("/api/matches/open")
     return MatchStateSchema.parse(json)
@@ -1060,6 +1079,13 @@ export const gameApi = {
   async getMatch(matchID: string) {
     const json = await apiClient.get(`/api/matches/${matchID}`)
     return MatchStateSchema.parse(json)
+  },
+
+  async createMatchPairingToken(matchID: string) {
+    const json = await apiClient.post(
+      `/api/matches/${encodeURIComponent(matchID)}/pairing-token`,
+    )
+    return MatchPairingResponseSchema.parse(json)
   },
 
   async readyMatch(matchID: string) {

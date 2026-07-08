@@ -29,6 +29,10 @@ func newMatchCode() (string, error) {
 	return randomString(codeAlphabet, 6)
 }
 
+func newMatchPairingToken() (string, error) {
+	return randomString(codeAlphabet, 16)
+}
+
 func randomString(alphabet string, length int) (string, error) {
 	var out strings.Builder
 	out.Grow(length)

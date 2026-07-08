@@ -36,6 +36,7 @@ func indexModelsByCollection() []collectionIndexModels {
 	return []collectionIndexModels{
 		{collection: mongomodel.PlayersCollection, models: playerIndexModels()},
 		{collection: mongomodel.MatchesCollection, models: matchIndexModels()},
+		{collection: mongomodel.MatchPairingsCollection, models: matchPairingIndexModels()},
 		{collection: mongomodel.MatchAnswersCollection, models: matchAnswerIndexModels()},
 		{collection: mongomodel.MatchItemDropsCollection, models: matchItemDropIndexModels()},
 		{collection: mongomodel.OpenPowerRecordsCollection, models: openPowerRecordIndexModels()},
@@ -117,6 +118,28 @@ func matchIndexModels() []mongo.IndexModel {
 				SetName("matches_open_player_locks").
 				SetUnique(true).
 				SetPartialFilterExpression(bson.M{"open_player_locks": bson.M{"$exists": true}}),
+		},
+	}
+}
+
+func matchPairingIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "token", Value: 1}},
+			Options: options.Index().
+				SetName("match_pairings_token").
+				SetUnique(true),
+		},
+		{
+			Keys: bson.D{
+				{Key: "match_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+			Options: options.Index().SetName("match_pairings_match_created"),
+		},
+		{
+			Keys:    bson.D{{Key: "expires_at", Value: 1}},
+			Options: options.Index().SetName("match_pairings_expires_at_ttl").SetExpireAfterSeconds(0),
 		},
 	}
 }
