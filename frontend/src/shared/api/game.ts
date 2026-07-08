@@ -546,6 +546,21 @@ const AdminSettingsSchema = z.object({
     .enum(["schedule", "force_open", "force_closed"])
     .default("schedule"),
   battleOpeningLocked: z.boolean().default(false),
+  maintenanceMode: z.enum(["off", "draining", "active"]).default("off"),
+  maintenanceMessage: z.string().default(""),
+  maintenanceActive: z.boolean().default(false),
+})
+
+const MaintenanceStatusSchema = z.object({
+  enabled: z.boolean(),
+  mode: z.enum(["off", "draining", "active"]),
+  message: z.string().default(""),
+  blocksNewMatches: z.boolean(),
+  blocksWrites: z.boolean(),
+  activeMatchCount: z.number(),
+  openMatchCount: z.number(),
+  startedAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 })
 
 const AdminCommunityStandSchema = CommunityStandSchema.extend({
@@ -844,6 +859,7 @@ export type CommunityStandClaimResponse = z.infer<
   typeof CommunityStandClaimResponseSchema
 >
 export type AdminSettings = z.infer<typeof AdminSettingsSchema>
+export type MaintenanceStatus = z.infer<typeof MaintenanceStatusSchema>
 export type AdminCommunityStand = z.infer<typeof AdminCommunityStandSchema>
 export type AdminCommunityStandClaim = z.infer<
   typeof AdminCommunityStandClaimSchema
@@ -1190,6 +1206,11 @@ export const gameApi = {
     await apiClient.post("/api/admin/logout")
   },
 
+  async maintenanceStatus() {
+    const json = await apiClient.get("/api/maintenance")
+    return MaintenanceStatusSchema.parse(json)
+  },
+
   async adminSettings() {
     const json = await apiClient.get("/api/admin/settings")
     return AdminSettingsSchema.parse(json)
@@ -1237,8 +1258,9 @@ export const gameApi = {
   },
 
   async updateAdminSettings(settings: AdminSettings) {
-    const { battleOpeningLocked, ...input } = settings
+    const { battleOpeningLocked, maintenanceActive, ...input } = settings
     void battleOpeningLocked
+    void maintenanceActive
     const json = await apiClient.put("/api/admin/settings", {
       json: input,
     })

@@ -73,6 +73,10 @@ func (h *Handler) CreateComputer(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "computer battles are disabled"))
 		return
 	}
+	if settings.MaintenanceBlocksNewMatches() {
+		httpx.WriteProblem(w, r, httpx.NewError(http.StatusServiceUnavailable, "maintenance is active"))
+		return
+	}
 	if settings.BattleOpeningLocked(time.Now()) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "battle opening is locked"))
 		return
