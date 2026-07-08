@@ -533,6 +533,13 @@ const AdminSettingsSchema = z.object({
   computerEasyAccuracy: z.number(),
   computerNormalAccuracy: z.number(),
   computerHardAccuracy: z.number(),
+  classTimeBattleLockEnabled: z.boolean().default(false),
+  classTimeBattleLockStart: z.string().default("09:00"),
+  classTimeBattleLockEnd: z.string().default("17:00"),
+  battleOpeningOverride: z
+    .enum(["schedule", "force_open", "force_closed"])
+    .default("schedule"),
+  battleOpeningLocked: z.boolean().default(false),
 })
 
 const AdminCommunityStandSchema = CommunityStandSchema.extend({
@@ -741,6 +748,26 @@ const GiftHistoryResponseSchema = z.object({
   entries: nullableArray(GiftHistoryEntrySchema),
 })
 
+const AdminStudentChangeEntrySchema = z.object({
+  changeId: z.string(),
+  source: z.string(),
+  sourceLabel: z.string(),
+  playerId: z.string(),
+  playerNickname: z.string().optional(),
+  teamId: z.string().optional(),
+  kind: StaffRewardKindSchema,
+  refId: z.string().optional(),
+  name: z.string(),
+  iconPath: z.string().optional(),
+  delta: z.number(),
+  note: z.string().optional(),
+  createdAt: z.string(),
+})
+
+const AdminStudentChangesResponseSchema = z.object({
+  entries: nullableArray(AdminStudentChangeEntrySchema),
+})
+
 const AdminPlayerBalanceResponseSchema = z.object({
   trimId: z.string().optional(),
   rank: z.number(),
@@ -836,6 +863,9 @@ export type AdminDashboardHistoryPoint = z.infer<
   typeof AdminDashboardHistoryPointSchema
 >
 export type GiftHistoryEntry = z.infer<typeof GiftHistoryEntrySchema>
+export type AdminStudentChangeEntry = z.infer<
+  typeof AdminStudentChangeEntrySchema
+>
 export type AdminPlayerBalanceResponse = z.infer<
   typeof AdminPlayerBalanceResponseSchema
 >
@@ -1172,6 +1202,13 @@ export const gameApi = {
     return GiftHistoryResponseSchema.parse(json).entries
   },
 
+  async adminStudentChanges(limit = 300) {
+    const json = await apiClient.get("/api/admin/student-changes", {
+      searchParams: { limit },
+    })
+    return AdminStudentChangesResponseSchema.parse(json).entries
+  },
+
   async adminCommunityStands() {
     const json = await apiClient.get("/api/admin/community-stands")
     return AdminCommunityStandsResponseSchema.parse(json).stands
@@ -1185,8 +1222,10 @@ export const gameApi = {
   },
 
   async updateAdminSettings(settings: AdminSettings) {
+    const { battleOpeningLocked, ...input } = settings
+    void battleOpeningLocked
     const json = await apiClient.put("/api/admin/settings", {
-      json: settings,
+      json: input,
     })
     return AdminSettingsSchema.parse(json)
   },
