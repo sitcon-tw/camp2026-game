@@ -3257,6 +3257,151 @@
                 }
             }
         },
+        "/staff/reward-tokens": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Staff-only endpoint. Creates a short-lived token that authenticated players can scan to claim the selected reward once per player before expiry.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "staff"
+                ],
+                "summary": "Create a short-lived staff reward QR token",
+                "parameters": [
+                    {
+                        "description": "Staff reward token request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/staff.CreateRewardTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/staff.CreateRewardTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/staff/reward-tokens/{token}/claim": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Claims a short-lived staff reward token for the authenticated player. Each player can claim each token once before expiry.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "staff"
+                ],
+                "summary": "Claim a scanned staff reward QR token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Opaque staff reward token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/staff.ClaimRewardTokenResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/staff/rewards": {
             "post": {
                 "security": [
@@ -3674,6 +3819,10 @@
                 "ownerCount": {
                     "type": "integer",
                     "example": 18
+                },
+                "ownerPercent": {
+                    "type": "integer",
+                    "example": 15
                 },
                 "quantity": {
                     "type": "integer",
@@ -4898,6 +5047,9 @@
                     "type": "integer"
                 },
                 "createdAt": {
+                    "type": "string"
+                },
+                "iconPath": {
                     "type": "string"
                 },
                 "kind": {
@@ -6730,6 +6882,21 @@
                 }
             }
         },
+        "staff.ClaimRewardTokenResponse": {
+            "type": "object",
+            "properties": {
+                "reward": {
+                    "$ref": "#/definitions/staff.RewardResponse"
+                },
+                "rewardId": {
+                    "type": "string",
+                    "example": "staff_reward_507f1f77bcf86cd799439011"
+                },
+                "staff": {
+                    "$ref": "#/definitions/staff.RewardStaffResponse"
+                }
+            }
+        },
         "staff.CreateRewardRequest": {
             "type": "object",
             "required": [
@@ -6815,6 +6982,57 @@
                 }
             }
         },
+        "staff.CreateRewardTokenRequest": {
+            "type": "object",
+            "required": [
+                "kind"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "integer",
+                    "maximum": 99999,
+                    "minimum": 1,
+                    "example": 100
+                },
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "item",
+                        "sitone",
+                        "open_power"
+                    ],
+                    "example": "sitone"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "maximum": 99,
+                    "minimum": 1,
+                    "example": 1
+                },
+                "refId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "example": "stone_engineering_base"
+                }
+            }
+        },
+        "staff.CreateRewardTokenResponse": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string",
+                    "example": "2026-07-08T08:10:00Z"
+                },
+                "reward": {
+                    "$ref": "#/definitions/staff.RewardResponse"
+                },
+                "token": {
+                    "type": "string",
+                    "example": "srt_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok"
+                }
+            }
+        },
         "staff.ListPlayersResponse": {
             "type": "object",
             "properties": {
@@ -6879,6 +7097,19 @@
                 "quantity": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "staff.RewardStaffResponse": {
+            "type": "object",
+            "properties": {
+                "nickname": {
+                    "type": "string",
+                    "example": "Staff"
+                },
+                "playerId": {
+                    "type": "string",
+                    "example": "staff-token-1"
                 }
             }
         },

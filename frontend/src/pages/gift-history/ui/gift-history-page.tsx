@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/shared/ui/card"
 import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
+import { GameIcon } from "@/shared/ui/game-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { PageHeader } from "@/shared/ui/page-header"
 
@@ -46,6 +47,27 @@ function rewardKindLabel(entry: GiftHistoryEntry) {
     case "open_power":
       return "開源力"
   }
+}
+
+function RewardIcon({ entry }: { entry: GiftHistoryEntry }) {
+  const fallback = (() => {
+    switch (entry.kind) {
+      case "item":
+        return <GameFeatureIcon name="backpack" className="size-7" />
+      case "sitone":
+        return <GameFeatureIcon name="stones" className="size-7" />
+      case "open_power":
+        return <GameFeatureIcon name="giftHistory" className="size-7" />
+    }
+  })()
+
+  return (
+    <GameIcon
+      iconPath={entry.iconPath}
+      imageClassName="p-1.5"
+      fallback={fallback}
+    />
+  )
 }
 
 function EmptyState({
@@ -129,7 +151,7 @@ export function GiftHistoryPage() {
               <CardContent className="grid gap-3 p-4">
                 <div className="grid grid-cols-[48px_1fr_auto] items-start gap-3">
                   <div className="bg-surface-raised border-ink grid size-12 place-items-center rounded-[16px] border-2">
-                    <GameFeatureIcon name="history" className="size-7" />
+                    <RewardIcon entry={entry} />
                   </div>
                   <div className="min-w-0">
                     <div className="mb-1 flex flex-wrap items-center gap-2">

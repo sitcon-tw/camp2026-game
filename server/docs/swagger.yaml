@@ -194,6 +194,9 @@ definitions:
       ownerCount:
         example: 18
         type: integer
+      ownerPercent:
+        example: 15
+        type: integer
       quantity:
         example: 30
         type: integer
@@ -1066,6 +1069,8 @@ definitions:
       amount:
         type: integer
       createdAt:
+        type: string
+      iconPath:
         type: string
       kind:
         type: string
@@ -2352,6 +2357,16 @@ definitions:
         example: material
         type: string
     type: object
+  staff.ClaimRewardTokenResponse:
+    properties:
+      reward:
+        $ref: '#/definitions/staff.RewardResponse'
+      rewardId:
+        example: staff_reward_507f1f77bcf86cd799439011
+        type: string
+      staff:
+        $ref: '#/definitions/staff.RewardStaffResponse'
+    type: object
   staff.CreateRewardRequest:
     properties:
       allPlayers:
@@ -2416,6 +2431,44 @@ definitions:
       team:
         $ref: '#/definitions/staff.RewardTeamResponse'
     type: object
+  staff.CreateRewardTokenRequest:
+    properties:
+      amount:
+        example: 100
+        maximum: 99999
+        minimum: 1
+        type: integer
+      kind:
+        enum:
+        - item
+        - sitone
+        - open_power
+        example: sitone
+        type: string
+      quantity:
+        example: 1
+        maximum: 99
+        minimum: 1
+        type: integer
+      refId:
+        example: stone_engineering_base
+        maxLength: 128
+        minLength: 1
+        type: string
+    required:
+    - kind
+    type: object
+  staff.CreateRewardTokenResponse:
+    properties:
+      expiresAt:
+        example: "2026-07-08T08:10:00Z"
+        type: string
+      reward:
+        $ref: '#/definitions/staff.RewardResponse'
+      token:
+        example: srt_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok
+        type: string
+    type: object
   staff.ListPlayersResponse:
     properties:
       players:
@@ -2461,6 +2514,15 @@ definitions:
       quantity:
         example: 1
         type: integer
+    type: object
+  staff.RewardStaffResponse:
+    properties:
+      nickname:
+        example: Staff
+        type: string
+      playerId:
+        example: staff-token-1
+        type: string
     type: object
   staff.RewardTeamResponse:
     properties:
@@ -4643,6 +4705,101 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Search players as staff
+      tags:
+      - staff
+  /staff/reward-tokens:
+    post:
+      consumes:
+      - application/json
+      description: Staff-only endpoint. Creates a short-lived token that authenticated
+        players can scan to claim the selected reward once per player before expiry.
+      parameters:
+      - description: Staff reward token request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/staff.CreateRewardTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/staff.CreateRewardTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Create a short-lived staff reward QR token
+      tags:
+      - staff
+  /staff/reward-tokens/{token}/claim:
+    post:
+      description: Claims a short-lived staff reward token for the authenticated player.
+        Each player can claim each token once before expiry.
+      parameters:
+      - description: Opaque staff reward token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/staff.ClaimRewardTokenResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Claim a scanned staff reward QR token
       tags:
       - staff
   /staff/rewards:

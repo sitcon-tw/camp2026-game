@@ -715,6 +715,7 @@ const GiftHistoryEntrySchema = z.object({
   kind: StaffRewardKindSchema,
   refId: z.string().optional(),
   name: z.string(),
+  iconPath: z.string().optional(),
   quantity: z.number().optional(),
   amount: z.number().optional(),
   staffPlayerId: z.string(),
