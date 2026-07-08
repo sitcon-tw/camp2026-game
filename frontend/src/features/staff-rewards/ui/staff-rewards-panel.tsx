@@ -66,7 +66,7 @@ type TargetPlayer = {
 
 type TargetMode = "player" | "team"
 
-type StoneSortTag = "checkpoint" | "level1" | "level2"
+type StoneSortTag = "base" | "checkpoint" | "level1" | "level2"
 
 type ItemEvolutionStage = "level1" | "level2"
 
@@ -77,6 +77,14 @@ type ItemFunctionMeta = {
 }
 
 const ALL_PLAYERS_TEAM_ID = "__all_players__"
+
+const BASE_STONE_IDS = new Set([
+  "stone_engineering_base",
+  "stone_entertainment_base",
+  "stone_explorer_base",
+  "stone_inspiration_base",
+  "stone_resonance_base",
+])
 
 const CHECKPOINT_STONE_IDS = new Set([
   "stone_command_blind_trip",
@@ -215,6 +223,7 @@ const ITEM_FUNCTION_META: Record<string, ItemFunctionMeta> = {
 }
 
 function sitoneSortTags(sitoneID: string): StoneSortTag[] {
+  if (BASE_STONE_IDS.has(sitoneID)) return ["base"]
   if (CHECKPOINT_STONE_IDS.has(sitoneID)) return ["checkpoint"]
   if (LEVEL1_STONE_IDS.has(sitoneID)) return ["level1"]
   if (LEVEL2_STONE_IDS.has(sitoneID)) return ["level2"]
@@ -223,6 +232,8 @@ function sitoneSortTags(sitoneID: string): StoneSortTag[] {
 
 function stoneSortTagLabel(tag: StoneSortTag) {
   switch (tag) {
+    case "base":
+      return "基礎小石"
     case "checkpoint":
       return "闖關活動小石"
     case "level1":
@@ -234,10 +245,11 @@ function stoneSortTagLabel(tag: StoneSortTag) {
 
 function stoneSortRank(tags: StoneSortTag[]) {
   const tag = tags[0]
-  if (tag === "checkpoint") return 0
-  if (tag === "level1") return 1
-  if (tag === "level2") return 2
-  return 3
+  if (tag === "base") return 0
+  if (tag === "checkpoint") return 1
+  if (tag === "level1") return 2
+  if (tag === "level2") return 3
+  return 4
 }
 
 function itemEvolutionStageLabel(stage: ItemEvolutionStage) {
@@ -423,6 +435,7 @@ export function StaffRewardsPanel() {
   const groupedVisibleSitoneOptions = useMemo(
     () =>
       [
+        { tag: "base" as const, label: "基礎小石" },
         { tag: "checkpoint" as const, label: "闖關活動" },
         { tag: "level1" as const, label: "Level 1" },
         { tag: "level2" as const, label: "Level 2" },
