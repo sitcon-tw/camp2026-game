@@ -674,6 +674,7 @@ const AdminDashboardSchema = z.object({
     totalSitones: z.number(),
     totalItems: z.number(),
     totalOpenPower: z.number(),
+    medianOpenPower: z.number(),
     totalMatches: z.number(),
     waitingMatches: z.number(),
     activeMatches: z.number(),

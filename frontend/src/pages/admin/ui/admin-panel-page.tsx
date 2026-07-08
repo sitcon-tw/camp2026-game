@@ -774,10 +774,10 @@ function AdminDashboardView({
             detail={`${summary.activeMatches} 進行中 / ${summary.waitingMatches} 等待`}
           />
           <MetricTile
-            icon={<CheckCircle2 className="size-4" />}
-            label="答題正確率"
-            value={formatPercent(summary.answerAccuracy)}
-            detail={`${summary.correctAnswerCount}/${summary.answerCount} 題`}
+            icon={<Activity className="size-4" />}
+            label="開源力中位數"
+            value={formatNumber(summary.medianOpenPower)}
+            detail="全體玩家中位數"
           />
           <MetricTile
             icon={<GameFeatureIcon name="shop" className="size-4" />}
