@@ -143,14 +143,21 @@ func (h *Handler) acquireShopPurchaseLock(ctx context.Context, playerID string) 
 
 	for {
 		now := time.Now()
-		err := collection.FindOneAndUpdate(
+		updateResult, err := collection.UpdateOne(
 			ctx,
 			shopPurchaseLockFilter(lockID, ownerID, now),
 			shopPurchaseLockUpdate(lockID, playerID, ownerID, now),
-			options.FindOneAndUpdate().
-				SetReturnDocument(options.After).
-				SetUpsert(true),
-		).Err()
+		)
+		if err != nil {
+			return nil, err
+		}
+		if updateResult.MatchedCount > 0 {
+			return func() {
+				h.releaseShopPurchaseLock(lockID, ownerID)
+			}, nil
+		}
+
+		_, err = collection.InsertOne(ctx, shopPurchaseLockInsert(lockID, playerID, ownerID, now))
 		if err == nil {
 			return func() {
 				h.releaseShopPurchaseLock(lockID, ownerID)
@@ -200,12 +207,31 @@ func shopPurchaseLockUpdate(lockID string, playerID string, ownerID string, now 
 	}
 }
 
+func shopPurchaseLockInsert(lockID string, playerID string, ownerID string, now time.Time) bson.M {
+	return bson.M{
+		"_id":        lockID,
+		"player_id":  playerID,
+		"owner_id":   ownerID,
+		"expires_at": now.Add(shopPurchaseLockTTL),
+		"created_at": now,
+		"updated_at": now,
+	}
+}
+
 func shopPurchaseLockID(playerID string) string {
 	return "shop_purchase:" + playerID
 }
 
 func shopPurchaseLockBusy(err error) bool {
-	return errors.Is(err, mongo.ErrNoDocuments) || mongo.IsDuplicateKeyError(err)
+	return errors.Is(err, mongo.ErrNoDocuments) || mongo.IsDuplicateKeyError(err) || duplicateKeyMessage(err)
+}
+
+func duplicateKeyMessage(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := err.Error()
+	return strings.Contains(message, "E11000") && strings.Contains(message, "duplicate key")
 }
 
 func sleepContext(ctx context.Context, delay time.Duration) error {

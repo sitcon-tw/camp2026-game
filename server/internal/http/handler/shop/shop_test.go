@@ -154,21 +154,37 @@ func TestShopPurchaseLockDocumentsArePlayerScoped(t *testing.T) {
 	if !ok || !createdAt.Equal(now) {
 		t.Fatalf("expected created_at, got %#v", setOnInsert["created_at"])
 	}
+
+	insert := shopPurchaseLockInsert(lockID, "player-a", ownerID, now)
+	if insert["_id"] != lockID || insert["player_id"] != "player-a" || insert["owner_id"] != ownerID {
+		t.Fatalf("expected complete insert document, got %#v", insert)
+	}
+	insertExpiresAt, ok := insert["expires_at"].(time.Time)
+	if !ok || !insertExpiresAt.Equal(now.Add(shopPurchaseLockTTL)) {
+		t.Fatalf("expected insert expiry, got %#v", insert["expires_at"])
+	}
 }
 
 func TestShopPurchaseLockBusy(t *testing.T) {
 	if !shopPurchaseLockBusy(mongo.ErrNoDocuments) {
 		t.Fatal("expected no matching lock document to be treated as contention")
 	}
+	if !shopPurchaseLockBusy(mongo.CommandError{Code: 11000, Message: "duplicate key"}) {
+		t.Fatal("expected duplicate findAndModify command error to be treated as contention")
+	}
 	if !shopPurchaseLockBusy(mongo.WriteException{WriteErrors: mongo.WriteErrors{
 		{Code: 11000, Message: "duplicate key"},
 	}}) {
 		t.Fatal("expected duplicate lock insert to be treated as contention")
 	}
+	if !shopPurchaseLockBusy(errors.New(`Plan executor error during findAndModify :: caused by :: E11000 duplicate key error collection: camp2026.shop_purchase_locks index: _id_ dup key: { _id: "shop_purchase:tg_player" }`)) {
+		t.Fatal("expected duplicate lock insert message to be treated as contention")
+	}
 
 	for _, err := range []error{
 		errors.New("database unavailable"),
 		mongo.CommandError{Code: 20, Message: "not a duplicate key"},
+		errors.New("duplicate key wording without server duplicate code"),
 	} {
 		if shopPurchaseLockBusy(err) {
 			t.Fatalf("expected %v not to be lock contention", err)

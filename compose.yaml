@@ -7,7 +7,22 @@ services:
     ports:
       - "80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost/api/healthz",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
     networks:
       - moniting
       - dokploy-network
@@ -16,10 +31,12 @@ services:
     image: nginx/nginx-prometheus-exporter:1.5.1
     command:
       - -nginx.scrape-uri=http://nginx:80/nginx_status
+      - -nginx.timeout=3s
     restart: unless-stopped
     depends_on:
-      - nginx
-    ports:
+      nginx:
+        condition: service_healthy
+    expose:
       - "9113"
     networks:
       - moniting
@@ -141,11 +158,14 @@ services:
     image: percona/mongodb_exporter:0.51.0
     restart: unless-stopped
     environment:
-      MONGODB_URI: mongodb://${MONGO_USERNAME:-camp2026}:${MONGO_PASSWORD:-camp2026}@mongodb:27017/admin?authSource=admin&replicaSet=${MONGO_REPLICA_SET_NAME:-rs0}
-    ports:
+      MONGODB_URI: mongodb://${MONGO_USERNAME:-camp2026}:${MONGO_PASSWORD:-camp2026}@mongodb:27017/admin?authSource=admin&replicaSet=${MONGO_REPLICA_SET_NAME:-rs0}&serverSelectionTimeoutMS=3000&connectTimeoutMS=3000&socketTimeoutMS=5000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    expose:
       - "9216"
     command:
-      - "--mongodb.uri=mongodb://${MONGO_USERNAME:-camp2026}:${MONGO_PASSWORD:-camp2026}@mongodb:27017/admin?authSource=admin&replicaSet=${MONGO_REPLICA_SET_NAME:-rs0}"
+      - "--mongodb.uri=mongodb://${MONGO_USERNAME:-camp2026}:${MONGO_PASSWORD:-camp2026}@mongodb:27017/admin?authSource=admin&replicaSet=${MONGO_REPLICA_SET_NAME:-rs0}&serverSelectionTimeoutMS=3000&connectTimeoutMS=3000&socketTimeoutMS=5000"
       - "--compatible-mode"
       - "--collect-all"
     networks:
