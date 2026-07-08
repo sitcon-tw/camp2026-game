@@ -72,7 +72,7 @@ type TargetPlayer = {
 
 type TargetMode = "player" | "team"
 
-type StoneSortTag = "base" | "checkpoint" | "level1" | "level2"
+type StoneSortTag = "base" | "checkpoint" | "special" | "level1" | "level2"
 
 type ItemEvolutionStage = "level1" | "level2"
 
@@ -98,6 +98,11 @@ const CHECKPOINT_STONE_IDS = new Set([
   "stone_von_neumann",
   "stone_packet_rescue",
   "stone_prompt_injection",
+])
+
+const SPECIAL_EVENT_STONE_IDS = new Set([
+  "stone_fireside",
+  "stone_python_turtle",
 ])
 
 const LEVEL1_STONE_IDS = new Set([
@@ -231,6 +236,7 @@ const ITEM_FUNCTION_META: Record<string, ItemFunctionMeta> = {
 function sitoneSortTags(sitoneID: string): StoneSortTag[] {
   if (BASE_STONE_IDS.has(sitoneID)) return ["base"]
   if (CHECKPOINT_STONE_IDS.has(sitoneID)) return ["checkpoint"]
+  if (SPECIAL_EVENT_STONE_IDS.has(sitoneID)) return ["special"]
   if (LEVEL1_STONE_IDS.has(sitoneID)) return ["level1"]
   if (LEVEL2_STONE_IDS.has(sitoneID)) return ["level2"]
   return []
@@ -242,6 +248,8 @@ function stoneSortTagLabel(tag: StoneSortTag) {
       return "基礎小石"
     case "checkpoint":
       return "闖關活動小石"
+    case "special":
+      return "特殊活動小石"
     case "level1":
       return "Level 1 小石"
     case "level2":
@@ -253,9 +261,10 @@ function stoneSortRank(tags: StoneSortTag[]) {
   const tag = tags[0]
   if (tag === "base") return 0
   if (tag === "checkpoint") return 1
-  if (tag === "level1") return 2
-  if (tag === "level2") return 3
-  return 4
+  if (tag === "special") return 2
+  if (tag === "level1") return 3
+  if (tag === "level2") return 4
+  return 5
 }
 
 function itemEvolutionStageLabel(stage: ItemEvolutionStage) {
@@ -534,6 +543,7 @@ export function StaffRewardsPanel() {
       [
         { tag: "base" as const, label: "基礎小石" },
         { tag: "checkpoint" as const, label: "闖關活動" },
+        { tag: "special" as const, label: "特殊活動" },
         { tag: "level1" as const, label: "Level 1" },
         { tag: "level2" as const, label: "Level 2" },
       ]
