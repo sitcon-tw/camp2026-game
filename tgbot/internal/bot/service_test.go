@@ -231,6 +231,9 @@ func TestHandlePrivateStartCreatesPlayerAndSendsLoginURL(t *testing.T) {
 	if !strings.Contains(msg.Text, `<a href="`+loginURL+`">點我登入遊戲</a>`) {
 		t.Fatalf("expected login URL as a text hyperlink, got %q", msg.Text)
 	}
+	if !strings.Contains(msg.Text, "Token 登入：`tg_token`") {
+		t.Fatalf("expected backtick-wrapped fallback token, got %q", msg.Text)
+	}
 	if strings.Contains(msg.Text, "\n"+loginURL+"\n") {
 		t.Fatalf("expected message body not to show a bare URL line, got %q", msg.Text)
 	}

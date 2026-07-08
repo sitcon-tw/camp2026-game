@@ -304,8 +304,10 @@ func (s *Service) handlePrivateStart(ctx context.Context, message telegram.Messa
 	}
 
 	escapedLoginURL := html.EscapeString(loginURL)
+	escapedAuthToken := html.EscapeString(player.AuthToken)
 	text := "🎟 VIP-666 通關碼驗證成功！\n\n" +
 		"你的專屬遊戲入口已開啟：<a href=\"" + escapedLoginURL + "\">點我登入遊戲</a>\n\n" +
+		"如果按鈕或連結無法使用，請用這組 Token 登入：`" + escapedAuthToken + "`\n\n" +
 		"⚠️ 這張 VIP 通行證只認本人，請不要轉傳給其他人。"
 	if !created && player.TeamID != request.TeamID {
 		text = "ℹ️ 你已經綁定在 " + html.EscapeString(player.TeamID) + "，登入連結仍沿用原本隊伍。\n\n" + text

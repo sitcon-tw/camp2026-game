@@ -13,6 +13,7 @@ Telegram login helper for the Camp 2026 game.
 ```text
 VIP-666 通關碼驗證成功！
 點我登入遊戲
+如果按鈕或連結無法使用，請用這組 Token 登入：`tg_...`
 [打開遊戲入口]
 ```
 
