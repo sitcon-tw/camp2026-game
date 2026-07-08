@@ -207,14 +207,18 @@ func (h *Handler) findAllPlayers(ctx context.Context) ([]mongomodel.Player, erro
 }
 
 func (h *Handler) createReward(ctx context.Context, staffPlayerID string, recipientPlayerID string, reward rewardDefinition, quantity int) (mongomodel.StaffReward, error) {
+	return h.createRewardWithID(ctx, newID("staff_reward"), staffPlayerID, recipientPlayerID, reward, quantity, time.Now().UTC())
+}
+
+func (h *Handler) createRewardWithID(ctx context.Context, rewardID string, staffPlayerID string, recipientPlayerID string, reward rewardDefinition, quantity int, createdAt time.Time) (mongomodel.StaffReward, error) {
 	record := mongomodel.StaffReward{
-		ID:                  newID("staff_reward"),
+		ID:                  rewardID,
 		StaffPlayerID:       staffPlayerID,
 		RecipientPlayerID:   recipientPlayerID,
 		Kind:                reward.kind,
 		RefID:               reward.id,
 		Quantity:            quantity,
-		CreatedAt:           time.Now().UTC(),
+		CreatedAt:           createdAt,
 		NotificationPending: true,
 	}
 	switch reward.kind {

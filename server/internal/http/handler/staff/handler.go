@@ -37,6 +37,11 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/staff/players", h.ListPlayers)
 	api.Get("/staff/teams", h.ListTeams)
 	api.Post("/staff/rewards", h.CreateReward)
+	api.Post("/staff/reward-tokens", h.CreateRewardToken)
+}
+
+func (h *Handler) RegisterPlayerRoutes(api chi.Router) {
+	api.Post("/staff/reward-tokens/{token}/claim", h.ClaimRewardToken)
 }
 
 func currentStaff(w http.ResponseWriter, r *http.Request) (mongomodel.Player, bool) {

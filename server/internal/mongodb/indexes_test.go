@@ -202,6 +202,39 @@ func TestIndexModelsByCollection(t *testing.T) {
 			},
 		},
 		{
+			collection: mongomodel.StaffRewardTokensCollection,
+			name:       "staff_reward_tokens_token",
+			keys: bson.D{
+				{Key: "token", Value: 1},
+			},
+			unique: true,
+		},
+		{
+			collection: mongomodel.StaffRewardTokensCollection,
+			name:       "staff_reward_tokens_expires_at_ttl",
+			keys: bson.D{
+				{Key: "expires_at", Value: 1},
+			},
+			expireAfterSeconds: int32Pointer(0),
+		},
+		{
+			collection: mongomodel.StaffRewardTokenClaimsCollection,
+			name:       "staff_reward_token_claims_token_player",
+			keys: bson.D{
+				{Key: "token_id", Value: 1},
+				{Key: "player_id", Value: 1},
+			},
+			unique: true,
+		},
+		{
+			collection: mongomodel.StaffRewardTokenClaimsCollection,
+			name:       "staff_reward_token_claims_player_claimed",
+			keys: bson.D{
+				{Key: "player_id", Value: 1},
+				{Key: "claimed_at", Value: -1},
+			},
+		},
+		{
 			collection: mongomodel.CommunityStandVisitsCollection,
 			name:       "community_stand_visits_stand_player",
 			keys: bson.D{

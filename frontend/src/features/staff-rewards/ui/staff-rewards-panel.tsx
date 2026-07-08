@@ -9,6 +9,7 @@ import {
   UsersIcon,
 } from "lucide-react"
 import { type FormEvent, useMemo, useState } from "react"
+import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 
 import { PlayerQrScannerDialog } from "./player-qr-scanner-dialog"
@@ -17,6 +18,7 @@ import {
   gameApi,
   type Item,
   type PlayerStatus,
+  type StaffRewardTokenResponse,
   type Sitone,
   type StaffPlayer,
   type StaffRewardKind,
@@ -27,6 +29,7 @@ import {
   rarityLabel,
   sitoneMeta,
 } from "@/shared/lib/game-labels"
+import { staffRewardTokenQrValue } from "@/shared/lib/staff-reward-token"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { GameFeatureIcon } from "@/shared/ui/game-feature-icon"
@@ -272,6 +275,61 @@ function itemFunctionMeta(item: Item): ItemFunctionMeta {
   )
 }
 
+function RewardTokenCard({ token }: { token: StaffRewardTokenResponse }) {
+  const expiresAt = new Date(token.expiresAt)
+  const expiresLabel = Number.isNaN(expiresAt.getTime())
+    ? token.expiresAt
+    : expiresAt.toLocaleTimeString("zh-TW", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+
+  return (
+    <Card className="border-ink rounded-[22px] border-2">
+      <CardContent className="grid justify-items-center gap-4 p-5 text-center">
+        <div className="bg-paper border-ink grid aspect-square w-full max-w-[280px] place-items-center rounded-[18px] border-4 p-4">
+          <QRCodeSVG
+            aria-label="staff 獎勵 Token QR Code"
+            bgColor="var(--paper)"
+            className="h-full w-full"
+            fgColor="var(--ink)"
+            level="M"
+            marginSize={4}
+            role="img"
+            size={240}
+            title="staff 獎勵 Token QR Code"
+            value={staffRewardTokenQrValue(token.token)}
+          />
+        </div>
+        <div>
+          <p className="text-muted-foreground mb-1 text-xs font-black tracking-[0.08em] uppercase">
+            SCAN TOKEN
+          </p>
+          <h3 className="text-[24px] leading-tight font-black">
+            {rewardText(token.reward)}
+          </h3>
+          <p className="text-muted-foreground mt-2 text-sm font-bold">
+            有效至 {expiresLabel}，同一位學員只能領一次
+          </p>
+        </div>
+        <code className="bg-surface-raised border-border w-full rounded-[14px] border px-3 py-2 text-xs break-all">
+          {token.token}
+        </code>
+      </CardContent>
+    </Card>
+  )
+}
+
+function rewardText(reward: {
+  kind: StaffRewardKind
+  name: string
+  quantity?: number
+  amount?: number
+}) {
+  if (reward.kind === "open_power") return `${reward.amount ?? 0} 開源力`
+  return `${reward.name} x${reward.quantity ?? 1}`
+}
+
 function primaryStoneSortTag(option: RewardOption) {
   return option.sortTags[0]
 }
@@ -490,8 +548,22 @@ export function StaffRewardsPanel() {
       toast.error(errorMessage(error, "發送失敗"))
     },
   })
+  const rewardTokenMutation = useMutation({
+    mutationFn: gameApi.createStaffRewardToken,
+    onSuccess: (result) => {
+      toast.success(`已產生 ${rewardText(result.reward)} 掃描 Token`)
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "Token 產生失敗"))
+    },
+  })
 
   const catalogsPending = sitonesQuery.isPending || itemsQuery.isPending
+  const canGenerateToken =
+    isStaff &&
+    (rewardKind === "open_power" ? openPowerAmount >= 1 : !!selectedOption) &&
+    (rewardKind === "open_power" || quantity >= 1) &&
+    !rewardTokenMutation.isPending
   const canSend =
     isStaff &&
     (targetMode === "player"
@@ -571,6 +643,22 @@ export function StaffRewardsPanel() {
     if (!selectedOption) return
     rewardMutation.mutate({
       teamId: selectedTeam.teamId,
+      kind: rewardKind,
+      refId: selectedOption.id,
+      quantity,
+    })
+  }
+
+  function handleRewardTokenCreate() {
+    if (rewardKind === "open_power") {
+      rewardTokenMutation.mutate({
+        kind: rewardKind,
+        amount: openPowerAmount,
+      })
+      return
+    }
+    if (!selectedOption) return
+    rewardTokenMutation.mutate({
       kind: rewardKind,
       refId: selectedOption.id,
       quantity,
@@ -1040,15 +1128,31 @@ export function StaffRewardsPanel() {
             </CardContent>
           </Card>
 
-          <Button
-            type="submit"
-            className="h-12 w-full text-base"
-            disabled={!canSend}
-          >
-            <SendIcon className="size-4" aria-hidden />
-            {rewardMutation.isPending ? "發送中" : "發送"}
-          </Button>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-12 w-full text-base"
+              disabled={!canGenerateToken}
+              onClick={handleRewardTokenCreate}
+            >
+              <ScanLineIcon className="size-4" aria-hidden />
+              {rewardTokenMutation.isPending ? "產生中" : "生成掃描 Token"}
+            </Button>
+            <Button
+              type="submit"
+              className="h-12 w-full text-base"
+              disabled={!canSend}
+            >
+              <SendIcon className="size-4" aria-hidden />
+              {rewardMutation.isPending ? "發送中" : "直接發送"}
+            </Button>
+          </div>
         </form>
+
+        {rewardTokenMutation.data ? (
+          <RewardTokenCard token={rewardTokenMutation.data} />
+        ) : null}
 
         {rewardMutation.data ? (
           <Card className="border-ink rounded-[22px] border-2">

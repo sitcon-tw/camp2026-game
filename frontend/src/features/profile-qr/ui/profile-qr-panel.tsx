@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { Check, Pencil, RotateCcw, ScanLine, X } from "lucide-react"
-import { QRCodeSVG } from "qrcode.react"
 import { FormEvent, useMemo, useState } from "react"
 import { toast } from "sonner"
 
@@ -28,10 +27,6 @@ export function ProfileQrPanel() {
   const statusQuery = useQuery({
     queryKey: ["me", "status"],
     queryFn: gameApi.status,
-  })
-  const qrQuery = useQuery({
-    queryKey: ["me", "qrcode"],
-    queryFn: gameApi.qrcode,
   })
   const sitonesQuery = useQuery({
     queryKey: ["me", "sitones"],
@@ -84,11 +79,8 @@ export function ProfileQrPanel() {
     },
   })
   const isUnauthorized =
-    (statusQuery.error instanceof AppError &&
-      statusQuery.error.status === 401) ||
-    (qrQuery.error instanceof AppError && qrQuery.error.status === 401)
+    statusQuery.error instanceof AppError && statusQuery.error.status === 401
   const profile = statusQuery.data
-  const qrcodeToken = qrQuery.data?.qrcodeToken
   const nicknameInputLength = [...nicknameValue.trim()].length
 
   function startNicknameEdit() {
@@ -126,7 +118,7 @@ export function ProfileQrPanel() {
         <CardContent className="p-5">
           <h2 className="mb-2 text-[24px] font-black">請先登入</h2>
           <p className="text-muted-foreground mb-4 leading-relaxed">
-            登入後才能產生個人 QR Code。
+            登入後才能開啟 QRCode 掃描器。
           </p>
           <Button asChild className="w-full">
             <Link to="/login">前往登入</Link>
@@ -141,42 +133,24 @@ export function ProfileQrPanel() {
       <Card className="border-ink rounded-[32px] border-2 py-0 shadow-[5px_5px_0_rgba(23,35,58,0.16)]">
         <CardContent className="px-[22px] pt-7 pb-6 text-center">
           <div className="bg-paper border-ink mx-auto mb-5 grid aspect-square w-full max-w-[306px] place-items-center rounded-[18px] border-4 p-[18px]">
-            {qrcodeToken ? (
-              <QRCodeSVG
-                aria-label="玩家身份 QR Code"
-                bgColor="var(--paper)"
-                className="h-full w-full"
-                fgColor="var(--ink)"
-                level="M"
-                marginSize={4}
-                role="img"
-                size={256}
-                title="玩家身份 QR Code"
-                value={qrcodeToken}
-              />
-            ) : qrQuery.isError ? (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
-                <p className="text-muted-foreground text-sm font-bold">
-                  QR Code 暫時無法產生
-                </p>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => void qrQuery.refetch()}
-                >
-                  重新整理
-                </Button>
-              </div>
-            ) : (
-              <Skeleton className="h-full w-full rounded-[12px]" />
-            )}
+            <div className="bg-surface-raised border-ink grid h-full w-full place-items-center rounded-[12px] border-2">
+              <ScanLine className="text-ink size-20" aria-hidden />
+            </div>
           </div>
           <h2 className="mb-2 text-[26px] font-black tracking-tight">
-            請掃描這個 QR Code
+            開啟 QRCode 掃描器
           </h2>
           <p className="text-muted-foreground mx-auto max-w-[15rem] leading-relaxed">
-            出示給工作人員掃描，用來確認身份與任務紀錄。
+            掃描工作人員或社群攤位 QR Code，領取對應獎勵。
           </p>
+          <Button
+            type="button"
+            className="mt-5 w-full"
+            onClick={() => setCommunityScannerOpen(true)}
+          >
+            <ScanLine className="size-4" aria-hidden />
+            開啟掃描器
+          </Button>
         </CardContent>
       </Card>
 

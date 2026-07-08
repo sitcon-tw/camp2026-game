@@ -44,6 +44,8 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.ShopPurchasesCollection, models: shopPurchaseIndexModels()},
 		{collection: shopPurchaseLocksCollection, models: shopPurchaseLockIndexModels()},
 		{collection: mongomodel.StaffRewardsCollection, models: staffRewardIndexModels()},
+		{collection: mongomodel.StaffRewardTokensCollection, models: staffRewardTokenIndexModels()},
+		{collection: mongomodel.StaffRewardTokenClaimsCollection, models: staffRewardTokenClaimIndexModels()},
 		{collection: mongomodel.CommunityStandsCollection, models: communityStandIndexModels()},
 		{collection: mongomodel.CommunityStandVisitsCollection, models: communityStandVisitIndexModels()},
 		{collection: mongomodel.CommunityStandClaimsCollection, models: communityStandClaimIndexModels()},
@@ -233,6 +235,40 @@ func staffRewardIndexModels() []mongo.IndexModel {
 			Options: options.Index().
 				SetName("staff_rewards_unnotified_recipient_created").
 				SetPartialFilterExpression(bson.M{"notification_pending": true}),
+		},
+	}
+}
+
+func staffRewardTokenIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "token", Value: 1}},
+			Options: options.Index().
+				SetName("staff_reward_tokens_token").
+				SetUnique(true),
+		},
+		{
+			Keys:    bson.D{{Key: "expires_at", Value: 1}},
+			Options: options.Index().SetName("staff_reward_tokens_expires_at_ttl").SetExpireAfterSeconds(0),
+		},
+	}
+}
+
+func staffRewardTokenClaimIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "token_id", Value: 1},
+				{Key: "player_id", Value: 1},
+			},
+			Options: options.Index().SetName("staff_reward_token_claims_token_player").SetUnique(true),
+		},
+		{
+			Keys: bson.D{
+				{Key: "player_id", Value: 1},
+				{Key: "claimed_at", Value: -1},
+			},
+			Options: options.Index().SetName("staff_reward_token_claims_player_claimed"),
 		},
 	}
 }

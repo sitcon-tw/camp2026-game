@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { AppError } from "@/shared/api/error"
 import { gameApi, type CommunityStandReward } from "@/shared/api/game"
 import { parseCommunityStandQRToken } from "@/shared/lib/community-stand-qr"
+import { parseStaffRewardToken } from "@/shared/lib/staff-reward-token"
 import {
   useQrCodeScanner,
   type QrCodeScannerStatus,
@@ -37,7 +38,7 @@ type CommunityStandScannerDialogProps = {
 const statusMessages: Record<QrCodeScannerStatus, string> = {
   idle: "正在啟動相機",
   starting: "正在啟動相機",
-  scanning: "對準社群攤位 QR Code",
+  scanning: "對準 QR Code",
   "secure-context-required":
     "瀏覽器需要 HTTPS 或 localhost 才能開啟相機，請輸入 QR Code 內容。",
   "camera-unavailable": "這個瀏覽器無法開啟相機，請輸入 QR Code 內容。",
@@ -55,10 +56,13 @@ export function CommunityStandScannerDialog({
   const [manualValue, setManualValue] = useState("")
   const [manualMessage, setManualMessage] = useState<string | null>(null)
   const [qrToken, setQRToken] = useState<string | null>(null)
+  const [staffRewardToken, setStaffRewardToken] = useState<string | null>(null)
   const activeQRToken = qrToken ?? ""
+  const activeStaffRewardToken = staffRewardToken ?? ""
 
   const resetScanner = useCallback(() => {
     setQRToken(null)
+    setStaffRewardToken(null)
     setManualValue("")
     setManualMessage(null)
   }, [])
@@ -71,7 +75,14 @@ export function CommunityStandScannerDialog({
     [onOpenChange, resetScanner],
   )
 
-  const openStand = useCallback((value: string) => {
+  const openScannedValue = useCallback((value: string) => {
+    const parsedRewardToken = parseStaffRewardToken(value)
+    if (parsedRewardToken) {
+      setManualMessage(null)
+      setStaffRewardToken(parsedRewardToken)
+      return
+    }
+
     const parsedQRToken = parseCommunityStandQRToken(value)
     if (!parsedQRToken) {
       setManualMessage("找不到 QR Code 內容，請確認後再手動輸入。")
@@ -82,10 +93,24 @@ export function CommunityStandScannerDialog({
   }, [])
 
   const scannerStatus = useQrCodeScanner({
-    open: open && !qrToken,
+    open: open && !qrToken && !staffRewardToken,
     videoRef,
     canvasRef,
-    onResult: openStand,
+    onResult: openScannedValue,
+  })
+  const staffRewardClaimMutation = useMutation({
+    mutationFn: () => gameApi.claimStaffRewardToken(activeStaffRewardToken),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["me"] })
+      toast.success(`已領取 ${rewardText(result.reward)}`)
+    },
+    onError: (error) => {
+      if (error instanceof AppError && error.status === 409) {
+        toast.error("這個獎勵 Token 已經領取過了")
+        return
+      }
+      toast.error(error instanceof AppError ? error.message : "領取失敗")
+    },
   })
   const standQuery = useQuery({
     queryKey: ["community", "stand", "scan", activeQRToken],
@@ -120,16 +145,16 @@ export function CommunityStandScannerDialog({
 
   function handleManualSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    openStand(manualValue)
+    openScannedValue(manualValue)
   }
 
   return (
     <Dialog open={open} onOpenChange={updateOpen}>
       <DialogContent className="gap-4">
-        {!qrToken ? (
+        {!qrToken && !staffRewardToken ? (
           <>
             <DialogHeader>
-              <DialogTitle>掃描社群攤位 QR Code</DialogTitle>
+              <DialogTitle>QRCode 掃描器</DialogTitle>
               <DialogDescription>
                 {manualMessage ?? statusMessages[scannerStatus]}
               </DialogDescription>
@@ -158,10 +183,57 @@ export function CommunityStandScannerDialog({
               />
               <DialogFooter>
                 <Button type="submit" variant="secondary" className="w-full">
-                  前往攤位
+                  確認 QR Code
                 </Button>
               </DialogFooter>
             </form>
+          </>
+        ) : staffRewardToken ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>工作人員獎勵</DialogTitle>
+              <DialogDescription>
+                掃描成功，確認後領取工作人員設定的獎勵。
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="bg-surface-raised border-ink rounded-[18px] border-2 p-4">
+              <p className="text-muted-foreground mb-1 text-xs font-black tracking-[0.08em] uppercase">
+                TOKEN
+              </p>
+              <code className="block text-sm break-all">
+                {staffRewardToken}
+              </code>
+            </div>
+
+            <DialogFooter className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr]">
+              <Button type="button" variant="secondary" onClick={resetScanner}>
+                <RotateCcw className="size-4" aria-hidden />
+                重掃
+              </Button>
+              <Button
+                type="button"
+                disabled={
+                  staffRewardClaimMutation.isPending ||
+                  staffRewardClaimMutation.isSuccess
+                }
+                onClick={() => staffRewardClaimMutation.mutate()}
+              >
+                {staffRewardClaimMutation.isSuccess ? (
+                  <>
+                    <CheckCircle2 className="size-4" aria-hidden />
+                    已領取
+                  </>
+                ) : staffRewardClaimMutation.isPending ? (
+                  "領取中"
+                ) : (
+                  <>
+                    <Gift className="size-4" aria-hidden />
+                    領取獎勵
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
           </>
         ) : (
           <>

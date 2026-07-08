@@ -444,6 +444,33 @@ const StaffRewardResponseSchema = z.object({
   }),
 })
 
+const StaffRewardTokenResponseSchema = z.object({
+  token: z.string(),
+  expiresAt: z.string(),
+  reward: z.object({
+    kind: StaffRewardKindSchema,
+    id: z.string().optional(),
+    name: z.string(),
+    quantity: z.number().optional(),
+    amount: z.number().optional(),
+  }),
+})
+
+const StaffRewardTokenClaimResponseSchema = z.object({
+  rewardId: z.string(),
+  reward: z.object({
+    kind: StaffRewardKindSchema,
+    id: z.string().optional(),
+    name: z.string(),
+    quantity: z.number().optional(),
+    amount: z.number().optional(),
+  }),
+  staff: z.object({
+    playerId: z.string(),
+    nickname: z.string(),
+  }),
+})
+
 const CommunityStandRewardSchema = z.object({
   kind: StaffRewardKindSchema,
   refId: z.string().optional(),
@@ -735,6 +762,12 @@ export type StaffRewardKind = z.infer<typeof StaffRewardKindSchema>
 export type StaffPlayer = z.infer<typeof StaffPlayerSchema>
 export type StaffTeam = z.infer<typeof StaffTeamSchema>
 export type StaffRewardResponse = z.infer<typeof StaffRewardResponseSchema>
+export type StaffRewardTokenResponse = z.infer<
+  typeof StaffRewardTokenResponseSchema
+>
+export type StaffRewardTokenClaimResponse = z.infer<
+  typeof StaffRewardTokenClaimResponseSchema
+>
 export type CommunityStandReward = z.infer<typeof CommunityStandRewardSchema>
 export type CommunityStand = z.infer<typeof CommunityStandSchema>
 export type CommunityStandDetailResponse = z.infer<
@@ -1034,6 +1067,25 @@ export const gameApi = {
       json: input,
     })
     return StaffRewardResponseSchema.parse(json)
+  },
+
+  async createStaffRewardToken(input: {
+    kind: StaffRewardKind
+    refId?: string
+    quantity?: number
+    amount?: number
+  }) {
+    const json = await apiClient.post("/api/staff/reward-tokens", {
+      json: input,
+    })
+    return StaffRewardTokenResponseSchema.parse(json)
+  },
+
+  async claimStaffRewardToken(token: string) {
+    const json = await apiClient.post(
+      `/api/staff/reward-tokens/${encodeURIComponent(token)}/claim`,
+    )
+    return StaffRewardTokenClaimResponseSchema.parse(json)
   },
 
   async staffPlayers(query: string) {
