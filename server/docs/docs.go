@@ -1432,7 +1432,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Lists team or player rankings by sitone count, then open power.",
+                "description": "Lists team rankings by per-player average sitone count, then average open power, or player rankings by sitone count, then open power.",
                 "produces": [
                     "application/json"
                 ],
@@ -2402,7 +2402,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Returns the authenticated player's home page summary, resource counts, and team rank by sitone count and open power.",
+                "description": "Returns the authenticated player's home page summary, resource counts, and team rank by per-player average sitone count and average open power.",
                 "produces": [
                     "application/json"
                 ],
@@ -5158,7 +5158,7 @@ const docTemplate = `{
                     }
                 },
                 "gapToPrevious": {
-                    "type": "integer",
+                    "type": "number",
                     "example": 3
                 },
                 "scope": {
@@ -5197,6 +5197,14 @@ const docTemplate = `{
                     "type": "string",
                     "example": "/game-icons/stones/basic_blue.png"
                 },
+                "averageOpenPower": {
+                    "type": "number",
+                    "example": 118.8
+                },
+                "averageSitones": {
+                    "type": "number",
+                    "example": 1.8
+                },
                 "current": {
                     "type": "boolean",
                     "example": true
@@ -5212,6 +5220,10 @@ const docTemplate = `{
                 "openPower": {
                     "type": "integer",
                     "example": 1188
+                },
+                "playerCount": {
+                    "type": "integer",
+                    "example": 10
                 },
                 "rank": {
                     "type": "integer",
@@ -6450,8 +6462,16 @@ const docTemplate = `{
                     "type": "string",
                     "example": "/game-icons/stones/basic_blue.png"
                 },
+                "averageOpenPower": {
+                    "type": "number",
+                    "example": 118.8
+                },
+                "averageSitones": {
+                    "type": "number",
+                    "example": 1.8
+                },
                 "gapToPrevious": {
-                    "type": "integer",
+                    "type": "number",
                     "example": 3
                 },
                 "name": {
@@ -6461,6 +6481,10 @@ const docTemplate = `{
                 "openPower": {
                     "type": "integer",
                     "example": 1188
+                },
+                "playerCount": {
+                    "type": "integer",
+                    "example": 10
                 },
                 "rank": {
                     "type": "integer",

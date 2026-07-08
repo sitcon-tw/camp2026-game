@@ -1429,7 +1429,7 @@
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Lists team or player rankings by sitone count, then open power.",
+                "description": "Lists team rankings by per-player average sitone count, then average open power, or player rankings by sitone count, then open power.",
                 "produces": [
                     "application/json"
                 ],
@@ -2399,7 +2399,7 @@
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Returns the authenticated player's home page summary, resource counts, and team rank by sitone count and open power.",
+                "description": "Returns the authenticated player's home page summary, resource counts, and team rank by per-player average sitone count and average open power.",
                 "produces": [
                     "application/json"
                 ],
@@ -5155,7 +5155,7 @@
                     }
                 },
                 "gapToPrevious": {
-                    "type": "integer",
+                    "type": "number",
                     "example": 3
                 },
                 "scope": {
@@ -5194,6 +5194,14 @@
                     "type": "string",
                     "example": "/game-icons/stones/basic_blue.png"
                 },
+                "averageOpenPower": {
+                    "type": "number",
+                    "example": 118.8
+                },
+                "averageSitones": {
+                    "type": "number",
+                    "example": 1.8
+                },
                 "current": {
                     "type": "boolean",
                     "example": true
@@ -5209,6 +5217,10 @@
                 "openPower": {
                     "type": "integer",
                     "example": 1188
+                },
+                "playerCount": {
+                    "type": "integer",
+                    "example": 10
                 },
                 "rank": {
                     "type": "integer",
@@ -6447,8 +6459,16 @@
                     "type": "string",
                     "example": "/game-icons/stones/basic_blue.png"
                 },
+                "averageOpenPower": {
+                    "type": "number",
+                    "example": 118.8
+                },
+                "averageSitones": {
+                    "type": "number",
+                    "example": 1.8
+                },
                 "gapToPrevious": {
-                    "type": "integer",
+                    "type": "number",
                     "example": 3
                 },
                 "name": {
@@ -6458,6 +6478,10 @@
                 "openPower": {
                     "type": "integer",
                     "example": 1188
+                },
+                "playerCount": {
+                    "type": "integer",
+                    "example": 10
                 },
                 "rank": {
                     "type": "integer",

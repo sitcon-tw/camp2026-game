@@ -772,7 +772,7 @@ func TestOpenPowerScoresByPlayerPipeline(t *testing.T) {
 	}
 }
 
-func TestTeamRankEntriesRankBySitoneThenOpenPower(t *testing.T) {
+func TestTeamRankEntriesRankByAverageSitonesThenAverageOpenPower(t *testing.T) {
 	teams := []mongomodel.Team{
 		{ID: "team-a", Name: "Alpha"},
 		{ID: "team-b", Name: "Beta"},
@@ -782,19 +782,21 @@ func TestTeamRankEntriesRankBySitoneThenOpenPower(t *testing.T) {
 		{ID: "player-a", Nickname: "Alice", TeamID: "team-a"},
 		{ID: "player-b", Nickname: "Bob", TeamID: "team-b"},
 		{ID: "player-c", Nickname: "Cody", TeamID: "team-c"},
+		{ID: "player-d", Nickname: "Dana", TeamID: "team-c"},
 		{ID: "staff-a", Nickname: "Staff", TeamID: "team-a", Role: authctx.PlayerRoleStaff},
 	}
 	stats := map[string]teamRankStats{
-		"player-a": {SitoneCount: 2, OpenPower: 500},
-		"player-b": {SitoneCount: 3, OpenPower: 10},
-		"player-c": {SitoneCount: 2, OpenPower: 700},
-		"staff-a":  {SitoneCount: 99, OpenPower: 99},
+		"player-a": {SitoneCount: 2, OpenPower: 100},
+		"player-b": {SitoneCount: 4, OpenPower: 20},
+		"player-c": {SitoneCount: 4, OpenPower: 50},
+		"player-d": {SitoneCount: 4, OpenPower: 50},
+		"staff-a":  {SitoneCount: 2, OpenPower: 100},
 	}
 
 	rows := teamRankEntries(teams, players, stats)
 	current := currentTeamRank(rows, "team-a")
 
-	wantIDs := []string{"team-a", "team-b", "team-c"}
+	wantIDs := []string{"team-c", "team-b", "team-a"}
 	if len(rows) != len(wantIDs) {
 		t.Fatalf("expected %d rows, got %#v", len(wantIDs), rows)
 	}
@@ -806,11 +808,14 @@ func TestTeamRankEntriesRankBySitoneThenOpenPower(t *testing.T) {
 	if current == nil || current.TeamID != "team-a" {
 		t.Fatalf("expected current team-a rank, got %#v", current)
 	}
-	if current.SitoneCount != 101 || current.OpenPower != 599 {
+	if current.SitoneCount != 4 || current.OpenPower != 200 || current.PlayerCount != 2 {
 		t.Fatalf("expected staff stats to be included, got %#v", current)
 	}
-	if current.GapToPrevious != 0 {
-		t.Fatalf("expected same sitone-count gap 0, got %d", current.GapToPrevious)
+	if current.AverageSitones != 2 || current.AverageOpenPower != 100 {
+		t.Fatalf("expected balanced averages, got %#v", current)
+	}
+	if current.GapToPrevious != 2 {
+		t.Fatalf("expected average sitone gap 2, got %v", current.GapToPrevious)
 	}
 }
 

@@ -39,13 +39,16 @@ type HomeSummaryResponse struct {
 }
 
 type TeamRankResponse struct {
-	Rank          int    `json:"rank" example:"2"`
-	TeamID        string `json:"teamId" example:"8M4RXP"`
-	Name          string `json:"name" example:"Blue Team"`
-	AvatarURL     string `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
-	SitoneCount   int    `json:"sitoneCount" example:"18"`
-	OpenPower     int    `json:"openPower" example:"1188"`
-	GapToPrevious int    `json:"gapToPrevious" example:"3"`
+	Rank             int     `json:"rank" example:"2"`
+	TeamID           string  `json:"teamId" example:"8M4RXP"`
+	Name             string  `json:"name" example:"Blue Team"`
+	AvatarURL        string  `json:"avatarUrl,omitempty" example:"/game-icons/stones/basic_blue.png"`
+	PlayerCount      int     `json:"playerCount" example:"10"`
+	SitoneCount      int     `json:"sitoneCount" example:"18"`
+	AverageSitones   float64 `json:"averageSitones" example:"1.8"`
+	OpenPower        int     `json:"openPower" example:"1188"`
+	AverageOpenPower float64 `json:"averageOpenPower" example:"118.8"`
+	GapToPrevious    float64 `json:"gapToPrevious" example:"3"`
 }
 
 type HomeActionResponse struct {

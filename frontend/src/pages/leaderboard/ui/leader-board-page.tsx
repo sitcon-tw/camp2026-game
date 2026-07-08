@@ -59,6 +59,9 @@ function currentDescription(
   scope: LeaderboardScope,
 ) {
   if (gapToPrevious > 0) {
+    if (scope === "teams") {
+      return `距離前一名平均還差 ${formatAverage(gapToPrevious)} 顆小石。`
+    }
     return `距離前一名還差 ${gapToPrevious} 顆小石。`
   }
   if (rank === 1) {
@@ -66,11 +69,20 @@ function currentDescription(
       ? "你的隊伍目前已經在團隊榜領先。"
       : "你目前已經在隊員榜領先。"
   }
-  return "小石數量已追平前一名，開源力會作為下一個排序。"
+  return scope === "teams"
+    ? "平均小石數已追平前一名，平均開源力會作為下一個排序。"
+    : "小石數量已追平前一名，開源力會作為下一個排序。"
 }
 
 function statLabel(value: number, label: string) {
   return `${value} ${label}`
+}
+
+function formatAverage(value: number | undefined) {
+  return (value ?? 0).toLocaleString("zh-TW", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 0,
+  })
 }
 
 export function LeaderBoardPage() {
@@ -221,6 +233,10 @@ function LeaderboardRow({
   index: number
   onSelect: () => void
 }) {
+  const teamPlayerCount = entry.playerCount ?? 0
+  const teamAverageSitones = formatAverage(entry.averageSitones)
+  const teamAverageOpenPower = formatAverage(entry.averageOpenPower)
+
   return (
     <button
       type="button"
@@ -247,21 +263,23 @@ function LeaderboardRow({
       <div className="min-w-0">
         <p className="truncate font-bold">{entry.name}</p>
         <p className="text-muted-foreground truncate text-xs font-semibold">
-          {entry.current
-            ? activeScope === "teams"
-              ? "你的隊伍"
-              : "你"
-            : activeScope === "teams"
-              ? "團隊總計"
+          {activeScope === "teams"
+            ? `${teamPlayerCount} 人 · 總計 ${statLabel(entry.sitoneCount, "小石")}`
+            : entry.current
+              ? "你"
               : (entry.teamName ?? "隊員")}
         </p>
       </div>
       <div className="text-right">
         <strong className="block text-sm font-extrabold whitespace-nowrap">
-          {statLabel(entry.sitoneCount, "小石")}
+          {activeScope === "teams"
+            ? `平均 ${teamAverageSitones} 小石`
+            : statLabel(entry.sitoneCount, "小石")}
         </strong>
         <span className="text-muted-foreground block text-xs font-bold whitespace-nowrap">
-          {entry.openPower} OP
+          {activeScope === "teams"
+            ? `平均 ${teamAverageOpenPower} OP`
+            : `${entry.openPower} OP`}
         </span>
       </div>
     </button>
