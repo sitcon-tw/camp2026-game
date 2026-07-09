@@ -24,12 +24,16 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 	indexCtx, cancel := context.WithTimeout(ctx, indexTimeout)
 	defer cancel()
 
-	for _, collectionIndexes := range indexModelsByCollection() {
+	for _, collectionIndexes := range allIndexModelsByCollection() {
 		if _, err := db.Collection(collectionIndexes.collection).Indexes().CreateMany(indexCtx, collectionIndexes.models); err != nil {
 			return fmt.Errorf("ensure %s indexes: %w", collectionIndexes.collection, err)
 		}
 	}
 	return nil
+}
+
+func allIndexModelsByCollection() []collectionIndexModels {
+	return append(indexModelsByCollection(), frontIndexModelsByCollection()...)
 }
 
 func indexModelsByCollection() []collectionIndexModels {
@@ -50,6 +54,13 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.CommunityStandsCollection, models: communityStandIndexModels()},
 		{collection: mongomodel.CommunityStandVisitsCollection, models: communityStandVisitIndexModels()},
 		{collection: mongomodel.CommunityStandClaimsCollection, models: communityStandClaimIndexModels()},
+	}
+}
+
+func frontIndexModelsByCollection() []collectionIndexModels {
+	return []collectionIndexModels{
+		{collection: mongomodel.FrontsCollection, models: frontIndexModels()},
+		{collection: mongomodel.FrontCommandsCollection, models: frontCommandIndexModels()},
 	}
 }
 
@@ -350,6 +361,50 @@ func communityStandVisitIndexModels() []mongo.IndexModel {
 				{Key: "last_visited_at", Value: -1},
 			},
 			Options: options.Index().SetName("community_stand_visits_stand_last_visited"),
+		},
+	}
+}
+
+func frontIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "current", Value: -1},
+				{Key: "updated_at", Value: -1},
+				{Key: "_id", Value: 1},
+			},
+			Options: options.Index().SetName("fronts_current_updated"),
+		},
+	}
+}
+
+func frontCommandIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "front_id", Value: 1},
+				{Key: "created_at", Value: -1},
+				{Key: "_id", Value: -1},
+			},
+			Options: options.Index().SetName("front_commands_front_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "player_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+			Options: options.Index().SetName("front_commands_player_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "front_id", Value: 1},
+				{Key: "player_id", Value: 1},
+				{Key: "client_command_id", Value: 1},
+			},
+			Options: options.Index().
+				SetName("front_commands_front_player_client_command").
+				SetUnique(true).
+				SetPartialFilterExpression(bson.M{"client_command_id": bson.M{"$gt": ""}}),
 		},
 	}
 }

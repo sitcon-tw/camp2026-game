@@ -296,6 +296,199 @@ const LeaderboardPlayerInventoryResponseSchema = z.object({
   sitones: nullableArray(PlayerSitoneSchema),
 })
 
+const FrontStatusSchema = z.enum([
+  "closed",
+  "quiet",
+  "open_play",
+  "surge",
+  "booth_window",
+  "finale_freeze",
+  "completed",
+])
+
+const FrontCommandKindSchema = z.enum([
+  "expand",
+  "attack",
+  "reinforce",
+  "repair",
+  "scout",
+  "rescue",
+  "support",
+  "answer_challenge",
+])
+
+const FrontSessionSummarySchema = z.object({
+  id: z.string(),
+  mapId: z.string(),
+  status: FrontStatusSchema,
+  tick: z.number(),
+  revision: z.number().optional(),
+  startsAt: z.string().optional(),
+  endsAt: z.string().optional(),
+  frozenAt: z.string().optional(),
+  completedAt: z.string().optional(),
+})
+
+const FrontCurrentResponseSchema = z.object({
+  front: FrontSessionSummarySchema.nullish().transform(
+    (front) => front ?? null,
+  ),
+})
+
+const FrontCellSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().optional(),
+    x: z.number(),
+    y: z.number(),
+    terrain: z.string(),
+    zone: z.string(),
+    ownerTeamId: z.string().optional(),
+    control: z.number().default(0),
+    defense: z.number().default(0),
+    resource: z.number().default(0),
+    pressureByTeam: z
+      .record(z.string(), z.number())
+      .nullish()
+      .transform((value) => value ?? {}),
+    neighborIds: nullableArray(z.string()),
+    neighbors: nullableArray(z.string()),
+    eventId: z.string().optional(),
+    lockedUntil: z.string().optional(),
+  })
+  .transform(({ neighborIds, neighbors, ...cell }) => ({
+    ...cell,
+    neighborIds: neighborIds.length > 0 ? neighborIds : neighbors,
+  }))
+
+const FrontTeamStateSchema = z.object({
+  teamId: z.string(),
+  name: z.string().optional(),
+  color: z.string().optional(),
+  score: z.number().default(0),
+  rank: z.number().default(0),
+  previousRank: z.number().optional(),
+  frontOpenPower: z.number().default(0),
+  controlledCells: z.number().default(0),
+  rescuedSitones: z.number().default(0),
+  repairedEvents: z.number().default(0),
+  collaborationScore: z.number().default(0),
+  lastCommandAt: z.string().optional(),
+})
+
+const FrontMapEventSchema = z.object({
+  id: z.string(),
+  cellId: z.string().optional(),
+  kind: z.string(),
+  title: z.string(),
+  startsAtTick: z.number().optional(),
+  expiresAtTick: z.number().optional(),
+  expiresAfterTicks: z.number().optional(),
+  severity: z.number().optional(),
+})
+
+const FrontLeaderboardEntrySchema = z.object({
+  teamId: z.string(),
+  teamName: z.string().optional(),
+  rank: z.number(),
+  previousRank: z.number().optional(),
+  score: z.number(),
+  controlledCells: z.number().default(0),
+  rescuedSitones: z.number().default(0),
+  repairedEvents: z.number().default(0),
+  collaborationScore: z.number().default(0),
+  current: z.boolean().default(false),
+})
+
+const FrontSitoneSchema = z
+  .object({
+    id: z.string().optional(),
+    sitoneId: z.string().optional(),
+    name: z.string(),
+    type: z.string().optional(),
+    iconPath: z.string().optional(),
+    available: z.boolean().default(true),
+    cooldownUntilTick: z.number().optional(),
+    remainingCooldownTicks: z.number().optional(),
+    assignedCellId: z.string().optional(),
+  })
+  .refine((sitone) => sitone.id || sitone.sitoneId)
+  .transform(({ id, sitoneId, ...sitone }) => ({
+    ...sitone,
+    sitoneId: sitoneId ?? id ?? "",
+  }))
+
+const FrontCommandOptionSchema = z.object({
+  kind: FrontCommandKindSchema,
+  label: z.string().optional(),
+  enabled: z.boolean().default(true),
+  cost: z.number().optional(),
+  fromCellId: z.string().optional(),
+  toCellId: z.string().optional(),
+  sitoneId: z.string().optional(),
+  reason: z.string().optional(),
+})
+
+const FrontSnapshotFieldsSchema = z.object({
+  serverTime: z.string().optional(),
+  cells: nullableArray(FrontCellSchema),
+  teams: nullableArray(FrontTeamStateSchema),
+  activeEvents: nullableArray(FrontMapEventSchema),
+  leaderboard: nullableArray(FrontLeaderboardEntrySchema),
+  myTeamId: z.string().optional(),
+  myTeamRank: z.number().optional(),
+  cooldowns: z
+    .record(z.string(), z.number())
+    .nullish()
+    .transform((value) => value ?? {}),
+  selectedSitones: nullableArray(FrontSitoneSchema),
+  availableSitones: nullableArray(FrontSitoneSchema),
+  currentTeamFrontOpenPower: z.number().optional(),
+  supportTokens: z.number().optional(),
+  availableCommands: nullableArray(FrontCommandOptionSchema),
+})
+
+const FrontSnapshotResponseSchema = z.union([
+  FrontSnapshotFieldsSchema.extend({
+    front: FrontSessionSummarySchema,
+  }).transform(({ front, ...snapshot }) => ({
+    ...front,
+    ...snapshot,
+  })),
+  FrontSessionSummarySchema.merge(FrontSnapshotFieldsSchema),
+])
+
+const FrontCommandInputSchema = z.object({
+  clientCommandId: z.string().optional(),
+  kind: FrontCommandKindSchema,
+  fromCellId: z.string(),
+  toCellId: z.string(),
+  sitoneId: z.string(),
+})
+
+const FrontCommandResponseSchema = z.object({
+  commandId: z.string(),
+  clientCommandId: z.string().optional(),
+  kind: FrontCommandKindSchema,
+  type: z.string().optional(),
+  playerId: z.string(),
+  teamId: z.string().optional(),
+  fromCellId: z.string().optional(),
+  toCellId: z.string().optional(),
+  sitoneId: z.string().optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
+  accepted: z.boolean().default(false),
+  applied: z.boolean().default(false),
+  rejectReason: z.string().optional(),
+  createdAt: z.string(),
+})
+
+const FrontCreateCommandResponseSchema = z.object({
+  accepted: z.boolean(),
+  command: FrontCommandResponseSchema,
+  front: FrontSnapshotResponseSchema,
+})
+
 const MatchPlayerSchema = z.object({
   playerId: z.string(),
   nickname: z.string(),
@@ -839,6 +1032,22 @@ export type LeaderboardTeamPlayersResponse = z.infer<
 export type LeaderboardPlayerInventoryResponse = z.infer<
   typeof LeaderboardPlayerInventoryResponseSchema
 >
+export type FrontStatus = z.infer<typeof FrontStatusSchema>
+export type FrontCommandKind = z.infer<typeof FrontCommandKindSchema>
+export type FrontSessionSummary = z.infer<typeof FrontSessionSummarySchema>
+export type FrontCurrentResponse = z.infer<typeof FrontCurrentResponseSchema>
+export type FrontCell = z.infer<typeof FrontCellSchema>
+export type FrontTeamState = z.infer<typeof FrontTeamStateSchema>
+export type FrontMapEvent = z.infer<typeof FrontMapEventSchema>
+export type FrontLeaderboardEntry = z.infer<typeof FrontLeaderboardEntrySchema>
+export type FrontSitone = z.infer<typeof FrontSitoneSchema>
+export type FrontCommandOption = z.infer<typeof FrontCommandOptionSchema>
+export type FrontSnapshot = z.infer<typeof FrontSnapshotResponseSchema>
+export type FrontCommandInput = z.input<typeof FrontCommandInputSchema>
+export type FrontCommandResponse = z.infer<typeof FrontCommandResponseSchema>
+export type FrontCreateCommandResponse = z.infer<
+  typeof FrontCreateCommandResponseSchema
+>
 export type MatchState = z.infer<typeof MatchStateSchema>
 export type MatchPairing = z.infer<typeof MatchPairingResponseSchema>
 export type MatchPlayer = z.infer<typeof MatchPlayerSchema>
@@ -1091,6 +1300,28 @@ export const gameApi = {
       `/api/leaderboards/players/${playerID}/inventory`,
     )
     return LeaderboardPlayerInventoryResponseSchema.parse(json)
+  },
+
+  async currentFront() {
+    const json = await apiClient.get("/api/fronts/current")
+    return FrontCurrentResponseSchema.parse(json)
+  },
+
+  async frontSnapshot(frontID: string) {
+    const json = await apiClient.get(
+      `/api/fronts/${encodeURIComponent(frontID)}`,
+    )
+    return FrontSnapshotResponseSchema.parse(json)
+  },
+
+  async createFrontCommand(frontID: string, command: FrontCommandInput) {
+    const json = await apiClient.post(
+      `/api/fronts/${encodeURIComponent(frontID)}/commands`,
+      {
+        json: FrontCommandInputSchema.parse(command),
+      },
+    )
+    return FrontCreateCommandResponseSchema.parse(json)
   },
 
   async createMatchPairing() {
