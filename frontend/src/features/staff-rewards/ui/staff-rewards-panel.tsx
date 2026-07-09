@@ -61,6 +61,7 @@ type RewardOption = {
   toneClass: string
   sortTags: StoneSortTag[]
   sortRank: number
+  group?: ItemSortGroup
 }
 
 type TargetPlayer = {
@@ -76,10 +77,17 @@ type StoneSortTag = "base" | "checkpoint" | "special" | "level1" | "level2"
 
 type ItemEvolutionStage = "level1" | "level2"
 
+type ItemSortGroup =
+  | Sitone["type"]
+  | "charm"
+  | "material"
+  | "no_function"
+  | "other"
+
 type ItemFunctionMeta = {
   functionLabel: string
   detailLabel?: string
-  sortRank: number
+  group: ItemSortGroup
 }
 
 const ALL_PLAYERS_TEAM_ID = "__all_players__"
@@ -200,37 +208,63 @@ const ITEM_FUNCTION_META: Record<string, ItemFunctionMeta> = {
   item_charm_connection: {
     functionLabel: "功能道具",
     detailLabel: "探索型小石掉落率 +15%",
-    sortRank: 2,
+    group: "charm",
   },
   item_charm_debug: {
     functionLabel: "功能道具",
     detailLabel: "工程型答對分數 +10%",
-    sortRank: 2,
+    group: "charm",
   },
   item_charm_all_nighter: {
     functionLabel: "功能道具",
     detailLabel: "靈光型刪錯選項機率 +20%",
-    sortRank: 2,
+    group: "charm",
   },
   item_charm_success: {
     functionLabel: "功能道具",
     detailLabel: "娛樂型勝利開源力 +20%",
-    sortRank: 2,
+    group: "charm",
   },
   item_charm_harmony: {
     functionLabel: "功能道具",
     detailLabel: "共鳴型勝利開源力 +20%",
-    sortRank: 2,
+    group: "charm",
   },
-  item_postcard_sitcon2024: { functionLabel: "無功能道具", sortRank: 3 },
-  item_postcard_sitcon2026: { functionLabel: "無功能道具", sortRank: 3 },
-  item_postcard_star_village: { functionLabel: "無功能道具", sortRank: 3 },
-  item_tshirt_2026: { functionLabel: "無功能道具", sortRank: 3 },
+  item_postcard_sitcon2024: {
+    functionLabel: "無功能道具",
+    group: "no_function",
+  },
+  item_postcard_sitcon2026: {
+    functionLabel: "無功能道具",
+    group: "no_function",
+  },
+  item_postcard_star_village: {
+    functionLabel: "無功能道具",
+    group: "no_function",
+  },
+  item_tshirt_2026: { functionLabel: "無功能道具", group: "no_function" },
   item_wooden_plank: {
     functionLabel: "合成素材",
     detailLabel: "可合成星手村路標",
-    sortRank: 1,
+    group: "material",
   },
+}
+
+const ITEM_SORT_GROUPS: { group: ItemSortGroup; label: string }[] = [
+  { group: "exploration", label: "探索分支進化道具" },
+  { group: "inspiration", label: "靈光分支進化道具" },
+  { group: "resonance", label: "共鳴分支進化道具" },
+  { group: "engineering", label: "工程分支進化道具" },
+  { group: "entertainment", label: "娛樂分支進化道具" },
+  { group: "material", label: "合成素材" },
+  { group: "charm", label: "功能道具" },
+  { group: "no_function", label: "無功能道具" },
+  { group: "other", label: "其他道具" },
+]
+
+function itemGroupRank(group: ItemSortGroup) {
+  const index = ITEM_SORT_GROUPS.findIndex((entry) => entry.group === group)
+  return index === -1 ? ITEM_SORT_GROUPS.length : index
 }
 
 function sitoneSortTags(sitoneID: string): StoneSortTag[] {
@@ -276,13 +310,13 @@ function itemFunctionMeta(item: Item): ItemFunctionMeta {
   if (evolutionMeta) {
     return {
       functionLabel: `${itemEvolutionStageLabel(evolutionMeta.stage)}${sitoneMeta(evolutionMeta.type).label}型進化道具`,
-      sortRank: evolutionMeta.stage === "level1" ? 0 : 1,
+      group: evolutionMeta.type,
     }
   }
   return (
     ITEM_FUNCTION_META[item.id] ?? {
       functionLabel: itemTypeLabel(item.type),
-      sortRank: 4,
+      group: "other",
     }
   )
 }
@@ -398,6 +432,7 @@ function sitoneOption(sitone: Sitone): RewardOption {
 
 function itemOption(item: Item): RewardOption {
   const functionMeta = itemFunctionMeta(item)
+  const stage = ITEM_EVOLUTION_META[item.id]?.stage
   return {
     id: item.id,
     name: item.name,
@@ -409,7 +444,9 @@ function itemOption(item: Item): RewardOption {
     iconPath: item.iconPath,
     toneClass: itemTypeClass(item.type),
     sortTags: [],
-    sortRank: functionMeta.sortRank,
+    sortRank:
+      itemGroupRank(functionMeta.group) * 2 + (stage === "level2" ? 1 : 0),
+    group: functionMeta.group,
   }
 }
 
@@ -554,6 +591,16 @@ export function StaffRewardsPanel() {
           ),
         }))
         .filter((group) => group.options.length > 0),
+    [visibleOptions],
+  )
+  const groupedVisibleItemOptions = useMemo(
+    () =>
+      ITEM_SORT_GROUPS.map((group) => ({
+        ...group,
+        options: visibleOptions.filter(
+          (option) => option.group === group.group,
+        ),
+      })).filter((group) => group.options.length > 0),
     [visibleOptions],
   )
 
@@ -1083,31 +1130,42 @@ export function StaffRewardsPanel() {
                         </>
                       ) : (
                         <>
-                          {visibleOptions.map((option) => (
-                            <SelectItem key={option.id} value={option.id}>
-                              <div className="flex min-w-0 items-center gap-2 pr-4">
-                                <RewardOptionIcon
-                                  option={option}
-                                  rewardKind={rewardKind}
-                                  className="size-9"
-                                />
-                                <div className="min-w-0">
-                                  <span className="block truncate font-black">
-                                    {option.name}
-                                  </span>
-                                  {[option.functionLabel, option.detailLabel]
-                                    .filter(Boolean)
-                                    .map((tag) => (
-                                      <span
-                                        key={tag}
-                                        className="text-muted-foreground mr-1.5 text-xs font-bold"
-                                      >
-                                        {tag}
+                          {groupedVisibleItemOptions.map((group, index) => (
+                            <SelectGroup key={group.group}>
+                              {index > 0 ? <SelectSeparator /> : null}
+                              <SelectLabel className="px-2 py-2 text-[11px] font-black normal-case opacity-70">
+                                {group.label}
+                              </SelectLabel>
+                              {group.options.map((option) => (
+                                <SelectItem key={option.id} value={option.id}>
+                                  <div className="flex min-w-0 items-center gap-2 pr-4">
+                                    <RewardOptionIcon
+                                      option={option}
+                                      rewardKind={rewardKind}
+                                      className="size-9"
+                                    />
+                                    <div className="min-w-0">
+                                      <span className="block truncate font-black">
+                                        {option.name}
                                       </span>
-                                    ))}
-                                </div>
-                              </div>
-                            </SelectItem>
+                                      {[
+                                        option.functionLabel,
+                                        option.detailLabel,
+                                      ]
+                                        .filter(Boolean)
+                                        .map((tag) => (
+                                          <span
+                                            key={tag}
+                                            className="text-muted-foreground mr-1.5 text-xs font-bold"
+                                          >
+                                            {tag}
+                                          </span>
+                                        ))}
+                                    </div>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
                           ))}
                         </>
                       )}
