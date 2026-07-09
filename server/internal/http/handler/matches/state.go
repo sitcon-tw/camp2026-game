@@ -14,7 +14,11 @@ import (
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
 
-const matchSaveMaxAttempts = 5
+const (
+	matchSaveMaxAttempts       = 5
+	excludedMatchRewardTeamID  = "team-010"
+	matchRewardPlayerTeamField = "team_id"
+)
 
 var errMatchSaveConflict = errors.New("match save conflict")
 var errMatchNotOpen = errors.New("match is not open")
@@ -396,6 +400,13 @@ func (h *Handler) writeMatchRewardsWithoutTransaction(ctx context.Context, match
 		if isComputerPlayer(player) {
 			continue
 		}
+		excluded, err := h.playerExcludedFromMatchRewards(ctx, player.PlayerID)
+		if err != nil {
+			return err
+		}
+		if excluded {
+			continue
+		}
 		effects, err := h.matchPlayerBattleEffects(ctx, player)
 		if err != nil {
 			return err
@@ -426,6 +437,32 @@ func (h *Handler) writeMatchRewardsWithoutTransaction(ctx context.Context, match
 		}
 	}
 	return nil
+}
+
+func (h *Handler) playerExcludedFromMatchRewards(ctx context.Context, playerID string) (bool, error) {
+	if h.db == nil || playerID == "" {
+		return false, nil
+	}
+
+	var player mongomodel.Player
+	err := h.db.Collection(mongomodel.PlayersCollection).
+		FindOne(
+			ctx,
+			bson.M{"_id": playerID},
+			options.FindOne().SetProjection(bson.M{matchRewardPlayerTeamField: 1}),
+		).
+		Decode(&player)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return playerTeamExcludedFromMatchRewards(player.TeamID), nil
+}
+
+func playerTeamExcludedFromMatchRewards(teamID string) bool {
+	return teamID == excludedMatchRewardTeamID
 }
 
 func transactionUnsupported(err error) bool {

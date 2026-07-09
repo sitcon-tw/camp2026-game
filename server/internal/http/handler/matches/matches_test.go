@@ -115,6 +115,17 @@ func TestMatchOpenPowerRewardAppliesBonus(t *testing.T) {
 	}
 }
 
+func TestPlayerTeamExcludedFromMatchRewards(t *testing.T) {
+	if !playerTeamExcludedFromMatchRewards("team-010") {
+		t.Fatal("expected team-010 to be excluded from match rewards")
+	}
+	for _, teamID := range []string{"team-001", "team-009", "", "team-10"} {
+		if playerTeamExcludedFromMatchRewards(teamID) {
+			t.Fatalf("expected %q to remain eligible for match rewards", teamID)
+		}
+	}
+}
+
 func TestBattleEffectsStackWithoutCaps(t *testing.T) {
 	handler := New(Dependencies{Content: loadTestContent(t)})
 
