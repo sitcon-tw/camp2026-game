@@ -407,6 +407,7 @@ func intTotalFromCursor(ctx context.Context, cursor *mongo.Cursor) (int, error) 
 func homeActions(settings gamecontrol.Settings) []HomeActionResponse {
 	battleEnabled := !settings.BattleOpeningLocked(time.Now())
 	return []HomeActionResponse{
+		{ID: "front", Label: "開源戰線", Enabled: true},
 		{ID: "battle", Label: "知識王戰", Enabled: battleEnabled},
 		{ID: "shop", Label: "商店", Enabled: true},
 		{ID: "sitones", Label: "小石收藏", Enabled: true},

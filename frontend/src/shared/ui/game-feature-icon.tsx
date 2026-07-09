@@ -6,6 +6,7 @@ export const gameFeatureIconPaths = {
   battle: "/game-icons/nav/nav-battle.png",
   codex: "/game-icons/nav/nav-stones.png",
   forge: "/game-icons/features/forge.png",
+  front: "/game-icons/items/item_open_source_roadmap.png",
   giftHistory: "/game-icons/features/gift-history.png",
   history: "/game-icons/features/history.png",
   home: "/game-icons/nav/nav-home.png",
