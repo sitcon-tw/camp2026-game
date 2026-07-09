@@ -193,6 +193,28 @@ enabled = true
 price_open_power = 50
 
 [[items]]
+id = "item_attack_horn"
+name = "進攻號角"
+type = "attack"
+rarity = "common"
+description = "一般攻擊道具，不參與小石合成。"
+source = "shop"
+purchasable = true
+enabled = true
+price_open_power = 300
+
+[[items]]
+id = "item_defense_shield"
+name = "防守盾牌"
+type = "defense"
+rarity = "common"
+description = "一般防守道具，不參與小石合成。"
+source = "shop"
+purchasable = true
+enabled = true
+price_open_power = 300
+
+[[items]]
 id = "item_adventure_backpack"
 name = "冒險背包"
 type = "material"
@@ -216,6 +238,14 @@ description = "冒險背包，可用於小石合成。"
 	dualSource, ok := store.GetItem("item_shared_notes_link")
 	if !ok || dualSource.Source != "both" || !dualSource.Purchasable {
 		t.Fatalf("unexpected dual-source item: %#v", dualSource)
+	}
+	attackItem, ok := store.GetItem("item_attack_horn")
+	if !ok || attackItem.Type != "attack" || attackItem.PriceOpenPower != 300 {
+		t.Fatalf("unexpected attack item: %#v", attackItem)
+	}
+	defenseItem, ok := store.GetItem("item_defense_shield")
+	if !ok || defenseItem.Type != "defense" || defenseItem.PriceOpenPower != 300 {
+		t.Fatalf("unexpected defense item: %#v", defenseItem)
 	}
 }
 

@@ -93,6 +93,7 @@ export function AttackInitiateDialog({
             sitones={sitonesQuery.data ?? []}
             selectedIds={selectedIds}
             cap={cap}
+            mode="attack"
             disabled={createMutation.isPending}
             onChange={setSelectedIds}
           />

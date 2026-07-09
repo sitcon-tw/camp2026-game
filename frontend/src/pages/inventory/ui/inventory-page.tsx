@@ -141,7 +141,7 @@ export function InventoryPage() {
                 {totalCount}
               </strong>
               <p className="text-muted-foreground mt-2 leading-[1.65]">
-                素材、外觀與活動紀念都會先收在這裡。
+                素材、攻防道具、外觀與活動紀念都會先收在這裡。
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -164,23 +164,22 @@ export function InventoryPage() {
             </div>
           </Card>
 
-          <section
-            className="grid grid-cols-3 gap-[10px]"
-            aria-label="分類數量"
-          >
-            {["material", "cosmetic", "event"].map((type) => (
-              <div
-                key={type}
-                className="bg-surface-raised border-border rounded-[18px] border-2 p-3"
-              >
-                <span className="text-muted-foreground block text-xs font-black">
-                  {itemTypeLabel(type)}
-                </span>
-                <strong className="mt-0.5 block text-[22px] font-black">
-                  {typeCounts[type] ?? 0}
-                </strong>
-              </div>
-            ))}
+          <section className="grid grid-cols-2 gap-[10px]" aria-label="分類數量">
+            {["material", "attack", "defense", "cosmetic", "event"].map(
+              (type) => (
+                <div
+                  key={type}
+                  className="bg-surface-raised border-border rounded-[18px] border-2 p-3"
+                >
+                  <span className="text-muted-foreground block text-xs font-black">
+                    {itemTypeLabel(type)}
+                  </span>
+                  <strong className="mt-0.5 block text-[22px] font-black">
+                    {typeCounts[type] ?? 0}
+                  </strong>
+                </div>
+              ),
+            )}
           </section>
 
           <section className="grid gap-3" aria-label="道具列表">

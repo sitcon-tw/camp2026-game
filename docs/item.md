@@ -98,6 +98,19 @@
 | `item_charm_success` | 馬到成功 御守 | 800 | 娛樂型 | 對戰獲得開源力 +20%（每級 +10%，上限 +50%） |
 | `item_charm_harmony` | 金玉良緣 御守 | 800 | 共鳴型 | 活動獲得開源力 +20%（每級 +10%，上限 +50%） |
 
+### 攻防道具（6 個）
+
+一般道具，不參與小石合成；商店中歸在「攻防戰術」概念下。
+
+| ID | 名稱 | 類型 | 價格 | 說明 |
+|----|------|------|------|------|
+| `item_attack_horn` | 進攻號角 | attack | 300 | 為攻擊行動吹響出發訊號 |
+| `item_vulnerability_radar` | 漏洞雷達 | attack | 450 | 掃描對手防線的縫隙 |
+| `item_sprint_boots` | 衝刺靴 | attack | 360 | 讓出擊隊伍更快抵達目標 |
+| `item_defense_shield` | 防守盾牌 | defense | 300 | 穩住隊伍的留守陣線 |
+| `item_repair_tape` | 修補膠帶 | defense | 360 | 快速補強臨時破口 |
+| `item_backup_battery` | 備援電池 | defense | 450 | 替防線保留穩定電力 |
+
 ## 三、無功能道具
 ### 明信片（多款）
 
@@ -120,7 +133,7 @@
 |------|------|------|
 | `id` | string | 唯一識別碼，格式 `item_<name>` |
 | `name` | string | 顯示名稱 |
-| `type` | string | `material` / `cosmetic` / `event` |
+| `type` | string | `material` / `attack` / `defense` / `charm` / `cosmetic` / `event` |
 | `rarity` | string | `base` / `common` / `rare` / `limited` |
 | `description` | string | 描述文字 |
 | `purchasable` | bool | 是否可在商店購買 |
@@ -130,5 +143,8 @@
 ### 類型說明
 
 - **material**：合成素材，用於小石融合。
+- **attack**：一般攻擊道具，不參與小石合成。
+- **defense**：一般防守道具，不參與小石合成。
+- **charm**：御守類功能道具。
 - **cosmetic**：裝飾道具（明信片、T 恤），無遊戲功能。
 - **event**：活動限定道具，透過特殊活動取得。

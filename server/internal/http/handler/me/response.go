@@ -117,6 +117,10 @@ type SitoneResponse struct {
 	AbilityValue       int    `json:"abilityValue" example:"5"`
 	AbilityCount       int    `json:"abilityCount" example:"0"`
 	AbilityDescription string `json:"abilityDescription" example:"答對時分數提高 5%。"`
+	Attack             int    `json:"attack" example:"3"`
+	Defense            int    `json:"defense" example:"6"`
+	Repeatable         bool   `json:"repeatable" example:"true"`
+	Unique             bool   `json:"unique" example:"false"`
 }
 
 type ItemListResponse struct {

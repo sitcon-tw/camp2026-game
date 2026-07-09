@@ -557,6 +557,78 @@ enabled = true
 price_open_power = 1500
 
 [[items]]
+id = "item_attack_horn"
+name = "進攻號角"
+type = "attack"
+rarity = "common"
+description = "一般攻擊道具，用來為攻擊行動吹響出發訊號；不參與小石合成。"
+icon_path = "/game-icons/items/item_attack_horn.png"
+source = "shop"
+purchasable = true
+enabled = true
+price_open_power = 300
+
+[[items]]
+id = "item_vulnerability_radar"
+name = "漏洞雷達"
+type = "attack"
+rarity = "common"
+description = "一般攻擊道具，用來掃描對手防線的縫隙；不參與小石合成。"
+icon_path = "/game-icons/items/item_vulnerability_radar.png"
+source = "shop"
+purchasable = true
+enabled = true
+price_open_power = 450
+
+[[items]]
+id = "item_sprint_boots"
+name = "衝刺靴"
+type = "attack"
+rarity = "common"
+description = "一般攻擊道具，讓出擊隊伍更快抵達目標；不參與小石合成。"
+icon_path = "/game-icons/items/item_sprint_boots.png"
+source = "shop"
+purchasable = true
+enabled = true
+price_open_power = 360
+
+[[items]]
+id = "item_defense_shield"
+name = "防守盾牌"
+type = "defense"
+rarity = "common"
+description = "一般防守道具，用來穩住隊伍的留守陣線；不參與小石合成。"
+icon_path = "/game-icons/items/item_defense_shield.png"
+source = "shop"
+purchasable = true
+enabled = true
+price_open_power = 300
+
+[[items]]
+id = "item_repair_tape"
+name = "修補膠帶"
+type = "defense"
+rarity = "common"
+description = "一般防守道具，可以快速補強臨時破口；不參與小石合成。"
+icon_path = "/game-icons/items/item_repair_tape.png"
+source = "shop"
+purchasable = true
+enabled = true
+price_open_power = 360
+
+[[items]]
+id = "item_backup_battery"
+name = "備援電池"
+type = "defense"
+rarity = "common"
+description = "一般防守道具，替防線保留一份穩定電力；不參與小石合成。"
+icon_path = "/game-icons/items/item_backup_battery.png"
+source = "shop"
+purchasable = true
+enabled = true
+price_open_power = 450
+
+[[items]]
 id = "item_postcard_sitcon2024"
 name = "SITCON 2024 明信片"
 type = "cosmetic"

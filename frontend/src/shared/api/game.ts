@@ -106,6 +106,10 @@ const SitoneSchema = z.object({
   abilityValue: z.number(),
   abilityCount: z.number(),
   abilityDescription: z.string(),
+  attack: z.number().optional(),
+  defense: z.number().optional(),
+  repeatable: z.boolean().optional(),
+  unique: z.boolean().optional(),
 })
 
 const ItemSchema = z.object({

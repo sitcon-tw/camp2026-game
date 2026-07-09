@@ -9,6 +9,7 @@ type SitoneLoadoutPickerProps = {
   sitones: PlayerSitone[]
   selectedIds: string[]
   cap: number
+  mode: "attack" | "defense"
   disabled?: boolean
   onChange: (sitoneIds: string[]) => void
 }
@@ -25,9 +26,15 @@ export function SitoneLoadoutPicker({
   sitones,
   selectedIds,
   cap,
+  mode,
   disabled = false,
   onChange,
 }: SitoneLoadoutPickerProps) {
+  const deployableSitones = sitones.filter((entry) => {
+    if (entry.sitone.rarity === "limited") return false
+    if (mode === "attack") return (entry.sitone.attack ?? 0) > 0
+    return (entry.sitone.defense ?? 0) > 0
+  })
   const counts = countByID(selectedIds)
   const total = selectedIds.length
 
@@ -41,7 +48,7 @@ export function SitoneLoadoutPicker({
     onChange([...remaining, ...Array.from({ length: next }, () => sitoneID)])
   }
 
-  if (sitones.length === 0) {
+  if (deployableSitones.length === 0) {
     return (
       <div className="border-border bg-surface-raised rounded-[16px] border-2 px-3 py-4">
         <span className="text-muted-foreground text-sm font-bold">
@@ -61,7 +68,7 @@ export function SitoneLoadoutPicker({
           <span className="text-primary text-xs font-black">已達上限</span>
         ) : null}
       </div>
-      {sitones.map((entry) => {
+      {deployableSitones.map((entry) => {
         const meta = sitoneMeta(entry.sitone.type)
         const selectedCount = counts.get(entry.sitoneId) ?? 0
 

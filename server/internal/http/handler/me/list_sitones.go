@@ -105,5 +105,9 @@ func sitoneResponse(sitone content.Sitone) SitoneResponse {
 		AbilityValue:       sitone.AbilityValue,
 		AbilityCount:       sitone.AbilityCount,
 		AbilityDescription: sitone.AbilityDescription,
+		Attack:             sitone.Attack,
+		Defense:            sitone.Defense,
+		Repeatable:         sitone.Repeatable,
+		Unique:             sitone.Unique,
 	}
 }

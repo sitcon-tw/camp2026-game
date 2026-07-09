@@ -96,6 +96,7 @@ export function TerritoryDefensePage() {
             sitones={sitonesQuery.data ?? []}
             selectedIds={currentSelection}
             cap={defense.cap}
+            mode="defense"
             disabled={isLocked || saveMutation.isPending}
             onChange={setSelectedIds}
           />

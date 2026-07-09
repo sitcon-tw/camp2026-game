@@ -48,6 +48,8 @@ const fallbackSitoneMeta: SitoneMeta = {
 }
 
 const itemTypeLabels: Record<string, string> = {
+  attack: "攻擊",
+  defense: "防守",
   material: "素材",
   charm: "御守",
   cosmetic: "外觀",
@@ -55,6 +57,8 @@ const itemTypeLabels: Record<string, string> = {
 }
 
 const itemTypeClasses: Record<string, string> = {
+  attack: "bg-status-danger",
+  defense: "bg-status-info",
   material: "bg-pebble-engineer",
   charm: "bg-pebble-explore",
   cosmetic: "bg-pebble-spark",

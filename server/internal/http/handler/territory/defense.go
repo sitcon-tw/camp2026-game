@@ -105,8 +105,13 @@ func (h *Handler) UpdateDefense(w http.ResponseWriter, r *http.Request) {
 	}
 	needed := make(map[string]int, len(body.SitoneIDs))
 	for _, sitoneID := range body.SitoneIDs {
-		if _, ok := h.content.GetSitone(sitoneID); !ok {
+		sitone, ok := h.content.GetSitone(sitoneID)
+		if !ok {
 			httpx.WriteProblem(w, r, httpx.UnprocessableEntity("unknown sitone "+sitoneID))
+			return
+		}
+		if !territory.CanDefendWithSitone(sitone) {
+			httpx.WriteProblem(w, r, httpx.UnprocessableEntity("sitone "+sitoneID+" cannot be deployed"))
 			return
 		}
 		needed[sitoneID]++

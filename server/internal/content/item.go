@@ -10,6 +10,8 @@ import (
 const itemsFile = "items.toml"
 
 var validItemTypes = map[string]struct{}{
+	"attack":   {},
+	"defense":  {},
 	"material": {},
 	"charm":    {},
 	"cosmetic": {},

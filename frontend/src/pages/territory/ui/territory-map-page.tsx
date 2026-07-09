@@ -205,18 +205,18 @@ export function TerritoryMapPage() {
           <Link
             key={to}
             to={to}
-            className="bg-card border-ink focus-visible:outline-power group grid min-h-[92px] cursor-pointer grid-rows-[44px_auto] content-center justify-items-center gap-1.5 rounded-[18px] border-2 px-3 py-3 text-inherit no-underline shadow-[4px_4px_0_rgba(23,35,58,0.12)] transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-x-px active:translate-y-px"
+            className="bg-card border-ink focus-visible:outline-power group grid min-h-[76px] cursor-pointer grid-cols-[52px_1fr] items-center gap-2.5 rounded-[18px] border-2 px-3 py-3 text-inherit no-underline shadow-[4px_4px_0_rgba(23,35,58,0.12)] transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-x-px active:translate-y-px"
           >
-            <span className="bg-background/70 border-border grid size-11 place-items-center rounded-full border shadow-[inset_0_-2px_0_rgba(23,35,58,0.08)] transition-transform group-hover:-translate-y-0.5">
+            <span className="bg-background/70 border-border grid size-[52px] place-items-center rounded-[16px] border shadow-[inset_0_-2px_0_rgba(23,35,58,0.08)] transition-transform group-hover:-rotate-2">
               <GameIcon
                 iconPath={iconPath}
                 alt=""
-                className="size-9 rounded-none"
+                className="size-10 rounded-none"
                 imageClassName="drop-shadow-[0_2px_0_rgba(23,35,58,0.18)]"
                 fallback={null}
               />
             </span>
-            <span className="text-center text-sm leading-tight font-black">
+            <span className="min-w-0 text-left text-[15px] leading-tight font-black">
               {label}
             </span>
           </Link>

@@ -116,7 +116,7 @@ func (h *Handler) CreateAttack(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteProblem(w, r, httpx.UnprocessableEntity("unknown sitone "+sitoneID))
 			return
 		}
-		if sitone.Attack <= 0 && sitone.Defense <= 0 {
+		if !territory.CanAttackWithSitone(sitone) {
 			httpx.WriteProblem(w, r, httpx.UnprocessableEntity("sitone "+sitoneID+" cannot be deployed"))
 			return
 		}
