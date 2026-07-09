@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect } from "react"
 import { toast } from "sonner"
 
+import { AppError } from "@/shared/api/error"
 import { territoryApi, type AttackMission } from "@/shared/api/territory"
 import {
   formatCostRange,
@@ -44,8 +46,22 @@ export function ActiveMissionCard({
     queryKey: ["territory", "attacks", missionID],
     queryFn: () => territoryApi.attack(missionID),
     refetchInterval: (query) => missionPollInterval(query.state.data),
+    retry: (failureCount, error) =>
+      !(error instanceof AppError && error.status === 404) &&
+      failureCount < 2,
   })
   const mission = missionQuery.data
+
+  useEffect(() => {
+    if (
+      missionQuery.error instanceof AppError &&
+      missionQuery.error.status === 404
+    ) {
+      clearStoredMissionID()
+      queryClient.invalidateQueries({ queryKey: ["territory"] })
+      onMissionClosed?.()
+    }
+  }, [missionQuery.error, onMissionClosed, queryClient])
 
   const cancelMutation = useMutation({
     mutationFn: () => territoryApi.cancelAttack(missionID),
