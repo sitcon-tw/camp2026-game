@@ -23,7 +23,9 @@ type ActiveMissionCardProps = {
   teamNameOf: (teamID: string | undefined) => string
   sitoneNameOf: (sitoneID: string) => string
   myPlayerID?: string
+  allowMissingRetry?: boolean
   onMissionClosed?: () => void
+  onMissionMissing?: (missionID: string) => void
 }
 
 function missionPollInterval(mission?: AttackMission) {
@@ -38,7 +40,9 @@ export function ActiveMissionCard({
   teamNameOf,
   sitoneNameOf,
   myPlayerID,
+  allowMissingRetry = false,
   onMissionClosed,
+  onMissionMissing,
 }: ActiveMissionCardProps) {
   const queryClient = useQueryClient()
   const now = useNow()
@@ -46,9 +50,16 @@ export function ActiveMissionCard({
     queryKey: ["territory", "attacks", missionID],
     queryFn: () => territoryApi.attack(missionID),
     refetchInterval: (query) => missionPollInterval(query.state.data),
-    retry: (failureCount, error) =>
-      !(error instanceof AppError && error.status === 404) &&
-      failureCount < 2,
+    retry: (failureCount, error) => {
+      if (error instanceof AppError && error.status === 404) {
+        return allowMissingRetry && failureCount < 5
+      }
+      return error instanceof AppError && error.retryable && failureCount < 2
+    },
+    retryDelay: (attemptIndex, error) =>
+      error instanceof AppError && error.status === 404
+        ? Math.min(400 * (attemptIndex + 1), 1600)
+        : Math.min(1000 * 2 ** attemptIndex, 5000),
   })
   const mission = missionQuery.data
   const missionNotFound =
@@ -57,10 +68,10 @@ export function ActiveMissionCard({
   useEffect(() => {
     if (missionNotFound) {
       clearStoredMissionID()
-      queryClient.invalidateQueries({ queryKey: ["territory"] })
+      onMissionMissing?.(missionID)
       onMissionClosed?.()
     }
-  }, [missionNotFound, onMissionClosed, queryClient])
+  }, [missionID, missionNotFound, onMissionClosed, onMissionMissing])
 
   const cancelMutation = useMutation({
     mutationFn: () => territoryApi.cancelAttack(missionID),

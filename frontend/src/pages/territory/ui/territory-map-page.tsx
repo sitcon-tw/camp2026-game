@@ -62,6 +62,7 @@ export function TerritoryMapPage() {
     useState<TerritoryStandingTeam | null>(null)
   const [missionID, setMissionID] = useState(getStoredMissionID)
   const [localMissionIsFresh, setLocalMissionIsFresh] = useState(false)
+  const [ignoredMissionID, setIgnoredMissionID] = useState("")
 
   const standingsQuery = useQuery({
     queryKey: ["territory", "standings"],
@@ -97,9 +98,13 @@ export function TerritoryMapPage() {
     ? territoryLoadErrorMessage(standingsQuery.error)
     : null
   const serverMissionID = standings?.activeMissionId
-  const activeMissionID =
+  const candidateMissionID =
     serverMissionID ??
     (localMissionIsFresh || !standingsQuery.isSuccess ? missionID : "")
+  const activeMissionID =
+    candidateMissionID && candidateMissionID !== ignoredMissionID
+      ? candidateMissionID
+      : ""
   const myTeam = standings?.teams.find(
     (team) => team.teamId === standings.myTeamId,
   )
@@ -187,9 +192,15 @@ export function TerritoryMapPage() {
           teamNameOf={teamNameOf}
           sitoneNameOf={sitoneNameOf}
           myPlayerID={statusQuery.data?.playerId}
+          allowMissingRetry={
+            localMissionIsFresh || activeMissionID === serverMissionID
+          }
           onMissionClosed={() => {
             setMissionID("")
             setLocalMissionIsFresh(false)
+          }}
+          onMissionMissing={(missingMissionID) => {
+            setIgnoredMissionID(missingMissionID)
           }}
         />
       ) : null}
@@ -287,6 +298,7 @@ export function TerritoryMapPage() {
           storeMissionID(createdMissionID)
           setMissionID(createdMissionID)
           setLocalMissionIsFresh(true)
+          setIgnoredMissionID("")
         }}
       />
     </GamePageShell>
