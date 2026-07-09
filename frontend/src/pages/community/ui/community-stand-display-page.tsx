@@ -79,18 +79,20 @@ export function CommunityStandDisplayPage({
           <section className="grid content-start gap-3">
             <Card className="border-ink rounded-[28px] border-2 py-0 shadow-[5px_5px_0_rgba(23,35,58,0.16)]">
               <CardContent className="grid gap-4 p-5">
-                <div className="grid grid-cols-[80px_minmax(0,1fr)] items-start gap-3">
-                  <div className="bg-surface-raised border-ink grid size-20 shrink-0 place-items-center overflow-hidden rounded-[22px] border-2">
-                    {standQuery.data.stand.logoUrl ? (
+                <div className="grid gap-3">
+                  {standQuery.data.stand.logoUrl ? (
+                    <div className="bg-surface-raised border-ink mx-auto w-full max-w-md overflow-hidden rounded-[22px] border-2 p-3">
                       <img
                         src={standQuery.data.stand.logoUrl}
                         alt=""
-                        className="h-full w-full object-cover"
+                        className="block h-32 w-full object-contain"
                       />
-                    ) : (
+                    </div>
+                  ) : (
+                    <div className="bg-surface-raised border-ink grid size-20 place-items-center rounded-[22px] border-2">
                       <UsersRound className="size-8" aria-hidden />
-                    )}
-                  </div>
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <h2 className="text-[28px] leading-tight font-black break-words">
                       {standQuery.data.stand.name}
@@ -199,7 +201,7 @@ function DisplayLoading() {
     <div className="grid gap-3">
       <Card className="border-ink rounded-[28px] border-2 py-0">
         <CardContent className="grid gap-4 p-5">
-          <Skeleton className="size-20 rounded-[22px]" />
+          <Skeleton className="h-40 w-full max-w-md rounded-[22px]" />
           <Skeleton className="h-8 w-2/3" />
           <Skeleton className="h-24 w-full" />
         </CardContent>
