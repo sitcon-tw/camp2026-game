@@ -13,9 +13,10 @@ import (
 // StandingsResponse exposes only tiers and allowed actions — never scores
 // (design §4).
 type StandingsResponse struct {
-	Teams    []StandingEntryResponse `json:"teams"`
-	MyTeamID string                  `json:"myTeamId"`
-	MyTier   string                  `json:"myTier"`
+	Teams           []StandingEntryResponse `json:"teams"`
+	MyTeamID        string                  `json:"myTeamId"`
+	MyTier          string                  `json:"myTier"`
+	ActiveMissionID string                  `json:"activeMissionId,omitempty"`
 }
 
 type StandingEntryResponse struct {

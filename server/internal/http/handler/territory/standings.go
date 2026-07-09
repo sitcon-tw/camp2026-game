@@ -35,6 +35,25 @@ func (h *Handler) Standings(w http.ResponseWriter, r *http.Request) {
 		Teams:    make([]StandingEntryResponse, 0, len(standings)+1),
 		MyTeamID: player.TeamID,
 	}
+
+	if player.TeamID != "" {
+		active, err := h.service.ActiveMissionForTeam(r.Context(), player.TeamID)
+		if err != nil {
+			httpx.WriteProblem(w, r, httpx.InternalServerError("standings unavailable", "territory_active_mission_failed", err))
+			return
+		}
+		if active != nil {
+			refreshed, err := h.service.ExpireMissionIfDue(r.Context(), *active)
+			if err != nil {
+				httpx.WriteProblem(w, r, httpx.InternalServerError("standings unavailable", "territory_expire_failed", err))
+				return
+			}
+			if refreshed.Status == mongomodel.AttackMissionStatusVoting || refreshed.Status == mongomodel.AttackMissionStatusDeployed {
+				response.ActiveMissionID = refreshed.ID
+			}
+		}
+	}
+
 	for _, standing := range standings {
 		entry := StandingEntryResponse{
 			TeamID:        standing.TeamID,

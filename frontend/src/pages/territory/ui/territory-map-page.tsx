@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import {
+  clearStoredMissionID,
   getStoredMissionID,
   storeMissionID,
 } from "@/features/territory/model/mission-storage"
@@ -60,6 +61,7 @@ export function TerritoryMapPage() {
   const [attackTarget, setAttackTarget] =
     useState<TerritoryStandingTeam | null>(null)
   const [missionID, setMissionID] = useState(getStoredMissionID)
+  const [localMissionIsFresh, setLocalMissionIsFresh] = useState(false)
 
   const standingsQuery = useQuery({
     queryKey: ["territory", "standings"],
@@ -95,7 +97,9 @@ export function TerritoryMapPage() {
     ? territoryLoadErrorMessage(standingsQuery.error)
     : null
   const serverMissionID = standings?.activeMissionId
-  const activeMissionID = missionID || serverMissionID || ""
+  const activeMissionID =
+    serverMissionID ??
+    (localMissionIsFresh || !standingsQuery.isSuccess ? missionID : "")
   const myTeam = standings?.teams.find(
     (team) => team.teamId === standings.myTeamId,
   )
@@ -106,6 +110,17 @@ export function TerritoryMapPage() {
   const sitoneNameOf = (sitoneID: string) =>
     catalogQuery.data?.find((sitone) => sitone.id === sitoneID)?.name ??
     sitoneID
+
+  useEffect(() => {
+    if (!standingsQuery.isSuccess) return
+    if (serverMissionID) {
+      storeMissionID(serverMissionID)
+      return
+    }
+    if (missionID && !localMissionIsFresh) {
+      clearStoredMissionID()
+    }
+  }, [localMissionIsFresh, missionID, serverMissionID, standingsQuery.isSuccess])
 
   const handleSelectRegion = (
     region: TerritoryRegion,
@@ -172,7 +187,10 @@ export function TerritoryMapPage() {
           teamNameOf={teamNameOf}
           sitoneNameOf={sitoneNameOf}
           myPlayerID={statusQuery.data?.playerId}
-          onMissionClosed={() => setMissionID("")}
+          onMissionClosed={() => {
+            setMissionID("")
+            setLocalMissionIsFresh(false)
+          }}
         />
       ) : null}
 
@@ -268,6 +286,7 @@ export function TerritoryMapPage() {
         onMissionCreated={(createdMissionID) => {
           storeMissionID(createdMissionID)
           setMissionID(createdMissionID)
+          setLocalMissionIsFresh(true)
         }}
       />
     </GamePageShell>

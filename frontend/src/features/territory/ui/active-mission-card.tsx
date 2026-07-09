@@ -51,17 +51,16 @@ export function ActiveMissionCard({
       failureCount < 2,
   })
   const mission = missionQuery.data
+  const missionNotFound =
+    missionQuery.error instanceof AppError && missionQuery.error.status === 404
 
   useEffect(() => {
-    if (
-      missionQuery.error instanceof AppError &&
-      missionQuery.error.status === 404
-    ) {
+    if (missionNotFound) {
       clearStoredMissionID()
       queryClient.invalidateQueries({ queryKey: ["territory"] })
       onMissionClosed?.()
     }
-  }, [missionQuery.error, onMissionClosed, queryClient])
+  }, [missionNotFound, onMissionClosed, queryClient])
 
   const cancelMutation = useMutation({
     mutationFn: () => territoryApi.cancelAttack(missionID),
@@ -84,6 +83,10 @@ export function ActiveMissionCard({
         </span>
       </Card>
     )
+  }
+
+  if (missionNotFound) {
+    return null
   }
 
   if (missionQuery.isError || !mission) {
