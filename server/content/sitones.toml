@@ -218,9 +218,9 @@ description = "小石把寫好的專案整理成別人也看得懂的樣子。�
 icon_path = "/game-icons/stones/stone_clean_code.png"
 ability_name = "穩定輸出"
 ability_kind = "answer_score_bonus"
-ability_value = 12
+ability_value = 22
 ability_count = 0
-ability_description = "答對時分數提高 12%。"
+ability_description = "答對時分數提高 22%。"
 
 [[sitones]]
 id = "stone_community_handshake"
@@ -288,9 +288,9 @@ description = "牠站在資料門口，一邊檢查簽章，一邊提醒大家�
 icon_path = "/game-icons/stones/stone_crypto_gatekeeper.png"
 ability_name = "穩定輸出"
 ability_kind = "answer_score_bonus"
-ability_value = 12
+ability_value = 22
 ability_count = 0
-ability_description = "答對時分數提高 12%。"
+ability_description = "答對時分數提高 22%。"
 
 [[sitones]]
 id = "stone_docker"
@@ -302,9 +302,9 @@ description = "牠把環境裝進小小的容器裡，終於不用再說「我�
 icon_path = "/game-icons/stones/stone_docker.png"
 ability_name = "穩定輸出"
 ability_kind = "answer_score_bonus"
-ability_value = 8
+ability_value = 18
 ability_count = 0
-ability_description = "答對時分數提高 8%。"
+ability_description = "答對時分數提高 18%。"
 
 [[sitones]]
 id = "stone_engineering_base"
@@ -316,9 +316,9 @@ description = "牠體內藏著潛力無窮的工程能量，還沒有固定成�
 icon_path = "/game-icons/stones/basic_blue.png"
 ability_name = "穩定輸出"
 ability_kind = "answer_score_bonus"
-ability_value = 5
+ability_value = 15
 ability_count = 0
-ability_description = "答對時分數提高 5%。"
+ability_description = "答對時分數提高 15%。"
 
 [[sitones]]
 id = "stone_entertainment_base"
@@ -372,9 +372,9 @@ description = "牠把訊息封進信封前，先確認鑰匙是不是交到對�
 icon_path = "/game-icons/stones/stone_gpg.png"
 ability_name = "穩定輸出"
 ability_kind = "answer_score_bonus"
-ability_value = 8
+ability_value = 18
 ability_count = 0
-ability_description = "答對時分數提高 8%。"
+ability_description = "答對時分數提高 18%。"
 
 [[sitones]]
 id = "stone_human_after_all"
@@ -414,9 +414,9 @@ description = "小石學會開始管理一整群忙碌的小服務。混亂沒�
 icon_path = "/game-icons/stones/stone_kubernetes.png"
 ability_name = "穩定輸出"
 ability_kind = "answer_score_bonus"
-ability_value = 12
+ability_value = 22
 ability_count = 0
-ability_description = "答對時分數提高 12%。"
+ability_description = "答對時分數提高 22%。"
 
 [[sitones]]
 id = "stone_lightning_talk"
@@ -568,9 +568,9 @@ description = "牠從文件、原始碼和社群對話中學會真正的實習�
 icon_path = "/game-icons/stones/stone_system_intern.png"
 ability_name = "穩定輸出"
 ability_kind = "answer_score_bonus"
-ability_value = 12
+ability_value = 22
 ability_count = 0
-ability_description = "答對時分數提高 12%。"
+ability_description = "答對時分數提高 22%。"
 
 [[sitones]]
 id = "stone_tech_art"
@@ -610,9 +610,9 @@ description = "小石鼓起勇氣打開 CLI，發現命令列沒有想像中遙�
 icon_path = "/game-icons/stones/stone_terminal.png"
 ability_name = "穩定輸出"
 ability_kind = "answer_score_bonus"
-ability_value = 8
+ability_value = 18
 ability_count = 0
-ability_description = "答對時分數提高 8%。"
+ability_description = "答對時分數提高 18%。"
 
 [[sitones]]
 id = "stone_test"
@@ -624,9 +624,9 @@ description = "牠在每次改動前都先放下一個小小測試，像替未�
 icon_path = "/game-icons/stones/stone_test.png"
 ability_name = "穩定輸出"
 ability_kind = "answer_score_bonus"
-ability_value = 8
+ability_value = 18
 ability_count = 0
-ability_description = "答對時分數提高 8%。"
+ability_description = "答對時分數提高 18%。"
 
 
 
