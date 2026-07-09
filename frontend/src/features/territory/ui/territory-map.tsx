@@ -43,9 +43,121 @@ export function TerritoryMap({
     <svg
       viewBox={TAIWAN_MAP_VIEW_BOX}
       role="group"
-      aria-label="小隊領地地圖（以臺灣西部縣市象徵十一處宿舍領地）"
+      aria-label="小隊領地地圖（陽明交大光復校區校園圖）"
       className="w-full"
     >
+      <rect width="420" height="420" rx="22" className="fill-[#f6efd8]" />
+      <path
+        d="M36 82 L92 26 L206 20 L316 28 L390 68 L392 330 L342 386 L232 402 L102 382 L36 328 Z"
+        className="fill-[#b7d991] stroke-ink stroke-[2.5]"
+      />
+      <path
+        d="M38 104 C82 80 122 70 166 70 C240 70 296 84 360 132"
+        className="fill-none stroke-[#f4c54d] stroke-[18]"
+        strokeLinecap="round"
+      />
+      <path
+        d="M64 356 C126 328 174 302 216 260 C252 226 284 174 360 136"
+        className="fill-none stroke-[#f4c54d] stroke-[18]"
+        strokeLinecap="round"
+      />
+      <path
+        d="M92 104 L92 300 M142 86 L142 342 M230 64 L230 338 M326 76 L326 356"
+        className="fill-none stroke-[#efe6c6] stroke-[10]"
+        strokeLinecap="round"
+      />
+      <path
+        d="M72 160 C108 146 158 146 204 158 C250 170 304 166 354 146"
+        className="fill-none stroke-[#efe6c6] stroke-[10]"
+        strokeLinecap="round"
+      />
+      <path
+        d="M76 238 C130 224 192 226 246 238 C284 246 318 244 360 226"
+        className="fill-none stroke-[#efe6c6] stroke-[10]"
+        strokeLinecap="round"
+      />
+      <path
+        d="M46 84 L94 36 L206 30 L310 38 L380 76"
+        className="fill-none stroke-[#fff7df] stroke-[3]"
+        strokeLinecap="round"
+      />
+      <path
+        d="M26 78 L404 78"
+        className="fill-none stroke-ink stroke-[1.2] opacity-40"
+        strokeDasharray="6 7"
+      />
+      <text x="332" y="66" className="fill-ink text-[9px] font-black">
+        大學路 / 北大門
+      </text>
+      <path
+        d="M36 350 L380 390"
+        className="fill-none stroke-ink stroke-[1.2] opacity-40"
+        strokeDasharray="6 7"
+      />
+      <text x="42" y="368" className="fill-ink text-[9px] font-black">
+        新安路 / 南大門
+      </text>
+      <path
+        d="M42 138 C66 128 100 132 118 154 C136 178 130 218 104 236 C78 254 44 244 34 214 C22 180 20 152 42 138 Z"
+        className="fill-[#7bc6d8] stroke-[#28798d] stroke-[2]"
+      />
+      <text x="70" y="190" textAnchor="middle" className="fill-ink text-[9px] font-black">
+        工二湖
+      </text>
+      <path
+        d="M312 122 C342 102 380 112 388 146 C398 188 356 210 322 196 C290 182 284 140 312 122 Z"
+        className="fill-[#7bc6d8] stroke-[#28798d] stroke-[2]"
+      />
+      <text x="344" y="160" textAnchor="middle" className="fill-ink text-[9px] font-black">
+        竹湖
+      </text>
+      <ellipse
+        cx="82"
+        cy="92"
+        rx="36"
+        ry="58"
+        className="fill-[#d8e8bc] stroke-[#c56a4a] stroke-[5]"
+      />
+      <ellipse
+        cx="82"
+        cy="92"
+        rx="24"
+        ry="44"
+        className="fill-[#b7d991] stroke-[#fff7df] stroke-[4]"
+      />
+      <text x="82" y="94" textAnchor="middle" className="fill-ink text-[8px] font-black">
+        田徑場
+      </text>
+      {[
+        ["行政大樓", 246, 128, 42, 28],
+        ["浩然圖書館", 210, 178, 54, 34],
+        ["中正堂", 268, 184, 42, 30],
+        ["工程館群", 140, 166, 54, 36],
+        ["科學館群", 144, 224, 58, 36],
+        ["管理館", 274, 238, 52, 34],
+        ["活動中心", 218, 266, 56, 34],
+        ["體育館", 112, 92, 42, 30],
+      ].map(([name, x, y, width, height]) => (
+        <g key={name}>
+          <rect
+            x={Number(x)}
+            y={Number(y)}
+            width={Number(width)}
+            height={Number(height)}
+            rx="5"
+            className="fill-[#e5b24a] stroke-[#9b7724] stroke-[1.5]"
+          />
+          <text
+            x={Number(x) + Number(width) / 2}
+            y={Number(y) + Number(height) / 2 + 3}
+            textAnchor="middle"
+            className="fill-ink text-[7px] font-black"
+          >
+            {name}
+          </text>
+        </g>
+      ))}
+
       {TAIWAN_TERRITORY_REGIONS.map((region) => {
         const team = teamOfRegion(region)
         const isMine = team != null && team.teamId === myTeamId
@@ -66,7 +178,7 @@ export function TerritoryMap({
               }
               className={[
                 fillClassName,
-                "stroke-ink cursor-pointer stroke-[1.5] transition-opacity hover:opacity-80 focus-visible:opacity-80",
+                "stroke-ink cursor-pointer stroke-[2] transition-opacity hover:opacity-80 focus-visible:opacity-80",
                 region.isBoss && bossUnderAttack
                   ? "fill-destructive animate-pulse"
                   : "",
@@ -109,8 +221,8 @@ export function TerritoryMap({
               x={-width / 2}
               y={-9}
               width={width}
-              height={26}
-              rx={9}
+              height={28}
+              rx={8}
               className={
                 region.isBoss
                   ? "fill-ink stroke-destructive"
@@ -135,7 +247,7 @@ export function TerritoryMap({
             </text>
             <text
               textAnchor="middle"
-              y={14}
+              y={15}
               className={
                 region.isBoss
                   ? "fill-[color:var(--primary-foreground)] text-[7px] font-bold opacity-70"
