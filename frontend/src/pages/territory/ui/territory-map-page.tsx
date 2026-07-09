@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
@@ -58,6 +58,7 @@ function territoryLoadErrorMessage(error: unknown) {
 }
 
 export function TerritoryMapPage() {
+  const navigate = useNavigate()
   const [attackTarget, setAttackTarget] =
     useState<TerritoryStandingTeam | null>(null)
   const [missionID, setMissionID] = useState(getStoredMissionID)
@@ -132,7 +133,7 @@ export function TerritoryMapPage() {
     team: TerritoryStandingTeam | undefined,
   ) => {
     if (region.isBoss) {
-      toast.info("研三舍是 Boss 領地，需全部小隊集結後從研三舍頁面共同進攻。")
+      navigate({ to: "/yansan" })
       return
     }
     if (!team) {
@@ -208,7 +209,15 @@ export function TerritoryMapPage() {
       <Card className="gap-2 overflow-hidden rounded-[24px] p-3">
         {bossQuery.data ? (
           <Link to="/yansan" className="no-underline">
-            <BossStatusBanner status={bossQuery.data.bossStatus} compact />
+            <BossStatusBanner
+              status={bossQuery.data.bossStatus}
+              compact
+              actionLabel={
+                bossQuery.data.bossStatus === "open"
+                  ? "登記參戰"
+                  : "查看研三舍"
+              }
+            />
           </Link>
         ) : null}
         {standings ? (

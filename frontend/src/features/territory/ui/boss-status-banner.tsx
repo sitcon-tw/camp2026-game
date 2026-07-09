@@ -5,11 +5,13 @@ import { Badge } from "@/shared/ui/badge"
 type BossStatusBannerProps = {
   status: BossStatus
   compact?: boolean
+  actionLabel?: string
 }
 
 export function BossStatusBanner({
   status,
   compact = false,
+  actionLabel,
 }: BossStatusBannerProps) {
   const meta = bossStatusMeta(status)
 
@@ -29,12 +31,17 @@ export function BossStatusBanner({
           ].join(" ")}
           aria-hidden
         />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-primary-foreground/70 text-[10px] font-black tracking-[0.08em] uppercase">
             研三舍 Boss
           </p>
           <p className="truncate text-sm font-black">{meta.label}</p>
         </div>
+        {actionLabel ? (
+          <span className="bg-primary text-primary-foreground shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black">
+            {actionLabel}
+          </span>
+        ) : null}
       </div>
     )
   }

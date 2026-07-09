@@ -1,7 +1,6 @@
 import type {
   AttackMissionStatus,
   BossStatus,
-  CaptiveStatus,
   RiskLevel,
   TerritoryTier,
 } from "@/shared/api/territory"
@@ -79,7 +78,7 @@ const bossStatusMetaMap: Record<
   under_attack: {
     label: "激戰中",
     description:
-      "研三舍正遭受攻擊，所有研三服務暫停；進行中的轉正／贖回視為失敗，已支付的開源力不予退還。",
+      "研三舍正遭受攻擊，贖回服務暫停；進行中的申請視為失敗，已支付的開源力不予退還。",
     badgeClassName: "bg-destructive text-white",
   },
   finished: {
@@ -106,12 +105,6 @@ export const RESCUE_TERMINAL_STATUSES = new Set([
   "cancelled",
 ])
 
-const captiveStatusLabels: Record<CaptiveStatus, string> = {
-  captured: "被俘中",
-  captive_cooldown: "冷卻中",
-  convert_pending: "轉正處理中",
-}
-
 export function tierMeta(tier: TerritoryTier): TierMeta {
   return tierMetaMap[tier]
 }
@@ -126,10 +119,6 @@ export function missionStatusLabel(status: AttackMissionStatus) {
 
 export function bossStatusMeta(status: BossStatus) {
   return bossStatusMetaMap[status]
-}
-
-export function captiveStatusLabel(status: CaptiveStatus) {
-  return captiveStatusLabels[status]
 }
 
 export function rescueStatusLabel(status: string) {

@@ -94,7 +94,7 @@ export function YansanPage() {
           </p>
           <p className="text-muted-foreground text-xs leading-relaxed font-bold">
             Boss
-            戰進行期間，轉正、贖回等服務一律暫停；進行中的申請視為失敗，已支付的開源力不予退還。
+            戰進行期間，研三舍贖回服務暫停；進行中的申請視為失敗，已支付的開源力不予退還。
           </p>
         </Card>
       ) : null}
@@ -122,7 +122,7 @@ export function YansanPage() {
                 <AlertDialogTitle>確認參與 Boss 戰</AlertDialogTitle>
                 <AlertDialogDescription>
                   Boss
-                  戰開打後，研三舍所有服務將暫停，進行中的轉正／贖回視為失敗且開源力不退。確定要代表小隊登記參戰嗎？
+                  戰開打後，研三舍贖回服務將暫停，進行中的申請視為失敗且開源力不退。確定要代表小隊登記參戰嗎？
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -170,40 +170,6 @@ export function YansanPage() {
         )}
       </section>
 
-      <section className="grid gap-2" aria-label="轉正處理">
-        <h2 className="px-1 text-lg font-black">轉正處理中</h2>
-        {status == null ? null : status.convertProcesses.length === 0 ? (
-          <Card className="rounded-[18px] px-3 py-4">
-            <span className="text-muted-foreground text-sm font-extrabold">
-              目前沒有進行中的轉正申請
-            </span>
-          </Card>
-        ) : (
-          <div className="grid gap-2">
-            {status.convertProcesses.map((process) => {
-              const sitone = process.sitoneId
-                ? sitoneOf(process.sitoneId)
-                : undefined
-              return (
-                <Card
-                  key={process.id}
-                  className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-[18px] px-3.5 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-black">
-                      {sitone?.name ?? "俘虜小石"}
-                    </p>
-                    <p className="text-muted-foreground text-xs font-bold">
-                      研三舍審核中，結果以最終公告為準
-                    </p>
-                  </div>
-                  <Badge variant="secondary">處理中</Badge>
-                </Card>
-              )
-            })}
-          </div>
-        )}
-      </section>
     </GamePageShell>
   )
 }
