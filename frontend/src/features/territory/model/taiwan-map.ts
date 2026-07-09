@@ -1,8 +1,8 @@
 /**
- * 領地地圖幾何資料 — 以臺灣本島輪廓象徵十處宿舍領地。
+ * 領地地圖幾何資料 — 以臺灣本島輪廓象徵十一處宿舍領地。
  *
- * 由北至南切成十塊帶狀領地，對應真實縣市的南北順序：
- * 臺北 → 新北 → 桃園 → 新竹 → 苗栗 → 臺中 → 彰化 → 雲林 → 嘉義 → 南臺灣(研三舍 Boss)。
+ * 由北至南切成十一塊帶狀領地，對應真實縣市的南北順序：
+ * 臺北 → 新北 → 桃園 → 新竹 → 苗栗 → 臺中 → 彰化 → 雲林 → 嘉義 → 臺南 → 南臺灣(研三舍 Boss)。
  *
  * 幾何來源說明：此為本專案自行繪製的「簡化臺灣剪影」原創幾何
  * （參考公開的臺灣行政區輪廓比例，非直接取用任何第三方向量檔），
@@ -15,7 +15,7 @@ export type TerritoryRegion = {
   dorm: string
   /** 象徵的臺灣縣市 */
   county: string
-  /** 玩家隊伍對應順位（0-8，依 standings 回傳順序）；Boss 區不使用 */
+  /** 玩家隊伍對應順位（0-9，依 standings 回傳順序）；Boss 區不使用 */
   slot: number
   isBoss: boolean
   path: string
@@ -117,13 +117,23 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     labelY: 374,
   },
   {
+    id: "tainan",
+    dorm: "南舍",
+    county: "臺南",
+    slot: 9,
+    isBoss: false,
+    path: "M144 395 L197 395 L192 410 L185 425 L160 425 L152 412 Z",
+    labelX: 172,
+    labelY: 407,
+  },
+  {
     id: "yansan",
     dorm: "研三舍",
     county: "南臺灣",
-    slot: 9,
+    slot: 10,
     isBoss: true,
-    path: "M144 395 L197 395 L192 410 L178 448 L158 430 Z",
+    path: "M160 425 L185 425 L178 448 Z",
     labelX: 172,
-    labelY: 418,
+    labelY: 434,
   },
 ]

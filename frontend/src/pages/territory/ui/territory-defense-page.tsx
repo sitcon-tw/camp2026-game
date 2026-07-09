@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 
 import { SitoneLoadoutPicker } from "@/features/territory/ui/sitone-loadout-picker"
@@ -34,12 +34,6 @@ export function TerritoryDefensePage() {
   })
 
   const defense = defenseQuery.data
-  useEffect(() => {
-    if (defense && selectedIds === null) {
-      setSelectedIds(defense.sitoneIds)
-    }
-  }, [defense, selectedIds])
-
   const saveMutation = useMutation({
     mutationFn: territoryApi.updateDefense,
     onSuccess: (updated) => {

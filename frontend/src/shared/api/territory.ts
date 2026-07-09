@@ -14,13 +14,18 @@ export const TerritoryTierSchema = z.enum([
   "challenger",
 ])
 
+const TerritoryStandingTierSchema = z.union([
+  TerritoryTierSchema,
+  z.literal("boss"),
+])
+
 export const RiskLevelSchema = z.enum(["low", "medium", "high"])
 
 const TerritoryStandingTeamSchema = z.object({
   teamId: z.string(),
   name: z.string(),
   avatarUrl: z.string().optional(),
-  tier: TerritoryTierSchema,
+  tier: TerritoryStandingTierSchema,
   canAttack: z.boolean(),
   canBeAttacked: z.boolean(),
   isBoss: z.boolean().optional(),
@@ -134,11 +139,32 @@ const YansanActionResultSchema = z.object({
   message: z.string().optional(),
 })
 
-const BossStatusResponseSchema = z.object({
+const BossStatusClientResponseSchema = z.object({
   bossStatus: BossStatusSchema,
   participatingTeamIds: nullableArray(z.string()),
   requiredTeamCount: z.number().optional(),
+  myTeamRegistered: z.boolean().optional(),
 })
+
+const BossStatusServerResponseSchema = z.object({
+  status: BossStatusSchema,
+  registeredTeams: nullableArray(z.string()),
+  requiredTeams: z.number().optional(),
+  myTeamRegistered: z.boolean().optional(),
+})
+
+const BossStatusResponseSchema = z
+  .union([BossStatusClientResponseSchema, BossStatusServerResponseSchema])
+  .transform((response) => {
+    if ("bossStatus" in response) return response
+
+    return {
+      bossStatus: response.status,
+      participatingTeamIds: response.registeredTeams,
+      requiredTeamCount: response.requiredTeams,
+      myTeamRegistered: response.myTeamRegistered,
+    }
+  })
 
 const RescueSchema = z.object({
   id: z.string(),

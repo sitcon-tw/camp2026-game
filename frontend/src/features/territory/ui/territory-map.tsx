@@ -23,6 +23,7 @@ function regionFillClassName(
 ) {
   if (region.isBoss) return "fill-ink"
   if (!team) return "fill-muted"
+  if (team.tier === "boss") return "fill-ink"
   return tierMeta(team.tier).fillClassName
 }
 
@@ -42,13 +43,12 @@ export function TerritoryMap({
     <svg
       viewBox={TAIWAN_MAP_VIEW_BOX}
       role="group"
-      aria-label="小隊領地地圖（以臺灣西部縣市象徵十處宿舍領地）"
+      aria-label="小隊領地地圖（以臺灣西部縣市象徵十一處宿舍領地）"
       className="w-full"
     >
       {TAIWAN_TERRITORY_REGIONS.map((region) => {
         const team = teamOfRegion(region)
         const isMine = team != null && team.teamId === myTeamId
-        const attackable = team?.canBeAttacked === true && !isMine
         const fillClassName = regionFillClassName(region, team)
 
         return (

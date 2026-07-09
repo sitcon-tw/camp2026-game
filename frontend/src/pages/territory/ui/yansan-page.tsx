@@ -109,7 +109,7 @@ export function YansanPage() {
             </Badge>
           </div>
           <p className="text-muted-foreground text-xs leading-relaxed font-bold">
-            Boss 戰必須全部 9 個小隊共同參與才能發動。登記後等待其他小隊集結。
+            Boss 戰必須全部小隊共同參與才能發動。登記後等待其他小隊集結。
           </p>
           <AlertDialog>
             <AlertDialogTrigger asChild>

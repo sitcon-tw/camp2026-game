@@ -73,7 +73,7 @@ const bossStatusMetaMap: Record<
   },
   open: {
     label: "已開啟",
-    description: "Boss 戰已開放！集結全部 9 個小隊即可共同進攻研三舍。",
+    description: "Boss 戰已開放！集結全部小隊即可共同進攻研三舍。",
     badgeClassName: "bg-status-warning text-status-warning-foreground",
   },
   under_attack: {
