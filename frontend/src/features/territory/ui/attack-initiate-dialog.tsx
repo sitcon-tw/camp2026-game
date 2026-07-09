@@ -46,7 +46,7 @@ export function AttackInitiateDialog({
     mutationFn: (input: { defenderTeamId: string; sitoneIds: string[] }) =>
       territoryApi.createAttack(input),
     onSuccess: (mission) => {
-      toast.success("攻擊任務已建立，等待隊友投票")
+      toast.success("攻擊任務已建立，小石已出兵")
       storeMissionID(mission.id)
       queryClient.setQueryData(["territory", "attacks", mission.id], mission)
       queryClient.invalidateQueries({ queryKey: ["territory", "standings"] })
@@ -74,7 +74,7 @@ export function AttackInitiateDialog({
           </DialogTitle>
           <DialogDescription className="text-base leading-relaxed">
             挑選最多 {cap}{" "}
-            顆出戰小石。送出後由系統估算開源力消耗區間與風險等級，隊友過半同意即出兵。
+            顆出戰小石。送出後會立即出兵，系統會結算開源力消耗與風險等級。
           </DialogDescription>
         </DialogHeader>
 
@@ -108,7 +108,7 @@ export function AttackInitiateDialog({
 
         <div className="grid gap-3">
           <p className="text-muted-foreground text-xs leading-relaxed font-bold">
-            實際消耗與成敗由伺服器結算；出戰小石有被俘、失聯與逝世的可能。
+            發起後會立刻扣除開源力並鎖定出戰小石；出戰小石有被俘、失聯與逝世的可能。
           </p>
           <DialogFooter className="grid grid-cols-2 gap-2 sm:grid-cols-2">
             <Button

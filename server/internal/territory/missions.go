@@ -1,7 +1,7 @@
 package territory
 
-// Attack mission lifecycle (design §7): voting → deployed → resolved, with
-// lazy expiry of overdue votes and central-sweeper resolution.
+// Attack mission lifecycle (design §7): deployed → resolved, with legacy
+// lazy expiry retained for voting missions created before immediate deploy.
 
 import (
 	"context"
@@ -47,10 +47,10 @@ func (s *Service) ExpireMissionIfDue(ctx context.Context, mission mongomodel.Att
 	return mission, nil
 }
 
-// CommitMission executes the "threshold reached" transition: the executor
-// (initiator) pays the rolled open power cost, the selected sitones become
-// deployed instances (quantity locked in the same transaction, design §2),
-// and the mission gets its resolve_at and random seed.
+// CommitMission deploys an attack: the executor (initiator) pays the rolled
+// open power cost, the selected sitones become deployed instances (quantity
+// locked in the same transaction, design §2), and the mission gets its
+// resolve_at and random seed.
 func (s *Service) CommitMission(ctx context.Context, mission mongomodel.AttackMission, beneficiaryRank int, teamSize int) (mongomodel.AttackMission, error) {
 	seedRef := NewSeedRef()
 	roll := NewRoll(seedRef)

@@ -19,7 +19,7 @@ import (
 
 // CreateAttack godoc
 // @Summary Initiate a team attack
-// @Description Starts an attack mission in voting state. The initiator auto-votes agree. Tier permissions are locked into the mission at creation.
+// @Description Starts and deploys an attack mission immediately. Tier permissions are locked into the mission at creation.
 // @Tags territory
 // @Accept json
 // @Produce json
@@ -167,19 +167,6 @@ func (h *Handler) CreateAttack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Initiator auto-votes agree (decision 9).
-	_, err = h.db.Collection(mongomodel.AttackVotesCollection).InsertOne(ctx, mongomodel.AttackVote{
-		ID:        territory.NewID("attack_vote"),
-		MissionID: mission.ID,
-		PlayerID:  player.ID,
-		Vote:      true,
-		CreatedAt: now,
-	})
-	if err != nil {
-		httpx.WriteProblem(w, r, httpx.InternalServerError("attack failed", "territory_vote_insert_failed", err))
-		return
-	}
-
 	_, _ = eventlog.Insert(ctx, h.db, mongomodel.EventLog{
 		EventType:        mongomodel.EventTypeAttackInitiated,
 		ActorPlayerID:    player.ID,
@@ -190,13 +177,33 @@ func (h *Handler) CreateAttack(w http.ResponseWriter, r *http.Request) {
 			"sitone_ids":       body.SitoneIDs,
 		},
 	})
-	_, _ = eventlog.Insert(ctx, h.db, mongomodel.EventLog{
-		EventType:        mongomodel.EventTypeAttackVoteCast,
-		ActorPlayerID:    player.ID,
-		TeamID:           player.TeamID,
-		RelatedMissionID: mission.ID,
-		Payload:          bson.M{"agree": true, "auto": true},
+
+	rank, err := h.service.PersonalRank(ctx, player.ID)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("attack failed", "territory_rank_failed", err))
+		return
+	}
+	var committed mongomodel.AttackMission
+	err = h.service.WithLock(ctx, "attack:"+player.TeamID, func(ctx context.Context) error {
+		var commitErr error
+		committed, commitErr = h.service.CommitMission(ctx, mission, rank, teamSize)
+		return commitErr
 	})
+	if err != nil {
+		if errors.Is(err, territory.ErrInsufficientOpenPower) {
+			h.cancelMissionInternal(r, mission, "insufficient_open_power")
+			httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "initiator has insufficient open power"))
+			return
+		}
+		if errors.Is(err, territory.ErrInsufficientSitones) {
+			h.cancelMissionInternal(r, mission, "insufficient_sitones")
+			httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "initiator no longer holds the selected sitones"))
+			return
+		}
+		httpx.WriteProblem(w, r, httpx.InternalServerError("attack failed", "territory_commit_failed", err))
+		return
+	}
+	mission = committed
 
 	response, err := h.missionResponse(ctx, mission, true)
 	if err != nil {

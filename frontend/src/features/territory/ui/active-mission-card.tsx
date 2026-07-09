@@ -47,17 +47,6 @@ export function ActiveMissionCard({
   })
   const mission = missionQuery.data
 
-  const voteMutation = useMutation({
-    mutationFn: (agree: boolean) => territoryApi.voteAttack(missionID, agree),
-    onSuccess: (updated) => {
-      toast.success("已送出投票")
-      queryClient.setQueryData(["territory", "attacks", missionID], updated)
-    },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "投票失敗")
-    },
-  })
-
   const cancelMutation = useMutation({
     mutationFn: () => territoryApi.cancelAttack(missionID),
     onSuccess: () => {
@@ -105,7 +94,6 @@ export function ActiveMissionCard({
 
   const isInitiator =
     myPlayerID != null && mission.initiatorPlayerId === myPlayerID
-  const voteCountdown = formatCountdown(mission.voteDeadline, now)
   const resolveCountdown = formatCountdown(mission.resolveAt, now)
 
   return (
@@ -159,52 +147,9 @@ export function ActiveMissionCard({
 
       {mission.status === "voting" ? (
         <div className="grid gap-2.5">
-          <div className="bg-surface-raised border-border grid grid-cols-2 items-center gap-2 rounded-[16px] border-2 px-3 py-2.5">
-            <div>
-              <p className="text-muted-foreground text-xs font-black">
-                同意票數
-              </p>
-              <strong className="text-xl font-black">
-                {mission.agreeCount} / {mission.threshold}
-              </strong>
-            </div>
-            <div className="text-right">
-              <p className="text-muted-foreground text-xs font-black">
-                投票倒數
-              </p>
-              <strong className="text-xl font-black tabular-nums">
-                {voteCountdown ?? "--:--"}
-              </strong>
-            </div>
-          </div>
-          <p className="text-muted-foreground text-xs font-bold">
-            過半同意即刻出兵；逾時未達門檻，任務自動取消、小石與開源力都不會扣除。
+          <p className="text-muted-foreground text-sm font-bold">
+            任務正在轉為出兵狀態，請稍候同步最新戰況。
           </p>
-          {mission.myVote == null && !isInitiator ? (
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                disabled={voteMutation.isPending}
-                onClick={() => voteMutation.mutate(true)}
-              >
-                同意出擊
-              </Button>
-              <Button
-                variant="outline"
-                disabled={voteMutation.isPending}
-                onClick={() => voteMutation.mutate(false)}
-              >
-                暫緩行動
-              </Button>
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-xs font-black">
-              {isInitiator
-                ? "你是發起人，已自動計入一票同意。"
-                : mission.myVote
-                  ? "你已投下同意票。"
-                  : "你已投下暫緩票。"}
-            </p>
-          )}
           {isInitiator ? (
             <Button
               variant="destructive"
