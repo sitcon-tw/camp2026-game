@@ -17,7 +17,7 @@ Set `APP_ORIGIN` when running SSR behind a non-local origin.
 ## Backend API Proxy
 
 During local development, `pnpm dev` proxies same-origin requests under
-`/api` to the backend at `http://localhost:8080`. Frontend API code should
+`/api` to the backend configured by `API_PROXY_TARGET`. Frontend API code should
 call backend endpoints with relative paths, for example:
 
 ```ts
@@ -30,7 +30,8 @@ Proxy settings live in `.env`. Start from the example file:
 cp .env.example .env
 ```
 
-Use `API_PROXY_TARGET` when the backend runs on a different origin.
+The example config points to the deployed staging backend. Change
+`API_PROXY_TARGET` when the backend runs on a different origin.
 
 This dev proxy avoids browser CORS for local frontend-to-backend calls. For
 production, serve the frontend and backend behind the same origin or configure

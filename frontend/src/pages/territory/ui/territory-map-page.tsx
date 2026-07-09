@@ -21,10 +21,34 @@ import {
 import { tierMeta } from "@/shared/lib/territory-labels"
 import { Badge } from "@/shared/ui/badge"
 import { Card } from "@/shared/ui/card"
+import { GameIcon } from "@/shared/ui/game-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { PageHeader } from "@/shared/ui/page-header"
 
 const TIER_LEGEND: TerritoryTier[] = ["leader", "contested", "challenger"]
+
+const TERRITORY_ACTION_LINKS = [
+  {
+    label: "防守配置",
+    to: "/territory/defense",
+    iconPath: "/game-icons/items/item_mission_map.png",
+  },
+  {
+    label: "俘虜營",
+    to: "/territory/captives",
+    iconPath: "/game-icons/items/item_toolbox_key.png",
+  },
+  {
+    label: "研三舍",
+    to: "/yansan",
+    iconPath: "/game-icons/items/item_star_village_signpost.png",
+  },
+  {
+    label: "排行榜",
+    to: "/leaderboard",
+    iconPath: "/game-icons/features/leaderboard.png",
+  },
+] as const
 
 export function TerritoryMapPage() {
   const [attackTarget, setAttackTarget] =
@@ -74,7 +98,7 @@ export function TerritoryMapPage() {
     team: TerritoryStandingTeam | undefined,
   ) => {
     if (region.isBoss) {
-      toast.info("研三舍是 Boss 領地，需 9 隊集結後從研三舍頁面共同進攻。")
+      toast.info("研三舍是 Boss 領地，需全部小隊集結後從研三舍頁面共同進攻。")
       return
     }
     if (!team) {
@@ -177,23 +201,24 @@ export function TerritoryMapPage() {
       </Card>
 
       <section className="grid grid-cols-2 gap-2" aria-label="攻防選單">
-        {(
-          [
-            { label: "防守配置", to: "/territory/defense", emoji: "🛡️" },
-            { label: "俘虜營", to: "/territory/captives", emoji: "⛓️" },
-            { label: "研三舍", to: "/yansan", emoji: "🏯" },
-            { label: "排行榜", to: "/leaderboard", emoji: "🏆" },
-          ] as const
-        ).map(({ label, to, emoji }) => (
+        {TERRITORY_ACTION_LINKS.map(({ label, to, iconPath }) => (
           <Link
             key={to}
             to={to}
-            className="bg-card border-ink focus-visible:outline-power grid min-h-[64px] cursor-pointer content-center justify-items-center gap-1 rounded-[18px] border-2 text-inherit no-underline shadow-[4px_4px_0_rgba(23,35,58,0.12)] transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-x-px active:translate-y-px"
+            className="bg-card border-ink focus-visible:outline-power group grid min-h-[92px] cursor-pointer grid-rows-[44px_auto] content-center justify-items-center gap-1.5 rounded-[18px] border-2 px-3 py-3 text-inherit no-underline shadow-[4px_4px_0_rgba(23,35,58,0.12)] transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-x-px active:translate-y-px"
           >
-            <span className="text-xl" aria-hidden>
-              {emoji}
+            <span className="bg-background/70 border-border grid size-11 place-items-center rounded-full border shadow-[inset_0_-2px_0_rgba(23,35,58,0.08)] transition-transform group-hover:-translate-y-0.5">
+              <GameIcon
+                iconPath={iconPath}
+                alt=""
+                className="size-9 rounded-none"
+                imageClassName="drop-shadow-[0_2px_0_rgba(23,35,58,0.18)]"
+                fallback={null}
+              />
             </span>
-            <span className="text-sm font-black">{label}</span>
+            <span className="text-center text-sm leading-tight font-black">
+              {label}
+            </span>
           </Link>
         ))}
       </section>
