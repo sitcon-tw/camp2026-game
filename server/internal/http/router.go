@@ -27,6 +27,8 @@ import (
 	shophandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/shop"
 	staffhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/staff"
 	systemhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/system"
+	territoryhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/territory"
+	yansanhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/yansan"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 )
@@ -40,6 +42,9 @@ type Dependencies struct {
 	AdminPassword        string
 	AdminCookieSecure    bool
 	RecoverMatchSessions bool
+	// StartTerritorySweeper launches the central territory resolution
+	// sweeper goroutine at boot (design §0.1 decision 5).
+	StartTerritorySweeper bool
 }
 
 func NewRouter(dep Dependencies) http.Handler {
@@ -164,6 +169,19 @@ func registerRoutes(api chi.Router, dep Dependencies) {
 	})
 	staffHandler.RegisterPlayerRoutes(maintenanceGuardedPlayerAPI)
 	staffHandler.RegisterRoutes(api.With(authctx.RequireStaff(dep.MongoDB)))
+	territoryHandler := territoryhandler.New(territoryhandler.Dependencies{
+		Log:          dep.Log,
+		Content:      dep.Content,
+		MongoClient:  dep.MongoClient,
+		MongoDB:      dep.MongoDB,
+		StartSweeper: dep.StartTerritorySweeper,
+	})
+	territoryHandler.RegisterRoutes(maintenanceGuardedPlayerAPI)
+	yansanhandler.New(yansanhandler.Dependencies{
+		Content: dep.Content,
+		MongoDB: dep.MongoDB,
+		Service: territoryHandler.Service(),
+	}).RegisterRoutes(maintenanceGuardedPlayerAPI)
 
 	registerSwaggerRoutes(api)
 }

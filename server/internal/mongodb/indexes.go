@@ -50,6 +50,140 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.CommunityStandsCollection, models: communityStandIndexModels()},
 		{collection: mongomodel.CommunityStandVisitsCollection, models: communityStandVisitIndexModels()},
 		{collection: mongomodel.CommunityStandClaimsCollection, models: communityStandClaimIndexModels()},
+		{collection: mongomodel.SitoneInstancesCollection, models: sitoneInstanceIndexModels()},
+		{collection: mongomodel.AttackMissionsCollection, models: attackMissionIndexModels()},
+		{collection: mongomodel.AttackVotesCollection, models: attackVoteIndexModels()},
+		{collection: mongomodel.EventLogsCollection, models: eventLogIndexModels()},
+		{collection: mongomodel.YansanProcessesCollection, models: yansanProcessIndexModels()},
+		{collection: mongomodel.CaptiveRecordsCollection, models: captiveRecordIndexModels()},
+	}
+}
+
+func yansanProcessIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "status", Value: 1},
+				{Key: "resolve_at", Value: 1},
+			},
+			Options: options.Index().SetName("yansan_processes_status_resolve_at"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "team_id", Value: 1},
+				{Key: "kind", Value: 1},
+				{Key: "status", Value: 1},
+			},
+			Options: options.Index().SetName("yansan_processes_team_kind_status"),
+		},
+		{
+			Keys: bson.D{{Key: "instance_id", Value: 1}},
+			Options: options.Index().
+				SetName("yansan_processes_instance").
+				SetPartialFilterExpression(bson.M{"instance_id": bson.M{"$gt": ""}}),
+		},
+	}
+}
+
+func captiveRecordIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "current_team_id", Value: 1},
+				{Key: "status", Value: 1},
+			},
+			Options: options.Index().SetName("captive_records_current_team_status"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "original_team_id", Value: 1},
+				{Key: "status", Value: 1},
+			},
+			Options: options.Index().SetName("captive_records_original_team_status"),
+		},
+	}
+}
+
+func sitoneInstanceIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "player_id", Value: 1},
+				{Key: "sitone_id", Value: 1},
+				{Key: "status", Value: 1},
+			},
+			Options: options.Index().SetName("sitone_instances_player_sitone_status"),
+		},
+		{
+			Keys: bson.D{{Key: "mission_id", Value: 1}},
+			Options: options.Index().
+				SetName("sitone_instances_mission").
+				SetPartialFilterExpression(bson.M{"mission_id": bson.M{"$gt": ""}}),
+		},
+	}
+}
+
+func attackMissionIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "status", Value: 1},
+				{Key: "resolve_at", Value: 1},
+			},
+			Options: options.Index().SetName("attack_missions_status_resolve_at"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "attacker_team_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+			Options: options.Index().SetName("attack_missions_attacker_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "defender_team_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+			Options: options.Index().SetName("attack_missions_defender_created"),
+		},
+	}
+}
+
+func attackVoteIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "mission_id", Value: 1},
+				{Key: "player_id", Value: 1},
+			},
+			Options: options.Index().SetName("attack_votes_mission_player").SetUnique(true),
+		},
+	}
+}
+
+func eventLogIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "created_at", Value: -1},
+				{Key: "_id", Value: -1},
+			},
+			Options: options.Index().SetName("event_logs_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "team_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+			Options: options.Index().SetName("event_logs_team_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "event_type", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+			Options: options.Index().SetName("event_logs_type_created"),
+		},
 	}
 }
 

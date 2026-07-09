@@ -248,6 +248,32 @@ export function HomeBasePage() {
           ))}
         </section>
 
+        <section aria-label="領地攻防">
+          <Link
+            to="/territory"
+            className="bg-card border-ink focus-visible:outline-power grid cursor-pointer grid-cols-[52px_1fr_auto] items-center gap-3 rounded-[22px] border-2 p-[15px] text-inherit no-underline shadow-[4px_4px_0_rgba(23,35,58,0.12)] transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-x-px active:translate-y-px"
+          >
+            <span
+              className="bg-pebble-resonate border-ink grid size-[52px] place-items-center rounded-[16px] border-2 text-2xl"
+              aria-hidden
+            >
+              ⚔️
+            </span>
+            <span className="min-w-0">
+              <span className="text-muted-foreground mb-0.5 block text-xs font-black tracking-[0.08em] uppercase">
+                Side Quest
+              </span>
+              <strong className="block truncate text-[18px] font-black">
+                領地攻防戰
+              </strong>
+              <span className="text-muted-foreground block truncate text-xs font-bold">
+                派出小石遠征，守住自己的宿舍領地
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0" aria-hidden />
+          </Link>
+        </section>
+
         <section
           className="bg-card border-ink rounded-[22px] border-2 p-[15px]"
           aria-label="小隊成員"

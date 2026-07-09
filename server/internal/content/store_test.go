@@ -22,6 +22,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 5
 ability_count = 0
 ability_description = "答對時分數提高 5%。"
+attack = 3
+defense = 6
+repeatable = true
+unique = false
+effect_kind = "fortify"
+effect_value = 8
 
 [[sitones]]
 id = "stone_explorer_base"
@@ -35,6 +41,12 @@ ability_kind = "material_drop_rate"
 ability_value = 5
 ability_count = 0
 ability_description = "對戰素材掉落率提高 5%。"
+attack = 6
+defense = 3
+repeatable = true
+unique = false
+effect_kind = "evade_missing"
+effect_value = 8
 `)
 
 	store, err := Load(dir)
@@ -62,6 +74,12 @@ ability_description = "對戰素材掉落率提高 5%。"
 	}
 	if sitone.AbilityName != "穩定輸出" || sitone.AbilityKind != SitoneAbilityAnswerScoreBonus || sitone.AbilityValue != 5 || sitone.AbilityCount != 0 {
 		t.Fatalf("unexpected engineering sitone ability: %#v", sitone)
+	}
+	if sitone.Attack != 3 || sitone.Defense != 6 || !sitone.Repeatable || sitone.Unique {
+		t.Fatalf("unexpected engineering sitone battle attributes: %#v", sitone)
+	}
+	if sitone.EffectKind != SitoneEffectFortify || sitone.EffectValue != 8 {
+		t.Fatalf("unexpected engineering sitone effect: %#v", sitone)
 	}
 	if _, ok := store.GetSitone("missing"); ok {
 		t.Fatal("expected missing sitone not to exist")
@@ -512,6 +530,12 @@ ability_kind = "unknown"
 ability_value = 0
 ability_count = 1
 ability_description = ""
+attack = -1
+defense = -1
+repeatable = true
+unique = true
+effect_kind = "unknown"
+effect_value = 0
 `)
 
 	_, err := Load(dir)
@@ -523,6 +547,11 @@ ability_description = ""
 		"sitones[0].ability_value must be greater than 0",
 		"sitones[0].ability_count must be 0 unless ability_kind is eliminate_wrong_choice",
 		"sitones[0].ability_description is required",
+		"sitones[0].attack must be greater than or equal to 0",
+		"sitones[0].defense must be greater than or equal to 0",
+		"exactly one of repeatable and unique must be true",
+		"sitones[0].effect_kind must be one of",
+		"sitones[0].effect_value must be greater than 0 when effect_kind is set",
 	} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("expected error to contain %q, got %v", want, err)
@@ -732,6 +761,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 5
 ability_count = 0
 ability_description = "答對時分數提高 5%。"
+attack = 3
+defense = 6
+repeatable = true
+unique = false
+effect_kind = "fortify"
+effect_value = 8
 `)
 }
 

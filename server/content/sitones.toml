@@ -11,6 +11,12 @@ ability_kind = "material_drop_rate"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰結束時小石掉落率提高 8%。"
+attack = 12
+defense = 5
+repeatable = true
+unique = false
+effect_kind = "scout_recon"
+effect_value = 12
 
 [[sitones]]
 id = "stone_2019_unboxed_algorithm"
@@ -25,6 +31,12 @@ ability_kind = "material_drop_rate"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰結束時小石掉落率提高 12%。"
+attack = 17
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "scout_recon"
+effect_value = 18
 
 [[sitones]]
 id = "stone_2020_sitcon_tour_group"
@@ -39,6 +51,12 @@ ability_kind = "open_power_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 12%。"
+attack = 8
+defense = 11
+repeatable = true
+unique = false
+effect_kind = "fatigue_relief"
+effect_value = 18
 
 [[sitones]]
 id = "stone_2020_tour_flag"
@@ -53,6 +71,12 @@ ability_kind = "open_power_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 8%。"
+attack = 5
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "fatigue_relief"
+effect_value = 12
 
 [[sitones]]
 id = "stone_2021_abacus"
@@ -67,6 +91,12 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 15
 ability_count = 1
 ability_description = "題目開始時有 15% 機率刪去 1 個錯誤選項。"
+attack = 8
+defense = 5
+repeatable = true
+unique = false
+effect_kind = "defense_pierce"
+effect_value = 12
 
 [[sitones]]
 id = "stone_2021_abacus_descendant"
@@ -81,6 +111,12 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 25
 ability_count = 1
 ability_description = "題目開始時有 25% 機率刪去 1 個錯誤選項。"
+attack = 12
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "defense_pierce"
+effect_value = 18
 
 [[sitones]]
 id = "stone_2022_break_wall_cat"
@@ -95,6 +131,12 @@ ability_kind = "material_drop_rate"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰結束時小石掉落率提高 12%。"
+attack = 17
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "evade_missing"
+effect_value = 18
 
 [[sitones]]
 id = "stone_2022_maze"
@@ -109,6 +151,12 @@ ability_kind = "material_drop_rate"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰結束時小石掉落率提高 8%。"
+attack = 12
+defense = 5
+repeatable = true
+unique = false
+effect_kind = "evade_missing"
+effect_value = 12
 
 [[sitones]]
 id = "stone_2024_finite"
@@ -123,6 +171,12 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 15
 ability_count = 1
 ability_description = "題目開始時有 15% 機率刪去 1 個錯誤選項。"
+attack = 8
+defense = 5
+repeatable = true
+unique = false
+effect_kind = "steal_boost"
+effect_value = 12
 
 [[sitones]]
 id = "stone_2024_infinite_inspiration"
@@ -137,6 +191,12 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 25
 ability_count = 1
 ability_description = "題目開始時有 25% 機率刪去 1 個錯誤選項。"
+attack = 12
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "steal_boost"
+effect_value = 18
 
 [[sitones]]
 id = "stone_2024_last_night_polaroid"
@@ -151,6 +211,12 @@ ability_kind = "open_power_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 12%。"
+attack = 5
+defense = 8
+repeatable = true
+unique = false
+effect_kind = "fatigue_recover"
+effect_value = 18
 
 [[sitones]]
 id = "stone_2024_ribbon"
@@ -165,6 +231,12 @@ ability_kind = "open_power_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 8%。"
+attack = 4
+defense = 6
+repeatable = true
+unique = false
+effect_kind = "fatigue_recover"
+effect_value = 12
 
 [[sitones]]
 id = "stone_2026_camp_explorer"
@@ -179,6 +251,12 @@ ability_kind = "material_drop_rate"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰結束時小石掉落率提高 12%。"
+attack = 17
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "scout_recon"
+effect_value = 18
 
 [[sitones]]
 id = "stone_booth"
@@ -193,6 +271,12 @@ ability_kind = "material_drop_rate"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰結束時小石掉落率提高 8%。"
+attack = 12
+defense = 5
+repeatable = true
+unique = false
+effect_kind = "scout_recon"
+effect_value = 12
 
 [[sitones]]
 id = "stone_camp_backpack"
@@ -207,6 +291,12 @@ ability_kind = "material_drop_rate"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰結束時小石掉落率提高 8%。"
+attack = 12
+defense = 5
+repeatable = true
+unique = false
+effect_kind = "evade_missing"
+effect_value = 12
 
 [[sitones]]
 id = "stone_clean_code"
@@ -221,6 +311,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "答對時分數提高 12%。"
+attack = 7
+defense = 17
+repeatable = true
+unique = false
+effect_kind = "fortify"
+effect_value = 18
 
 [[sitones]]
 id = "stone_community_handshake"
@@ -235,6 +331,12 @@ ability_kind = "open_power_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 8%。"
+attack = 5
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "rescue_boost"
+effect_value = 12
 
 [[sitones]]
 id = "stone_consensus_draft"
@@ -249,6 +351,12 @@ ability_kind = "open_power_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 8%。"
+attack = 5
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "rescue_boost"
+effect_value = 12
 
 [[sitones]]
 id = "stone_contribution"
@@ -263,6 +371,12 @@ ability_kind = "open_power_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 8%。"
+attack = 5
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "fatigue_relief"
+effect_value = 12
 
 [[sitones]]
 id = "stone_course_shared_notes"
@@ -277,6 +391,12 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 25
 ability_count = 1
 ability_description = "題目開始時有 25% 機率刪去 1 個錯誤選項。"
+attack = 12
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "defense_pierce"
+effect_value = 18
 
 [[sitones]]
 id = "stone_crypto_gatekeeper"
@@ -291,6 +411,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "答對時分數提高 12%。"
+attack = 7
+defense = 17
+repeatable = true
+unique = false
+effect_kind = "death_guard"
+effect_value = 18
 
 [[sitones]]
 id = "stone_docker"
@@ -305,6 +431,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "答對時分數提高 8%。"
+attack = 5
+defense = 12
+repeatable = true
+unique = false
+effect_kind = "fortify"
+effect_value = 12
 
 [[sitones]]
 id = "stone_engineering_base"
@@ -319,6 +451,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 5
 ability_count = 0
 ability_description = "答對時分數提高 5%。"
+attack = 3
+defense = 6
+repeatable = true
+unique = false
+effect_kind = "fortify"
+effect_value = 8
 
 [[sitones]]
 id = "stone_entertainment_base"
@@ -333,6 +471,12 @@ ability_kind = "open_power_bonus"
 ability_value = 5
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 5%。"
+attack = 2
+defense = 3
+repeatable = true
+unique = false
+effect_kind = "fatigue_recover"
+effect_value = 8
 
 [[sitones]]
 id = "stone_espresso"
@@ -347,6 +491,12 @@ ability_kind = "open_power_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 8%。"
+attack = 4
+defense = 6
+repeatable = true
+unique = false
+effect_kind = "fatigue_recover"
+effect_value = 12
 
 [[sitones]]
 id = "stone_explorer_base"
@@ -361,6 +511,12 @@ ability_kind = "material_drop_rate"
 ability_value = 5
 ability_count = 0
 ability_description = "對戰結束時小石掉落率提高 5%。"
+attack = 6
+defense = 3
+repeatable = true
+unique = false
+effect_kind = "evade_missing"
+effect_value = 8
 
 [[sitones]]
 id = "stone_gpg"
@@ -375,6 +531,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "答對時分數提高 8%。"
+attack = 5
+defense = 12
+repeatable = true
+unique = false
+effect_kind = "death_guard"
+effect_value = 12
 
 [[sitones]]
 id = "stone_human_after_all"
@@ -389,6 +551,12 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 25
 ability_count = 1
 ability_description = "題目開始時有 25% 機率刪去 1 個錯誤選項。"
+attack = 12
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "steal_boost"
+effect_value = 18
 
 [[sitones]]
 id = "stone_inspiration_base"
@@ -403,6 +571,12 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 10
 ability_count = 1
 ability_description = "題目開始時有 10% 機率刪去 1 個錯誤選項。"
+attack = 5
+defense = 2
+repeatable = true
+unique = false
+effect_kind = "steal_boost"
+effect_value = 8
 
 [[sitones]]
 id = "stone_kubernetes"
@@ -417,6 +591,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "答對時分數提高 12%。"
+attack = 7
+defense = 17
+repeatable = true
+unique = false
+effect_kind = "fortify"
+effect_value = 18
 
 [[sitones]]
 id = "stone_lightning_talk"
@@ -431,6 +611,12 @@ ability_kind = "open_power_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 12%。"
+attack = 5
+defense = 8
+repeatable = true
+unique = false
+effect_kind = "op_refund"
+effect_value = 18
 
 [[sitones]]
 id = "stone_microphone"
@@ -445,6 +631,12 @@ ability_kind = "open_power_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 8%。"
+attack = 4
+defense = 6
+repeatable = true
+unique = false
+effect_kind = "op_refund"
+effect_value = 12
 
 [[sitones]]
 id = "stone_open_source_route"
@@ -459,6 +651,12 @@ ability_kind = "open_power_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 12%。"
+attack = 8
+defense = 11
+repeatable = true
+unique = false
+effect_kind = "rescue_boost"
+effect_value = 18
 
 [[sitones]]
 id = "stone_p5js"
@@ -473,6 +671,12 @@ ability_kind = "open_power_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 8%。"
+attack = 4
+defense = 6
+repeatable = true
+unique = false
+effect_kind = "op_refund"
+effect_value = 12
 
 [[sitones]]
 id = "stone_prompt"
@@ -487,6 +691,12 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 15
 ability_count = 1
 ability_description = "題目開始時有 15% 機率刪去 1 個錯誤選項。"
+attack = 8
+defense = 5
+repeatable = true
+unique = false
+effect_kind = "defense_pierce"
+effect_value = 12
 
 [[sitones]]
 id = "stone_resonance_base"
@@ -501,6 +711,12 @@ ability_kind = "open_power_bonus"
 ability_value = 5
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 5%。"
+attack = 3
+defense = 4
+repeatable = true
+unique = false
+effect_kind = "fatigue_relief"
+effect_value = 8
 
 [[sitones]]
 id = "stone_star_village_exchange"
@@ -515,6 +731,12 @@ ability_kind = "open_power_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 12%。"
+attack = 8
+defense = 11
+repeatable = true
+unique = false
+effect_kind = "rescue_boost"
+effect_value = 18
 
 [[sitones]]
 id = "stone_star_village_guide"
@@ -529,6 +751,12 @@ ability_kind = "material_drop_rate"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰結束時小石掉落率提高 12%。"
+attack = 17
+defense = 7
+repeatable = true
+unique = false
+effect_kind = "evade_missing"
+effect_value = 18
 
 [[sitones]]
 id = "stone_sticky_note"
@@ -543,6 +771,12 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 15
 ability_count = 1
 ability_description = "題目開始時有 15% 機率刪去 1 個錯誤選項。"
+attack = 8
+defense = 5
+repeatable = true
+unique = false
+effect_kind = "steal_boost"
+effect_value = 12
 
 [[sitones]]
 id = "stone_student_autonomy"
@@ -557,6 +791,12 @@ ability_kind = "open_power_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 12%。"
+attack = 8
+defense = 11
+repeatable = true
+unique = false
+effect_kind = "fatigue_relief"
+effect_value = 18
 
 [[sitones]]
 id = "stone_system_intern"
@@ -571,6 +811,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "答對時分數提高 12%。"
+attack = 7
+defense = 17
+repeatable = true
+unique = false
+effect_kind = "death_guard"
+effect_value = 18
 
 [[sitones]]
 id = "stone_tech_art"
@@ -585,6 +831,12 @@ ability_kind = "open_power_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 12%。"
+attack = 5
+defense = 8
+repeatable = true
+unique = false
+effect_kind = "op_refund"
+effect_value = 18
 
 [[sitones]]
 id = "stone_ten_minute_essence"
@@ -599,6 +851,12 @@ ability_kind = "open_power_bonus"
 ability_value = 12
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 12%。"
+attack = 5
+defense = 8
+repeatable = true
+unique = false
+effect_kind = "op_refund"
+effect_value = 18
 
 [[sitones]]
 id = "stone_terminal"
@@ -613,6 +871,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "答對時分數提高 8%。"
+attack = 5
+defense = 12
+repeatable = true
+unique = false
+effect_kind = "fortify"
+effect_value = 12
 
 [[sitones]]
 id = "stone_test"
@@ -627,6 +891,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 8
 ability_count = 0
 ability_description = "答對時分數提高 8%。"
+attack = 5
+defense = 12
+repeatable = true
+unique = false
+effect_kind = "death_guard"
+effect_value = 12
 
 
 
@@ -643,6 +913,12 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 10
 ability_count = 3
 ability_description = "題目開始時有 5% 機率刪去 3 個錯誤選項。"
+attack = 17
+defense = 9
+repeatable = false
+unique = true
+effect_kind = "turtle_draw"
+effect_value = 25
 
 [[sitones]]
 id = "stone_fireside"
@@ -657,6 +933,12 @@ ability_kind = "open_power_bonus"
 ability_value = 120
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 120%。"
+attack = 11
+defense = 15
+repeatable = false
+unique = true
+effect_kind = "fireside_embers"
+effect_value = 25
 
 [[sitones]]
 id = "stone_command_blind_trip"
@@ -671,6 +953,12 @@ ability_kind = "open_power_bonus"
 ability_value = 50
 ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 50%。"
+attack = 9
+defense = 23
+repeatable = false
+unique = true
+effect_kind = "command_calibrate"
+effect_value = 50
 
 [[sitones]]
 id = "stone_human_llm"
@@ -685,6 +973,12 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 50
 ability_count = 2
 ability_description = "題目開始時有 50% 機率刪去 2 個錯誤選項。"
+attack = 17
+defense = 9
+repeatable = false
+unique = true
+effect_kind = "semantic_chain"
+effect_value = 30
 
 [[sitones]]
 id = "stone_von_neumann"
@@ -699,6 +993,12 @@ ability_kind = "material_drop_rate"
 ability_value = 30
 ability_count = 0
 ability_description = "對戰結束時小石掉落率提高 30%。"
+attack = 9
+defense = 23
+repeatable = false
+unique = true
+effect_kind = "architecture_run"
+effect_value = 15
 
 
 [[sitones]]
@@ -714,6 +1014,12 @@ ability_kind = "answer_score_bonus"
 ability_value = 25
 ability_count = 0
 ability_description = "答對時分數提高 25%。"
+attack = 9
+defense = 23
+repeatable = false
+unique = true
+effect_kind = "retransmit"
+effect_value = 50
 
 [[sitones]]
 id = "stone_prompt_injection"
@@ -728,3 +1034,9 @@ ability_kind = "eliminate_wrong_choice"
 ability_value = 80
 ability_count = 1
 ability_description = "題目開始時有 80% 機率刪去 1 個錯誤選項。"
+attack = 17
+defense = 9
+repeatable = false
+unique = true
+effect_kind = "prompt_firewall"
+effect_value = 50

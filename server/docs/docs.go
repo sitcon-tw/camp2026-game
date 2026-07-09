@@ -5010,9 +5010,25 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 5
                 },
+                "attack": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "defense": {
+                    "type": "integer",
+                    "example": 6
+                },
                 "description": {
                     "type": "string",
                     "example": "修 bug、分享解法、完成技術任務。"
+                },
+                "effectKind": {
+                    "type": "string",
+                    "example": "fortify"
+                },
+                "effectValue": {
+                    "type": "integer",
+                    "example": 8
                 },
                 "iconPath": {
                     "type": "string",
@@ -5030,6 +5046,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "base"
                 },
+                "repeatable": {
+                    "type": "boolean",
+                    "example": true
+                },
                 "style": {
                     "type": "string",
                     "example": "default"
@@ -5037,6 +5057,10 @@ const docTemplate = `{
                 "type": {
                     "type": "string",
                     "example": "engineering"
+                },
+                "unique": {
+                    "type": "boolean",
+                    "example": false
                 }
             }
         },

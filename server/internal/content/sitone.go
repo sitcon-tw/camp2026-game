@@ -31,6 +31,46 @@ var validSitoneAbilityKinds = map[string]struct{}{
 	SitoneAbilityEliminateWrongChoice: {},
 }
 
+const (
+	SitoneEffectScoutRecon       = "scout_recon"
+	SitoneEffectEvadeMissing     = "evade_missing"
+	SitoneEffectFortify          = "fortify"
+	SitoneEffectDeathGuard       = "death_guard"
+	SitoneEffectStealBoost       = "steal_boost"
+	SitoneEffectDefensePierce    = "defense_pierce"
+	SitoneEffectFatigueRelief    = "fatigue_relief"
+	SitoneEffectRescueBoost      = "rescue_boost"
+	SitoneEffectFatigueRecover   = "fatigue_recover"
+	SitoneEffectOpRefund         = "op_refund"
+	SitoneEffectFiresideEmbers   = "fireside_embers"
+	SitoneEffectTurtleDraw       = "turtle_draw"
+	SitoneEffectSemanticChain    = "semantic_chain"
+	SitoneEffectPromptFirewall   = "prompt_firewall"
+	SitoneEffectCommandCalibrate = "command_calibrate"
+	SitoneEffectArchitectureRun  = "architecture_run"
+	SitoneEffectRetransmit       = "retransmit"
+)
+
+var validSitoneEffectKinds = map[string]struct{}{
+	SitoneEffectScoutRecon:       {},
+	SitoneEffectEvadeMissing:     {},
+	SitoneEffectFortify:          {},
+	SitoneEffectDeathGuard:       {},
+	SitoneEffectStealBoost:       {},
+	SitoneEffectDefensePierce:    {},
+	SitoneEffectFatigueRelief:    {},
+	SitoneEffectRescueBoost:      {},
+	SitoneEffectFatigueRecover:   {},
+	SitoneEffectOpRefund:         {},
+	SitoneEffectFiresideEmbers:   {},
+	SitoneEffectTurtleDraw:       {},
+	SitoneEffectSemanticChain:    {},
+	SitoneEffectPromptFirewall:   {},
+	SitoneEffectCommandCalibrate: {},
+	SitoneEffectArchitectureRun:  {},
+	SitoneEffectRetransmit:       {},
+}
+
 type Sitone struct {
 	ID                 string `toml:"id"`
 	Name               string `toml:"name"`
@@ -44,6 +84,12 @@ type Sitone struct {
 	AbilityValue       int    `toml:"ability_value"`
 	AbilityCount       int    `toml:"ability_count"`
 	AbilityDescription string `toml:"ability_description"`
+	Attack             int    `toml:"attack"`
+	Defense            int    `toml:"defense"`
+	Repeatable         bool   `toml:"repeatable"`
+	Unique             bool   `toml:"unique"`
+	EffectKind         string `toml:"effect_kind"`
+	EffectValue        int    `toml:"effect_value"`
 }
 
 type sitonesDocument struct {
@@ -119,6 +165,25 @@ func validateSitones(path string, sitones []Sitone) ([]Sitone, map[string]Sitone
 		if sitone.AbilityDescription == "" {
 			errs = append(errs, fmt.Errorf("%s.ability_description is required", location))
 		}
+		if sitone.Attack < 0 {
+			errs = append(errs, fmt.Errorf("%s.attack must be greater than or equal to 0", location))
+		}
+		if sitone.Defense < 0 {
+			errs = append(errs, fmt.Errorf("%s.defense must be greater than or equal to 0", location))
+		}
+		if sitone.Repeatable == sitone.Unique {
+			errs = append(errs, fmt.Errorf("%s: exactly one of repeatable and unique must be true", location))
+		}
+		if sitone.EffectKind != "" {
+			if _, ok := validSitoneEffectKinds[sitone.EffectKind]; !ok {
+				errs = append(errs, fmt.Errorf("%s.effect_kind must be one of %s", location, sortedKeys(validSitoneEffectKinds)))
+			}
+			if sitone.EffectValue <= 0 {
+				errs = append(errs, fmt.Errorf("%s.effect_value must be greater than 0 when effect_kind is set", location))
+			}
+		} else if sitone.EffectValue != 0 {
+			errs = append(errs, fmt.Errorf("%s.effect_value must be 0 unless effect_kind is set", location))
+		}
 
 		normalized = append(normalized, sitone)
 	}
@@ -150,5 +215,6 @@ func normalizeSitone(sitone Sitone) Sitone {
 	sitone.AbilityName = strings.TrimSpace(sitone.AbilityName)
 	sitone.AbilityKind = strings.TrimSpace(sitone.AbilityKind)
 	sitone.AbilityDescription = strings.TrimSpace(sitone.AbilityDescription)
+	sitone.EffectKind = strings.TrimSpace(sitone.EffectKind)
 	return sitone
 }

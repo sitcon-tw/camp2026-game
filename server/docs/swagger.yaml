@@ -921,9 +921,21 @@ definitions:
       abilityValue:
         example: 5
         type: integer
+      attack:
+        example: 3
+        type: integer
+      defense:
+        example: 6
+        type: integer
       description:
         example: 修 bug、分享解法、完成技術任務。
         type: string
+      effectKind:
+        example: fortify
+        type: string
+      effectValue:
+        example: 8
+        type: integer
       iconPath:
         example: /game-icons/stones/basic_blue.png
         type: string
@@ -936,12 +948,18 @@ definitions:
       rarity:
         example: base
         type: string
+      repeatable:
+        example: true
+        type: boolean
       style:
         example: default
         type: string
       type:
         example: engineering
         type: string
+      unique:
+        example: false
+        type: boolean
     type: object
   communitystands.ClaimResponse:
     properties:

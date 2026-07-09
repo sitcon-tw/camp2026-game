@@ -60,7 +60,8 @@ func New(ctx context.Context) (*Application, error) {
 		MongoDB:              mongoDB,
 		AdminPassword:        cfg.AdminPassword,
 		AdminCookieSecure:    cfg.AdminCookieSecure,
-		RecoverMatchSessions: true,
+		RecoverMatchSessions:  true,
+		StartTerritorySweeper: true,
 	})
 
 	return &Application{

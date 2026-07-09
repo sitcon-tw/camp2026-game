@@ -24,6 +24,12 @@ type SitoneResponse struct {
 	AbilityValue       int    `json:"abilityValue" example:"5"`
 	AbilityCount       int    `json:"abilityCount" example:"0"`
 	AbilityDescription string `json:"abilityDescription" example:"答對時分數提高 5%。"`
+	Attack             int    `json:"attack" example:"3"`
+	Defense            int    `json:"defense" example:"6"`
+	Repeatable         bool   `json:"repeatable" example:"true"`
+	Unique             bool   `json:"unique" example:"false"`
+	EffectKind         string `json:"effectKind,omitempty" example:"fortify"`
+	EffectValue        int    `json:"effectValue,omitempty" example:"8"`
 }
 
 // ListSitones godoc
@@ -65,6 +71,12 @@ func mapSitones(sitones []content.Sitone) []SitoneResponse {
 			AbilityValue:       sitone.AbilityValue,
 			AbilityCount:       sitone.AbilityCount,
 			AbilityDescription: sitone.AbilityDescription,
+			Attack:             sitone.Attack,
+			Defense:            sitone.Defense,
+			Repeatable:         sitone.Repeatable,
+			Unique:             sitone.Unique,
+			EffectKind:         sitone.EffectKind,
+			EffectValue:        sitone.EffectValue,
 		})
 	}
 	return out

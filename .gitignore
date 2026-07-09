@@ -8,6 +8,7 @@ Desktop.ini
 # Editor and IDE state
 .idea/
 .vscode/
+.claude/
 *.swp
 *.swo
 *~
@@ -27,6 +28,12 @@ tmp/
 
 # Generated backend content
 server/content/quiz_questions.csv
+
+# Local planning documents
+docs/sitcon-coc-design.md
+docs/sitcon-coc-sitone-values.md
+docs/openfront-map/
+docs/territory-map/
 
 # Package manager caches
 .pnpm-store/

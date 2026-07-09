@@ -494,6 +494,12 @@ ability_kind = "material_drop_rate"
 ability_value = 5
 ability_count = 0
 ability_description = "素材掉落率提高 5%。"
+attack = 12
+defense = 5
+repeatable = true
+unique = false
+effect_kind = "scout_recon"
+effect_value = 12
 `),
 		"items.toml": strings.TrimSpace(`
 [[items]]

@@ -68,6 +68,8 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Put("/admin/community-stands/{standID}", h.UpdateCommunityStand)
 	api.Delete("/admin/community-stands/{standID}", h.DeleteCommunityStand)
 	api.Put("/admin/teams/{teamID}", h.UpdateTeam)
+	api.Post("/admin/yansan/boss/open", h.OpenYansanBoss)
+	api.Post("/admin/yansan/boss/close", h.CloseYansanBoss)
 }
 
 type LoginRequest struct {

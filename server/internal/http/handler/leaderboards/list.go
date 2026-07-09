@@ -116,7 +116,7 @@ func (h *Handler) leaderboard(ctx context.Context, scope string, currentPlayer m
 func (h *Handler) findTeams(ctx context.Context) ([]mongomodel.Team, error) {
 	cursor, err := h.db.Collection(mongomodel.TeamsCollection).Find(
 		ctx,
-		bson.M{},
+		bson.M{"is_system": bson.M{"$ne": true}},
 		options.Find().SetSort(bson.D{{Key: "name", Value: 1}}),
 	)
 	if err != nil {
