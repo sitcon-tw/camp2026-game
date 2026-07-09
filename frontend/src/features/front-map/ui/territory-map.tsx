@@ -124,14 +124,14 @@ export function TerritoryMap({
   }
 
   return (
-    <Card className="mx-[calc(50%_-_50vw)] w-screen max-w-none gap-3 overflow-hidden rounded-none border-x-0 py-4 shadow-none">
+    <Card className="-mx-4 w-[calc(100%+2rem)] gap-3 overflow-hidden rounded-none border-x-0 py-4 shadow-none">
       <CardHeader className="px-4">
         <CardTitle className="text-2xl font-black">戰線地圖</CardTitle>
       </CardHeader>
       <CardContent className="px-0 pb-0">
         <div
           ref={frameRef}
-          className="bg-surface-raised border-ink relative h-[min(100vw,900px)] min-h-[520px] w-full overflow-hidden border-y-2"
+          className="bg-surface-raised border-ink relative h-[520px] w-full overflow-hidden border-y-2"
         >
           <canvas
             ref={canvasRef}
