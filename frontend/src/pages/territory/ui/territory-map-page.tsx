@@ -12,6 +12,7 @@ import { ActiveMissionCard } from "@/features/territory/ui/active-mission-card"
 import { AttackInitiateDialog } from "@/features/territory/ui/attack-initiate-dialog"
 import { BossStatusBanner } from "@/features/territory/ui/boss-status-banner"
 import { TerritoryMap } from "@/features/territory/ui/territory-map"
+import { AppError } from "@/shared/api/error"
 import { gameApi } from "@/shared/api/game"
 import {
   territoryApi,
@@ -20,6 +21,7 @@ import {
 } from "@/shared/api/territory"
 import { tierMeta } from "@/shared/lib/territory-labels"
 import { Badge } from "@/shared/ui/badge"
+import { Button } from "@/shared/ui/button"
 import { Card } from "@/shared/ui/card"
 import { GameIcon } from "@/shared/ui/game-icon"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
@@ -50,6 +52,15 @@ const TERRITORY_ACTION_LINKS = [
   },
 ] as const
 
+function territoryLoadErrorMessage(error: unknown) {
+  if (error instanceof AppError) {
+    if (error.status === 401) return "請先重新登入後再查看戰局。"
+    if (error.status === 404) return "戰局 API 尚未就緒，請確認後端已部署最新版。"
+    return error.message
+  }
+  return "戰局資料讀取失敗，請稍後再試。"
+}
+
 export function TerritoryMapPage() {
   const [attackTarget, setAttackTarget] =
     useState<TerritoryStandingTeam | null>(null)
@@ -60,26 +71,34 @@ export function TerritoryMapPage() {
     queryFn: territoryApi.standings,
     refetchInterval: 30000,
   })
+  const canLoadTerritoryDetails = standingsQuery.isSuccess
   const bossQuery = useQuery({
     queryKey: ["yansan", "boss", "status"],
     queryFn: territoryApi.bossStatus,
+    enabled: canLoadTerritoryDetails,
     refetchInterval: (query) =>
       query.state.data?.bossStatus === "under_attack" ? 5000 : 20000,
   })
   const defenseQuery = useQuery({
     queryKey: ["territory", "defense"],
     queryFn: territoryApi.defense,
+    enabled: canLoadTerritoryDetails,
   })
   const statusQuery = useQuery({
     queryKey: ["me", "status"],
     queryFn: gameApi.status,
+    enabled: canLoadTerritoryDetails,
   })
   const catalogQuery = useQuery({
     queryKey: ["catalog", "sitones"],
     queryFn: gameApi.catalogSitones,
+    enabled: canLoadTerritoryDetails,
   })
 
   const standings = standingsQuery.data
+  const standingsErrorMessage = standingsQuery.isError
+    ? territoryLoadErrorMessage(standingsQuery.error)
+    : null
   const serverMissionID = standings?.activeMissionId
   const activeMissionID = missionID || serverMissionID || ""
   const myTeam = standings?.teams.find(
@@ -147,9 +166,7 @@ export function TerritoryMapPage() {
       ) : (
         <Card className="rounded-[22px] px-4 py-4">
           <span className="text-muted-foreground text-sm font-extrabold">
-            {standingsQuery.isError
-              ? "戰局資料讀取失敗，請稍後再試"
-              : "正在同步戰局分層"}
+            {standingsErrorMessage ?? "正在同步戰局分層"}
           </span>
         </Card>
       )}
@@ -177,6 +194,23 @@ export function TerritoryMapPage() {
             bossUnderAttack={bossQuery.data?.bossStatus === "under_attack"}
             onSelectRegion={handleSelectRegion}
           />
+        ) : standingsQuery.isError ? (
+          <div className="grid min-h-[320px] place-items-center px-4 py-8 text-center">
+            <div className="grid max-w-xs gap-3">
+              <p className="text-ink text-lg font-black">無法展開戰地圖</p>
+              <p className="text-muted-foreground text-sm leading-relaxed font-bold">
+                {standingsErrorMessage}
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  void standingsQuery.refetch()
+                }}
+              >
+                重新載入
+              </Button>
+            </div>
+          </div>
         ) : (
           <div className="text-muted-foreground grid min-h-[320px] place-items-center text-sm font-extrabold">
             正在展開作戰地圖
