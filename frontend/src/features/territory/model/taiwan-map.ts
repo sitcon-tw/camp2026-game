@@ -4,6 +4,7 @@
  *
  * 這份資料不是官方地圖向量檔轉製，而是依公開校園地圖中的相對位置
  * 自行繪製：西側運動場與綠地、東北竹湖、中央教學區、南側宿舍區。
+ * 領地以大面積相鄰分區呈現，接近 OpenFront / Territorial 類戰略圖。
  */
 
 export type TerritoryRegion = {
@@ -29,9 +30,9 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     county: "南宿舍區",
     slot: 0,
     isBoss: false,
-    path: "M218 320 L268 320 L268 354 L218 354 Z",
-    labelX: 243,
-    labelY: 333,
+    path: "M170 278 L244 248 L328 276 L292 340 L214 358 L142 344 Z",
+    labelX: 225,
+    labelY: 309,
   },
   {
     id: "dorm-8",
@@ -39,8 +40,8 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     county: "北門宿舍區",
     slot: 1,
     isBoss: false,
-    path: "M258 68 L306 68 L306 104 L258 104 Z",
-    labelX: 282,
+    path: "M252 34 L334 42 L386 76 L360 126 L316 130 L252 116 Z",
+    labelX: 316,
     labelY: 82,
   },
   {
@@ -49,9 +50,9 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     county: "北門宿舍區",
     slot: 2,
     isBoss: false,
-    path: "M202 64 L250 64 L250 100 L202 100 Z",
-    labelX: 226,
-    labelY: 78,
+    path: "M92 26 L206 20 L252 34 L252 116 L152 126 L118 92 Z",
+    labelX: 186,
+    labelY: 72,
   },
   {
     id: "bamboo-house",
@@ -59,9 +60,9 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     county: "竹湖旁",
     slot: 3,
     isBoss: false,
-    path: "M312 104 L350 104 L358 136 L320 146 L300 128 Z",
-    labelX: 329,
-    labelY: 122,
+    path: "M252 116 L316 130 L302 176 L344 220 L328 276 L244 248 L226 174 Z",
+    labelX: 289,
+    labelY: 198,
   },
   {
     id: "dorm-10",
@@ -69,9 +70,9 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     county: "南宿舍區",
     slot: 4,
     isBoss: false,
-    path: "M162 320 L210 320 L210 354 L162 354 Z",
-    labelX: 186,
-    labelY: 333,
+    path: "M152 126 L226 174 L244 248 L170 278 L92 218 L152 194 Z",
+    labelX: 171,
+    labelY: 213,
   },
   {
     id: "dorm-11",
@@ -79,9 +80,9 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     county: "北門宿舍區",
     slot: 5,
     isBoss: false,
-    path: "M314 68 L360 68 L360 104 L314 104 Z",
-    labelX: 337,
-    labelY: 82,
+    path: "M360 126 L386 76 L390 68 L392 214 L344 220 L302 176 L316 130 Z",
+    labelX: 355,
+    labelY: 151,
   },
   {
     id: "dorm-12",
@@ -89,9 +90,9 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     county: "南門宿舍區",
     slot: 6,
     isBoss: false,
-    path: "M110 292 L158 292 L158 332 L110 332 Z",
-    labelX: 134,
-    labelY: 308,
+    path: "M44 192 L92 218 L170 278 L142 344 L82 370 L36 328 L36 234 Z",
+    labelX: 92,
+    labelY: 289,
   },
   {
     id: "dorm-13",
@@ -99,9 +100,9 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     county: "南門宿舍區",
     slot: 7,
     isBoss: false,
-    path: "M164 364 L212 364 L212 394 L164 394 Z",
-    labelX: 188,
-    labelY: 374,
+    path: "M82 370 L142 344 L214 358 L232 402 L102 382 Z",
+    labelX: 155,
+    labelY: 371,
   },
   {
     id: "women-dorm-2",
@@ -109,9 +110,9 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     county: "北門餐廳區",
     slot: 8,
     isBoss: false,
-    path: "M172 104 L226 104 L226 140 L172 140 Z",
-    labelX: 199,
-    labelY: 118,
+    path: "M36 82 L92 26 L118 92 L152 126 L152 194 L92 218 L44 192 L36 132 Z",
+    labelX: 91,
+    labelY: 139,
   },
   {
     id: "south-dorm",
@@ -119,9 +120,9 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     county: "南門",
     slot: 9,
     isBoss: false,
-    path: "M260 362 L312 362 L312 394 L260 394 Z",
-    labelX: 286,
-    labelY: 374,
+    path: "M214 358 L292 340 L342 386 L232 402 Z",
+    labelX: 268,
+    labelY: 375,
   },
   {
     id: "yansan",
@@ -129,8 +130,8 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     county: "竹湖餐廳區",
     slot: 10,
     isBoss: true,
-    path: "M300 302 L354 302 L354 342 L300 342 Z",
-    labelX: 327,
-    labelY: 318,
+    path: "M328 276 L392 214 L392 330 L342 386 L292 340 Z",
+    labelX: 351,
+    labelY: 313,
   },
 ]

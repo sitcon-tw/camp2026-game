@@ -27,6 +27,14 @@ function regionFillClassName(
   return tierMeta(team.tier).fillClassName
 }
 
+const CAMPUS_ROAD_PATHS = [
+  "M38 104 C82 80 122 70 166 70 C240 70 296 84 360 132",
+  "M64 356 C126 328 174 302 216 260 C252 226 284 174 360 136",
+  "M92 104 L92 300 M142 86 L142 342 M230 64 L230 338 M326 76 L326 356",
+  "M72 160 C108 146 158 146 204 158 C250 170 304 166 354 146",
+  "M76 238 C130 224 192 226 246 238 C284 246 318 244 360 226",
+]
+
 export function TerritoryMap({
   teams,
   myTeamId,
@@ -52,31 +60,6 @@ export function TerritoryMap({
         className="fill-[#b7d991] stroke-ink stroke-[2.5]"
       />
       <path
-        d="M38 104 C82 80 122 70 166 70 C240 70 296 84 360 132"
-        className="fill-none stroke-[#f4c54d] stroke-[18]"
-        strokeLinecap="round"
-      />
-      <path
-        d="M64 356 C126 328 174 302 216 260 C252 226 284 174 360 136"
-        className="fill-none stroke-[#f4c54d] stroke-[18]"
-        strokeLinecap="round"
-      />
-      <path
-        d="M92 104 L92 300 M142 86 L142 342 M230 64 L230 338 M326 76 L326 356"
-        className="fill-none stroke-[#efe6c6] stroke-[10]"
-        strokeLinecap="round"
-      />
-      <path
-        d="M72 160 C108 146 158 146 204 158 C250 170 304 166 354 146"
-        className="fill-none stroke-[#efe6c6] stroke-[10]"
-        strokeLinecap="round"
-      />
-      <path
-        d="M76 238 C130 224 192 226 246 238 C284 246 318 244 360 226"
-        className="fill-none stroke-[#efe6c6] stroke-[10]"
-        strokeLinecap="round"
-      />
-      <path
         d="M46 84 L94 36 L206 30 L310 38 L380 76"
         className="fill-none stroke-[#fff7df] stroke-[3]"
         strokeLinecap="round"
@@ -96,20 +79,6 @@ export function TerritoryMap({
       />
       <text x="42" y="368" className="fill-ink text-[9px] font-black">
         新安路 / 南大門
-      </text>
-      <path
-        d="M42 138 C66 128 100 132 118 154 C136 178 130 218 104 236 C78 254 44 244 34 214 C22 180 20 152 42 138 Z"
-        className="fill-[#7bc6d8] stroke-[#28798d] stroke-[2]"
-      />
-      <text x="70" y="190" textAnchor="middle" className="fill-ink text-[9px] font-black">
-        工二湖
-      </text>
-      <path
-        d="M312 122 C342 102 380 112 388 146 C398 188 356 210 322 196 C290 182 284 140 312 122 Z"
-        className="fill-[#7bc6d8] stroke-[#28798d] stroke-[2]"
-      />
-      <text x="344" y="160" textAnchor="middle" className="fill-ink text-[9px] font-black">
-        竹湖
       </text>
       <ellipse
         cx="82"
@@ -178,7 +147,7 @@ export function TerritoryMap({
               }
               className={[
                 fillClassName,
-                "stroke-ink cursor-pointer stroke-[2] transition-opacity hover:opacity-80 focus-visible:opacity-80",
+                "stroke-ink cursor-pointer fill-opacity-85 stroke-[2.5] transition-opacity hover:fill-opacity-100 focus-visible:fill-opacity-100",
                 region.isBoss && bossUnderAttack
                   ? "fill-destructive animate-pulse"
                   : "",
@@ -204,6 +173,49 @@ export function TerritoryMap({
           </g>
         )
       })}
+
+      <path
+        d="M42 138 C66 128 100 132 118 154 C136 178 130 218 104 236 C78 254 44 244 34 214 C22 180 20 152 42 138 Z"
+        className="fill-[#71bfd1] stroke-[#1e6476] stroke-[2.5]"
+        pointerEvents="none"
+      />
+      <text
+        x="70"
+        y="190"
+        textAnchor="middle"
+        className="fill-ink text-[9px] font-black"
+        pointerEvents="none"
+      >
+        工二湖
+      </text>
+      <path
+        d="M312 122 C342 102 380 112 388 146 C398 188 356 210 322 196 C290 182 284 140 312 122 Z"
+        className="fill-[#71bfd1] stroke-[#1e6476] stroke-[2.5]"
+        pointerEvents="none"
+      />
+      <text
+        x="344"
+        y="160"
+        textAnchor="middle"
+        className="fill-ink text-[9px] font-black"
+        pointerEvents="none"
+      >
+        竹湖
+      </text>
+      {CAMPUS_ROAD_PATHS.map((path) => (
+        <path
+          key={path}
+          d={path}
+          className="fill-none stroke-[#fff4cc] stroke-[5] opacity-85"
+          strokeLinecap="round"
+          pointerEvents="none"
+        />
+      ))}
+      <path
+        d="M36 82 L92 26 L206 20 L316 28 L390 68 L392 330 L342 386 L232 402 L102 382 L36 328 Z"
+        className="fill-none stroke-ink stroke-[3]"
+        pointerEvents="none"
+      />
 
       {TAIWAN_TERRITORY_REGIONS.map((region) => {
         const team = teamOfRegion(region)
