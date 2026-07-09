@@ -640,9 +640,9 @@ description = "牠慢慢走，慢慢畫，把每一次轉彎都留成可以回�
 icon_path = "/game-icons/stones/stone_python_turtle.png"
 ability_name = "慢畫思路"
 ability_kind = "eliminate_wrong_choice"
-ability_value = 10
+ability_value = 2
 ability_count = 3
-ability_description = "題目開始時有 5% 機率刪去 3 個錯誤選項。"
+ability_description = "題目開始時有 2% 機率刪去 3 個錯誤選項。"
 
 [[sitones]]
 id = "stone_fireside"
@@ -682,9 +682,9 @@ description = "小石在資料矩陣裡逐字甦醒，用 self-attention 接住�
 icon_path = "/game-icons/stones/stone_human_llm.png"
 ability_name = "語意接龍"
 ability_kind = "eliminate_wrong_choice"
-ability_value = 50
+ability_value = 10
 ability_count = 2
-ability_description = "題目開始時有 50% 機率刪去 2 個錯誤選項。"
+ability_description = "題目開始時有 10% 機率刪去 2 個錯誤選項。"
 
 [[sitones]]
 id = "stone_von_neumann"
@@ -696,9 +696,9 @@ description = "牠把輸入、記憶、計算和輸出分成不同位置，再�
 icon_path = "/game-icons/stones/stone_von_neumann.png"
 ability_name = "架構運轉"
 ability_kind = "material_drop_rate"
-ability_value = 30
+ability_value = 25
 ability_count = 0
-ability_description = "對戰結束時小石掉落率提高 30%。"
+ability_description = "對戰結束時小石掉落率提高 25%。"
 
 
 [[sitones]]
@@ -713,7 +713,7 @@ ability_name = "要求重傳"
 ability_kind = "answer_score_bonus"
 ability_value = 25
 ability_count = 0
-ability_description = "答對時分數提高 25%。"
+ability_description = "答對時分數提高 18%。"
 
 [[sitones]]
 id = "stone_prompt_injection"
@@ -725,6 +725,6 @@ description = "牠最擅長從看似正常的句子裡找到奇怪的入口。�
 icon_path = "/game-icons/stones/stone_prompt_injection.png"
 ability_name = "提示防火牆"
 ability_kind = "eliminate_wrong_choice"
-ability_value = 80
+ability_value = 30
 ability_count = 1
-ability_description = "題目開始時有 80% 機率刪去 1 個錯誤選項。"
+ability_description = "題目開始時有 30% 機率刪去 1 個錯誤選項。"
