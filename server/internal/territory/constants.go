@@ -7,8 +7,16 @@ import "time"
 // queries.
 const TeamYansanID = "team_yansan"
 
+// TeamStaffID is the staff assignment team. It exists for staff tooling, but
+// does not participate in territory standings or boss thresholds.
+const TeamStaffID = "team-010"
+
 // YansanTeamName is the display name of the boss team.
 const YansanTeamName = "研三舍"
+
+func IsTerritoryParticipantTeam(teamID string) bool {
+	return teamID != "" && teamID != TeamYansanID && teamID != TeamStaffID
+}
 
 const (
 	// VoteDeadlineDuration is how long an attack mission stays in voting

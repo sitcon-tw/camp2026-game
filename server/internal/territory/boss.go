@@ -20,6 +20,10 @@ import (
 // boss is not open.
 var ErrBossNotOpen = errors.New("boss is not open for attack")
 
+// ErrNotTerritoryParticipant is returned when a non-playing team attempts
+// to join territory-only flows.
+var ErrNotTerritoryParticipant = errors.New("team does not participate in territory")
+
 // BossState reads the current boss state, defaulting to closed.
 func (s *Service) BossState(ctx context.Context) (mongomodel.BossState, error) {
 	var state mongomodel.BossState
@@ -103,6 +107,10 @@ func (s *Service) CloseBoss(ctx context.Context, closedBy string) (mongomodel.Bo
 // every pending yansan process immediately fails (aborted_boss): stones
 // revert to their prior state and open power is NOT refunded (design §12).
 func (s *Service) RegisterBossAttack(ctx context.Context, player mongomodel.Player) (mongomodel.BossState, bool, error) {
+	if !IsTerritoryParticipantTeam(player.TeamID) {
+		return mongomodel.BossState{}, false, ErrNotTerritoryParticipant
+	}
+
 	var launched bool
 	var state mongomodel.BossState
 
@@ -255,7 +263,7 @@ func (s *Service) abortPendingYansanProcesses(ctx context.Context, now time.Time
 // "all player teams participate", design §12 decision 11).
 func (s *Service) playerTeamCount(ctx context.Context) (int, error) {
 	count, err := s.DB.Collection(mongomodel.TeamsCollection).CountDocuments(ctx, bson.M{
-		"_id":       bson.M{"$ne": TeamYansanID},
+		"_id":       bson.M{"$nin": bson.A{TeamYansanID, TeamStaffID}},
 		"is_system": bson.M{"$ne": true},
 	})
 	return int(count), err

@@ -30,14 +30,6 @@ import { PageHeader } from "@/shared/ui/page-header"
 
 const TIER_LEGEND: TerritoryTier[] = ["leader", "contested", "challenger"]
 
-const TERRITORY_ACTION_LINKS = [
-  {
-    label: "排行榜",
-    to: "/leaderboard",
-    iconPath: "/game-icons/features/leaderboard.png",
-  },
-] as const
-
 function territoryLoadErrorMessage(error: unknown) {
   if (error instanceof AppError) {
     if (error.status === 401) return "請先重新登入後再查看戰局。"
@@ -297,29 +289,6 @@ export function TerritoryMapPage() {
           </span>
         </div>
       </Card>
-
-      <section className="grid grid-cols-2 gap-2" aria-label="其他入口">
-        {TERRITORY_ACTION_LINKS.map(({ label, to, iconPath }) => (
-          <Link
-            key={to}
-            to={to}
-            className="bg-card border-ink focus-visible:outline-power group grid min-h-[76px] cursor-pointer grid-cols-[52px_1fr] items-center gap-2.5 rounded-[18px] border-2 px-3 py-3 text-inherit no-underline shadow-[4px_4px_0_rgba(23,35,58,0.12)] transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-x-px active:translate-y-px"
-          >
-            <span className="bg-background/70 border-border grid size-[52px] place-items-center rounded-[16px] border shadow-[inset_0_-2px_0_rgba(23,35,58,0.08)] transition-transform group-hover:-rotate-2">
-              <GameIcon
-                iconPath={iconPath}
-                alt=""
-                className="size-10 rounded-none"
-                imageClassName="drop-shadow-[0_2px_0_rgba(23,35,58,0.18)]"
-                fallback={null}
-              />
-            </span>
-            <span className="min-w-0 text-left text-[15px] leading-tight font-black">
-              {label}
-            </span>
-          </Link>
-        ))}
-      </section>
 
       <AttackInitiateDialog
         open={attackTarget != null}

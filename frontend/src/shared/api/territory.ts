@@ -110,28 +110,6 @@ export const BossStatusSchema = z.enum([
   "finished",
 ])
 
-const ProtectedSitoneSchema = z.object({
-  id: z.string(),
-  sitoneId: z.string(),
-  originalTeamId: z.string().optional(),
-  originalPlayerId: z.string().optional(),
-})
-
-const YansanConvertProcessSchema = z.object({
-  id: z.string(),
-  captiveId: z.string().optional(),
-  sitoneId: z.string().optional(),
-  status: z.string().optional(),
-})
-
-const YansanStatusResponseSchema = z.object({
-  bossStatus: BossStatusSchema,
-  servicesAvailable: z.boolean(),
-  protectedSitones: nullableArray(ProtectedSitoneSchema),
-  teamRedeemCount: z.number(),
-  convertProcesses: nullableArray(YansanConvertProcessSchema),
-})
-
 const YansanActionResultSchema = z.object({
   id: z.string().optional(),
   success: z.boolean().optional(),
@@ -186,8 +164,6 @@ export type DefenseConfig = z.infer<typeof DefenseConfigSchema>
 export type CaptiveStatus = z.infer<typeof CaptiveStatusSchema>
 export type Captive = z.infer<typeof CaptiveSchema>
 export type BossStatus = z.infer<typeof BossStatusSchema>
-export type ProtectedSitone = z.infer<typeof ProtectedSitoneSchema>
-export type YansanStatusResponse = z.infer<typeof YansanStatusResponseSchema>
 export type BossStatusResponse = z.infer<typeof BossStatusResponseSchema>
 export type Rescue = z.infer<typeof RescueSchema>
 
@@ -247,25 +223,6 @@ export const territoryApi = {
     const json = await apiClient.post(
       `/api/territory/captives/${encodeURIComponent(captiveID)}/convert`,
     )
-    return YansanActionResultSchema.parse(json)
-  },
-
-  async yansanStatus() {
-    const json = await apiClient.get("/api/yansan/status")
-    return YansanStatusResponseSchema.parse(json)
-  },
-
-  async yansanRedeem(sitoneID: string) {
-    const json = await apiClient.post("/api/yansan/redeem", {
-      json: { sitoneId: sitoneID },
-    })
-    return YansanActionResultSchema.parse(json)
-  },
-
-  async yansanConvert(captiveID: string) {
-    const json = await apiClient.post("/api/yansan/convert", {
-      json: { captiveId: captiveID },
-    })
     return YansanActionResultSchema.parse(json)
   },
 

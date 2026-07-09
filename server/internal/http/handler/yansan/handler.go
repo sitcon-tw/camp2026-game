@@ -36,9 +36,6 @@ func New(dep Dependencies) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(api chi.Router) {
-	api.Get("/yansan/status", h.Status)
-	api.Post("/yansan/redeem", h.Redeem)
-	api.Post("/yansan/convert", h.Convert)
 	api.Get("/yansan/boss/status", h.BossStatus)
 	api.Post("/yansan/boss/attack", h.BossAttack)
 }

@@ -77,8 +77,7 @@ const bossStatusMetaMap: Record<
   },
   under_attack: {
     label: "激戰中",
-    description:
-      "研三舍正遭受攻擊，贖回服務暫停；進行中的申請視為失敗，已支付的開源力不予退還。",
+    description: "研三舍 Boss 戰進行中，等待工作人員公告戰役結果。",
     badgeClassName: "bg-destructive text-white",
   },
   finished: {

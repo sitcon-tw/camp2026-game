@@ -108,7 +108,7 @@ export function AttackInitiateDialog({
 
         <div className="grid gap-3">
           <p className="text-muted-foreground text-xs leading-relaxed font-bold">
-            發起後會立刻扣除開源力並鎖定出戰小石；出戰小石可能進入研三舍保管、失聯或逝世。
+            發起後會立刻扣除開源力並鎖定出戰小石；出戰小石可能戰損、失聯或逝世。
           </p>
           <DialogFooter className="grid grid-cols-2 gap-2 sm:grid-cols-2">
             <Button

@@ -216,7 +216,7 @@ func findCombatTeams(ctx context.Context, db *mongo.Database) ([]mongomodel.Team
 	cursor, err := db.Collection(mongomodel.TeamsCollection).Find(
 		ctx,
 		bson.M{
-			"_id":       bson.M{"$ne": TeamYansanID},
+			"_id":       bson.M{"$nin": bson.A{TeamYansanID, TeamStaffID}},
 			"is_system": bson.M{"$ne": true},
 		},
 		options.Find().SetSort(bson.D{{Key: "_id", Value: 1}}),
