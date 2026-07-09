@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import {
@@ -32,16 +32,6 @@ const TIER_LEGEND: TerritoryTier[] = ["leader", "contested", "challenger"]
 
 const TERRITORY_ACTION_LINKS = [
   {
-    label: "防守配置",
-    to: "/territory/defense",
-    iconPath: "/game-icons/items/item_mission_map.png",
-  },
-  {
-    label: "研三舍",
-    to: "/yansan",
-    iconPath: "/game-icons/items/item_star_village_signpost.png",
-  },
-  {
     label: "排行榜",
     to: "/leaderboard",
     iconPath: "/game-icons/features/leaderboard.png",
@@ -59,6 +49,7 @@ function territoryLoadErrorMessage(error: unknown) {
 
 export function TerritoryMapPage() {
   const navigate = useNavigate()
+  const mapCardRef = useRef<HTMLDivElement>(null)
   const [attackTarget, setAttackTarget] =
     useState<TerritoryStandingTeam | null>(null)
   const [missionID, setMissionID] = useState(getStoredMissionID)
@@ -110,6 +101,8 @@ export function TerritoryMapPage() {
     (team) => team.teamId === standings.myTeamId,
   )
   const canAttack = myTeam?.canAttack ?? false
+  const bossStatus = bossQuery.data?.bossStatus
+  const hasActiveMission = activeMissionID !== ""
 
   const teamNameOf = (teamID: string | undefined) =>
     standings?.teams.find((team) => team.teamId === teamID)?.name ?? "神秘小隊"
@@ -187,6 +180,44 @@ export function TerritoryMapPage() {
         </Card>
       )}
 
+      {standings && myTeam ? (
+        <section className="grid gap-2" aria-label="目前可執行動作">
+          <ActionPanelButton
+            title="進攻"
+            status={
+              hasActiveMission
+                ? "任務進行中"
+                : canAttack
+                  ? "可發起"
+                  : "只能防守"
+            }
+            tone={canAttack && !hasActiveMission ? "primary" : "muted"}
+            iconPath="/game-icons/items/item_toolbox_key.png"
+            onClick={() => {
+              if (!canAttack || hasActiveMission) return
+              mapCardRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              })
+            }}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <ActionPanelLink
+              title="防守"
+              status="配置留守"
+              to="/territory/defense"
+              iconPath="/game-icons/items/item_mission_map.png"
+            />
+            <ActionPanelLink
+              title="Boss"
+              status={bossStatus === "open" ? "登記參戰" : "研三舍"}
+              to="/yansan"
+              iconPath="/game-icons/items/item_star_village_signpost.png"
+            />
+          </div>
+        </section>
+      ) : null}
+
       {activeMissionID ? (
         <ActiveMissionCard
           missionID={activeMissionID}
@@ -206,7 +237,7 @@ export function TerritoryMapPage() {
         />
       ) : null}
 
-      <Card className="gap-2 overflow-hidden rounded-[24px] p-3">
+      <Card ref={mapCardRef} className="gap-2 overflow-hidden rounded-[24px] p-3">
         {bossQuery.data ? (
           <Link to="/yansan" className="no-underline">
             <BossStatusBanner
@@ -267,7 +298,7 @@ export function TerritoryMapPage() {
         </div>
       </Card>
 
-      <section className="grid grid-cols-2 gap-2" aria-label="攻防選單">
+      <section className="grid grid-cols-2 gap-2" aria-label="其他入口">
         {TERRITORY_ACTION_LINKS.map(({ label, to, iconPath }) => (
           <Link
             key={to}
@@ -290,11 +321,6 @@ export function TerritoryMapPage() {
         ))}
       </section>
 
-      <p className="text-muted-foreground px-1 text-xs leading-relaxed font-bold">
-        點選可被攻擊的領地即可發起攻擊；領先隊（第 1–3
-        名）只能防守，追趕隊（第 7–9 名）受保護不會被攻擊。
-      </p>
-
       <AttackInitiateDialog
         open={attackTarget != null}
         defenderTeamId={attackTarget?.teamId ?? null}
@@ -311,5 +337,100 @@ export function TerritoryMapPage() {
         }}
       />
     </GamePageShell>
+  )
+}
+
+function ActionPanelButton({
+  title,
+  status,
+  tone,
+  iconPath,
+  onClick,
+}: {
+  title: string
+  status: string
+  tone: "primary" | "muted"
+  iconPath: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "border-ink focus-visible:outline-power grid min-h-[72px] grid-cols-[52px_1fr_auto] items-center gap-3 rounded-[18px] border-2 px-3 py-2.5 text-left shadow-[4px_4px_0_rgba(23,35,58,0.12)] transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-x-px active:translate-y-px",
+        tone === "primary" ? "bg-primary text-primary-foreground" : "bg-card",
+      ].join(" ")}
+    >
+      <ActionIcon iconPath={iconPath} />
+      <span className="min-w-0">
+        <span className="block text-base leading-tight font-black">{title}</span>
+        <span
+          className={[
+            "block text-xs font-extrabold",
+            tone === "primary"
+              ? "text-primary-foreground/75"
+              : "text-muted-foreground",
+          ].join(" ")}
+        >
+          {status}
+        </span>
+      </span>
+      <span className="text-xl font-black" aria-hidden>
+        →
+      </span>
+    </button>
+  )
+}
+
+function ActionPanelLink({
+  title,
+  status,
+  to,
+  iconPath,
+}: {
+  title: string
+  status: string
+  to: "/territory/defense" | "/yansan"
+  iconPath: string
+}) {
+  return (
+    <Link
+      to={to}
+      className="bg-card border-ink focus-visible:outline-power grid min-h-[72px] grid-cols-[44px_1fr] items-center gap-2.5 rounded-[18px] border-2 px-3 py-2.5 text-inherit no-underline shadow-[4px_4px_0_rgba(23,35,58,0.12)] transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-x-px active:translate-y-px"
+    >
+      <ActionIcon iconPath={iconPath} compact />
+      <span className="min-w-0">
+        <span className="block text-sm leading-tight font-black">{title}</span>
+        <span className="text-muted-foreground block text-[11px] font-extrabold">
+          {status}
+        </span>
+      </span>
+    </Link>
+  )
+}
+
+function ActionIcon({
+  iconPath,
+  compact = false,
+}: {
+  iconPath: string
+  compact?: boolean
+}) {
+  return (
+    <span
+      className={[
+        "bg-background/70 border-border grid place-items-center rounded-[14px] border shadow-[inset_0_-2px_0_rgba(23,35,58,0.08)]",
+        compact ? "size-11" : "size-[52px]",
+      ].join(" ")}
+    >
+      <GameIcon
+        iconPath={iconPath}
+        alt=""
+        className={compact ? "size-8 rounded-none" : "size-10 rounded-none"}
+        imageClassName="drop-shadow-[0_2px_0_rgba(23,35,58,0.18)]"
+        fallback={null}
+      />
+    </span>
   )
 }

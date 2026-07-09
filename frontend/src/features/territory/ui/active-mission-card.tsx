@@ -225,7 +225,7 @@ export function ActiveMissionCard({
           ) : null}
           {mission.result.lostSitoneIds.length > 0 ? (
             <ResultLine
-              label="被俘"
+              label="研三舍保管"
               ids={mission.result.lostSitoneIds}
               sitoneNameOf={sitoneNameOf}
             />
