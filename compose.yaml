@@ -24,7 +24,7 @@ services:
       retries: 5
       start_period: 5s
     networks:
-      - moniting
+      - app
       - dokploy-network
 
   nginx-exporter:
@@ -39,6 +39,7 @@ services:
     expose:
       - "9113"
     networks:
+      - app
       - moniting
 
   backend:
@@ -84,8 +85,7 @@ services:
       retries: 5
       start_period: 15s
     networks:
-      - moniting
-      - dokploy-network
+      - app
 
   tgbot:
     build:
@@ -110,7 +110,7 @@ services:
       mongodb:
         condition: service_healthy
     networks:
-      - moniting
+      - app
 
   mongodb:
     image: mongo:7.0
@@ -152,7 +152,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - moniting
+      - app
 
   mongodb-exporter:
     image: percona/mongodb_exporter:0.51.0
@@ -169,9 +169,11 @@ services:
       - "--compatible-mode"
       - "--collect-all"
     networks:
+      - app
       - moniting
 
 networks:
+  app:
   moniting:
     external: true
   dokploy-network:
