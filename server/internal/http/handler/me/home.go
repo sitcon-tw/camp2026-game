@@ -5,11 +5,13 @@ import (
 	"math"
 	"net/http"
 	"sort"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
+	"github.com/sitcon-tw/camp2026-game/internal/gamecontrol"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
@@ -50,6 +52,11 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("home summary unavailable", "me_home_item_count_failed", err))
 		return
 	}
+	settings, err := gamecontrol.ReadSettings(r.Context(), h.db)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("home summary unavailable", "me_home_settings_lookup_failed", err))
+		return
+	}
 
 	var team *mongomodel.Team
 	var rank *TeamRankResponse
@@ -83,7 +90,7 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 			ItemCount:   itemCount,
 		},
 		TeamRank: rank,
-		Actions:  homeActions(),
+		Actions:  homeActions(settings),
 	})
 }
 
@@ -397,9 +404,10 @@ func intTotalFromCursor(ctx context.Context, cursor *mongo.Cursor) (int, error) 
 	return totals[0].Total, nil
 }
 
-func homeActions() []HomeActionResponse {
+func homeActions(settings gamecontrol.Settings) []HomeActionResponse {
+	battleEnabled := !settings.BattleOpeningLocked(time.Now())
 	return []HomeActionResponse{
-		{ID: "battle", Label: "知識王戰", Enabled: true},
+		{ID: "battle", Label: "知識王戰", Enabled: battleEnabled},
 		{ID: "shop", Label: "商店", Enabled: true},
 		{ID: "sitones", Label: "小石收藏", Enabled: true},
 		{ID: "inventory", Label: "道具背包", Enabled: true},

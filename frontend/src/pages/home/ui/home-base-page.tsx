@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useEffect } from "react"
-import { ChevronRight, LogOut } from "lucide-react"
+import { ChevronRight, Lock, LogOut } from "lucide-react"
 import { AppError } from "@/shared/api/error"
 import { gameApi } from "@/shared/api/game"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
@@ -14,6 +14,7 @@ import {
 } from "@/shared/ui/game-feature-icon"
 
 const ACTIONS: {
+  id: string
   label: string
   desc: string
   icon: GameFeatureIconName
@@ -21,6 +22,7 @@ const ACTIONS: {
   primary?: boolean
 }[] = [
   {
+    id: "battle",
     label: "知識王試煉",
     desc: "召開戰局或掃描戰碼進場",
     icon: "battle",
@@ -28,12 +30,14 @@ const ACTIONS: {
     to: "/battle",
   },
   {
+    id: "qrcode",
     label: "冒險者通行證",
     desc: "出示身份，也能掃描社群攤位",
     icon: "pass",
     to: "/profile/qr",
   },
   {
+    id: "shop",
     label: "補給商店",
     desc: "消耗開源力兌換素材與外觀",
     icon: "shop",
@@ -42,6 +46,7 @@ const ACTIONS: {
 ]
 
 const STAFF_ACTION: (typeof ACTIONS)[number] = {
+  id: "staff",
   label: "關主發放台",
   desc: "掃描通行證發放小石與戰利品",
   icon: "pass",
@@ -120,8 +125,17 @@ export function HomeBasePage() {
   const itemCount = summary?.itemCount ?? 0
   const rank = teamRank?.rank
   const teamMembers = player?.teamMembers ?? []
-  const actions =
+  const actionEnabledByID = new Map(
+    (data?.actions ?? []).map((action) => [action.id, action.enabled]),
+  )
+  const battleEnabled = actionEnabledByID.get("battle") ?? true
+  const battleLocked = !battleEnabled
+  const baseActions =
     player?.role === "staff" ? [STAFF_ACTION, ...ACTIONS] : ACTIONS
+  const actions = baseActions.map((action) => ({
+    ...action,
+    enabled: actionEnabledByID.get(action.id) ?? true,
+  }))
   const logoutAction = async () => {
     await apiClient.post("/api/auth/logout")
     navigate({ to: "/login", replace: true })
@@ -194,20 +208,33 @@ export function HomeBasePage() {
             Main Quest
           </p>
           <h2 className="mb-2 max-w-[280px] text-[31px] leading-[1.08] font-black tracking-normal">
-            知識王試煉開放
+            {battleLocked ? "知識王試煉暫停" : "知識王試煉開放"}
           </h2>
           <p className="text-primary-foreground/75 mb-4 max-w-[300px] leading-[1.65]">
-            集結隊友、掃描戰碼，進入答題競技場奪取開源力。
+            {battleLocked
+              ? "目前禁止開局，請等待工作人員重新開放戰鬥入口。"
+              : "集結隊友、掃描戰碼，進入答題競技場奪取開源力。"}
           </p>
-          <Link
-            to="/battle"
-            className="border-ink bg-primary text-primary-foreground focus-visible:outline-power relative z-10 flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[14px] border-2 text-base font-black no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
-            style={{ boxShadow: "3px 3px 0 rgba(0,0,0,.18)" }}
-          >
-            <GameFeatureIcon name="battle" className="size-7" />
-            進入競技場
-            <ChevronRight className="size-5" aria-hidden />
-          </Link>
+          {battleLocked ? (
+            <span
+              aria-disabled
+              className="border-ink bg-card text-muted-foreground relative z-10 flex min-h-[50px] w-full cursor-not-allowed items-center justify-center gap-2 rounded-[14px] border-2 text-base font-black no-underline opacity-80"
+              style={{ boxShadow: "3px 3px 0 rgba(0,0,0,.18)" }}
+            >
+              <Lock className="size-5" aria-hidden />
+              禁止進入
+            </span>
+          ) : (
+            <Link
+              to="/battle"
+              className="border-ink bg-primary text-primary-foreground focus-visible:outline-power relative z-10 flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[14px] border-2 text-base font-black no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
+              style={{ boxShadow: "3px 3px 0 rgba(0,0,0,.18)" }}
+            >
+              <GameFeatureIcon name="battle" className="size-7" />
+              進入競技場
+              <ChevronRight className="size-5" aria-hidden />
+            </Link>
+          )}
         </section>
 
         <section className="grid grid-cols-3 gap-[9px]" aria-label="戰力摘要">
@@ -321,38 +348,55 @@ export function HomeBasePage() {
         </section>
 
         <section className="grid gap-[10px]" aria-label="任務入口">
-          {actions.map((action) => (
-            <article
-              key={action.label}
-              className={[
-                "bg-card border-ink grid grid-cols-[52px_1fr_78px] items-center gap-[10px] rounded-[18px] border-2 p-[13px]",
-                action.primary ? "bg-surface-raised" : "",
-              ].join(" ")}
-            >
-              <div
-                className="grid size-[52px] -rotate-[4deg] place-items-center"
-                aria-hidden
+          {actions.map((action) => {
+            const disabled = !action.enabled
+
+            return (
+              <article
+                key={action.label}
+                aria-disabled={disabled || undefined}
+                className={[
+                  "bg-card border-ink grid grid-cols-[52px_1fr_88px] items-center gap-[10px] rounded-[18px] border-2 p-[13px]",
+                  action.primary ? "bg-surface-raised" : "",
+                  disabled ? "opacity-70 grayscale" : "",
+                ].join(" ")}
               >
-                <GameFeatureIcon name={action.icon} className="size-[52px]" />
-              </div>
-              <div>
-                <h3 className="mb-[3px] text-[18px] font-black">
-                  {action.label}
-                </h3>
-                <p className="text-muted-foreground m-0 text-[13px] leading-[1.45]">
-                  {action.desc}
-                </p>
-              </div>
-              <Link
-                to={action.to}
-                className="bg-card border-ink focus-visible:outline-power flex min-h-[40px] items-center justify-center gap-1 rounded-[13px] border-2 text-sm font-black no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
-                style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
-              >
-                出發
-                <ChevronRight className="size-4" aria-hidden />
-              </Link>
-            </article>
-          ))}
+                <div
+                  className="grid size-[52px] -rotate-[4deg] place-items-center"
+                  aria-hidden
+                >
+                  <GameFeatureIcon name={action.icon} className="size-[52px]" />
+                </div>
+                <div>
+                  <h3 className="mb-[3px] text-[18px] font-black">
+                    {action.label}
+                  </h3>
+                  <p className="text-muted-foreground m-0 text-[13px] leading-[1.45]">
+                    {action.desc}
+                  </p>
+                </div>
+                {disabled ? (
+                  <span
+                    aria-disabled
+                    className="bg-card border-ink text-muted-foreground flex min-h-[40px] cursor-not-allowed items-center justify-center gap-1 rounded-[13px] border-2 text-sm font-black opacity-80"
+                    style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
+                  >
+                    <Lock className="size-4" aria-hidden />
+                    禁止
+                  </span>
+                ) : (
+                  <Link
+                    to={action.to}
+                    className="bg-card border-ink focus-visible:outline-power flex min-h-[40px] items-center justify-center gap-1 rounded-[13px] border-2 text-sm font-black no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
+                    style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
+                  >
+                    出發
+                    <ChevronRight className="size-4" aria-hidden />
+                  </Link>
+                )}
+              </article>
+            )
+          })}
         </section>
 
         <section

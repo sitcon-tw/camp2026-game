@@ -9,11 +9,14 @@ const ProblemDetailsSchema = z.object({
   instance: z.string().optional(),
 })
 
+export const battleOpeningLockedMessage = "禁止開局"
+
 const detailMessageMap: Record<string, string> = {
   "answer failed": "送出答案失敗，請稍後再試。",
   "authentication required": "請先登入後再繼續。",
   "avatar update failed": "頭貼更新失敗，請稍後再試。",
   "avatar unavailable": "目前無法讀取頭貼資料，請稍後再試。",
+  "battle opening is locked": battleOpeningLockedMessage,
   "choice has been eliminated": "這個選項已被小石效果排除，請選擇其他答案。",
   "community stand claim failed": "領取攤位獎勵失敗，請稍後再試。",
   "community stand not found": "找不到這個攤位。",
@@ -147,6 +150,12 @@ export function createAppError(input: {
 
 export function isTerminalClientError(error: unknown) {
   return error instanceof AppError && error.status >= 400 && !error.retryable
+}
+
+export function isBattleOpeningLockedError(error: unknown) {
+  return (
+    error instanceof AppError && error.message === battleOpeningLockedMessage
+  )
 }
 
 function localizedErrorMessage(status: number, code: string, message?: string) {

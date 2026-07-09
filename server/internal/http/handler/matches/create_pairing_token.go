@@ -41,7 +41,7 @@ func (h *Handler) CreatePairingToken(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "match pairing is not available"))
 		return
 	}
-	if err := h.ensureMaintenanceAllowsNewMatch(r.Context(), "match pairing failed"); err != nil {
+	if err := h.ensureBattleOpeningAllowed(r.Context(), "match pairing failed"); err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
 	}

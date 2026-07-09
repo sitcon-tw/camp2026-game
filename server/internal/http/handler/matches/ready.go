@@ -33,7 +33,7 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 	if !ok || !h.requireDatabase(w, r) || !h.requireContent(w, r) {
 		return
 	}
-	if err := h.ensureMaintenanceAllowsNewMatch(r.Context(), "match ready failed"); err != nil {
+	if err := h.ensureBattleOpeningAllowed(r.Context(), "match ready failed"); err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
 	}

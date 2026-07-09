@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { QrCode, ScanQrCode } from "lucide-react"
+import { Lock, QrCode, ScanQrCode } from "lucide-react"
 import { type ReactNode, useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import { MatchCodeScannerDialog } from "@/features/battle-qr"
-import { AppError, isTerminalClientError } from "@/shared/api/error"
+import {
+  AppError,
+  isBattleOpeningLockedError,
+  isTerminalClientError,
+} from "@/shared/api/error"
 import { gameApi, type MatchState } from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
 import {
@@ -39,14 +43,22 @@ function LobbyActionCard({
   description,
   children,
   action,
+  locked = false,
 }: {
   title: string
   description: string
   children: ReactNode
   action: ReactNode
+  locked?: boolean
 }) {
   return (
-    <Card className="gap-0 rounded-[22px] px-[15px] py-[15px]">
+    <Card
+      aria-disabled={locked || undefined}
+      className={[
+        "gap-0 rounded-[22px] px-[15px] py-[15px]",
+        locked ? "opacity-65 grayscale" : "",
+      ].join(" ")}
+    >
       <CardHeader className="gap-1 px-0">
         <CardTitle className="text-[22px] leading-tight font-black tracking-normal">
           {title}
@@ -107,6 +119,10 @@ export function BattleLobbyPage() {
     mutationFn: gameApi.createMatchPairing,
     onSuccess: (pairing) => onMatchReady(pairing.match),
     onError: (error) => {
+      if (isBattleOpeningLockedError(error)) {
+        toast.error("禁止開局")
+        return
+      }
       if (error instanceof AppError && error.status === 409) {
         queryClient.invalidateQueries({ queryKey: ["matches", "open"] })
         toast.error("已有進行中的對戰，請重新加入")
@@ -123,6 +139,10 @@ export function BattleLobbyPage() {
     mutationFn: gameApi.createComputerMatch,
     onSuccess: onMatchReady,
     onError: (error) => {
+      if (isBattleOpeningLockedError(error)) {
+        toast.error("禁止開局")
+        return
+      }
       if (error instanceof AppError && error.status === 409) {
         queryClient.invalidateQueries({ queryKey: ["matches", "open"] })
         toast.error("已有進行中的對戰，請重新加入")
@@ -135,6 +155,10 @@ export function BattleLobbyPage() {
     mutationFn: gameApi.scanMatchPairingToken,
     onSuccess: onMatchReady,
     onError: (error) => {
+      if (isBattleOpeningLockedError(error)) {
+        toast.error("禁止開局")
+        return
+      }
       if (error instanceof AppError && error.status === 409) {
         queryClient.invalidateQueries({ queryKey: ["matches", "open"] })
         toast.error("已有進行中的對戰，請重新加入")
@@ -151,11 +175,19 @@ export function BattleLobbyPage() {
     createPairingMutation.isPending ||
     createComputerMutation.isPending ||
     scanPairingMutation.isPending
+  const battleOpeningLocked =
+    computerSettingsQuery.data?.battleOpeningLocked === true
+  const battleOpeningChecking = !openMatch && computerSettingsQuery.isPending
+  const battleOpeningBlocked = !openMatch && battleOpeningLocked
 
   function handleStartPairing() {
     if (battleActionPending) return
     if (openMatch) {
       onMatchReady(openMatch)
+      return
+    }
+    if (battleOpeningLocked) {
+      toast.error("禁止開局")
       return
     }
     createPairingMutation.mutate()
@@ -167,6 +199,10 @@ export function BattleLobbyPage() {
       onMatchReady(openMatch)
       return
     }
+    if (battleOpeningLocked) {
+      toast.error("禁止開局")
+      return
+    }
     scanPairingMutation.mutate(token)
   }
 
@@ -174,6 +210,10 @@ export function BattleLobbyPage() {
     if (battleActionPending) return
     if (openMatch) {
       onMatchReady(openMatch)
+      return
+    }
+    if (battleOpeningLocked) {
+      toast.error("禁止開局")
       return
     }
     createComputerMutation.mutate()
@@ -184,55 +224,86 @@ export function BattleLobbyPage() {
       <PageHeader title="知識王" headline="Battle Lobby" />
       <LobbyActionCard
         title="現場配對"
+        locked={battleOpeningBlocked}
         description={
           openMatch
             ? "回到尚未結束的知識王對戰"
-            : "用短效 QR Code 當面加入雙人知識王"
+            : battleOpeningLocked
+              ? "目前禁止開局"
+              : "用短效 QR Code 當面加入雙人知識王"
         }
         action={
           <div className="grid w-full gap-2 sm:grid-cols-2">
             <Button
               type="button"
               className={actionButtonClassName}
-              disabled={openMatchChecking || battleActionPending}
+              disabled={
+                openMatchChecking ||
+                battleOpeningChecking ||
+                battleActionPending ||
+                battleOpeningBlocked
+              }
               onClick={handleStartPairing}
             >
-              <QrCode className="size-4" />
-              {openMatchChecking
+              {battleOpeningBlocked ? (
+                <Lock className="size-4" />
+              ) : (
+                <QrCode className="size-4" />
+              )}
+              {openMatchChecking || battleOpeningChecking
                 ? "同步中"
                 : openMatch
                   ? "回到目前對戰"
-                  : createPairingMutation.isPending
-                    ? "建立中"
-                    : "顯示配對 QR"}
+                  : battleOpeningLocked
+                    ? "禁止進入"
+                    : createPairingMutation.isPending
+                      ? "建立中"
+                      : "顯示配對 QR"}
             </Button>
             <Button
               type="button"
               className={actionButtonClassName}
               variant="secondary"
               disabled={
-                Boolean(openMatch) || openMatchChecking || battleActionPending
+                Boolean(openMatch) ||
+                openMatchChecking ||
+                battleOpeningChecking ||
+                battleActionPending ||
+                battleOpeningBlocked
               }
               onClick={() => setScannerOpen(true)}
             >
-              <ScanQrCode className="size-4" />
-              {scanPairingMutation.isPending ? "加入中" : "掃描配對 QR"}
+              {battleOpeningBlocked ? (
+                <Lock className="size-4" />
+              ) : (
+                <ScanQrCode className="size-4" />
+              )}
+              {battleOpeningBlocked
+                ? "禁止進入"
+                : scanPairingMutation.isPending
+                  ? "加入中"
+                  : "掃描配對 QR"}
             </Button>
           </div>
         }
       >
         {openMatch
           ? "對戰已經開始或仍在等待房，可以直接回到原本的對戰。"
-          : "一位玩家顯示 QR Code，另一位玩家在現場掃描加入；QR Code 會持續更新。"}
+          : battleOpeningLocked
+            ? "目前禁止開局，請等待工作人員重新開放知識王。"
+            : "一位玩家顯示 QR Code，另一位玩家在現場掃描加入；QR Code 會持續更新。"}
       </LobbyActionCard>
       <LobbyActionCard
         title="電腦對戰"
+        locked={battleOpeningBlocked}
         description={
           openMatch
             ? openMatchIsComputer
               ? "回到尚未結束的電腦對戰"
               : "已有尚未結束的知識王對戰"
-            : "和系統控制的電腦對手進行知識王戰"
+            : battleOpeningLocked
+              ? "目前禁止開局"
+              : "和系統控制的電腦對手進行知識王戰"
         }
         action={
           <Button
@@ -241,24 +312,31 @@ export function BattleLobbyPage() {
             variant="secondary"
             disabled={
               openMatchChecking ||
-              computerSettingsQuery.isPending ||
+              battleOpeningChecking ||
               battleActionPending ||
+              battleOpeningBlocked ||
               (!openMatch && !computerSettingsQuery.data?.enabled)
             }
             onClick={handleComputerBattle}
           >
-            <GameFeatureIcon name="battle" className="size-4" />
-            {openMatchChecking || computerSettingsQuery.isPending
+            {battleOpeningBlocked ? (
+              <Lock className="size-4" />
+            ) : (
+              <GameFeatureIcon name="battle" className="size-4" />
+            )}
+            {openMatchChecking || battleOpeningChecking
               ? "同步中"
               : openMatch
                 ? openMatchIsComputer
                   ? "重新加入電腦對戰"
                   : "回到目前對戰"
-                : computerSettingsQuery.data?.enabled
-                  ? createComputerMutation.isPending
-                    ? "建立中"
-                    : "跟電腦對戰"
-                  : "電腦對戰未開放"}
+                : battleOpeningLocked
+                  ? "禁止進入"
+                  : computerSettingsQuery.data?.enabled
+                    ? createComputerMutation.isPending
+                      ? "建立中"
+                      : "跟電腦對戰"
+                    : "電腦對戰未開放"}
           </Button>
         }
       >
@@ -266,7 +344,9 @@ export function BattleLobbyPage() {
           ? openMatchIsComputer
             ? "電腦對戰已經開始或仍在等待房，可以直接回到原本的對戰。"
             : "你目前有尚未結束的對戰，先回到原本的對戰再開始電腦對戰。"
-          : "沒有真人對手時，也可以完成對戰並取得結算獎勵。"}
+          : battleOpeningLocked
+            ? "目前禁止開局，電腦對戰也會暫停建立新房。"
+            : "沒有真人對手時，也可以完成對戰並取得結算獎勵。"}
       </LobbyActionCard>
       {scannerOpen ? (
         <MatchCodeScannerDialog

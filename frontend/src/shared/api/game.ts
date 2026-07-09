@@ -410,6 +410,7 @@ const AnswerAcceptedSchema = z.object({
 
 const ComputerBattleSettingsSchema = z.object({
   enabled: z.boolean(),
+  battleOpeningLocked: z.boolean().default(false),
 })
 
 const MatchPairingResponseSchema = z.object({

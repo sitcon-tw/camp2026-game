@@ -16,6 +16,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/x/mongo/driver/drivertest"
 
 	"github.com/sitcon-tw/camp2026-game/internal/content"
+	"github.com/sitcon-tw/camp2026-game/internal/gamecontrol"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
@@ -732,13 +733,28 @@ func TestTeamMemberResponsesSkipsInvalidPlayers(t *testing.T) {
 }
 
 func TestHomeActions(t *testing.T) {
-	actions := homeActions()
+	actions := homeActions(gamecontrol.DefaultSettings())
 	if len(actions) != 8 {
 		t.Fatalf("expected 8 home actions, got %#v", actions)
 	}
 	for _, action := range actions {
 		if action.ID == "" || action.Label == "" || !action.Enabled {
 			t.Fatalf("expected enabled action with id and label, got %#v", action)
+		}
+	}
+}
+
+func TestHomeActionsDisableBattleWhenOpeningLocked(t *testing.T) {
+	settings := gamecontrol.DefaultSettings()
+	settings.BattleOpeningOverride = gamecontrol.BattleOpeningOverrideForceClosed
+
+	actions := homeActions(settings)
+	for _, action := range actions {
+		if action.ID == "battle" && action.Enabled {
+			t.Fatalf("expected battle action to be disabled, got %#v", action)
+		}
+		if action.ID != "battle" && !action.Enabled {
+			t.Fatalf("expected non-battle action to stay enabled, got %#v", action)
 		}
 	}
 }

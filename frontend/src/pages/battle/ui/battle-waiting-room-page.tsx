@@ -10,7 +10,7 @@ import {
   useMatchDeadlineRefresh,
   useMatchEvents,
 } from "@/features/game/use-match-events"
-import { AppError } from "@/shared/api/error"
+import { AppError, isBattleOpeningLockedError } from "@/shared/api/error"
 import { gameApi, type PlayerSitone } from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
 import {
@@ -236,6 +236,13 @@ export function BattleWaitingRoomPage() {
     retry: false,
     staleTime: 0,
   })
+  const pairingTokenStatusText = pairingTokenQuery.isError
+    ? isBattleOpeningLockedError(pairingTokenQuery.error)
+      ? "禁止開局"
+      : "QR 更新失敗，稍後會再試一次。"
+    : pairingTokenQuery.isFetching
+      ? "正在更新 QR"
+      : "QR Code 每 3 秒更新一次。"
 
   function addSitone(record: PlayerSitone) {
     if (loadoutLocked) return
@@ -324,11 +331,7 @@ export function BattleWaitingRoomPage() {
               className="size-[168px] rounded-[24px] p-2"
             />
             <span className="text-muted-foreground text-center text-sm font-bold">
-              {pairingTokenQuery.isError
-                ? "QR 更新失敗，稍後會再試一次。"
-                : pairingTokenQuery.isFetching
-                  ? "正在更新 QR"
-                  : "QR Code 每 3 秒更新一次。"}
+              {pairingTokenStatusText}
             </span>
           </CardContent>
         </Card>
