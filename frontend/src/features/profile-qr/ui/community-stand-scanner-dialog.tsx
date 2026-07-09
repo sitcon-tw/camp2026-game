@@ -250,7 +250,7 @@ export function CommunityStandScannerDialog({
 
             {standQuery.isPending ? (
               <div className="grid justify-items-center gap-4 py-2">
-                <Skeleton className="size-24 rounded-[24px]" />
+                <Skeleton className="h-36 w-full max-w-sm rounded-[24px]" />
                 <Skeleton className="h-8 w-3/4" />
                 <Skeleton className="h-24 w-full" />
               </div>
@@ -277,17 +277,19 @@ export function CommunityStandScannerDialog({
             ) : (
               <div className="grid gap-4">
                 <div className="grid justify-items-center gap-3 text-center">
-                  <div className="bg-surface-raised border-ink grid size-24 place-items-center overflow-hidden rounded-[24px] border-2">
-                    {standQuery.data.stand.logoUrl ? (
+                  {standQuery.data.stand.logoUrl ? (
+                    <div className="bg-surface-raised border-ink w-full max-w-sm overflow-hidden rounded-[24px] border-2 p-3">
                       <img
                         src={standQuery.data.stand.logoUrl}
                         alt=""
-                        className="h-full w-full object-cover"
+                        className="block h-28 w-full object-contain"
                       />
-                    ) : (
+                    </div>
+                  ) : (
+                    <div className="bg-surface-raised border-ink grid size-24 place-items-center rounded-[24px] border-2">
                       <Gift className="size-9" aria-hidden />
-                    )}
-                  </div>
+                    </div>
+                  )}
                   <div>
                     <h3 className="text-[26px] leading-tight font-black">
                       {standQuery.data.stand.name}
