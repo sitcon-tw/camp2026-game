@@ -129,6 +129,35 @@ func (h *Handler) CreateAttack(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	itemQuantities, err := h.playerItemQuantities(ctx, player.ID)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("attack failed", "territory_item_quantities_failed", err))
+		return
+	}
+	neededItems := make(map[string]int, len(body.ItemIDs))
+	for _, itemID := range body.ItemIDs {
+		itemID = strings.TrimSpace(itemID)
+		if itemID == "" {
+			continue
+		}
+		item, ok := h.content.GetItem(itemID)
+		if !ok {
+			httpx.WriteProblem(w, r, httpx.UnprocessableEntity("unknown item "+itemID))
+			return
+		}
+		if item.Type != "attack" {
+			httpx.WriteProblem(w, r, httpx.UnprocessableEntity("item "+itemID+" cannot be used for attack"))
+			return
+		}
+		neededItems[itemID]++
+	}
+	for itemID, n := range neededItems {
+		if itemQuantities[itemID] < n {
+			httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "insufficient quantity of item "+itemID))
+			return
+		}
+	}
+
 	// No other active mission for the team (§19 anti-abuse).
 	active, err := h.service.ActiveMissionForTeam(ctx, player.TeamID)
 	if err != nil {
@@ -156,6 +185,7 @@ func (h *Handler) CreateAttack(w http.ResponseWriter, r *http.Request) {
 		BeneficiaryPlayerID: player.ID,
 		Status:              mongomodel.AttackMissionStatusVoting,
 		SelectedSitoneIDs:   body.SitoneIDs,
+		SelectedItemIDs:     normalizedIDs(body.ItemIDs),
 		VoteDeadline:        now.Add(territory.VoteDeadlineDuration),
 		AttackerTier:        int(attackerTier),
 		DefenderTier:        int(defenderTier),
@@ -175,6 +205,7 @@ func (h *Handler) CreateAttack(w http.ResponseWriter, r *http.Request) {
 		Payload: bson.M{
 			"defender_team_id": body.DefenderTeamID,
 			"sitone_ids":       body.SitoneIDs,
+			"item_ids":         normalizedIDs(body.ItemIDs),
 		},
 	})
 
@@ -494,4 +525,39 @@ func (h *Handler) cancelMissionInternal(r *http.Request, mission mongomodel.Atta
 		RelatedMissionID: mission.ID,
 		Payload:          bson.M{"reason": reason},
 	})
+}
+
+func (h *Handler) playerItemQuantities(ctx context.Context, playerID string) (map[string]int, error) {
+	cursor, err := h.db.Collection(mongomodel.PlayerItemsCollection).Find(ctx, bson.M{
+		"player_id": playerID,
+		"quantity":  bson.M{"$gt": 0},
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var records []mongomodel.PlayerItem
+	if err := cursor.All(ctx, &records); err != nil {
+		return nil, err
+	}
+
+	quantities := make(map[string]int, len(records))
+	for _, record := range records {
+		quantities[record.ItemID] += record.Quantity
+	}
+	return quantities, nil
+}
+
+func normalizedIDs(ids []string) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id != "" {
+			out = append(out, id)
+		}
+	}
+	return out
 }

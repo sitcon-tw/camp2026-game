@@ -207,6 +207,16 @@ export function TerritoryMapPage() {
               iconPath="/game-icons/items/item_star_village_signpost.png"
             />
           </div>
+          <Card className="border-border bg-surface-raised grid gap-2 rounded-[18px] border-2 px-3.5 py-3">
+            <InfoLine
+              title="進攻"
+              text="點可攻擊的領地，選出戰小石與攻擊道具；建立後會立即扣開源力並開始任務。"
+            />
+            <InfoLine
+              title="防守"
+              text="防守配置是留守小石，被攻擊時用當下配置結算；防守道具目前尚未套用。"
+            />
+          </Card>
         </section>
       ) : null}
 
@@ -401,5 +411,14 @@ function ActionIcon({
         fallback={null}
       />
     </span>
+  )
+}
+
+function InfoLine({ title, text }: { title: string; text: string }) {
+  return (
+    <p className="text-muted-foreground text-xs leading-relaxed font-bold">
+      <span className="text-ink font-black">{title}：</span>
+      {text}
+    </p>
   )
 }

@@ -32,6 +32,7 @@ type StandingEntryResponse struct {
 type CreateAttackRequest struct {
 	DefenderTeamID string   `json:"defenderTeamId" validate:"required"`
 	SitoneIDs      []string `json:"sitoneIds" validate:"required,min=1"`
+	ItemIDs        []string `json:"itemIds"`
 }
 
 type VoteRequest struct {
@@ -60,6 +61,7 @@ type MissionResponse struct {
 	AgreeCount     int                   `json:"agreeCount"`
 	Threshold      int                   `json:"threshold"`
 	SitoneIDs      []string              `json:"sitoneIds,omitempty"`
+	ItemIDs        []string              `json:"itemIds,omitempty"`
 	ResolveAt      *time.Time            `json:"resolveAt,omitempty"`
 	ResultSummary  map[string]any        `json:"resultSummary,omitempty"`
 }
@@ -173,6 +175,7 @@ func (h *Handler) missionResponse(ctx context.Context, mission mongomodel.Attack
 	}
 	if includeSitones {
 		response.SitoneIDs = mission.SelectedSitoneIDs
+		response.ItemIDs = mission.SelectedItemIDs
 	}
 	if !mission.ResolveAt.IsZero() {
 		resolveAt := mission.ResolveAt

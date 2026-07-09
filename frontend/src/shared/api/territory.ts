@@ -76,6 +76,7 @@ const AttackMissionSchema = z.object({
   agreeCount: z.number().default(0),
   threshold: z.number().default(0),
   myVote: z.boolean().optional(),
+  itemIds: nullableArray(z.string()),
   result: AttackMissionResultSchema.optional(),
 })
 
@@ -173,7 +174,11 @@ export const territoryApi = {
     return TerritoryStandingsResponseSchema.parse(json)
   },
 
-  async createAttack(input: { defenderTeamId: string; sitoneIds: string[] }) {
+  async createAttack(input: {
+    defenderTeamId: string
+    sitoneIds: string[]
+    itemIds?: string[]
+  }) {
     const json = await apiClient.post("/api/territory/attacks", {
       json: input,
     })

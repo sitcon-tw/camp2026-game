@@ -24,6 +24,7 @@ type AttackMission struct {
 	BeneficiaryPlayerID string    `bson:"beneficiary_player_id"`
 	Status              string    `bson:"status"`
 	SelectedSitoneIDs   []string  `bson:"selected_sitone_ids"`
+	SelectedItemIDs     []string  `bson:"selected_item_ids,omitempty"`
 	CostOpenPower       int       `bson:"cost_open_power"`
 	VoteDeadline        time.Time `bson:"vote_deadline"`
 	StartedAt           time.Time `bson:"started_at,omitempty"`
