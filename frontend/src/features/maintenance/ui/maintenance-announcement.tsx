@@ -1,20 +1,26 @@
 import { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useLocation } from "@tanstack/react-router"
-import { Megaphone } from "lucide-react"
-
 import { gameApi, type MaintenanceStatus } from "@/shared/api/game"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
 import { Button } from "@/shared/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/dialog"
+import { toOptimizedImageSrc } from "@/shared/utils/image-src"
+
+const hiddenPathPrefixes = ["/admin"] as const
+const maintenanceImagePath = "/game-icons/alerts/sitone-maintenance.png"
+
+function isHiddenPath(pathname: string) {
+  return hiddenPathPrefixes.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  )
+}
 
 export function MaintenanceAnnouncement() {
   const [lastNotice, setLastNotice] = useState<MaintenanceStatus | null>(null)
@@ -22,9 +28,11 @@ export function MaintenanceAnnouncement() {
     null,
   )
   const location = useLocation()
+  const hidden = isHiddenPath(location.pathname)
   const maintenanceQuery = useQuery({
     queryKey: ["maintenance"],
     queryFn: gameApi.maintenanceStatus,
+    enabled: !hidden,
     refetchInterval: 5_000,
     staleTime: 3_000,
   })
@@ -56,7 +64,7 @@ export function MaintenanceAnnouncement() {
     return () => window.clearTimeout(id)
   }, [activeNotice])
 
-  if (!notice) return null
+  if (hidden || !notice) return null
 
   const title = completed
     ? "維護已完成"
@@ -75,36 +83,119 @@ export function MaintenanceAnnouncement() {
       : "維護中"
 
   return (
-    <AlertDialog open>
-      <AlertDialogContent size="sm">
-        <AlertDialogHeader>
-          <AlertDialogMedia>
-            <Megaphone className="text-primary size-8" />
-          </AlertDialogMedia>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription className="grid gap-2 text-center leading-6">
-            <span>{description}</span>
-            {!completed ? (
-              <span>
-                目前尚有 {notice.activeMatchCount} 場進行中對戰、
-                {notice.openMatchCount} 間等待或進行中的房間。
-              </span>
-            ) : null}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          {completed ? (
-            <AlertDialogAction
-              onClick={() => setDismissedRevision(noticeRevision(notice))}
-            >
-              {buttonText}
-            </AlertDialogAction>
-          ) : (
-            <Button disabled>{buttonText}</Button>
-          )}
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && completed) {
+          setDismissedRevision(noticeRevision(notice))
+        }
+      }}
+    >
+      <DialogContent
+        className="gap-5 p-5 sm:max-w-[390px]"
+        showCloseButton={completed}
+        onEscapeKeyDown={(event) => {
+          if (!completed) event.preventDefault()
+        }}
+        onPointerDownOutside={(event) => {
+          if (!completed) event.preventDefault()
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            {completed
+              ? "維護完成通知。"
+              : "請先完成目前操作，等待系統重新開放。"}
+          </DialogDescription>
+        </DialogHeader>
+        <MaintenanceNoticeCard
+          notice={notice}
+          completed={completed}
+          description={description}
+        />
+        <DialogFooter>
+          <Button
+            type="button"
+            className="w-full"
+            disabled={!completed}
+            onClick={() => setDismissedRevision(noticeRevision(notice))}
+          >
+            {buttonText}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function MaintenanceNoticeCard({
+  notice,
+  completed,
+  description,
+}: {
+  notice: MaintenanceStatus
+  completed: boolean
+  description: string
+}) {
+  const badge = completed
+    ? "維護完成"
+    : notice.mode === "draining"
+      ? "準備維護"
+      : "維護中"
+  const title = completed
+    ? "系統重新開放"
+    : notice.mode === "draining"
+      ? "系統準備更新"
+      : "系統維護中"
+  const stats = completed
+    ? ["可以繼續使用營隊遊戲"]
+    : [
+        `${notice.activeMatchCount} 場進行中對戰`,
+        `${notice.openMatchCount} 間等待或進行中的房間`,
+      ]
+
+  return (
+    <section
+      className="bg-card border-ink relative grid gap-4 overflow-hidden rounded-[28px] border-2 p-3 text-center"
+      style={{ boxShadow: "6px 6px 0 var(--border)" }}
+    >
+      <div
+        className="border-ink bg-secondary text-secondary-foreground absolute top-3 right-3 z-10 rounded-full border-2 px-3 py-1 text-xs font-black"
+        aria-hidden
+      >
+        {badge}
+      </div>
+
+      <div className="border-ink bg-muted relative aspect-square overflow-hidden rounded-[22px] border-2">
+        <img
+          src={toOptimizedImageSrc(maintenanceImagePath)}
+          alt="小石正在替系統伺服器維護"
+          className="size-full object-cover"
+          loading="lazy"
+          draggable={false}
+        />
+      </div>
+
+      <div className="grid gap-2 px-1 pb-1">
+        <p className="text-muted-foreground text-[11px] font-black tracking-[0.08em] uppercase">
+          Maintenance Update
+        </p>
+        <h2 className="text-[24px] leading-none font-black tracking-normal">
+          {title}
+        </h2>
+        <p className="text-muted-foreground text-sm leading-relaxed font-bold">
+          {description}
+        </p>
+      </div>
+
+      <div
+        className="bg-surface-raised border-border rounded-[18px] border-2 px-3 py-2 text-sm font-black"
+        aria-label="維護狀態"
+      >
+        {stats.join("、")}
+      </div>
+    </section>
   )
 }
 
