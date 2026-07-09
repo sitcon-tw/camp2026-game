@@ -44,6 +44,10 @@ func (h *Handler) ScanPairing(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
+	if err := h.ensureBattleOpeningAllowed(r.Context(), "match pairing failed"); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
 
 	pairing, err := h.findActivePairingToken(r.Context(), body.Token, time.Now())
 	if err != nil {
@@ -74,7 +78,7 @@ func (h *Handler) ScanPairing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !wasParticipant {
-		if err := h.ensureMaintenanceAllowsNewMatch(r.Context(), "match pairing failed"); err != nil {
+		if err := h.ensureBattleOpeningAllowed(r.Context(), "match pairing failed"); err != nil {
 			httpx.WriteProblem(w, r, err)
 			return
 		}

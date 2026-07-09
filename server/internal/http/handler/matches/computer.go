@@ -69,16 +69,12 @@ func (h *Handler) CreateComputer(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("computer battle settings unavailable", "computer_settings_lookup_failed", err))
 		return
 	}
+	if settings.BattleOpeningLocked(time.Now()) {
+		httpx.WriteProblem(w, r, battleOpeningLockedError())
+		return
+	}
 	if !settings.ComputerBattlesEnabled {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "computer battles are disabled"))
-		return
-	}
-	if settings.MaintenanceBlocksNewMatches() {
-		httpx.WriteProblem(w, r, httpx.NewError(http.StatusServiceUnavailable, "maintenance is active"))
-		return
-	}
-	if settings.BattleOpeningLocked(time.Now()) {
-		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "battle opening is locked"))
 		return
 	}
 	if err := h.ensureNoOpenParticipantMatch(r.Context(), player.ID); err != nil {
