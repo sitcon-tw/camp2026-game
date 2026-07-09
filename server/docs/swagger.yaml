@@ -1,5 +1,202 @@
 basePath: /api
 definitions:
+  admin.AdminAttackMissionResponse:
+    properties:
+      attackerTeamId:
+        type: string
+      attackerTier:
+        type: integer
+      beneficiaryPlayerId:
+        type: string
+      costOpenPower:
+        type: integer
+      createdAt:
+        type: string
+      defenderTeamId:
+        type: string
+      defenderTier:
+        type: integer
+      initiatorPlayerId:
+        type: string
+      missionId:
+        type: string
+      randomSeedRef:
+        type: string
+      resolveAt:
+        type: string
+      resolvedAt:
+        type: string
+      resultSummary:
+        additionalProperties: {}
+        type: object
+      selectedSitoneIds:
+        items:
+          type: string
+        type: array
+      startedAt:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+      voteDeadline:
+        type: string
+    type: object
+  admin.AdminAttackMissionsResponse:
+    properties:
+      missions:
+        items:
+          $ref: '#/definitions/admin.AdminAttackMissionResponse'
+        type: array
+    type: object
+  admin.AdminCancelMissionResponse:
+    properties:
+      mission:
+        $ref: '#/definitions/admin.AdminAttackMissionResponse'
+      releasedInstances:
+        type: integer
+    type: object
+  admin.AdminCaptiveRecordResponse:
+    properties:
+      captiveId:
+        type: string
+      capturedAt:
+        type: string
+      convertProcesses:
+        items:
+          $ref: '#/definitions/admin.AdminYansanProcessResponse'
+        type: array
+      convertedAt:
+        type: string
+      cooldownUntil:
+        type: string
+      currentTeamId:
+        type: string
+      instanceId:
+        type: string
+      originalTeamId:
+        type: string
+      sitoneId:
+        type: string
+      status:
+        type: string
+    type: object
+  admin.AdminCaptiveRecordsResponse:
+    properties:
+      captives:
+        items:
+          $ref: '#/definitions/admin.AdminCaptiveRecordResponse'
+        type: array
+    type: object
+  admin.AdminEventLogResponse:
+    properties:
+      actorPlayerId:
+        type: string
+      createdAt:
+        type: string
+      eventId:
+        type: string
+      eventType:
+        type: string
+      payload:
+        additionalProperties: {}
+        type: object
+      relatedMissionId:
+        type: string
+      relatedSitoneId:
+        type: string
+      targetPlayerId:
+        type: string
+      teamId:
+        type: string
+    type: object
+  admin.AdminEventLogsResponse:
+    properties:
+      events:
+        items:
+          $ref: '#/definitions/admin.AdminEventLogResponse'
+        type: array
+    type: object
+  admin.AdminSitoneInstanceResponse:
+    properties:
+      cooldownUntil:
+        type: string
+      createdAt:
+        type: string
+      fatigue:
+        type: integer
+      instanceId:
+        type: string
+      missionId:
+        type: string
+      originPlayerId:
+        type: string
+      originTeamId:
+        type: string
+      playerId:
+        type: string
+      sitoneId:
+        type: string
+      status:
+        type: string
+      teamId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  admin.AdminSitoneInstancesResponse:
+    properties:
+      instances:
+        items:
+          $ref: '#/definitions/admin.AdminSitoneInstanceResponse'
+        type: array
+    type: object
+  admin.AdminYansanProcessResponse:
+    properties:
+      actorPlayerId:
+        type: string
+      beneficiaryPlayerId:
+        type: string
+      costOpenPower:
+        type: integer
+      instanceId:
+        type: string
+      kind:
+        type: string
+      processId:
+        type: string
+      resolveAt:
+        type: string
+      resolvedAt:
+        type: string
+      result:
+        additionalProperties: {}
+        type: object
+      sitoneId:
+        type: string
+      startedAt:
+        type: string
+      status:
+        type: string
+      teamId:
+        type: string
+    type: object
+  admin.AdminYansanProcessesResponse:
+    properties:
+      processes:
+        items:
+          $ref: '#/definitions/admin.AdminYansanProcessResponse'
+        type: array
+    type: object
+  admin.BossStateResponse:
+    properties:
+      registeredTeams:
+        items:
+          type: string
+        type: array
+      status:
+        type: string
+    type: object
   admin.ClassTimeBattleLockSessionRequest:
     properties:
       end:
@@ -2684,6 +2881,246 @@ definitions:
         example: ok
         type: string
     type: object
+  territory.CaptiveResponse:
+    properties:
+      capturedAt:
+        type: string
+      convertedAt:
+        type: string
+      cooldownUntil:
+        type: string
+      currentTeamId:
+        type: string
+      heldByMyTeam:
+        type: boolean
+      id:
+        type: string
+      originalTeamId:
+        type: string
+      sitoneId:
+        type: string
+      sitoneName:
+        type: string
+      status:
+        type: string
+    type: object
+  territory.ConvertCaptiveRequest:
+    properties:
+      extraOpenPower:
+        minimum: 0
+        type: integer
+    type: object
+  territory.CostEstimateResponse:
+    properties:
+      max:
+        type: integer
+      min:
+        type: integer
+    type: object
+  territory.CreateAttackRequest:
+    properties:
+      defenderTeamId:
+        type: string
+      sitoneIds:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - defenderTeamId
+    - sitoneIds
+    type: object
+  territory.CreateRescueRequest:
+    properties:
+      sitoneId:
+        type: string
+    required:
+    - sitoneId
+    type: object
+  territory.DefenseResponse:
+    properties:
+      cap:
+        type: integer
+      lockedUntil:
+        type: string
+      sitoneIds:
+        items:
+          type: string
+        type: array
+      updatedAt:
+        type: string
+    type: object
+  territory.ListCaptivesResponse:
+    properties:
+      captives:
+        items:
+          $ref: '#/definitions/territory.CaptiveResponse'
+        type: array
+    type: object
+  territory.MissionResponse:
+    properties:
+      agreeCount:
+        type: integer
+      attackerTeamId:
+        type: string
+      deathRisk:
+        type: string
+      defenderTeamId:
+        type: string
+      estimatedCost:
+        $ref: '#/definitions/territory.CostEstimateResponse'
+      id:
+        type: string
+      initiatorId:
+        type: string
+      missingRisk:
+        type: string
+      resolveAt:
+        type: string
+      resultSummary:
+        additionalProperties: {}
+        type: object
+      riskLevel:
+        type: string
+      sitoneIds:
+        items:
+          type: string
+        type: array
+      status:
+        type: string
+      threshold:
+        type: integer
+      voteDeadline:
+        type: string
+    type: object
+  territory.ProcessResponse:
+    properties:
+      id:
+        type: string
+      kind:
+        type: string
+      outcome:
+        type: string
+      resolveAt:
+        type: string
+      sitoneId:
+        type: string
+      startedAt:
+        type: string
+      status:
+        type: string
+    type: object
+  territory.StandingEntryResponse:
+    properties:
+      bossStatus:
+        type: string
+      canAttack:
+        type: boolean
+      canBeAttacked:
+        type: boolean
+      isBoss:
+        type: boolean
+      name:
+        type: string
+      teamId:
+        type: string
+      tier:
+        type: string
+    type: object
+  territory.StandingsResponse:
+    properties:
+      myTeamId:
+        type: string
+      myTier:
+        type: string
+      teams:
+        items:
+          $ref: '#/definitions/territory.StandingEntryResponse'
+        type: array
+    type: object
+  territory.UpdateDefenseRequest:
+    properties:
+      sitoneIds:
+        items:
+          type: string
+        type: array
+    required:
+    - sitoneIds
+    type: object
+  territory.VoteRequest:
+    properties:
+      agree:
+        type: boolean
+    required:
+    - agree
+    type: object
+  yansan.BossStatusResponse:
+    properties:
+      myTeamRegistered:
+        type: boolean
+      registeredTeams:
+        items:
+          type: string
+        type: array
+      requiredTeams:
+        type: integer
+      status:
+        type: string
+    type: object
+  yansan.ConvertRequest:
+    properties:
+      captiveId:
+        type: string
+      extraOpenPower:
+        minimum: 0
+        type: integer
+    required:
+    - captiveId
+    type: object
+  yansan.ProcessResponse:
+    properties:
+      id:
+        type: string
+      kind:
+        type: string
+      resolveAt:
+        type: string
+      sitoneId:
+        type: string
+      startedAt:
+        type: string
+      status:
+        type: string
+    type: object
+  yansan.ProtectedStoneResponse:
+    properties:
+      instanceId:
+        type: string
+      sitoneId:
+        type: string
+      sitoneName:
+        type: string
+    type: object
+  yansan.RedeemRequest:
+    properties:
+      sitoneId:
+        type: string
+    required:
+    - sitoneId
+    type: object
+  yansan.StatusResponse:
+    properties:
+      bossStatus:
+        type: string
+      protectedStones:
+        items:
+          $ref: '#/definitions/yansan.ProtectedStoneResponse'
+        type: array
+      servicesAvailable:
+        type: boolean
+      teamRedeemCount:
+        type: integer
+    type: object
 info:
   contact: {}
   description: Backend API for the SITCON Camp 2026 game.
@@ -3254,6 +3691,291 @@ paths:
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
       summary: Update a team as admin
+      tags:
+      - admin
+  /admin/territory/captives:
+    get:
+      description: Returns all captive records, newest first, each with its linked
+        yansan convert processes.
+      parameters:
+      - description: Maximum records to return (default 100, max 500)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.AdminCaptiveRecordsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: List captive records with convert processes (admin)
+      tags:
+      - admin
+  /admin/territory/events:
+    get:
+      description: Returns event log records including private payloads (roll values,
+        A/D numbers, resolution details).
+      parameters:
+      - description: Filter by event type
+        in: query
+        name: type
+        type: string
+      - description: Filter by team id
+        in: query
+        name: teamId
+        type: string
+      - description: Filter by actor or target player id
+        in: query
+        name: playerId
+        type: string
+      - description: Maximum records to return (default 100, max 500)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.AdminEventLogsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Query the territory event log (admin)
+      tags:
+      - admin
+  /admin/territory/instances:
+    get:
+      description: Returns sitone instances filtered by status/team — covers missing,
+        dead, captured, deployed and protected-at-yansan views.
+      parameters:
+      - description: Filter by instance status (normal, deployed, fatigued, captured,
+          captive_cooldown, convert_pending, missing, rescued, dead, protected_at_yansan)
+        in: query
+        name: status
+        type: string
+      - description: Filter by current team id
+        in: query
+        name: teamId
+        type: string
+      - description: Maximum records to return (default 100, max 500)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.AdminSitoneInstancesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: List sitone instances (admin)
+      tags:
+      - admin
+  /admin/territory/missions:
+    get:
+      description: Returns attack missions with full detail (result summary, tiers,
+        random seed ref) for staff review.
+      parameters:
+      - description: Filter by mission status (voting, cancelled, expired, deployed,
+          resolved)
+        in: query
+        name: status
+        type: string
+      - description: Filter by attacker or defender team id
+        in: query
+        name: teamId
+        type: string
+      - description: Maximum records to return (default 100, max 500)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.AdminAttackMissionsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: List territory attack missions (admin)
+      tags:
+      - admin
+  /admin/territory/missions/{missionID}/cancel:
+    post:
+      description: Cancels a voting or deployed mission. Deployed sitone instances
+        are released back into the initiator's quantity stock. Open power is NOT refunded
+        automatically; use the staff reward flow to grant compensation.
+      parameters:
+      - description: Mission id
+        in: path
+        name: missionID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.AdminCancelMissionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Force-cancel an abnormal attack mission (admin)
+      tags:
+      - admin
+  /admin/yansan/boss/close:
+    post:
+      description: Ends the boss fight; yansan services resume.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.BossStateResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Close the yansan boss (admin)
+      tags:
+      - admin
+  /admin/yansan/boss/open:
+    post:
+      description: Transitions the yansan boss to open so teams can register for the
+        boss fight.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.BossStateResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Open the yansan boss (admin)
+      tags:
+      - admin
+  /admin/yansan/processes:
+    get:
+      description: Returns yansan convert/redeem/calibrate/rescue processes, newest
+        first.
+      parameters:
+      - description: Filter by process status (pending, succeeded, failed, aborted_boss)
+        in: query
+        name: status
+        type: string
+      - description: Filter by process kind (convert, redeem, calibrate, rescue)
+        in: query
+        name: kind
+        type: string
+      - description: Maximum records to return (default 100, max 500)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.AdminYansanProcessesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: List yansan processes (admin)
       tags:
       - admin
   /auth/login:
@@ -5119,6 +5841,715 @@ paths:
       summary: List teams as staff
       tags:
       - staff
+  /territory/attacks:
+    post:
+      consumes:
+      - application/json
+      description: Starts an attack mission in voting state. The initiator auto-votes
+        agree. Tier permissions are locked into the mission at creation.
+      parameters:
+      - description: Attack request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/territory.CreateAttackRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/territory.MissionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Initiate a team attack
+      tags:
+      - territory
+  /territory/attacks/{missionID}:
+    get:
+      description: Returns the mission view for the attacker team. The defender team
+        can see resolved missions. Result summaries only contain public-safe labels.
+      parameters:
+      - description: Mission id
+        in: path
+        name: missionID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/territory.MissionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get an attack mission
+      tags:
+      - territory
+  /territory/attacks/{missionID}/cancel:
+    post:
+      description: Initiator or a teammate cancels the mission while it is still voting
+        (before the threshold commits it).
+      parameters:
+      - description: Mission id
+        in: path
+        name: missionID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/territory.MissionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Cancel an attack mission
+      tags:
+      - territory
+  /territory/attacks/{missionID}/votes:
+    post:
+      consumes:
+      - application/json
+      description: 'Casts a teammate vote. Reaching the threshold within the deadline
+        deploys the mission: the initiator pays the open power cost and the selected
+        sitones are locked as deployed instances.'
+      parameters:
+      - description: Mission id
+        in: path
+        name: missionID
+        required: true
+        type: string
+      - description: Vote
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/territory.VoteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/territory.MissionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Vote on an attack mission
+      tags:
+      - territory
+  /territory/captives:
+    get:
+      description: Lists captives currently held by my team or originally belonging
+        to my team.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/territory.ListCaptivesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: List captive records involving my team
+      tags:
+      - territory
+  /territory/captives/{captiveID}/convert:
+    post:
+      consumes:
+      - application/json
+      description: Starts a convert process for a captive held by my team once its
+        cooldown has ended. The executor pays; extra open power can be invested to
+        improve the odds. Blocked while the boss is under attack.
+      parameters:
+      - description: Captive record id
+        in: path
+        name: captiveID
+        required: true
+        type: string
+      - description: Convert options
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/territory.ConvertCaptiveRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/territory.ProcessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Convert a captive to my team
+      tags:
+      - territory
+  /territory/defense:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/territory.DefenseResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get team defense configuration
+      tags:
+      - territory
+    put:
+      consumes:
+      - application/json
+      description: Sets the standing defense sitones. Stones must be owned across
+        team members with free quantity; they are NOT instance-locked — defense is
+        read at resolve time. Each change starts a short modify cooldown.
+      parameters:
+      - description: Defense configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/territory.UpdateDefenseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/territory.DefenseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Update team defense configuration
+      tags:
+      - territory
+  /territory/rescues:
+    post:
+      consumes:
+      - application/json
+      description: Starts a rescue process for a missing sitone instance of my team.
+        The executor pays; the cost is keyed on the original holder. Resolved later
+        by the central sweeper.
+      parameters:
+      - description: Rescue request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/territory.CreateRescueRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/territory.ProcessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Start a rescue for a missing sitone
+      tags:
+      - territory
+  /territory/rescues/{rescueID}:
+    get:
+      parameters:
+      - description: Rescue process id
+        in: path
+        name: rescueID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/territory.ProcessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get a rescue process
+      tags:
+      - territory
+  /territory/standings:
+    get:
+      description: Lists each team's hidden combat tier and allowed actions. Scores
+        and formulas are never exposed. Includes the yansan boss team flagged isBoss.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/territory.StandingsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Territory combat standings
+      tags:
+      - territory
+  /yansan/boss/attack:
+    post:
+      description: 'Registers the caller''s team for the boss fight. When all player
+        teams have registered, the boss transitions to under_attack: every pending
+        yansan service immediately fails without refund.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yansan.BossStatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Register my team for the boss attack
+      tags:
+      - yansan
+  /yansan/boss/status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yansan.BossStatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Yansan boss status
+      tags:
+      - yansan
+  /yansan/convert:
+    post:
+      consumes:
+      - application/json
+      description: Alias of POST /territory/captives/{captiveID}/convert with the
+        captive id in the body.
+      parameters:
+      - description: Convert request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/yansan.ConvertRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/yansan.ProcessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Convert a captive (yansan alias)
+      tags:
+      - yansan
+  /yansan/redeem:
+    post:
+      consumes:
+      - application/json
+      description: Starts a redeem process for a unique stone of my team held at yansan.
+        Cost and success rate scale with the team's redeem count. Blocked while the
+        boss is under attack.
+      parameters:
+      - description: Redeem request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/yansan.RedeemRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/yansan.ProcessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Redeem a unique stone from yansan
+      tags:
+      - yansan
+  /yansan/status:
+    get:
+      description: Returns the boss state, whether yansan services are available,
+        my team's protected unique stones and the team redeem count.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yansan.StatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Yansan status
+      tags:
+      - yansan
 schemes:
 - http
 - https

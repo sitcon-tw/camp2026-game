@@ -70,6 +70,12 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Put("/admin/teams/{teamID}", h.UpdateTeam)
 	api.Post("/admin/yansan/boss/open", h.OpenYansanBoss)
 	api.Post("/admin/yansan/boss/close", h.CloseYansanBoss)
+	api.Get("/admin/territory/missions", h.ListTerritoryMissions)
+	api.Post("/admin/territory/missions/{missionID}/cancel", h.CancelTerritoryMission)
+	api.Get("/admin/territory/instances", h.ListTerritoryInstances)
+	api.Get("/admin/territory/captives", h.ListTerritoryCaptives)
+	api.Get("/admin/territory/events", h.ListTerritoryEvents)
+	api.Get("/admin/yansan/processes", h.ListYansanProcesses)
 }
 
 type LoginRequest struct {

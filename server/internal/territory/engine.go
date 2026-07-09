@@ -61,11 +61,11 @@ type EngineConfig struct {
 	ConvertResolveMax        time.Duration
 
 	// Redeem (unique stone back from yansan) process.
-	RedeemBaseRate       float64
-	RedeemDecayPerPrior  float64
-	RedeemFloor          float64
-	RedeemResolveMin     time.Duration
-	RedeemResolveMax     time.Duration
+	RedeemBaseRate      float64
+	RedeemDecayPerPrior float64
+	RedeemFloor         float64
+	RedeemResolveMin    time.Duration
+	RedeemResolveMax    time.Duration
 
 	// Rescue (missing stone) process.
 	RescueSuccessRate      float64

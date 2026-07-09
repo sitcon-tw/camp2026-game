@@ -32,6 +32,7 @@ import {
 } from "recharts"
 import { toast } from "sonner"
 
+import { AdminTerritoryPanel } from "@/pages/admin/ui/admin-territory-panel"
 import { AppError } from "@/shared/api/error"
 import {
   gameApi,
@@ -727,6 +728,14 @@ export function AdminPanelPage() {
             updateCommunityStandMutation.mutate({ standID, input })
           }
         />
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="領地攻防"
+        description="攻擊任務、石頭實例、俘虜、事件與硯山流程監控。"
+        badge="Staff tools"
+      >
+        <AdminTerritoryPanel />
       </AdminCollapsibleSection>
     </GamePageShell>
   )

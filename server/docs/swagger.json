@@ -853,6 +853,425 @@
                 }
             }
         },
+        "/admin/territory/captives": {
+            "get": {
+                "description": "Returns all captive records, newest first, each with its linked yansan convert processes.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List captive records with convert processes (admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Maximum records to return (default 100, max 500)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.AdminCaptiveRecordsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/territory/events": {
+            "get": {
+                "description": "Returns event log records including private payloads (roll values, A/D numbers, resolution details).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Query the territory event log (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by event type",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by team id",
+                        "name": "teamId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by actor or target player id",
+                        "name": "playerId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum records to return (default 100, max 500)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.AdminEventLogsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/territory/instances": {
+            "get": {
+                "description": "Returns sitone instances filtered by status/team — covers missing, dead, captured, deployed and protected-at-yansan views.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List sitone instances (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by instance status (normal, deployed, fatigued, captured, captive_cooldown, convert_pending, missing, rescued, dead, protected_at_yansan)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by current team id",
+                        "name": "teamId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum records to return (default 100, max 500)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.AdminSitoneInstancesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/territory/missions": {
+            "get": {
+                "description": "Returns attack missions with full detail (result summary, tiers, random seed ref) for staff review.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List territory attack missions (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by mission status (voting, cancelled, expired, deployed, resolved)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by attacker or defender team id",
+                        "name": "teamId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum records to return (default 100, max 500)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.AdminAttackMissionsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/territory/missions/{missionID}/cancel": {
+            "post": {
+                "description": "Cancels a voting or deployed mission. Deployed sitone instances are released back into the initiator's quantity stock. Open power is NOT refunded automatically; use the staff reward flow to grant compensation.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Force-cancel an abnormal attack mission (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mission id",
+                        "name": "missionID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.AdminCancelMissionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/yansan/boss/close": {
+            "post": {
+                "description": "Ends the boss fight; yansan services resume.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Close the yansan boss (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.BossStateResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/yansan/boss/open": {
+            "post": {
+                "description": "Transitions the yansan boss to open so teams can register for the boss fight.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Open the yansan boss (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.BossStateResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/yansan/processes": {
+            "get": {
+                "description": "Returns yansan convert/redeem/calibrate/rescue processes, newest first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List yansan processes (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by process status (pending, succeeded, failed, aborted_boss)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by process kind (convert, redeem, calibrate, rescue)",
+                        "name": "kind",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum records to return (default 100, max 500)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.AdminYansanProcessesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "User-facing endpoint. Validates the issued game URL token and writes it to the camp2026_auth cookie.",
@@ -3707,9 +4126,1388 @@
                     }
                 }
             }
+        },
+        "/territory/attacks": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Starts an attack mission in voting state. The initiator auto-votes agree. Tier permissions are locked into the mission at creation.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "territory"
+                ],
+                "summary": "Initiate a team attack",
+                "parameters": [
+                    {
+                        "description": "Attack request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/territory.CreateAttackRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/territory.MissionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/territory/attacks/{missionID}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns the mission view for the attacker team. The defender team can see resolved missions. Result summaries only contain public-safe labels.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "territory"
+                ],
+                "summary": "Get an attack mission",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mission id",
+                        "name": "missionID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/territory.MissionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/territory/attacks/{missionID}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Initiator or a teammate cancels the mission while it is still voting (before the threshold commits it).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "territory"
+                ],
+                "summary": "Cancel an attack mission",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mission id",
+                        "name": "missionID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/territory.MissionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/territory/attacks/{missionID}/votes": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Casts a teammate vote. Reaching the threshold within the deadline deploys the mission: the initiator pays the open power cost and the selected sitones are locked as deployed instances.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "territory"
+                ],
+                "summary": "Vote on an attack mission",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mission id",
+                        "name": "missionID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Vote",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/territory.VoteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/territory.MissionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/territory/captives": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Lists captives currently held by my team or originally belonging to my team.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "territory"
+                ],
+                "summary": "List captive records involving my team",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/territory.ListCaptivesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/territory/captives/{captiveID}/convert": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Starts a convert process for a captive held by my team once its cooldown has ended. The executor pays; extra open power can be invested to improve the odds. Blocked while the boss is under attack.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "territory"
+                ],
+                "summary": "Convert a captive to my team",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Captive record id",
+                        "name": "captiveID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Convert options",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/territory.ConvertCaptiveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/territory.ProcessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/territory/defense": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "territory"
+                ],
+                "summary": "Get team defense configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/territory.DefenseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Sets the standing defense sitones. Stones must be owned across team members with free quantity; they are NOT instance-locked — defense is read at resolve time. Each change starts a short modify cooldown.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "territory"
+                ],
+                "summary": "Update team defense configuration",
+                "parameters": [
+                    {
+                        "description": "Defense configuration",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/territory.UpdateDefenseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/territory.DefenseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/territory/rescues": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Starts a rescue process for a missing sitone instance of my team. The executor pays; the cost is keyed on the original holder. Resolved later by the central sweeper.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "territory"
+                ],
+                "summary": "Start a rescue for a missing sitone",
+                "parameters": [
+                    {
+                        "description": "Rescue request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/territory.CreateRescueRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/territory.ProcessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/territory/rescues/{rescueID}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "territory"
+                ],
+                "summary": "Get a rescue process",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rescue process id",
+                        "name": "rescueID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/territory.ProcessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/territory/standings": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Lists each team's hidden combat tier and allowed actions. Scores and formulas are never exposed. Includes the yansan boss team flagged isBoss.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "territory"
+                ],
+                "summary": "Territory combat standings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/territory.StandingsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/yansan/boss/attack": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Registers the caller's team for the boss fight. When all player teams have registered, the boss transitions to under_attack: every pending yansan service immediately fails without refund.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "yansan"
+                ],
+                "summary": "Register my team for the boss attack",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/yansan.BossStatusResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/yansan/boss/status": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "yansan"
+                ],
+                "summary": "Yansan boss status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/yansan.BossStatusResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/yansan/convert": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Alias of POST /territory/captives/{captiveID}/convert with the captive id in the body.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "yansan"
+                ],
+                "summary": "Convert a captive (yansan alias)",
+                "parameters": [
+                    {
+                        "description": "Convert request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/yansan.ConvertRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/yansan.ProcessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/yansan/redeem": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Starts a redeem process for a unique stone of my team held at yansan. Cost and success rate scale with the team's redeem count. Blocked while the boss is under attack.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "yansan"
+                ],
+                "summary": "Redeem a unique stone from yansan",
+                "parameters": [
+                    {
+                        "description": "Redeem request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/yansan.RedeemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/yansan.ProcessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/yansan/status": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns the boss state, whether yansan services are available, my team's protected unique stones and the team redeem count.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "yansan"
+                ],
+                "summary": "Yansan status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/yansan.StatusResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "admin.AdminAttackMissionResponse": {
+            "type": "object",
+            "properties": {
+                "attackerTeamId": {
+                    "type": "string"
+                },
+                "attackerTier": {
+                    "type": "integer"
+                },
+                "beneficiaryPlayerId": {
+                    "type": "string"
+                },
+                "costOpenPower": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "defenderTeamId": {
+                    "type": "string"
+                },
+                "defenderTier": {
+                    "type": "integer"
+                },
+                "initiatorPlayerId": {
+                    "type": "string"
+                },
+                "missionId": {
+                    "type": "string"
+                },
+                "randomSeedRef": {
+                    "type": "string"
+                },
+                "resolveAt": {
+                    "type": "string"
+                },
+                "resolvedAt": {
+                    "type": "string"
+                },
+                "resultSummary": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "selectedSitoneIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "startedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "voteDeadline": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.AdminAttackMissionsResponse": {
+            "type": "object",
+            "properties": {
+                "missions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.AdminAttackMissionResponse"
+                    }
+                }
+            }
+        },
+        "admin.AdminCancelMissionResponse": {
+            "type": "object",
+            "properties": {
+                "mission": {
+                    "$ref": "#/definitions/admin.AdminAttackMissionResponse"
+                },
+                "releasedInstances": {
+                    "type": "integer"
+                }
+            }
+        },
+        "admin.AdminCaptiveRecordResponse": {
+            "type": "object",
+            "properties": {
+                "captiveId": {
+                    "type": "string"
+                },
+                "capturedAt": {
+                    "type": "string"
+                },
+                "convertProcesses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.AdminYansanProcessResponse"
+                    }
+                },
+                "convertedAt": {
+                    "type": "string"
+                },
+                "cooldownUntil": {
+                    "type": "string"
+                },
+                "currentTeamId": {
+                    "type": "string"
+                },
+                "instanceId": {
+                    "type": "string"
+                },
+                "originalTeamId": {
+                    "type": "string"
+                },
+                "sitoneId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.AdminCaptiveRecordsResponse": {
+            "type": "object",
+            "properties": {
+                "captives": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.AdminCaptiveRecordResponse"
+                    }
+                }
+            }
+        },
+        "admin.AdminEventLogResponse": {
+            "type": "object",
+            "properties": {
+                "actorPlayerId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "eventId": {
+                    "type": "string"
+                },
+                "eventType": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "relatedMissionId": {
+                    "type": "string"
+                },
+                "relatedSitoneId": {
+                    "type": "string"
+                },
+                "targetPlayerId": {
+                    "type": "string"
+                },
+                "teamId": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.AdminEventLogsResponse": {
+            "type": "object",
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.AdminEventLogResponse"
+                    }
+                }
+            }
+        },
+        "admin.AdminSitoneInstanceResponse": {
+            "type": "object",
+            "properties": {
+                "cooldownUntil": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "fatigue": {
+                    "type": "integer"
+                },
+                "instanceId": {
+                    "type": "string"
+                },
+                "missionId": {
+                    "type": "string"
+                },
+                "originPlayerId": {
+                    "type": "string"
+                },
+                "originTeamId": {
+                    "type": "string"
+                },
+                "playerId": {
+                    "type": "string"
+                },
+                "sitoneId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "teamId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.AdminSitoneInstancesResponse": {
+            "type": "object",
+            "properties": {
+                "instances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.AdminSitoneInstanceResponse"
+                    }
+                }
+            }
+        },
+        "admin.AdminYansanProcessResponse": {
+            "type": "object",
+            "properties": {
+                "actorPlayerId": {
+                    "type": "string"
+                },
+                "beneficiaryPlayerId": {
+                    "type": "string"
+                },
+                "costOpenPower": {
+                    "type": "integer"
+                },
+                "instanceId": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "processId": {
+                    "type": "string"
+                },
+                "resolveAt": {
+                    "type": "string"
+                },
+                "resolvedAt": {
+                    "type": "string"
+                },
+                "result": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "sitoneId": {
+                    "type": "string"
+                },
+                "startedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "teamId": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.AdminYansanProcessesResponse": {
+            "type": "object",
+            "properties": {
+                "processes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.AdminYansanProcessResponse"
+                    }
+                }
+            }
+        },
+        "admin.BossStateResponse": {
+            "type": "object",
+            "properties": {
+                "registeredTeams": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "admin.ClassTimeBattleLockSessionRequest": {
             "type": "object",
             "properties": {
@@ -7503,6 +9301,373 @@
                 "status": {
                     "type": "string",
                     "example": "ok"
+                }
+            }
+        },
+        "territory.CaptiveResponse": {
+            "type": "object",
+            "properties": {
+                "capturedAt": {
+                    "type": "string"
+                },
+                "convertedAt": {
+                    "type": "string"
+                },
+                "cooldownUntil": {
+                    "type": "string"
+                },
+                "currentTeamId": {
+                    "type": "string"
+                },
+                "heldByMyTeam": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "originalTeamId": {
+                    "type": "string"
+                },
+                "sitoneId": {
+                    "type": "string"
+                },
+                "sitoneName": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "territory.ConvertCaptiveRequest": {
+            "type": "object",
+            "properties": {
+                "extraOpenPower": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "territory.CostEstimateResponse": {
+            "type": "object",
+            "properties": {
+                "max": {
+                    "type": "integer"
+                },
+                "min": {
+                    "type": "integer"
+                }
+            }
+        },
+        "territory.CreateAttackRequest": {
+            "type": "object",
+            "required": [
+                "defenderTeamId",
+                "sitoneIds"
+            ],
+            "properties": {
+                "defenderTeamId": {
+                    "type": "string"
+                },
+                "sitoneIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "territory.CreateRescueRequest": {
+            "type": "object",
+            "required": [
+                "sitoneId"
+            ],
+            "properties": {
+                "sitoneId": {
+                    "type": "string"
+                }
+            }
+        },
+        "territory.DefenseResponse": {
+            "type": "object",
+            "properties": {
+                "cap": {
+                    "type": "integer"
+                },
+                "lockedUntil": {
+                    "type": "string"
+                },
+                "sitoneIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "territory.ListCaptivesResponse": {
+            "type": "object",
+            "properties": {
+                "captives": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/territory.CaptiveResponse"
+                    }
+                }
+            }
+        },
+        "territory.MissionResponse": {
+            "type": "object",
+            "properties": {
+                "agreeCount": {
+                    "type": "integer"
+                },
+                "attackerTeamId": {
+                    "type": "string"
+                },
+                "deathRisk": {
+                    "type": "string"
+                },
+                "defenderTeamId": {
+                    "type": "string"
+                },
+                "estimatedCost": {
+                    "$ref": "#/definitions/territory.CostEstimateResponse"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "initiatorId": {
+                    "type": "string"
+                },
+                "missingRisk": {
+                    "type": "string"
+                },
+                "resolveAt": {
+                    "type": "string"
+                },
+                "resultSummary": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "riskLevel": {
+                    "type": "string"
+                },
+                "sitoneIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "threshold": {
+                    "type": "integer"
+                },
+                "voteDeadline": {
+                    "type": "string"
+                }
+            }
+        },
+        "territory.ProcessResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "outcome": {
+                    "type": "string"
+                },
+                "resolveAt": {
+                    "type": "string"
+                },
+                "sitoneId": {
+                    "type": "string"
+                },
+                "startedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "territory.StandingEntryResponse": {
+            "type": "object",
+            "properties": {
+                "bossStatus": {
+                    "type": "string"
+                },
+                "canAttack": {
+                    "type": "boolean"
+                },
+                "canBeAttacked": {
+                    "type": "boolean"
+                },
+                "isBoss": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "teamId": {
+                    "type": "string"
+                },
+                "tier": {
+                    "type": "string"
+                }
+            }
+        },
+        "territory.StandingsResponse": {
+            "type": "object",
+            "properties": {
+                "myTeamId": {
+                    "type": "string"
+                },
+                "myTier": {
+                    "type": "string"
+                },
+                "teams": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/territory.StandingEntryResponse"
+                    }
+                }
+            }
+        },
+        "territory.UpdateDefenseRequest": {
+            "type": "object",
+            "required": [
+                "sitoneIds"
+            ],
+            "properties": {
+                "sitoneIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "territory.VoteRequest": {
+            "type": "object",
+            "required": [
+                "agree"
+            ],
+            "properties": {
+                "agree": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "yansan.BossStatusResponse": {
+            "type": "object",
+            "properties": {
+                "myTeamRegistered": {
+                    "type": "boolean"
+                },
+                "registeredTeams": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "requiredTeams": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "yansan.ConvertRequest": {
+            "type": "object",
+            "required": [
+                "captiveId"
+            ],
+            "properties": {
+                "captiveId": {
+                    "type": "string"
+                },
+                "extraOpenPower": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "yansan.ProcessResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "resolveAt": {
+                    "type": "string"
+                },
+                "sitoneId": {
+                    "type": "string"
+                },
+                "startedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "yansan.ProtectedStoneResponse": {
+            "type": "object",
+            "properties": {
+                "instanceId": {
+                    "type": "string"
+                },
+                "sitoneId": {
+                    "type": "string"
+                },
+                "sitoneName": {
+                    "type": "string"
+                }
+            }
+        },
+        "yansan.RedeemRequest": {
+            "type": "object",
+            "required": [
+                "sitoneId"
+            ],
+            "properties": {
+                "sitoneId": {
+                    "type": "string"
+                }
+            }
+        },
+        "yansan.StatusResponse": {
+            "type": "object",
+            "properties": {
+                "bossStatus": {
+                    "type": "string"
+                },
+                "protectedStones": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/yansan.ProtectedStoneResponse"
+                    }
+                },
+                "servicesAvailable": {
+                    "type": "boolean"
+                },
+                "teamRedeemCount": {
+                    "type": "integer"
                 }
             }
         }

@@ -53,13 +53,13 @@ func New(ctx context.Context) (*Application, error) {
 		return nil, err
 	}
 	handler := httpserver.NewRouter(httpserver.Dependencies{
-		Log:                  log,
-		RequestTimeout:       cfg.HTTP.RequestTimeout,
-		Content:              contentStore,
-		MongoClient:          mongoClient,
-		MongoDB:              mongoDB,
-		AdminPassword:        cfg.AdminPassword,
-		AdminCookieSecure:    cfg.AdminCookieSecure,
+		Log:                   log,
+		RequestTimeout:        cfg.HTTP.RequestTimeout,
+		Content:               contentStore,
+		MongoClient:           mongoClient,
+		MongoDB:               mongoDB,
+		AdminPassword:         cfg.AdminPassword,
+		AdminCookieSecure:     cfg.AdminCookieSecure,
 		RecoverMatchSessions:  true,
 		StartTerritorySweeper: true,
 	})
