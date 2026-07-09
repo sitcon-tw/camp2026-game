@@ -36,11 +36,6 @@ const TERRITORY_ACTION_LINKS = [
     iconPath: "/game-icons/items/item_mission_map.png",
   },
   {
-    label: "俘虜營",
-    to: "/territory/captives",
-    iconPath: "/game-icons/items/item_toolbox_key.png",
-  },
-  {
     label: "研三舍",
     to: "/yansan",
     iconPath: "/game-icons/items/item_star_village_signpost.png",
