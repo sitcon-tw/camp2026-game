@@ -61,8 +61,8 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     slot: 3,
     isBoss: false,
     path: "M252 116 L316 130 L302 176 L344 220 L328 276 L244 248 L226 174 Z",
-    labelX: 289,
-    labelY: 198,
+    labelX: 282,
+    labelY: 224,
   },
   {
     id: "dorm-10",
@@ -91,8 +91,8 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     slot: 6,
     isBoss: false,
     path: "M44 192 L92 218 L170 278 L142 344 L82 370 L36 328 L36 234 Z",
-    labelX: 92,
-    labelY: 289,
+    labelX: 94,
+    labelY: 304,
   },
   {
     id: "dorm-13",
@@ -111,8 +111,8 @@ export const TAIWAN_TERRITORY_REGIONS: TerritoryRegion[] = [
     slot: 8,
     isBoss: false,
     path: "M36 82 L92 26 L118 92 L152 126 L152 194 L92 218 L44 192 L36 132 Z",
-    labelX: 91,
-    labelY: 139,
+    labelX: 90,
+    labelY: 116,
   },
   {
     id: "south-dorm",
