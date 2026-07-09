@@ -49,6 +49,9 @@ type CostExtras struct {
 	// TeamConvertCount is how many converts the beneficiary's team has
 	// already performed (scales convert cost).
 	TeamConvertCount int
+	// AttackCatchUpMultiplier is a hidden tier-based attack discount.
+	// Values in (0,1) make attacks cheaper for lower-ranked teams.
+	AttackCatchUpMultiplier float64
 }
 
 // DefaultCostConfig returns the baseline coefficients: base costs of
@@ -110,6 +113,10 @@ func (c CostConfig) expectedCost(kind CostKind, beneficiaryRank int, extras Cost
 
 	expected := float64(base)
 	switch kind {
+	case CostKindAttack:
+		if extras.AttackCatchUpMultiplier > 0 {
+			expected *= extras.AttackCatchUpMultiplier
+		}
 	case CostKindRedeem:
 		expected *= 1 + c.RepeatScale*float64(maxInt(extras.TeamRedeemCount, 0))
 	case CostKindConvert:

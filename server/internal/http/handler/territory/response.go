@@ -187,7 +187,12 @@ func (h *Handler) missionResponse(ctx context.Context, mission mongomodel.Attack
 		if err != nil {
 			return MissionResponse{}, err
 		}
-		minCost, maxCost, err := h.service.Costs.EstimateCost(territory.CostKindAttack, rank, teamSize, territory.CostExtras{})
+		minCost, maxCost, err := h.service.Costs.EstimateCost(
+			territory.CostKindAttack,
+			rank,
+			teamSize,
+			territory.AttackCostExtras(territory.Tier(mission.AttackerTier), territory.Tier(mission.DefenderTier)),
+		)
 		if err == nil {
 			response.EstimatedCost = &CostEstimateResponse{Min: minCost, Max: maxCost}
 		}

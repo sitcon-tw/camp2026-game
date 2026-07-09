@@ -46,6 +46,23 @@ func TestEstimateCostRangeAroundExpected(t *testing.T) {
 	}
 }
 
+func TestEstimateCostAttackCatchUpDiscount(t *testing.T) {
+	config := DefaultCostConfig()
+
+	minCost, maxCost, err := config.EstimateCost(
+		CostKindAttack,
+		30,
+		5,
+		AttackCostExtras(TierChallenger, TierLeader),
+	)
+	if err != nil {
+		t.Fatalf("EstimateCost: %v", err)
+	}
+	if minCost != 64 || maxCost != 86 {
+		t.Errorf("challenger attack leader estimate = (%d, %d), want (64, 86)", minCost, maxCost)
+	}
+}
+
 func TestEstimateCostRepeatScaling(t *testing.T) {
 	config := DefaultCostConfig()
 

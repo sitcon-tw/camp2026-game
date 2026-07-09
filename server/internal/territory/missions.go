@@ -54,7 +54,13 @@ func (s *Service) ExpireMissionIfDue(ctx context.Context, mission mongomodel.Att
 func (s *Service) CommitMission(ctx context.Context, mission mongomodel.AttackMission, beneficiaryRank int, teamSize int) (mongomodel.AttackMission, error) {
 	seedRef := NewSeedRef()
 	roll := NewRoll(seedRef)
-	cost, err := s.Costs.Roll(CostKindAttack, beneficiaryRank, teamSize, CostExtras{}, roll)
+	cost, err := s.Costs.Roll(
+		CostKindAttack,
+		beneficiaryRank,
+		teamSize,
+		AttackCostExtras(Tier(mission.AttackerTier), Tier(mission.DefenderTier)),
+		roll,
+	)
 	if err != nil {
 		return mission, err
 	}
@@ -218,7 +224,13 @@ func (s *Service) ResolveDueMission(ctx context.Context, mission mongomodel.Atta
 	}
 
 	roll := NewRoll(mission.RandomSeedRef + ":resolve")
-	resolution := ResolveMission(s.Engine, input, roll)
+	engine := s.Engine
+	engine.StealMaxCount = CatchUpStealMaxCount(
+		engine.StealMaxCount,
+		Tier(mission.AttackerTier),
+		Tier(mission.DefenderTier),
+	)
+	resolution := ResolveMission(engine, input, roll)
 
 	summary := buildResultSummary(s, resolution)
 
