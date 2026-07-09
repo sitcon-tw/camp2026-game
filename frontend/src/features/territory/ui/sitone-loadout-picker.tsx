@@ -4,6 +4,7 @@ import type { PlayerSitone } from "@/shared/api/game"
 import { rarityLabel, sitoneMeta } from "@/shared/lib/game-labels"
 import { Button } from "@/shared/ui/button"
 import { GameIcon } from "@/shared/ui/game-icon"
+import { cn } from "@/shared/utils"
 
 type SitoneLoadoutPickerProps = {
   sitones: PlayerSitone[]
@@ -11,6 +12,9 @@ type SitoneLoadoutPickerProps = {
   cap: number
   mode: "attack" | "defense"
   disabled?: boolean
+  compact?: boolean
+  className?: string
+  listClassName?: string
   onChange: (sitoneIds: string[]) => void
 }
 
@@ -28,6 +32,9 @@ export function SitoneLoadoutPicker({
   cap,
   mode,
   disabled = false,
+  compact = false,
+  className,
+  listClassName,
   onChange,
 }: SitoneLoadoutPickerProps) {
   const deployableSitones = sitones.filter((entry) => {
@@ -59,7 +66,7 @@ export function SitoneLoadoutPicker({
   }
 
   return (
-    <div className="grid gap-2">
+    <div className={cn("grid gap-2", compact && "min-h-0 gap-1.5", className)}>
       <div className="flex items-center justify-between px-1">
         <span className="text-muted-foreground text-xs font-black">
           已選 {total} / {cap} 顆
@@ -68,72 +75,88 @@ export function SitoneLoadoutPicker({
           <span className="text-primary text-xs font-black">已達上限</span>
         ) : null}
       </div>
-      {deployableSitones.map((entry) => {
-        const meta = sitoneMeta(entry.sitone.type)
-        const selectedCount = counts.get(entry.sitoneId) ?? 0
+      <div
+        className={cn(
+          "grid gap-2",
+          compact && "min-h-0 gap-1.5",
+          listClassName,
+        )}
+      >
+        {deployableSitones.map((entry) => {
+          const meta = sitoneMeta(entry.sitone.type)
+          const selectedCount = counts.get(entry.sitoneId) ?? 0
 
-        return (
-          <div
-            key={entry.sitoneId}
-            className={[
-              "border-border bg-card grid grid-cols-[44px_1fr_auto] items-center gap-2.5 rounded-[16px] border-2 px-3 py-2.5",
-              selectedCount > 0 ? "border-ink bg-surface-raised" : "",
-            ].join(" ")}
-          >
+          return (
             <div
-              className={[
-                "border-ink grid size-11 place-items-center overflow-hidden rounded-[14px] border-2",
-                meta.bgClassName,
-              ].join(" ")}
-              aria-hidden
+              key={entry.sitoneId}
+              className={cn(
+                "border-border bg-card grid grid-cols-[44px_1fr_auto] items-center gap-2.5 rounded-[16px] border-2 px-3 py-2.5",
+                compact &&
+                  "grid-cols-[38px_1fr_auto] gap-2 rounded-[14px] px-2.5 py-2",
+                selectedCount > 0 && "border-ink bg-surface-raised",
+              )}
             >
-              <GameIcon
-                iconPath={entry.sitone.iconPath}
-                imageClassName="p-1"
-                fallback={
-                  <span className="text-[10px] font-black">{meta.short}</span>
-                }
-              />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-black">
-                {entry.sitone.name}
-              </p>
-              <p className="text-muted-foreground truncate text-xs font-bold">
-                {meta.label} · {rarityLabel(entry.sitone.rarity)} · 持有{" "}
-                {entry.quantity}
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                aria-label={`減少 ${entry.sitone.name}`}
-                disabled={disabled || selectedCount === 0}
-                onClick={() => adjust(entry.sitoneId, -1, entry.quantity)}
+              <div
+                className={cn(
+                  "border-ink grid size-11 place-items-center overflow-hidden rounded-[14px] border-2",
+                  compact && "size-[38px] rounded-[12px]",
+                  meta.bgClassName,
+                )}
+                aria-hidden
               >
-                <Minus aria-hidden />
-              </Button>
-              <span className="min-w-6 text-center text-sm font-black">
-                {selectedCount}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                aria-label={`增加 ${entry.sitone.name}`}
-                disabled={
-                  disabled || selectedCount >= entry.quantity || total >= cap
-                }
-                onClick={() => adjust(entry.sitoneId, 1, entry.quantity)}
-              >
-                <Plus aria-hidden />
-              </Button>
+                <GameIcon
+                  iconPath={entry.sitone.iconPath}
+                  imageClassName="p-1"
+                  fallback={
+                    <span className="text-[10px] font-black">{meta.short}</span>
+                  }
+                />
+              </div>
+              <div className="min-w-0">
+                <p
+                  className={cn(
+                    "truncate text-sm font-black",
+                    compact && "text-[13px]",
+                  )}
+                >
+                  {entry.sitone.name}
+                </p>
+                <p className="text-muted-foreground truncate text-xs font-bold">
+                  {meta.label} · {rarityLabel(entry.sitone.rarity)} · 持有{" "}
+                  {entry.quantity}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label={`減少 ${entry.sitone.name}`}
+                  disabled={disabled || selectedCount === 0}
+                  onClick={() => adjust(entry.sitoneId, -1, entry.quantity)}
+                >
+                  <Minus aria-hidden />
+                </Button>
+                <span className="min-w-5 text-center text-sm font-black">
+                  {selectedCount}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label={`增加 ${entry.sitone.name}`}
+                  disabled={
+                    disabled || selectedCount >= entry.quantity || total >= cap
+                  }
+                  onClick={() => adjust(entry.sitoneId, 1, entry.quantity)}
+                >
+                  <Plus aria-hidden />
+                </Button>
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }
