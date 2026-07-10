@@ -156,13 +156,13 @@ func TestIndexModelsByCollection(t *testing.T) {
 		},
 		{
 			collection: mongomodel.ShopPurchasesCollection,
-			name:       "shop_purchases_player_item",
+			name:       "shop_purchases_non_repeatable_player_item",
 			keys: bson.D{
 				{Key: "player_id", Value: 1},
 				{Key: "item_id", Value: 1},
 			},
 			unique:  true,
-			partial: bson.M{"repeatable": bson.M{"$ne": true}},
+			partial: bson.M{"repeatable": bson.M{"$in": bson.A{false, nil}}},
 		},
 		{
 			collection:         shopPurchaseLocksCollection,

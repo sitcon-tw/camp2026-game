@@ -26,6 +26,15 @@ func TestHealth(t *testing.T) {
 	}
 }
 
+func TestHealthSupportsHead(t *testing.T) {
+	router := NewRouter(Dependencies{})
+
+	res := performRequest(router, http.MethodHead, "/api/healthz", nil)
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, res.Code)
+	}
+}
+
 func TestHealthWhenDatabaseUnavailable(t *testing.T) {
 	client, err := mongo.Connect(options.Client().
 		ApplyURI("mongodb://127.0.0.1:1").

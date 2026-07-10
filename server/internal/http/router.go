@@ -54,6 +54,7 @@ func NewRouter(dep Dependencies) http.Handler {
 	r.Use(chimw.RequestID)
 	r.Use(chimw.RealIP)
 	r.Use(chimw.StripSlashes)
+	r.Use(chimw.GetHead)
 	r.Use(timeoutExceptMatchEvents(dep.RequestTimeout))
 	r.Use(recoverer(dep.Log))
 	r.Use(requestLogger(dep.Log))

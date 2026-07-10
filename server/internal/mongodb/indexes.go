@@ -2,6 +2,7 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -25,11 +26,33 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 	defer cancel()
 
 	for _, collectionIndexes := range indexModelsByCollection() {
-		if _, err := db.Collection(collectionIndexes.collection).Indexes().CreateMany(indexCtx, collectionIndexes.models); err != nil {
+		collection := db.Collection(collectionIndexes.collection)
+		if _, err := collection.Indexes().CreateMany(indexCtx, collectionIndexes.models); err != nil {
 			return fmt.Errorf("ensure %s indexes: %w", collectionIndexes.collection, err)
+		}
+		if collectionIndexes.collection == mongomodel.ShopPurchasesCollection {
+			if err := dropLegacyShopPurchaseIndex(indexCtx, collection); err != nil {
+				return fmt.Errorf("drop legacy shop purchase index: %w", err)
+			}
 		}
 	}
 	return nil
+}
+
+func dropLegacyShopPurchaseIndex(ctx context.Context, collection *mongo.Collection) error {
+	err := collection.Indexes().DropOne(ctx, "shop_purchases_player_item")
+	if err == nil || ignorableIndexDropError(err) {
+		return nil
+	}
+	return err
+}
+
+func ignorableIndexDropError(err error) bool {
+	var commandErr mongo.CommandError
+	if !errors.As(err, &commandErr) {
+		return false
+	}
+	return commandErr.Code == 26 || commandErr.Code == 27
 }
 
 func indexModelsByCollection() []collectionIndexModels {
@@ -227,9 +250,9 @@ func shopPurchaseIndexModels() []mongo.IndexModel {
 				{Key: "item_id", Value: 1},
 			},
 			Options: options.Index().
-				SetName("shop_purchases_player_item").
+				SetName("shop_purchases_non_repeatable_player_item").
 				SetUnique(true).
-				SetPartialFilterExpression(bson.M{"repeatable": bson.M{"$ne": true}}),
+				SetPartialFilterExpression(bson.M{"repeatable": bson.M{"$in": bson.A{false, nil}}}),
 		},
 	}
 }
