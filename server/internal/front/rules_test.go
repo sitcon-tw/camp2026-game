@@ -180,6 +180,66 @@ func TestAdvanceTickRejectsCooldown(t *testing.T) {
 	}
 }
 
+func TestReinforceRejectsMaximumWithoutSpendingOrScoring(t *testing.T) {
+	state := newTestState(t)
+	cell := cellByID(t, state, "base_a")
+	for i := range state.Cells {
+		if state.Cells[i].ID == cell.ID {
+			state.Cells[i].Control = 100
+			state.Cells[i].Defense = 100
+		}
+		if state.Cells[i].ID == "neutral_a" {
+			state.Cells[i].OwnerTeamID = "team-a"
+		}
+	}
+
+	next, result, err := ApplyCommand(state, Command{
+		ID: "cmd-full", PlayerID: "player-a", TeamID: "team-a", Kind: CommandReinforce,
+		FromCellID: "neutral_a", ToCellID: "base_a", SitoneID: "stone-a",
+	})
+	if err == nil || !strings.Contains(err.Error(), "maximum defense") {
+		t.Fatalf("expected maximum defense error, got result=%#v err=%v", result, err)
+	}
+	if teamByID(t, next, "team-a").FrontOpenPower != teamByID(t, state, "team-a").FrontOpenPower || teamByID(t, next, "team-a").Score != teamByID(t, state, "team-a").Score {
+		t.Fatalf("rejected reinforce changed team state: before=%#v after=%#v", teamByID(t, state, "team-a"), teamByID(t, next, "team-a"))
+	}
+}
+
+func TestReinforceAndRepairCapDefenseAtOneHundred(t *testing.T) {
+	state := newTestState(t)
+	for i := range state.Cells {
+		switch state.Cells[i].ID {
+		case "base_a", "repair_a":
+			state.Cells[i].Defense = 95
+		}
+		if state.Cells[i].ID == "repair_a" {
+			state.Cells[i].OwnerTeamID = "team-a"
+		}
+	}
+
+	reinforced, _, err := ApplyCommand(state, Command{
+		ID: "cmd-reinforce", PlayerID: "player-a", TeamID: "team-a", Kind: CommandReinforce,
+		FromCellID: "repair_a", ToCellID: "base_a", SitoneID: "stone-a",
+	})
+	if err != nil {
+		t.Fatalf("reinforce: %v", err)
+	}
+	if cellByID(t, reinforced, "base_a").Defense != 100 {
+		t.Fatalf("reinforce exceeded cap: %#v", cellByID(t, reinforced, "base_a"))
+	}
+
+	repaired, _, err := ApplyCommand(state, Command{
+		ID: "cmd-repair", PlayerID: "player-b", TeamID: "team-a", Kind: CommandRepair,
+		FromCellID: "base_a", ToCellID: "repair_a", SitoneID: "stone-b",
+	})
+	if err != nil {
+		t.Fatalf("repair: %v", err)
+	}
+	if cellByID(t, repaired, "repair_a").Defense != 100 {
+		t.Fatalf("repair exceeded cap: %#v", cellByID(t, repaired, "repair_a"))
+	}
+}
+
 func newTestState(t *testing.T) State {
 	t.Helper()
 

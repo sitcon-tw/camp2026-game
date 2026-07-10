@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Clock, Flag, Gem, RefreshCw, Shield, Zap } from "lucide-react"
+import {
+  Clock,
+  Flag,
+  Gem,
+  MapPinned,
+  RefreshCw,
+  Shield,
+  Zap,
+} from "lucide-react"
 import { useMemo, useState, type ComponentType } from "react"
 import { toast } from "sonner"
 
@@ -32,7 +40,14 @@ import {
 } from "../api/front.query"
 import { FrontLeaderboard } from "./front-leaderboard"
 import { FrontNodeDrawer } from "./front-node-drawer"
+import { FrontTerritoryDrawer } from "./front-territory-drawer"
 import { TerritoryMap } from "./territory-map"
+import {
+  decodeTerritoryRows,
+  territoryCellKey,
+  type TerritoryCellState,
+  type TerritoryTarget,
+} from "./territory-grid-map"
 
 export function FrontMapPanel() {
   const currentQuery = useQuery(frontCurrentQueryOptions())
@@ -52,6 +67,9 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
   const queryClient = useQueryClient()
   const snapshotQuery = useQuery(frontSnapshotQueryOptions(frontID))
   const [selectedCellId, setSelectedCellId] = useState<string | null>(null)
+  const [selectedTarget, setSelectedTarget] = useState<TerritoryTarget | null>(
+    null,
+  )
   const [selectedSitoneId, setSelectedSitoneId] = useState<string | null>(null)
   const [selectedCommand, setSelectedCommand] =
     useState<FrontCommandKind | null>(null)
@@ -62,6 +80,43 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
   )
   const selectedCell =
     snapshot?.cells.find((cell) => cell.id === selectedCellId) ?? null
+  const territory = useMemo(
+    () =>
+      snapshot?.grid
+        ? decodeTerritoryRows(
+            snapshot.territoryRows,
+            snapshot.grid.width,
+            snapshot.grid.height,
+          )
+        : new Map(),
+    [snapshot],
+  )
+  const selectedTerritoryCell = selectedTarget
+    ? (territory.get(territoryCellKey(selectedTarget.x, selectedTarget.y)) ??
+      null)
+    : null
+  const selectedBase =
+    (selectedTarget
+      ? snapshot?.bases.find(
+          (base) => base.x === selectedTarget.x && base.y === selectedTarget.y,
+        )
+      : null) ?? null
+  const selectedLandmark =
+    (selectedTarget
+      ? snapshot?.landmarks.find(
+          (landmark) =>
+            landmark.x === selectedTarget.x && landmark.y === selectedTarget.y,
+        )
+      : null) ?? null
+  const canAttackSelectedOwner = Boolean(
+    snapshot?.myTeamId &&
+    selectedTerritoryCell?.ownerTeamId &&
+    territoryOwnerTouchesTeam(
+      territory,
+      selectedTerritoryCell.ownerTeamId,
+      snapshot.myTeamId,
+    ),
+  )
   const firstAvailableSitone =
     visibleSitones.find((sitone) => sitone.available) ?? visibleSitones[0]
   const selectedSitone =
@@ -71,17 +126,82 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
   const commandMutation = useMutation({
     ...frontCommandMutationOptions(frontID),
     onSuccess: (result) => {
-      queryClient.setQueryData(frontSnapshotQueryKey(frontID), result.front)
+      queryClient.setQueryData<FrontSnapshot>(
+        frontSnapshotQueryKey(frontID),
+        (current) => {
+          if (
+            current?.revision !== undefined &&
+            result.front.revision !== undefined &&
+            current.revision > result.front.revision
+          ) {
+            return current
+          }
+
+          return result.front
+        },
+      )
       setSelectedCommand(null)
       toast.success(commandSuccessMessage(result.command.kind))
     },
-    onError: (error) => {
+    onError: async (error) => {
+      setSelectedCommand(null)
+      await snapshotQuery.refetch()
       toast.error(error instanceof Error ? error.message : "命令送出失敗")
     },
   })
 
   function handleSelectCommand(kind: FrontCommandKind) {
-    if (!snapshot || !selectedCell || !selectedSitone) return
+    if (!snapshot) return
+
+    if (snapshot.mapMode === "territory_grid") {
+      if (!snapshot.canPlay) {
+        toast.error("觀戰隊伍不能送出戰線命令")
+        return
+      }
+      if (!selectedTarget || !selectedTerritoryCell) return
+
+      const contextualCommand = territoryContextCommandKind(
+        selectedTerritoryCell.ownerTeamId,
+        snapshot.myTeamId,
+        selectedBase !== null,
+      )
+      if (isTerritoryCoreCommand(kind) && kind !== contextualCommand) {
+        toast.error("這個方向不能使用此命令")
+        return
+      }
+      if (kind === "attack" && !canAttackSelectedOwner) {
+        toast.error("此小隊尚未與我方領土接壤")
+        return
+      }
+      if (kind === "reinforce" && selectedTerritoryCell.defense >= 100) {
+        toast.error("此格防禦已滿")
+        return
+      }
+
+      const option = findAvailableTerritoryCommand(
+        snapshot.availableCommands,
+        selectedTarget,
+        kind,
+      )
+
+      if (snapshot.availableCommands.length > 0 && !option?.enabled) {
+        toast.error(option?.reason ?? "這個區域目前不能使用此命令")
+        return
+      }
+
+      setSelectedCommand(kind)
+      commandMutation.mutate({
+        clientCommandId: newClientCommandID(),
+        kind,
+        targetX: selectedTarget.x,
+        targetY: selectedTarget.y,
+        expectedRevision: snapshot.revision,
+        sitoneId: selectedSitone?.sitoneId,
+      })
+      return
+    }
+
+    if (!selectedCell || !selectedSitone) return
 
     const option = findAvailableCommand(
       snapshot.availableCommands,
@@ -117,34 +237,70 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
         onRefresh={() => void snapshotQuery.refetch()}
       />
       <TerritoryMap
+        mapMode={snapshotQuery.data.mapMode}
         cells={snapshotQuery.data.cells}
         teams={snapshotQuery.data.teams}
         activeEvents={snapshotQuery.data.activeEvents}
+        grid={snapshotQuery.data.grid}
+        territoryRows={snapshotQuery.data.territoryRows}
+        bases={snapshotQuery.data.bases}
+        landmarks={snapshotQuery.data.landmarks}
         selectedCellId={selectedCell?.id ?? null}
-        onSelectCell={setSelectedCellId}
+        selectedTarget={selectedTarget}
+        onSelectCell={(cellID) => {
+          setSelectedTarget(null)
+          setSelectedCellId(cellID)
+        }}
+        onSelectTarget={(target) => {
+          setSelectedCellId(null)
+          setSelectedTarget(target)
+        }}
       />
-      <FrontSitoneToolbar
-        sitones={visibleSitones}
-        selectedSitoneId={selectedSitone?.sitoneId ?? null}
-        onSelectSitone={setSelectedSitoneId}
-      />
+      {snapshotQuery.data.canPlay ? (
+        <FrontSitoneToolbar
+          sitones={visibleSitones}
+          selectedSitoneId={selectedSitone?.sitoneId ?? null}
+          onSelectSitone={setSelectedSitoneId}
+        />
+      ) : null}
       <FrontLeaderboard
         entries={snapshotQuery.data.leaderboard}
         teams={snapshotQuery.data.teams}
         myTeamId={snapshotQuery.data.myTeamId}
+        mapMode={snapshotQuery.data.mapMode}
       />
-      <FrontNodeDrawer
-        front={snapshotQuery.data}
-        cell={selectedCell}
-        teams={snapshotQuery.data.teams}
-        activeEvents={snapshotQuery.data.activeEvents}
-        availableCommands={snapshotQuery.data.availableCommands}
-        selectedSitone={selectedSitone}
-        selectedCommand={selectedCommand}
-        onOpenChange={setSelectedCellId}
-        onSelectCommand={handleSelectCommand}
-        commandPending={commandMutation.isPending}
-      />
+      {snapshotQuery.data.mapMode === "territory_grid" ? (
+        <FrontTerritoryDrawer
+          front={snapshotQuery.data}
+          canPlay={snapshotQuery.data.canPlay}
+          myTeamId={snapshotQuery.data.myTeamId}
+          target={selectedTarget}
+          cell={selectedTerritoryCell}
+          base={selectedBase}
+          landmark={selectedLandmark}
+          canAttackSelectedOwner={canAttackSelectedOwner}
+          teams={snapshotQuery.data.teams}
+          availableCommands={snapshotQuery.data.availableCommands}
+          selectedSitone={selectedSitone}
+          selectedCommand={selectedCommand}
+          onOpenChange={setSelectedTarget}
+          onSelectCommand={handleSelectCommand}
+          commandPending={commandMutation.isPending}
+        />
+      ) : (
+        <FrontNodeDrawer
+          front={snapshotQuery.data}
+          cell={selectedCell}
+          teams={snapshotQuery.data.teams}
+          activeEvents={snapshotQuery.data.activeEvents}
+          availableCommands={snapshotQuery.data.availableCommands}
+          selectedSitone={selectedSitone}
+          selectedCommand={selectedCommand}
+          onOpenChange={setSelectedCellId}
+          onSelectCommand={handleSelectCommand}
+          commandPending={commandMutation.isPending}
+        />
+      )}
     </div>
   )
 }
@@ -173,13 +329,13 @@ function FrontSummaryCard({
               {statusLabel(front.status)}
             </StatusBadge>
             <Badge variant="secondary">Tick {front.tick}</Badge>
+            {!front.canPlay ? (
+              <StatusBadge tone="magic">唯讀觀戰</StatusBadge>
+            ) : null}
           </div>
           <h2 className="text-2xl leading-tight font-black break-words">
-            開源戰線
+            {front.mapMode === "territory_grid" ? "校園領土戰" : "開源戰線"}
           </h2>
-          <p className="text-primary-foreground/70 mt-1 text-sm font-bold">
-            {front.mapId}
-          </p>
         </div>
         <Button
           type="button"
@@ -212,11 +368,19 @@ function FrontSummaryCard({
           label="小隊排名"
           value={front.myTeamRank ? `#${front.myTeamRank}` : "-"}
         />
-        <SummaryMetric
-          icon={Shield}
-          label="支援"
-          value={formatNumber(front.supportTokens)}
-        />
+        {front.mapMode === "territory_grid" ? (
+          <SummaryMetric
+            icon={MapPinned}
+            label="領土"
+            value={front.canPlay ? formatNumber(myTeam?.controlledCells) : "-"}
+          />
+        ) : (
+          <SummaryMetric
+            icon={Shield}
+            label="支援"
+            value={formatNumber(front.supportTokens)}
+          />
+        )}
       </div>
     </Card>
   )
@@ -392,6 +556,61 @@ function findAvailableCommand(
       option.fromCellId &&
       option.enabled,
   )
+}
+
+function findAvailableTerritoryCommand(
+  options: FrontCommandOption[],
+  target: TerritoryTarget,
+  kind: FrontCommandKind,
+) {
+  return options.find(
+    (option) =>
+      option.kind === kind &&
+      (option.targetX === undefined || option.targetX === target.x) &&
+      (option.targetY === undefined || option.targetY === target.y),
+  )
+}
+
+function territoryOwnerTouchesTeam(
+  territory: Map<string, TerritoryCellState>,
+  ownerTeamID: string,
+  myTeamID: string,
+) {
+  const directions = [
+    [0, -1],
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+  ] as const
+
+  for (const cell of territory.values()) {
+    if (cell.ownerTeamId !== ownerTeamID) continue
+
+    for (const [offsetX, offsetY] of directions) {
+      const neighbor = territory.get(
+        territoryCellKey(cell.x + offsetX, cell.y + offsetY),
+      )
+      if (neighbor?.ownerTeamId === myTeamID) return true
+    }
+  }
+
+  return false
+}
+
+function territoryContextCommandKind(
+  ownerTeamID: string | undefined,
+  myTeamID: string | undefined,
+  isBase: boolean,
+): FrontCommandKind | null {
+  if (!ownerTeamID) return "expand"
+  if (ownerTeamID === myTeamID) return "reinforce"
+  if (!isBase) return "attack"
+
+  return null
+}
+
+function isTerritoryCoreCommand(kind: FrontCommandKind) {
+  return kind === "expand" || kind === "attack" || kind === "reinforce"
 }
 
 function newClientCommandID() {

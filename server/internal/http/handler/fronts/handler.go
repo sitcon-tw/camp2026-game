@@ -163,6 +163,24 @@ func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) currentFront(ctx context.Context) (mongomodel.Front, error) {
+	if h.content != nil {
+		if territoryTemplate, ok := h.content.TerritoryMap(); ok {
+			var territoryFront mongomodel.Front
+			err := h.db.Collection(mongomodel.FrontsCollection).
+				FindOne(ctx, bson.M{"_id": territoryTemplate.ID}).
+				Decode(&territoryFront)
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				return frontFromTerritoryTemplate(territoryTemplate), nil
+			}
+			if err != nil {
+				return mongomodel.Front{}, err
+			}
+			territoryFront = h.withFrontDefaults(territoryFront)
+			territoryFront.Current = true
+			return territoryFront, nil
+		}
+	}
+
 	var front mongomodel.Front
 	err := h.db.Collection(mongomodel.FrontsCollection).
 		FindOne(
@@ -219,7 +237,25 @@ func (h *Handler) withFrontDefaults(front mongomodel.Front) mongomodel.Front {
 	if front.Status == "" {
 		front.Status = mongomodel.FrontStatusOpenPlay
 	}
-	if len(front.Cells) == 0 && h.content != nil {
+	if front.Revision <= 0 {
+		front.Revision = 1
+	}
+	if front.MapMode == "" && h.content != nil {
+		if _, ok := h.content.GetTerritoryMap(front.MapID); ok {
+			front.MapMode = content.FrontMapModeTerritoryGrid
+		}
+	}
+	if front.MapMode == content.FrontMapModeTerritoryGrid && front.Territory == nil && h.content != nil {
+		template, ok := h.content.GetTerritoryMap(front.MapID)
+		if ok {
+			fallback := frontFromTerritoryTemplate(template)
+			front.Name = fallback.Name
+			front.Teams = fallback.Teams
+			front.Territory = fallback.Territory
+			front.ActiveEvents = fallback.ActiveEvents
+			front.Leaderboard = fallback.Leaderboard
+		}
+	} else if len(front.Cells) == 0 && h.content != nil {
 		template, ok := h.content.GetFrontMap(front.MapID)
 		if ok && template.Enabled {
 			fallback := frontFromTemplate(template)
@@ -227,6 +263,15 @@ func (h *Handler) withFrontDefaults(front mongomodel.Front) mongomodel.Front {
 			front.Cells = fallback.Cells
 			front.Teams = fallback.Teams
 			front.ActiveEvents = fallback.ActiveEvents
+		}
+	}
+	for i := range front.Cells {
+		front.Cells[i].Control = clampFrontInt(front.Cells[i].Control, 0, 100)
+		front.Cells[i].Defense = clampFrontInt(front.Cells[i].Defense, 0, territoryMaxDefense)
+	}
+	if front.MapMode == content.FrontMapModeTerritoryGrid && h.content != nil {
+		if template, ok := h.content.GetTerritoryMap(front.MapID); ok && template.ID == front.ID {
+			front.Current = true
 		}
 	}
 	if front.CreatedAt.IsZero() {

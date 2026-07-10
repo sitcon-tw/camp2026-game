@@ -221,8 +221,8 @@ func validateFrontMap(location string, template FrontMapTemplate) (FrontMapTempl
 		if cell.InitialControl < 0 || cell.InitialControl > 100 {
 			errs = append(errs, fmt.Errorf("%s.initial_control must be between 0 and 100", cellLocation))
 		}
-		if cell.InitialDefense < 0 {
-			errs = append(errs, fmt.Errorf("%s.initial_defense must be greater than or equal to 0", cellLocation))
+		if cell.InitialDefense < 0 || cell.InitialDefense > 100 {
+			errs = append(errs, fmt.Errorf("%s.initial_defense must be between 0 and 100", cellLocation))
 		}
 		if cell.InitialResource < 0 {
 			errs = append(errs, fmt.Errorf("%s.initial_resource must be greater than or equal to 0", cellLocation))

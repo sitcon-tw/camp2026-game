@@ -9,6 +9,11 @@ type TeamToneClasses = {
   text: string
 }
 
+type TerritoryTeamColor = {
+  dot: string
+  cssVariable: string
+}
+
 const teamTones: TeamToneClasses[] = [
   {
     key: "explore",
@@ -47,6 +52,18 @@ const teamTones: TeamToneClasses[] = [
   },
 ]
 
+const territoryTeamColors: TerritoryTeamColor[] = [
+  { dot: "bg-pebble-explore", cssVariable: "--pebble-explore" },
+  { dot: "bg-pebble-spark", cssVariable: "--pebble-spark" },
+  { dot: "bg-pebble-resonate", cssVariable: "--pebble-resonate" },
+  { dot: "bg-pebble-engineer", cssVariable: "--pebble-engineer" },
+  { dot: "bg-pebble-play", cssVariable: "--pebble-play" },
+  { dot: "bg-primary", cssVariable: "--primary" },
+  { dot: "bg-moss", cssVariable: "--moss" },
+  { dot: "bg-destructive", cssVariable: "--destructive" },
+  { dot: "bg-ink", cssVariable: "--ink" },
+]
+
 export const neutralTeamTone: TeamToneClasses = {
   key: "spark",
   dot: "bg-muted-foreground",
@@ -78,4 +95,16 @@ export function getTeamName(
     teams.find((team) => team.teamId === teamID)?.name ??
     `小隊 ${teamID.slice(0, 4)}`
   )
+}
+
+export function getTerritoryTeamColor(
+  teamID: string | undefined,
+  teams: FrontTeamState[],
+) {
+  if (!teamID) return null
+
+  const index = teams.findIndex((team) => team.teamId === teamID)
+  if (index < 0) return null
+
+  return territoryTeamColors[index % territoryTeamColors.length]
 }

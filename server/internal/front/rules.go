@@ -33,6 +33,7 @@ const (
 	defaultCommandResolveTicks   = int64(1)
 	defaultResourceDecayPerTick  = 1
 	defaultSupportTokens         = 1
+	maxDefense                   = 100
 )
 
 var commandCosts = map[string]int{
@@ -452,6 +453,9 @@ func validateCommandTarget(state State, command Command, toCell Cell) []error {
 		if toCell.OwnerTeamID != command.TeamID {
 			return []error{fmt.Errorf("reinforce target %q must be controlled by team %q", toCell.ID, command.TeamID)}
 		}
+		if toCell.Control >= 100 && toCell.Defense >= maxDefense {
+			return []error{fmt.Errorf("reinforce target %q is already at maximum defense", toCell.ID)}
+		}
 	case CommandRepair:
 		if activeEventKindAtCell(state, toCell.ID) != content.FrontEventRepair {
 			return []error{fmt.Errorf("repair target %q has no active repair event", toCell.ID)}
@@ -527,13 +531,13 @@ func applyCommandInPlace(state *State, command Command, now time.Time) (CommandR
 		}
 	case CommandReinforce:
 		cell.Control = clampInt(cell.Control+25, 0, 100)
-		cell.Defense += 12
+		cell.Defense = clampInt(cell.Defense+12, 0, maxDefense)
 		result.ScoreDelta = 5
 	case CommandRepair:
 		removeActiveEventAtCell(state, cell.ID)
 		cell.EventID = ""
 		cell.Control = clampInt(cell.Control+20, 0, 100)
-		cell.Defense += 10
+		cell.Defense = clampInt(cell.Defense+10, 0, maxDefense)
 		team.RepairedEvents++
 		result.ScoreDelta = 30
 	case CommandRescue:

@@ -317,9 +317,12 @@ const FrontCommandKindSchema = z.enum([
   "answer_challenge",
 ])
 
+const FrontMapModeSchema = z.enum(["node", "territory_grid"])
+
 const FrontSessionSummarySchema = z.object({
   id: z.string(),
   mapId: z.string(),
+  mapMode: FrontMapModeSchema.default("node"),
   status: FrontStatusSchema,
   tick: z.number(),
   revision: z.number().optional(),
@@ -425,13 +428,74 @@ const FrontCommandOptionSchema = z.object({
   cost: z.number().optional(),
   fromCellId: z.string().optional(),
   toCellId: z.string().optional(),
+  targetX: z.number().int().nonnegative().optional(),
+  targetY: z.number().int().nonnegative().optional(),
   sitoneId: z.string().optional(),
   reason: z.string().optional(),
 })
 
+const FrontTerritoryBaseSchema = z.object({
+  teamId: z.string(),
+  x: z.number().int().nonnegative(),
+  y: z.number().int().nonnegative(),
+  coreDefense: z.number().default(100),
+  initialRadius: z.number().int().nonnegative().default(1),
+})
+
+const FrontTerritoryLandmarkSchema = z.object({
+  id: z.string(),
+  kind: z.string(),
+  label: z.string(),
+  x: z.number().int().nonnegative(),
+  y: z.number().int().nonnegative(),
+})
+
+const FrontTerritoryBackgroundSchema = z.object({
+  src: z.string(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+})
+
+const FrontTerritoryGridSchema = z.object({
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  connectivity: z.number().int().default(4),
+  background: FrontTerritoryBackgroundSchema,
+  origin: z.object({
+    x: z.number().int(),
+    y: z.number().int(),
+  }),
+})
+
+const FrontTerritoryRunSchema = z.object({
+  x: z.number().int().nonnegative(),
+  length: z.number().int().positive(),
+  ownerTeamId: z
+    .string()
+    .nullish()
+    .transform((value) => value ?? undefined),
+  defense: z.number().default(0),
+})
+
+const FrontTerritoryRowSchema = z.object({
+  y: z.number().int().nonnegative(),
+  runs: nullableArray(FrontTerritoryRunSchema),
+})
+
+const FrontCoordinateSchema = z.object({
+  x: z.number().int().nonnegative(),
+  y: z.number().int().nonnegative(),
+})
+
 const FrontSnapshotFieldsSchema = z.object({
   serverTime: z.string().optional(),
+  mapMode: FrontMapModeSchema.default("node"),
+  canPlay: z.boolean().default(true),
   cells: nullableArray(FrontCellSchema),
+  grid: FrontTerritoryGridSchema.optional(),
+  territoryRows: nullableArray(FrontTerritoryRowSchema),
+  bases: nullableArray(FrontTerritoryBaseSchema),
+  landmarks: nullableArray(FrontTerritoryLandmarkSchema),
   teams: nullableArray(FrontTeamStateSchema),
   activeEvents: nullableArray(FrontMapEventSchema),
   leaderboard: nullableArray(FrontLeaderboardEntrySchema),
@@ -458,13 +522,47 @@ const FrontSnapshotResponseSchema = z.union([
   FrontSessionSummarySchema.merge(FrontSnapshotFieldsSchema),
 ])
 
-const FrontCommandInputSchema = z.object({
-  clientCommandId: z.string().optional(),
-  kind: FrontCommandKindSchema,
-  fromCellId: z.string(),
-  toCellId: z.string(),
-  sitoneId: z.string(),
-})
+const FrontCommandInputSchema = z
+  .object({
+    clientCommandId: z.string().optional(),
+    kind: FrontCommandKindSchema,
+    fromCellId: z.string().optional(),
+    toCellId: z.string().optional(),
+    targetX: z.number().int().nonnegative().optional(),
+    targetY: z.number().int().nonnegative().optional(),
+    expectedRevision: z.number().int().nonnegative().optional(),
+    sitoneId: z.string().optional(),
+  })
+  .superRefine((command, context) => {
+    const hasNodeTarget = Boolean(command.fromCellId && command.toCellId)
+    const hasTerritoryTarget =
+      command.targetX !== undefined && command.targetY !== undefined
+
+    if (!hasNodeTarget && !hasTerritoryTarget) {
+      context.addIssue({
+        code: "custom",
+        message: "Front command requires a node pair or territory target",
+      })
+    }
+    if (hasNodeTarget && hasTerritoryTarget) {
+      context.addIssue({
+        code: "custom",
+        message: "Front command cannot mix node and territory targets",
+      })
+    }
+    if (hasNodeTarget && !command.sitoneId) {
+      context.addIssue({
+        code: "custom",
+        message: "Node front command requires a sitone",
+      })
+    }
+    if (hasTerritoryTarget && !command.clientCommandId) {
+      context.addIssue({
+        code: "custom",
+        message: "Territory front command requires a client command ID",
+      })
+    }
+  })
 
 const FrontCommandResponseSchema = z.object({
   commandId: z.string(),
@@ -475,6 +573,10 @@ const FrontCommandResponseSchema = z.object({
   teamId: z.string().optional(),
   fromCellId: z.string().optional(),
   toCellId: z.string().optional(),
+  targetX: z.number().int().nonnegative().optional(),
+  targetY: z.number().int().nonnegative().optional(),
+  expectedRevision: z.number().int().nonnegative().optional(),
+  affectedCells: nullableArray(FrontCoordinateSchema),
   sitoneId: z.string().optional(),
   payload: z.record(z.string(), z.unknown()).optional(),
   accepted: z.boolean().default(false),
@@ -1034,6 +1136,7 @@ export type LeaderboardPlayerInventoryResponse = z.infer<
 >
 export type FrontStatus = z.infer<typeof FrontStatusSchema>
 export type FrontCommandKind = z.infer<typeof FrontCommandKindSchema>
+export type FrontMapMode = z.infer<typeof FrontMapModeSchema>
 export type FrontSessionSummary = z.infer<typeof FrontSessionSummarySchema>
 export type FrontCurrentResponse = z.infer<typeof FrontCurrentResponseSchema>
 export type FrontCell = z.infer<typeof FrontCellSchema>
@@ -1042,6 +1145,13 @@ export type FrontMapEvent = z.infer<typeof FrontMapEventSchema>
 export type FrontLeaderboardEntry = z.infer<typeof FrontLeaderboardEntrySchema>
 export type FrontSitone = z.infer<typeof FrontSitoneSchema>
 export type FrontCommandOption = z.infer<typeof FrontCommandOptionSchema>
+export type FrontTerritoryBase = z.infer<typeof FrontTerritoryBaseSchema>
+export type FrontTerritoryLandmark = z.infer<
+  typeof FrontTerritoryLandmarkSchema
+>
+export type FrontTerritoryGrid = z.infer<typeof FrontTerritoryGridSchema>
+export type FrontTerritoryRun = z.infer<typeof FrontTerritoryRunSchema>
+export type FrontTerritoryRow = z.infer<typeof FrontTerritoryRowSchema>
 export type FrontSnapshot = z.infer<typeof FrontSnapshotResponseSchema>
 export type FrontCommandInput = z.input<typeof FrontCommandInputSchema>
 export type FrontCommandResponse = z.infer<typeof FrontCommandResponseSchema>

@@ -10,6 +10,7 @@ func frontSummaryResponse(front mongomodel.Front) *FrontSessionSummaryResponse {
 	return &FrontSessionSummaryResponse{
 		ID:       front.ID,
 		MapID:    front.MapID,
+		MapMode:  front.MapMode,
 		Status:   front.Status,
 		Tick:     front.Tick,
 		Revision: front.Revision,
@@ -26,8 +27,10 @@ func detailResponse(front mongomodel.Front, currentTeamID string, sitones []Fron
 		}
 	}
 
-	return DetailResponse{
+	response := DetailResponse{
 		Front:                     *frontSummaryResponse(front),
+		MapMode:                   front.MapMode,
+		CanPlay:                   front.MapMode != contentFrontMapModeTerritoryGrid || isParticipatingTerritoryTeam(currentTeamID),
 		ServerTime:                front.UpdatedAt,
 		Cells:                     cellResponses(front.Cells),
 		Teams:                     teamResponses(front.Teams),
@@ -42,6 +45,13 @@ func detailResponse(front mongomodel.Front, currentTeamID string, sitones []Fron
 		SupportTokens:             1,
 		AvailableCommands:         commandOptionResponses(front, currentTeamID),
 	}
+	if front.Territory != nil {
+		response.Grid = territoryGridResponse(front.Territory)
+		response.TerritoryRows = territoryRowResponses(front.Territory.Rows)
+		response.Bases = territoryBaseResponses(front.Territory.Bases)
+		response.Landmarks = territoryLandmarkResponses(front.Territory.Landmarks)
+	}
+	return response
 }
 
 func cellResponses(cells []mongomodel.FrontCell) []FrontCellResponse {
@@ -125,6 +135,9 @@ func leaderboardResponse(entries []mongomodel.FrontLeaderboardEntry, currentTeam
 }
 
 func commandOptionResponses(front mongomodel.Front, currentTeamID string) []FrontCommandOptionResponse {
+	if front.MapMode == contentFrontMapModeTerritoryGrid {
+		return territoryCommandOptionResponses(front, currentTeamID)
+	}
 	out := make([]FrontCommandOptionResponse, 0, len(front.Cells)*4)
 	frontOpenPower := teamFrontOpenPower(front.Teams, currentTeamID)
 	eventByCell := make(map[string]mongomodel.FrontMapEvent, len(front.ActiveEvents))
@@ -149,7 +162,7 @@ func commandOptionResponses(front mongomodel.Front, currentTeamID string) []Fron
 		out = append(out,
 			commandOptionForCell("expand", "擴張", 10, sourceID, cell, cell.OwnerTeamID == "", frontOpenPower),
 			commandOptionForCell("attack", "攻擊", 15, sourceID, cell, cell.OwnerTeamID != "" && cell.OwnerTeamID != currentTeamID, frontOpenPower),
-			commandOptionForCell("reinforce", "防守", 8, sourceID, cell, cell.OwnerTeamID == currentTeamID, frontOpenPower),
+			commandOptionForCell("reinforce", "防守", 8, sourceID, cell, cell.OwnerTeamID == currentTeamID && (cell.Control < 100 || cell.Defense < territoryMaxDefense), frontOpenPower),
 			commandOptionForCell("scout", "偵查", 4, sourceID, cell, true, frontOpenPower),
 		)
 		if event, ok := eventByCell[cell.ID]; ok {
@@ -218,20 +231,24 @@ func teamFrontOpenPower(teams []mongomodel.FrontTeam, teamID string) int {
 
 func commandResponse(command mongomodel.FrontCommand) FrontCommandResponse {
 	return FrontCommandResponse{
-		CommandID:       command.ID,
-		ClientCommandID: command.ClientCommandID,
-		Kind:            command.Kind,
-		Type:            command.Type,
-		PlayerID:        command.PlayerID,
-		TeamID:          command.TeamID,
-		FromCellID:      command.FromCellID,
-		ToCellID:        command.ToCellID,
-		SitoneID:        command.SitoneID,
-		Payload:         clonePayload(command.Payload),
-		Accepted:        command.Accepted,
-		Applied:         command.Applied,
-		RejectReason:    command.RejectReason,
-		CreatedAt:       command.CreatedAt,
+		CommandID:        command.ID,
+		ClientCommandID:  command.ClientCommandID,
+		Kind:             command.Kind,
+		Type:             command.Type,
+		PlayerID:         command.PlayerID,
+		TeamID:           command.TeamID,
+		FromCellID:       command.FromCellID,
+		ToCellID:         command.ToCellID,
+		TargetX:          command.TargetX,
+		TargetY:          command.TargetY,
+		ExpectedRevision: command.ExpectedRevision,
+		AffectedCells:    coordinateResponses(command.AffectedCells),
+		SitoneID:         command.SitoneID,
+		Payload:          clonePayload(command.Payload),
+		Accepted:         command.Accepted,
+		Applied:          command.Applied,
+		RejectReason:     command.RejectReason,
+		CreatedAt:        command.CreatedAt,
 	}
 }
 
@@ -240,21 +257,78 @@ func commandSummaryResponse(command *mongomodel.FrontCommandSummary) *FrontComma
 		return nil
 	}
 	return &FrontCommandResponse{
-		CommandID:       command.ID,
-		ClientCommandID: command.ClientCommandID,
-		Kind:            command.Kind,
-		Type:            command.Type,
-		PlayerID:        command.PlayerID,
-		TeamID:          command.TeamID,
-		FromCellID:      command.FromCellID,
-		ToCellID:        command.ToCellID,
-		SitoneID:        command.SitoneID,
-		Payload:         clonePayload(command.Payload),
-		Accepted:        command.Accepted,
-		Applied:         command.Applied,
-		RejectReason:    command.RejectReason,
-		CreatedAt:       command.CreatedAt,
+		CommandID:        command.ID,
+		ClientCommandID:  command.ClientCommandID,
+		Kind:             command.Kind,
+		Type:             command.Type,
+		PlayerID:         command.PlayerID,
+		TeamID:           command.TeamID,
+		FromCellID:       command.FromCellID,
+		ToCellID:         command.ToCellID,
+		TargetX:          command.TargetX,
+		TargetY:          command.TargetY,
+		ExpectedRevision: command.ExpectedRevision,
+		AffectedCells:    coordinateResponses(command.AffectedCells),
+		SitoneID:         command.SitoneID,
+		Payload:          clonePayload(command.Payload),
+		Accepted:         command.Accepted,
+		Applied:          command.Applied,
+		RejectReason:     command.RejectReason,
+		CreatedAt:        command.CreatedAt,
 	}
+}
+
+func territoryGridResponse(territory *mongomodel.FrontTerritory) *FrontTerritoryGridResponse {
+	if territory == nil {
+		return nil
+	}
+	return &FrontTerritoryGridResponse{
+		Width:        territory.Width,
+		Height:       territory.Height,
+		Connectivity: territory.Connectivity,
+		Origin:       FrontTerritoryOriginResponse{X: territory.OriginX, Y: territory.OriginY},
+		Background: FrontTerritoryBackgroundResponse{
+			Src:    territory.BackgroundSrc,
+			Width:  territory.BackgroundWidth,
+			Height: territory.BackgroundHeight,
+		},
+	}
+}
+
+func territoryRowResponses(rows []mongomodel.FrontTerritoryRow) []FrontTerritoryRowResponse {
+	out := make([]FrontTerritoryRowResponse, 0, len(rows))
+	for _, row := range rows {
+		runs := make([]FrontTerritoryRunResponse, 0, len(row.Runs))
+		for _, run := range row.Runs {
+			runs = append(runs, FrontTerritoryRunResponse{X: run.X, Length: run.Length, OwnerTeamID: run.OwnerTeamID, Defense: run.Defense})
+		}
+		out = append(out, FrontTerritoryRowResponse{Y: row.Y, Runs: runs})
+	}
+	return out
+}
+
+func territoryBaseResponses(bases []mongomodel.FrontTerritoryBase) []FrontTerritoryBaseResponse {
+	out := make([]FrontTerritoryBaseResponse, 0, len(bases))
+	for _, base := range bases {
+		out = append(out, FrontTerritoryBaseResponse{TeamID: base.TeamID, X: base.X, Y: base.Y, CoreDefense: base.CoreDefense, InitialRadius: base.InitialRadius})
+	}
+	return out
+}
+
+func territoryLandmarkResponses(landmarks []mongomodel.FrontMapLandmark) []FrontMapLandmarkResponse {
+	out := make([]FrontMapLandmarkResponse, 0, len(landmarks))
+	for _, landmark := range landmarks {
+		out = append(out, FrontMapLandmarkResponse{ID: landmark.ID, Kind: landmark.Kind, X: landmark.X, Y: landmark.Y, Label: landmark.Label, InitialDefense: landmark.InitialDefense, InitialResource: landmark.InitialResource})
+	}
+	return out
+}
+
+func coordinateResponses(coordinates []mongomodel.FrontCoordinate) []FrontCoordinateResponse {
+	out := make([]FrontCoordinateResponse, 0, len(coordinates))
+	for _, coordinate := range coordinates {
+		out = append(out, FrontCoordinateResponse{X: coordinate.X, Y: coordinate.Y})
+	}
+	return out
 }
 
 func cloneIntMapOrEmpty(values map[string]int) map[string]int {

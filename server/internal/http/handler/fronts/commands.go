@@ -3,12 +3,14 @@ package fronts
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
@@ -26,6 +28,12 @@ var frontCommandCosts = map[string]int{
 	"answer_challenge": 0,
 }
 
+var (
+	errFrontRevisionConflict      = errors.New("front revision conflict")
+	errDuplicateFrontCommand      = errors.New("duplicate front command")
+	errFrontChangedCommandInvalid = errors.New("front changed and command is no longer valid")
+)
+
 // CreateCommand godoc
 // @Summary Create front command
 // @Description Accepts a front command for the authenticated player, applies it to the front snapshot, and records the command.
@@ -38,7 +46,9 @@ var frontCommandCosts = map[string]int{
 // @Success 202 {object} CreateCommandResponse
 // @Failure 400 {object} httpx.ProblemDetails
 // @Failure 401 {object} httpx.ProblemDetails
+// @Failure 403 {object} httpx.ProblemDetails
 // @Failure 404 {object} httpx.ProblemDetails
+// @Failure 409 {object} httpx.ProblemDetails
 // @Failure 422 {object} httpx.ProblemDetails
 // @Failure 500 {object} httpx.ProblemDetails
 // @Failure 503 {object} httpx.ProblemDetails
@@ -46,17 +56,6 @@ var frontCommandCosts = map[string]int{
 func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 	player, ok := currentPlayer(w, r)
 	if !ok || !h.requireDatabase(w, r) {
-		return
-	}
-
-	var body CreateCommandRequest
-	if err := httpx.DecodeJSON(r, &body); err != nil {
-		httpx.WriteProblem(w, r, err)
-		return
-	}
-	body = normalizeCommandRequest(body)
-	if err := validateCommandRequest(body); err != nil {
-		httpx.WriteProblem(w, r, err)
 		return
 	}
 
@@ -70,58 +69,175 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	front = withCurrentPlayerTeam(front, player)
+	if front.MapMode == contentFrontMapModeTerritoryGrid && !isParticipatingTerritoryTeam(player.TeamID) {
+		httpx.WriteProblem(w, r, httpx.NewError(http.StatusForbidden, "this team can only observe the territory front"))
+		return
+	}
+
+	var body CreateCommandRequest
+	if err := httpx.DecodeJSON(r, &body); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	body = normalizeCommandRequest(body)
+	if err := validateCommandRequest(body, front.MapMode); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	if body.ClientCommandID != "" {
+		existing, found, err := h.findExistingCommand(r.Context(), front.ID, player.ID, body.ClientCommandID)
+		if err != nil {
+			httpx.WriteProblem(w, r, httpx.InternalServerError("front command failed", "front_command_lookup_failed", err))
+			return
+		}
+		if found {
+			h.writeCommandResponse(w, r, http.StatusAccepted, front, player, existing)
+			return
+		}
+	}
+	if body.ExpectedRevision != nil && *body.ExpectedRevision != front.Revision {
+		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "front revision is stale"))
+		return
+	}
 
 	command := mongomodel.FrontCommand{
-		ID:              newID("front_command"),
-		ClientCommandID: body.ClientCommandID,
-		FrontID:         front.ID,
-		PlayerID:        player.ID,
-		TeamID:          player.TeamID,
-		Kind:            body.Kind,
-		Type:            body.Kind,
-		FromCellID:      body.FromCellID,
-		ToCellID:        body.ToCellID,
-		SitoneID:        body.SitoneID,
-		Payload:         clonePayload(body.Payload),
-		CreatedAt:       time.Now().UTC(),
+		ID:               newID("front_command"),
+		ClientCommandID:  body.ClientCommandID,
+		FrontID:          front.ID,
+		PlayerID:         player.ID,
+		TeamID:           player.TeamID,
+		Kind:             body.Kind,
+		Type:             body.Kind,
+		FromCellID:       body.FromCellID,
+		ToCellID:         body.ToCellID,
+		TargetX:          body.TargetX,
+		TargetY:          body.TargetY,
+		ExpectedRevision: body.ExpectedRevision,
+		SitoneID:         body.SitoneID,
+		Payload:          clonePayload(body.Payload),
+		CreatedAt:        time.Now().UTC(),
 	}
+	previousRevision := front.Revision
 	front, command, err = applyCommandToFront(front, command)
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.UnprocessableEntity(err.Error()))
 		return
 	}
-	if err := h.recordCommand(r.Context(), front, command); err != nil {
+	front, command, err = h.persistCommandWithRecompute(
+		r.Context(), previousRevision, front, command, body.ExpectedRevision != nil,
+	)
+	if errors.Is(err, errFrontRevisionConflict) || errors.Is(err, errFrontChangedCommandInvalid) {
+		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "front changed while applying the command"))
+		return
+	} else if errors.Is(err, errDuplicateFrontCommand) {
+		existing, found, lookupErr := h.findExistingCommand(r.Context(), front.ID, player.ID, command.ClientCommandID)
+		if lookupErr != nil || !found {
+			httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "front command was already submitted"))
+			return
+		}
+		latest, lookupErr := h.frontByID(r.Context(), front.ID)
+		if lookupErr != nil {
+			httpx.WriteProblem(w, r, httpx.InternalServerError("front unavailable", "front_lookup_failed", lookupErr))
+			return
+		}
+		h.writeCommandResponse(w, r, http.StatusAccepted, latest, player, existing)
+		return
+	} else if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("front command failed", "front_command_failed", err))
 		return
 	}
+	h.writeCommandResponse(w, r, http.StatusAccepted, front, player, command)
+}
+
+func (h *Handler) persistCommandWithRecompute(ctx context.Context, previousRevision int64, front mongomodel.Front, command mongomodel.FrontCommand, allowRecompute bool) (mongomodel.Front, mongomodel.FrontCommand, error) {
+	err := h.recordCommand(ctx, previousRevision, front, command)
+	for attempt := 0; allowRecompute && errors.Is(err, errFrontRevisionConflict) && attempt < 3; attempt++ {
+		latest, lookupErr := h.frontByID(ctx, front.ID)
+		if lookupErr != nil {
+			return front, command, lookupErr
+		}
+		previousRevision = latest.Revision
+		retryCommand := command
+		retryCommand.Accepted = false
+		retryCommand.Applied = false
+		retryCommand.RejectReason = ""
+		retryCommand.AffectedCells = nil
+		next, applied, applyErr := applyCommandToFront(latest, retryCommand)
+		if applyErr != nil {
+			return latest, command, fmt.Errorf("%w: %v", errFrontChangedCommandInvalid, applyErr)
+		}
+		front, command = next, applied
+		err = h.recordCommand(ctx, previousRevision, front, command)
+	}
+	return front, command, err
+}
+
+func (h *Handler) writeCommandResponse(w http.ResponseWriter, r *http.Request, status int, front mongomodel.Front, player mongomodel.Player, command mongomodel.FrontCommand) {
 	sitones, err := h.playerFrontSitones(r.Context(), player)
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("front sitones unavailable", "front_sitones_lookup_failed", err))
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusAccepted, CreateCommandResponse{
+	httpx.WriteJSON(w, status, CreateCommandResponse{
 		Accepted: true,
 		Command:  commandResponse(command),
 		Front:    detailResponse(front, player.TeamID, sitones),
 	})
 }
 
-func (h *Handler) recordCommand(ctx context.Context, front mongomodel.Front, command mongomodel.FrontCommand) error {
-	if _, err := h.db.Collection(mongomodel.FrontCommandsCollection).InsertOne(ctx, command); err != nil {
-		return err
+func (h *Handler) findExistingCommand(ctx context.Context, frontID string, playerID string, clientCommandID string) (mongomodel.FrontCommand, bool, error) {
+	var command mongomodel.FrontCommand
+	err := h.db.Collection(mongomodel.FrontCommandsCollection).FindOne(ctx, bson.M{
+		"front_id": frontID, "player_id": playerID, "client_command_id": clientCommandID,
+	}).Decode(&command)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return mongomodel.FrontCommand{}, false, nil
 	}
-	return h.updateFrontAfterCommand(ctx, front, command)
+	return command, err == nil, err
 }
 
-func (h *Handler) updateFrontAfterCommand(ctx context.Context, front mongomodel.Front, command mongomodel.FrontCommand) error {
+func (h *Handler) recordCommand(ctx context.Context, previousRevision int64, front mongomodel.Front, command mongomodel.FrontCommand) error {
+	session, err := h.db.Client().StartSession()
+	if err != nil {
+		return err
+	}
+	defer session.EndSession(ctx)
+
+	_, err = session.WithTransaction(ctx, func(ctx context.Context) (any, error) {
+		if _, err := h.db.Collection(mongomodel.FrontCommandsCollection).InsertOne(ctx, command); err != nil {
+			if mongo.IsDuplicateKeyError(err) {
+				return nil, errDuplicateFrontCommand
+			}
+			return nil, err
+		}
+		if front.MapMode == contentFrontMapModeTerritoryGrid {
+			if _, err := h.db.Collection(mongomodel.FrontsCollection).UpdateMany(
+				ctx,
+				bson.M{"_id": bson.M{"$ne": front.ID}, "current": true},
+				bson.M{"$set": bson.M{"current": false, "updated_at": front.UpdatedAt}},
+			); err != nil {
+				return nil, err
+			}
+		}
+		if err := h.updateFrontAfterCommand(ctx, previousRevision, front, command); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	})
+	return err
+}
+
+func (h *Handler) updateFrontAfterCommand(ctx context.Context, previousRevision int64, front mongomodel.Front, command mongomodel.FrontCommand) error {
 	summary := commandSummary(command)
-	_, err := h.db.Collection(mongomodel.FrontsCollection).UpdateOne(
+	result, err := h.db.Collection(mongomodel.FrontsCollection).UpdateOne(
 		ctx,
-		bson.M{"_id": front.ID},
+		frontRevisionFilter(front.ID, previousRevision),
 		bson.M{
 			"$set": bson.M{
 				"map_id":        front.MapID,
+				"map_mode":      front.MapMode,
 				"name":          front.Name,
 				"status":        front.Status,
 				"current":       front.Current,
@@ -133,6 +249,7 @@ func (h *Handler) updateFrontAfterCommand(ctx context.Context, front mongomodel.
 				"active_events": front.ActiveEvents,
 				"leaderboard":   front.Leaderboard,
 				"last_command":  summary,
+				"territory":     front.Territory,
 				"updated_at":    front.UpdatedAt,
 			},
 			"$setOnInsert": bson.M{
@@ -142,7 +259,30 @@ func (h *Handler) updateFrontAfterCommand(ctx context.Context, front mongomodel.
 		},
 		options.UpdateOne().SetUpsert(true),
 	)
-	return err
+	if err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			return errFrontRevisionConflict
+		}
+		return err
+	}
+	if result.MatchedCount == 0 && result.UpsertedCount == 0 {
+		return errFrontRevisionConflict
+	}
+	return nil
+}
+
+func frontRevisionFilter(frontID string, previousRevision int64) bson.M {
+	filter := bson.M{"_id": frontID, "revision": previousRevision}
+	if previousRevision == 1 {
+		filter = bson.M{
+			"_id": frontID,
+			"$or": bson.A{
+				bson.M{"revision": previousRevision},
+				bson.M{"revision": bson.M{"$exists": false}},
+			},
+		}
+	}
+	return filter
 }
 
 func normalizeCommandRequest(body CreateCommandRequest) CreateCommandRequest {
@@ -165,8 +305,54 @@ func normalizeCommandRequest(body CreateCommandRequest) CreateCommandRequest {
 		if body.SitoneID == "" {
 			body.SitoneID = payloadString(body.Payload, "sitoneId", "sitone_id")
 		}
+		if body.TargetX == nil {
+			body.TargetX = payloadInt(body.Payload, "targetX", "target_x", "x")
+		}
+		if body.TargetY == nil {
+			body.TargetY = payloadInt(body.Payload, "targetY", "target_y", "y")
+		}
+		if body.ExpectedRevision == nil {
+			body.ExpectedRevision = payloadInt64(body.Payload, "expectedRevision", "expected_revision", "revision")
+		}
 	}
 	return body
+}
+
+func payloadInt(payload map[string]any, keys ...string) *int {
+	value := payloadInt64(payload, keys...)
+	if value == nil {
+		return nil
+	}
+	converted := int(*value)
+	if int64(converted) != *value {
+		return nil
+	}
+	return &converted
+}
+
+func payloadInt64(payload map[string]any, keys ...string) *int64 {
+	for _, key := range keys {
+		value, ok := payload[key]
+		if !ok {
+			continue
+		}
+		var converted int64
+		switch number := value.(type) {
+		case int:
+			converted = int64(number)
+		case int64:
+			converted = number
+		case float64:
+			converted = int64(number)
+			if float64(converted) != number {
+				continue
+			}
+		default:
+			continue
+		}
+		return &converted
+	}
+	return nil
 }
 
 func payloadString(payload map[string]any, keys ...string) string {
@@ -182,21 +368,39 @@ func payloadString(payload map[string]any, keys ...string) string {
 	return ""
 }
 
-func validateCommandRequest(body CreateCommandRequest) error {
+func validateCommandRequest(body CreateCommandRequest, mapMode string) error {
 	var details []httpx.ErrorDetail
 	if body.Kind == "" {
 		details = append(details, httpx.ErrorDetail{Location: "body.kind", Message: "kind is required"})
 	} else if _, ok := frontCommandCosts[body.Kind]; !ok {
 		details = append(details, httpx.ErrorDetail{Location: "body.kind", Message: "kind is unsupported"})
 	}
-	if body.FromCellID == "" {
-		details = append(details, httpx.ErrorDetail{Location: "body.fromCellId", Message: "fromCellId is required"})
-	}
-	if body.ToCellID == "" {
-		details = append(details, httpx.ErrorDetail{Location: "body.toCellId", Message: "toCellId is required"})
-	}
-	if body.SitoneID == "" {
-		details = append(details, httpx.ErrorDetail{Location: "body.sitoneId", Message: "sitoneId is required"})
+	if mapMode == contentFrontMapModeTerritoryGrid {
+		if !territoryCommandIsSupported(body.Kind) {
+			details = append(details, httpx.ErrorDetail{Location: "body.kind", Message: "kind is unsupported on a territory map"})
+		}
+		if body.ClientCommandID == "" {
+			details = append(details, httpx.ErrorDetail{Location: "body.clientCommandId", Message: "clientCommandId is required"})
+		}
+		if body.TargetX == nil || *body.TargetX < 0 || *body.TargetX >= 64 {
+			details = append(details, httpx.ErrorDetail{Location: "body.targetX", Message: "targetX must be between 0 and 63"})
+		}
+		if body.TargetY == nil || *body.TargetY < 0 || *body.TargetY >= 57 {
+			details = append(details, httpx.ErrorDetail{Location: "body.targetY", Message: "targetY must be between 0 and 56"})
+		}
+		if body.ExpectedRevision != nil && *body.ExpectedRevision < 0 {
+			details = append(details, httpx.ErrorDetail{Location: "body.expectedRevision", Message: "expectedRevision must be non-negative"})
+		}
+	} else {
+		if body.FromCellID == "" {
+			details = append(details, httpx.ErrorDetail{Location: "body.fromCellId", Message: "fromCellId is required"})
+		}
+		if body.ToCellID == "" {
+			details = append(details, httpx.ErrorDetail{Location: "body.toCellId", Message: "toCellId is required"})
+		}
+		if body.SitoneID == "" {
+			details = append(details, httpx.ErrorDetail{Location: "body.sitoneId", Message: "sitoneId is required"})
+		}
 	}
 	if len(details) > 0 {
 		return httpx.UnprocessableEntity("invalid front command", details...)
@@ -205,6 +409,9 @@ func validateCommandRequest(body CreateCommandRequest) error {
 }
 
 func applyCommandToFront(front mongomodel.Front, command mongomodel.FrontCommand) (mongomodel.Front, mongomodel.FrontCommand, error) {
+	if front.MapMode == contentFrontMapModeTerritoryGrid {
+		return applyTerritoryCommand(front, command)
+	}
 	if !isPlayableFrontStatus(front.Status) {
 		return front, command, errors.New("front is not accepting commands")
 	}
@@ -269,6 +476,9 @@ func validateCommandTarget(front mongomodel.Front, command mongomodel.FrontComma
 		if target.OwnerTeamID != command.TeamID {
 			return errors.New("reinforce target must be controlled by your team")
 		}
+		if target.Control >= 100 && target.Defense >= territoryMaxDefense {
+			return errors.New("reinforce target is already at maximum defense")
+		}
 	case "repair":
 		if activeEventKindAtFrontCell(front, target.ID) != "repair" {
 			return errors.New("target has no active repair event")
@@ -302,13 +512,13 @@ func applyCommandEffect(front *mongomodel.Front, teamIndex int, cellIndex int, c
 		return 8, 0
 	case "reinforce":
 		cell.Control = clampFrontInt(cell.Control+25, 0, 100)
-		cell.Defense += 12
+		cell.Defense = clampFrontInt(cell.Defense+12, 0, territoryMaxDefense)
 		return 5, 0
 	case "repair":
 		removeActiveFrontEventAtCell(front, cell.ID)
 		cell.EventID = ""
 		cell.Control = clampFrontInt(cell.Control+20, 0, 100)
-		cell.Defense += 10
+		cell.Defense = clampFrontInt(cell.Defense+10, 0, territoryMaxDefense)
 		front.Teams[teamIndex].RepairedEvents++
 		return 30, 0
 	case "rescue":
@@ -417,20 +627,24 @@ func maxFrontInt(a int, b int) int {
 
 func commandSummary(command mongomodel.FrontCommand) mongomodel.FrontCommandSummary {
 	return mongomodel.FrontCommandSummary{
-		ID:              command.ID,
-		ClientCommandID: command.ClientCommandID,
-		Kind:            command.Kind,
-		Type:            command.Type,
-		PlayerID:        command.PlayerID,
-		TeamID:          command.TeamID,
-		FromCellID:      command.FromCellID,
-		ToCellID:        command.ToCellID,
-		SitoneID:        command.SitoneID,
-		Payload:         clonePayload(command.Payload),
-		Accepted:        command.Accepted,
-		Applied:         command.Applied,
-		RejectReason:    command.RejectReason,
-		CreatedAt:       command.CreatedAt,
+		ID:               command.ID,
+		ClientCommandID:  command.ClientCommandID,
+		Kind:             command.Kind,
+		Type:             command.Type,
+		PlayerID:         command.PlayerID,
+		TeamID:           command.TeamID,
+		FromCellID:       command.FromCellID,
+		ToCellID:         command.ToCellID,
+		TargetX:          command.TargetX,
+		TargetY:          command.TargetY,
+		ExpectedRevision: command.ExpectedRevision,
+		AffectedCells:    append([]mongomodel.FrontCoordinate(nil), command.AffectedCells...),
+		SitoneID:         command.SitoneID,
+		Payload:          clonePayload(command.Payload),
+		Accepted:         command.Accepted,
+		Applied:          command.Applied,
+		RejectReason:     command.RejectReason,
+		CreatedAt:        command.CreatedAt,
 	}
 }
 

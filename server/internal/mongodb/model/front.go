@@ -15,6 +15,7 @@ const (
 type Front struct {
 	ID           string                  `bson:"_id"`
 	MapID        string                  `bson:"map_id,omitempty"`
+	MapMode      string                  `bson:"map_mode,omitempty"`
 	Name         string                  `bson:"name"`
 	Status       string                  `bson:"status"`
 	Current      bool                    `bson:"current,omitempty"`
@@ -26,8 +27,55 @@ type Front struct {
 	ActiveEvents []FrontMapEvent         `bson:"active_events,omitempty"`
 	Leaderboard  []FrontLeaderboardEntry `bson:"leaderboard,omitempty"`
 	LastCommand  *FrontCommandSummary    `bson:"last_command,omitempty"`
+	Territory    *FrontTerritory         `bson:"territory,omitempty"`
 	CreatedAt    time.Time               `bson:"created_at,omitempty"`
 	UpdatedAt    time.Time               `bson:"updated_at,omitempty"`
+}
+
+type FrontTerritory struct {
+	Width            int                  `bson:"width"`
+	Height           int                  `bson:"height"`
+	Connectivity     int                  `bson:"connectivity"`
+	OriginX          int                  `bson:"origin_x,omitempty"`
+	OriginY          int                  `bson:"origin_y,omitempty"`
+	BackgroundSrc    string               `bson:"background_src,omitempty"`
+	BackgroundWidth  int                  `bson:"background_width,omitempty"`
+	BackgroundHeight int                  `bson:"background_height,omitempty"`
+	Rows             []FrontTerritoryRow  `bson:"rows"`
+	Bases            []FrontTerritoryBase `bson:"bases"`
+	Landmarks        []FrontMapLandmark   `bson:"landmarks,omitempty"`
+}
+
+// FrontTerritoryRow stores every playable cell as a compact sequence of runs.
+// Missing coordinates are water or outside the campus boundary.
+type FrontTerritoryRow struct {
+	Y    int                 `bson:"y"`
+	Runs []FrontTerritoryRun `bson:"runs"`
+}
+
+type FrontTerritoryRun struct {
+	X           int    `bson:"x"`
+	Length      int    `bson:"length"`
+	OwnerTeamID string `bson:"owner_team_id,omitempty"`
+	Defense     int    `bson:"defense,omitempty"`
+}
+
+type FrontTerritoryBase struct {
+	TeamID        string `bson:"team_id"`
+	X             int    `bson:"x"`
+	Y             int    `bson:"y"`
+	CoreDefense   int    `bson:"core_defense"`
+	InitialRadius int    `bson:"initial_radius,omitempty"`
+}
+
+type FrontMapLandmark struct {
+	ID              string `bson:"id"`
+	Kind            string `bson:"kind"`
+	X               int    `bson:"x"`
+	Y               int    `bson:"y"`
+	Label           string `bson:"label"`
+	InitialDefense  int    `bson:"initial_defense,omitempty"`
+	InitialResource int    `bson:"initial_resource,omitempty"`
 }
 
 type FrontTeam struct {
@@ -93,36 +141,49 @@ type FrontMapEvent struct {
 }
 
 type FrontCommand struct {
-	ID              string         `bson:"_id"`
-	ClientCommandID string         `bson:"client_command_id,omitempty"`
-	FrontID         string         `bson:"front_id"`
-	PlayerID        string         `bson:"player_id"`
-	TeamID          string         `bson:"team_id,omitempty"`
-	Kind            string         `bson:"kind"`
-	Type            string         `bson:"type,omitempty"`
-	FromCellID      string         `bson:"from_cell_id,omitempty"`
-	ToCellID        string         `bson:"to_cell_id,omitempty"`
-	SitoneID        string         `bson:"sitone_id,omitempty"`
-	Payload         map[string]any `bson:"payload,omitempty"`
-	Accepted        bool           `bson:"accepted,omitempty"`
-	Applied         bool           `bson:"applied,omitempty"`
-	RejectReason    string         `bson:"reject_reason,omitempty"`
-	CreatedAt       time.Time      `bson:"created_at"`
+	ID               string            `bson:"_id"`
+	ClientCommandID  string            `bson:"client_command_id,omitempty"`
+	FrontID          string            `bson:"front_id"`
+	PlayerID         string            `bson:"player_id"`
+	TeamID           string            `bson:"team_id,omitempty"`
+	Kind             string            `bson:"kind"`
+	Type             string            `bson:"type,omitempty"`
+	FromCellID       string            `bson:"from_cell_id,omitempty"`
+	ToCellID         string            `bson:"to_cell_id,omitempty"`
+	TargetX          *int              `bson:"target_x,omitempty"`
+	TargetY          *int              `bson:"target_y,omitempty"`
+	ExpectedRevision *int64            `bson:"expected_revision,omitempty"`
+	AffectedCells    []FrontCoordinate `bson:"affected_cells,omitempty"`
+	SitoneID         string            `bson:"sitone_id,omitempty"`
+	Payload          map[string]any    `bson:"payload,omitempty"`
+	Accepted         bool              `bson:"accepted,omitempty"`
+	Applied          bool              `bson:"applied,omitempty"`
+	RejectReason     string            `bson:"reject_reason,omitempty"`
+	CreatedAt        time.Time         `bson:"created_at"`
+}
+
+type FrontCoordinate struct {
+	X int `bson:"x"`
+	Y int `bson:"y"`
 }
 
 type FrontCommandSummary struct {
-	ID              string         `bson:"id"`
-	ClientCommandID string         `bson:"client_command_id,omitempty"`
-	Kind            string         `bson:"kind"`
-	Type            string         `bson:"type,omitempty"`
-	PlayerID        string         `bson:"player_id"`
-	TeamID          string         `bson:"team_id,omitempty"`
-	FromCellID      string         `bson:"from_cell_id,omitempty"`
-	ToCellID        string         `bson:"to_cell_id,omitempty"`
-	SitoneID        string         `bson:"sitone_id,omitempty"`
-	Payload         map[string]any `bson:"payload,omitempty"`
-	Accepted        bool           `bson:"accepted,omitempty"`
-	Applied         bool           `bson:"applied,omitempty"`
-	RejectReason    string         `bson:"reject_reason,omitempty"`
-	CreatedAt       time.Time      `bson:"created_at"`
+	ID               string            `bson:"id"`
+	ClientCommandID  string            `bson:"client_command_id,omitempty"`
+	Kind             string            `bson:"kind"`
+	Type             string            `bson:"type,omitempty"`
+	PlayerID         string            `bson:"player_id"`
+	TeamID           string            `bson:"team_id,omitempty"`
+	FromCellID       string            `bson:"from_cell_id,omitempty"`
+	ToCellID         string            `bson:"to_cell_id,omitempty"`
+	TargetX          *int              `bson:"target_x,omitempty"`
+	TargetY          *int              `bson:"target_y,omitempty"`
+	ExpectedRevision *int64            `bson:"expected_revision,omitempty"`
+	AffectedCells    []FrontCoordinate `bson:"affected_cells,omitempty"`
+	SitoneID         string            `bson:"sitone_id,omitempty"`
+	Payload          map[string]any    `bson:"payload,omitempty"`
+	Accepted         bool              `bson:"accepted,omitempty"`
+	Applied          bool              `bson:"applied,omitempty"`
+	RejectReason     string            `bson:"reject_reason,omitempty"`
+	CreatedAt        time.Time         `bson:"created_at"`
 }

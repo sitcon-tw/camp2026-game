@@ -3,6 +3,11 @@ import { useEffect, useRef, useState } from "react"
 import type {
   FrontCell,
   FrontMapEvent,
+  FrontMapMode,
+  FrontTerritoryBase,
+  FrontTerritoryGrid,
+  FrontTerritoryLandmark,
+  FrontTerritoryRow,
   FrontTeamState,
 } from "@/shared/api/game"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
@@ -14,13 +19,21 @@ import {
 } from "@/shared/ui/empty"
 
 import { getTeamName, getTeamTone } from "./front-map-style"
+import { TerritoryGridMap, type TerritoryTarget } from "./territory-grid-map"
 
 type TerritoryMapProps = {
+  mapMode: FrontMapMode
   cells: FrontCell[]
   teams: FrontTeamState[]
   activeEvents: FrontMapEvent[]
+  grid?: FrontTerritoryGrid
+  territoryRows: FrontTerritoryRow[]
+  bases: FrontTerritoryBase[]
+  landmarks: FrontTerritoryLandmark[]
   selectedCellId: string | null
+  selectedTarget: TerritoryTarget | null
   onSelectCell: (cellID: string) => void
+  onSelectTarget: (target: TerritoryTarget) => void
 }
 
 type CanvasPoint = {
@@ -72,12 +85,54 @@ const labelByCellID: Record<string, string> = {
 }
 
 export function TerritoryMap({
+  mapMode,
+  cells,
+  teams,
+  activeEvents,
+  grid,
+  territoryRows,
+  bases,
+  landmarks,
+  selectedCellId,
+  selectedTarget,
+  onSelectCell,
+  onSelectTarget,
+}: TerritoryMapProps) {
+  if (mapMode === "territory_grid" && grid) {
+    return (
+      <TerritoryGridMap
+        grid={grid}
+        rows={territoryRows}
+        bases={bases}
+        landmarks={landmarks}
+        teams={teams}
+        selectedTarget={selectedTarget}
+        onSelectTarget={onSelectTarget}
+      />
+    )
+  }
+
+  return (
+    <LegacyTerritoryMap
+      cells={cells}
+      teams={teams}
+      activeEvents={activeEvents}
+      selectedCellId={selectedCellId}
+      onSelectCell={onSelectCell}
+    />
+  )
+}
+
+function LegacyTerritoryMap({
   cells,
   teams,
   activeEvents,
   selectedCellId,
   onSelectCell,
-}: TerritoryMapProps) {
+}: Pick<
+  TerritoryMapProps,
+  "cells" | "teams" | "activeEvents" | "selectedCellId" | "onSelectCell"
+>) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const [layout, setLayout] = useState<CanvasLayout>(fallbackLayout)

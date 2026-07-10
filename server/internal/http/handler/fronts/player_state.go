@@ -19,6 +19,11 @@ func withCurrentPlayerTeam(front mongomodel.Front, player mongomodel.Player) mon
 	if teamID == "" {
 		return front
 	}
+	if front.MapMode == content.FrontMapModeTerritoryGrid {
+		// Territory sessions have a fixed roster and immutable base assignment.
+		// In particular, team-010 remains a read-only observer.
+		return front
+	}
 
 	teamIndex := frontTeamIndex(front.Teams, teamID)
 	newTeam := false

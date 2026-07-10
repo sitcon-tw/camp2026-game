@@ -44,6 +44,9 @@ var seedTeams = []mongomodel.FrontTeam{
 
 func (h *Handler) fallbackCurrentFront() mongomodel.Front {
 	if h.content != nil {
+		if template, ok := h.content.TerritoryMap(); ok {
+			return frontFromTerritoryTemplate(template)
+		}
 		for _, template := range h.content.ListFrontMaps() {
 			if template.Enabled {
 				return frontFromTemplate(template)
@@ -55,6 +58,9 @@ func (h *Handler) fallbackCurrentFront() mongomodel.Front {
 
 func (h *Handler) fallbackFrontByID(frontID string) (mongomodel.Front, bool) {
 	if h.content != nil {
+		if template, ok := h.content.GetTerritoryMap(frontID); ok {
+			return frontFromTerritoryTemplate(template), true
+		}
 		template, ok := h.content.GetFrontMap(frontID)
 		if ok && template.Enabled {
 			return frontFromTemplate(template), true
@@ -227,6 +233,16 @@ func cloneFront(front mongomodel.Front) mongomodel.Front {
 		command.Payload = clonePayload(command.Payload)
 		front.LastCommand = &command
 	}
+	if front.Territory != nil {
+		territory := *front.Territory
+		territory.Rows = append([]mongomodel.FrontTerritoryRow(nil), territory.Rows...)
+		for i := range territory.Rows {
+			territory.Rows[i].Runs = append([]mongomodel.FrontTerritoryRun(nil), territory.Rows[i].Runs...)
+		}
+		territory.Bases = append([]mongomodel.FrontTerritoryBase(nil), territory.Bases...)
+		territory.Landmarks = append([]mongomodel.FrontMapLandmark(nil), territory.Landmarks...)
+		front.Territory = &territory
+	}
 	return front
 }
 
@@ -277,6 +293,9 @@ func rankedLeaderboard(front mongomodel.Front) []mongomodel.FrontLeaderboardEntr
 }
 
 func deriveLeaderboard(front mongomodel.Front) []mongomodel.FrontLeaderboardEntry {
+	if front.MapMode == content.FrontMapModeTerritoryGrid && front.Territory != nil {
+		return deriveTerritoryLeaderboard(front)
+	}
 	cellCounts := make(map[string]int)
 	resources := make(map[string]int)
 	for _, cell := range front.Cells {
@@ -319,6 +338,30 @@ func deriveLeaderboard(front mongomodel.Front) []mongomodel.FrontLeaderboardEntr
 			TeamName:        teamID,
 			Score:           resources[teamID] + count*10,
 			ControlledCells: count,
+		})
+	}
+	return entries
+}
+
+func deriveTerritoryLeaderboard(front mongomodel.Front) []mongomodel.FrontLeaderboardEntry {
+	controlled := make(map[string]int)
+	if matrix, err := decodeTerritoryRows(front.Territory); err == nil {
+		for y := range matrix {
+			for x := range matrix[y] {
+				if matrix[y][x].Owner != "" {
+					controlled[matrix[y][x].Owner]++
+				}
+			}
+		}
+	}
+	entries := make([]mongomodel.FrontLeaderboardEntry, 0, len(front.Teams))
+	for _, team := range front.Teams {
+		entries = append(entries, mongomodel.FrontLeaderboardEntry{
+			TeamID: team.TeamID, TeamName: team.Name,
+			Score:           team.Score + controlled[team.TeamID]*10,
+			ControlledCells: controlled[team.TeamID],
+			RescuedSitones:  team.RescuedSitones, RepairedEvents: team.RepairedEvents,
+			CollaborationScore: team.CollaborationScore, PreviousRank: team.PreviousRank,
 		})
 	}
 	return entries

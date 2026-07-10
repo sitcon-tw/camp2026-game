@@ -29,6 +29,7 @@ type Store struct {
 	quizQuestionsByID map[string]QuizQuestion
 	frontMaps         []FrontMapTemplate
 	frontMapsByID     map[string]FrontMapTemplate
+	territoryMap      *TerritoryMapTemplate
 }
 
 func Load(dir string) (*Store, error) {
@@ -91,6 +92,11 @@ func Load(dir string) (*Store, error) {
 		}
 	}
 
+	territoryMap, err := loadTerritoryMap(resolvedDir)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Store{
 		sitones:           sitones,
 		sitonesByID:       sitonesByID,
@@ -102,6 +108,7 @@ func Load(dir string) (*Store, error) {
 		quizQuestionsByID: quizQuestionsByID,
 		frontMaps:         frontMaps,
 		frontMapsByID:     frontMapsByID,
+		territoryMap:      territoryMap,
 	}, nil
 }
 
