@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
+	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 	"github.com/sitcon-tw/camp2026-game/internal/openpower"
 )
@@ -88,6 +89,7 @@ func (h *Handler) CreateOpenPowerTransfer(w http.ResponseWriter, r *http.Request
 		httpx.WriteProblem(w, r, httpx.InternalServerError("open power transfer failed", "open_power_transfer_failed", err))
 		return
 	}
+	h.publishOpenPowerTransferReceived(r.Context(), player, recipient.ID, result.transfer)
 
 	httpx.WriteJSON(w, http.StatusCreated, OpenPowerTransferResponse{
 		TransferID:              result.transfer.ID,
@@ -198,14 +200,15 @@ func (h *Handler) createOpenPowerTransferWithoutTransaction(ctx context.Context,
 	senderRecordID := newOpenPowerID("open_power")
 	recipientRecordID := newOpenPowerID("open_power")
 	transfer := mongomodel.OpenPowerTransfer{
-		ID:                transferID,
-		SenderPlayerID:    sender.ID,
-		RecipientPlayerID: recipient.ID,
-		TeamID:            sender.TeamID,
-		Amount:            amount,
-		SenderRecordID:    senderRecordID,
-		RecipientRecordID: recipientRecordID,
-		CreatedAt:         now,
+		ID:                  transferID,
+		SenderPlayerID:      sender.ID,
+		RecipientPlayerID:   recipient.ID,
+		TeamID:              sender.TeamID,
+		Amount:              amount,
+		SenderRecordID:      senderRecordID,
+		RecipientRecordID:   recipientRecordID,
+		CreatedAt:           now,
+		NotificationPending: true,
 	}
 
 	if err := h.insertOpenPowerTransferRecords(ctx, transfer); err != nil {
@@ -247,6 +250,20 @@ func (h *Handler) insertOpenPowerTransferRecords(ctx context.Context, transfer m
 func (h *Handler) insertOpenPowerTransfer(ctx context.Context, transfer mongomodel.OpenPowerTransfer) error {
 	_, err := h.db.Collection(mongomodel.OpenPowerTransfersCollection).InsertOne(ctx, transfer)
 	return err
+}
+
+func (h *Handler) publishOpenPowerTransferReceived(ctx context.Context, sender mongomodel.Player, recipientPlayerID string, transfer mongomodel.OpenPowerTransfer) {
+	if h.broker == nil {
+		return
+	}
+	event := playerevents.OpenPowerTransferReceivedEvent(transfer, sender, false)
+	delivered := h.broker.Publish(recipientPlayerID, playerevents.Event{
+		Name:   "reward_granted",
+		Reward: &event,
+	})
+	if delivered > 0 {
+		_ = h.markOpenPowerTransferNotified(ctx, transfer.ID, time.Now().UTC())
+	}
 }
 
 func openPowerTransferTransactionUnsupported(err error) bool {

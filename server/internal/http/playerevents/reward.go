@@ -8,7 +8,10 @@ import (
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
 
-const StaffRewardSource = "staff_reward"
+const (
+	StaffRewardSource       = "staff_reward"
+	OpenPowerTransferSource = "open_power_transfer"
+)
 
 func StaffRewardGrantedEvent(store *content.Store, reward mongomodel.StaffReward, staff mongomodel.Player, delayed bool) (RewardGrantedEvent, error) {
 	event := RewardGrantedEvent{
@@ -54,6 +57,20 @@ func StaffRewardGrantedEvent(store *content.Store, reward mongomodel.StaffReward
 		return RewardGrantedEvent{}, fmt.Errorf("unsupported reward kind %q", reward.Kind)
 	}
 	return event, nil
+}
+
+func OpenPowerTransferReceivedEvent(transfer mongomodel.OpenPowerTransfer, sender mongomodel.Player, delayed bool) RewardGrantedEvent {
+	return RewardGrantedEvent{
+		RewardID:       transfer.ID,
+		Kind:           "open_power",
+		Name:           "開源力",
+		Amount:         transfer.Amount,
+		Source:         OpenPowerTransferSource,
+		SenderPlayerID: sender.ID,
+		SenderNickname: sender.Nickname,
+		OccurredAt:     rewardEventTime(transfer.CreatedAt),
+		Delayed:        delayed,
+	}
 }
 
 func rewardEventTime(value time.Time) string {

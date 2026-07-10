@@ -261,6 +261,16 @@ func openPowerTransferIndexModels() []mongo.IndexModel {
 			},
 			Options: options.Index().SetName("open_power_transfers_recipient_created"),
 		},
+		{
+			Keys: bson.D{
+				{Key: "recipient_player_id", Value: 1},
+				{Key: "created_at", Value: 1},
+				{Key: "_id", Value: 1},
+			},
+			Options: options.Index().
+				SetName("open_power_transfers_unnotified_recipient_created").
+				SetPartialFilterExpression(bson.M{"notification_pending": true}),
+		},
 	}
 }
 

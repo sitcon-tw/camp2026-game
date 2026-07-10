@@ -111,6 +111,7 @@ func TestEventsStreamsPendingStaffRewardsOnConnect(t *testing.T) {
 			{Key: "_id", Value: "staff-a"},
 			{Key: "nickname", Value: "Staff One"},
 		}),
+		createMeCursorResponse("camp2026_game_test.open_power_transfers"),
 		createMeCursorResponse("camp2026_game_test.inventory_trims"),
 		updateMeResponse(1),
 	)
@@ -159,6 +160,7 @@ func TestEventsStreamsPendingStaffRewardsOnConnect(t *testing.T) {
 func TestEventsStreamsPendingInventoryTrimsOnConnect(t *testing.T) {
 	createdAt := time.Date(2026, 7, 7, 9, 30, 0, 0, time.UTC)
 	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.open_power_transfers"),
 		createMeCursorResponse("camp2026_game_test.inventory_trims", bson.D{
 			{Key: "_id", Value: "trim-offline"},
 			{Key: "player_id", Value: "7H9K2Q"},
@@ -208,6 +210,100 @@ func TestEventsStreamsPendingInventoryTrimsOnConnect(t *testing.T) {
 	}
 	if !strings.Contains(body, `"sitoneCount":2`) || !strings.Contains(body, `"openPower":500`) {
 		t.Fatalf("expected trim quantities, got %q", body)
+	}
+}
+
+func TestEventsStreamsPendingOpenPowerTransfersOnConnect(t *testing.T) {
+	createdAt := time.Date(2026, 7, 11, 8, 30, 0, 0, time.UTC)
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.open_power_transfers", bson.D{
+			{Key: "_id", Value: "transfer-offline"},
+			{Key: "sender_player_id", Value: "player-a"},
+			{Key: "recipient_player_id", Value: "7H9K2Q"},
+			{Key: "team_id", Value: "team-a"},
+			{Key: "amount", Value: 120},
+			{Key: "created_at", Value: createdAt},
+			{Key: "notification_pending", Value: true},
+		}),
+		createMeCursorResponse("camp2026_game_test.players", bson.D{
+			{Key: "_id", Value: "player-a"},
+			{Key: "nickname", Value: "Alice"},
+		}),
+		createMeCursorResponse("camp2026_game_test.inventory_trims"),
+		updateMeResponse(1),
+	)
+	handler := New(Dependencies{
+		MongoDB: db,
+		Broker:  playerevents.NewBroker(),
+	})
+	req := authenticatedRequest(mongomodel.Player{ID: "7H9K2Q"})
+	ctx, cancel := context.WithCancel(req.Context())
+	req = req.WithContext(ctx)
+	res := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		handler.Events(res, req)
+	}()
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for {
+		body := res.Body.String()
+		if strings.Contains(body, `"rewardId":"transfer-offline"`) && strings.Contains(body, `"senderNickname":"Alice"`) {
+			break
+		}
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+
+	body := res.Body.String()
+	if !strings.Contains(body, "event: reward_granted") {
+		t.Fatalf("expected transfer reward event, got %q", body)
+	}
+	if !strings.Contains(body, `"source":"open_power_transfer"`) || !strings.Contains(body, `"amount":120`) {
+		t.Fatalf("expected transfer payload fields, got %q", body)
+	}
+	if !strings.Contains(body, `"senderPlayerId":"player-a"`) || !strings.Contains(body, `"senderNickname":"Alice"`) || !strings.Contains(body, `"delayed":true`) {
+		t.Fatalf("expected sender and delayed fields, got %q", body)
+	}
+}
+
+func TestPublishOpenPowerTransferReceivedDeliversLiveRewardEvent(t *testing.T) {
+	createdAt := time.Date(2026, 7, 11, 8, 30, 0, 0, time.UTC)
+	db := startMeMockDatabase(t, updateMeResponse(1))
+	broker := playerevents.NewBroker()
+	handler := New(Dependencies{
+		MongoDB: db,
+		Broker:  broker,
+	})
+	events, unsubscribe := broker.Subscribe("player-b")
+	defer unsubscribe()
+
+	handler.publishOpenPowerTransferReceived(
+		context.Background(),
+		mongomodel.Player{ID: "player-a", Nickname: "Alice"},
+		"player-b",
+		mongomodel.OpenPowerTransfer{ID: "transfer-live", Amount: 120, CreatedAt: createdAt},
+	)
+
+	select {
+	case event := <-events:
+		if event.Name != "reward_granted" || event.Reward == nil {
+			t.Fatalf("expected reward_granted event, got %#v", event)
+		}
+		if event.Reward.Source != playerevents.OpenPowerTransferSource || event.Reward.Amount != 120 {
+			t.Fatalf("expected transfer open power payload, got %#v", event.Reward)
+		}
+		if event.Reward.SenderPlayerID != "player-a" || event.Reward.SenderNickname != "Alice" || event.Reward.Delayed {
+			t.Fatalf("expected live sender payload, got %#v", event.Reward)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("expected live open power transfer event")
 	}
 }
 

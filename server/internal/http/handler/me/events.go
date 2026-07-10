@@ -54,6 +54,11 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_pending_rewards_failed", err))
 		return
 	}
+	pendingTransferEvents, err := h.pendingOpenPowerTransferEvents(r.Context(), player.ID, time.Now().UTC())
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_pending_transfers_failed", err))
+		return
+	}
 	pendingTrimEvents, err := h.pendingInventoryTrimEvents(r.Context(), player.ID, time.Now().UTC())
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_pending_trims_failed", err))
@@ -71,6 +76,15 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 		}
 		flusher.Flush()
 		if err := h.markStaffRewardNotified(r.Context(), event.RewardID, time.Now().UTC()); err != nil {
+			return
+		}
+	}
+	for _, event := range pendingTransferEvents {
+		if !writePlayerEventSSE(w, event.Event) {
+			return
+		}
+		flusher.Flush()
+		if err := h.markOpenPowerTransferNotified(r.Context(), event.TransferID, time.Now().UTC()); err != nil {
 			return
 		}
 	}
@@ -114,6 +128,11 @@ type pendingStaffRewardEvent struct {
 type pendingInventoryTrimEvent struct {
 	TrimID string
 	Event  playerevents.Event
+}
+
+type pendingOpenPowerTransferEvent struct {
+	TransferID string
+	Event      playerevents.Event
 }
 
 func (h *Handler) pendingStaffRewardEvents(ctx context.Context, playerID string, connectedAt time.Time) ([]pendingStaffRewardEvent, error) {
@@ -160,6 +179,56 @@ func (h *Handler) pendingStaffRewardEvents(ctx context.Context, playerID string,
 		}
 		events = append(events, pendingStaffRewardEvent{
 			RewardID: record.ID,
+			Event: playerevents.Event{
+				Name:   "reward_granted",
+				Reward: &event,
+			},
+		})
+	}
+	return events, nil
+}
+
+func (h *Handler) pendingOpenPowerTransferEvents(ctx context.Context, playerID string, connectedAt time.Time) ([]pendingOpenPowerTransferEvent, error) {
+	if h.db == nil {
+		return nil, nil
+	}
+
+	cursor, err := h.db.Collection(mongomodel.OpenPowerTransfersCollection).Find(
+		ctx,
+		bson.M{
+			"recipient_player_id":  playerID,
+			"notification_pending": true,
+			"created_at":           bson.M{"$lte": connectedAt},
+		},
+		options.Find().
+			SetSort(bson.D{{Key: "created_at", Value: 1}, {Key: "_id", Value: 1}}).
+			SetLimit(100),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var records []mongomodel.OpenPowerTransfer
+	if err := cursor.All(ctx, &records); err != nil {
+		return nil, err
+	}
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	senders, err := h.loadOpenPowerTransferSenders(ctx, records)
+	if err != nil {
+		return nil, err
+	}
+
+	events := make([]pendingOpenPowerTransferEvent, 0, len(records))
+	for _, record := range records {
+		event := playerevents.OpenPowerTransferReceivedEvent(record, senders[record.SenderPlayerID], true)
+		events = append(events, pendingOpenPowerTransferEvent{
+			TransferID: record.ID,
 			Event: playerevents.Event{
 				Name:   "reward_granted",
 				Reward: &event,
@@ -256,6 +325,48 @@ func (h *Handler) loadRewardStaffPlayers(ctx context.Context, records []mongomod
 	return byID, nil
 }
 
+func (h *Handler) loadOpenPowerTransferSenders(ctx context.Context, records []mongomodel.OpenPowerTransfer) (map[string]mongomodel.Player, error) {
+	senderIDs := make(map[string]struct{}, len(records))
+	for _, record := range records {
+		if record.SenderPlayerID != "" {
+			senderIDs[record.SenderPlayerID] = struct{}{}
+		}
+	}
+	if len(senderIDs) == 0 {
+		return map[string]mongomodel.Player{}, nil
+	}
+
+	ids := make([]string, 0, len(senderIDs))
+	for id := range senderIDs {
+		ids = append(ids, id)
+	}
+	cursor, err := h.db.Collection(mongomodel.PlayersCollection).Find(
+		ctx,
+		bson.M{"_id": bson.M{"$in": ids}},
+		options.Find().SetProjection(bson.D{
+			{Key: "auth_token", Value: 0},
+			{Key: "qrcode_token", Value: 0},
+			{Key: "default_sitone_ids", Value: 0},
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var players []mongomodel.Player
+	if err := cursor.All(ctx, &players); err != nil {
+		return nil, err
+	}
+	byID := make(map[string]mongomodel.Player, len(players))
+	for _, player := range players {
+		byID[player.ID] = player
+	}
+	return byID, nil
+}
+
 func (h *Handler) markStaffRewardNotified(ctx context.Context, rewardID string, notifiedAt time.Time) error {
 	if h.db == nil {
 		return nil
@@ -263,6 +374,21 @@ func (h *Handler) markStaffRewardNotified(ctx context.Context, rewardID string, 
 	_, err := h.db.Collection(mongomodel.StaffRewardsCollection).UpdateOne(
 		ctx,
 		bson.M{"_id": rewardID, "notification_pending": true},
+		bson.M{
+			"$set":   bson.M{"notified_at": notifiedAt},
+			"$unset": bson.M{"notification_pending": ""},
+		},
+	)
+	return err
+}
+
+func (h *Handler) markOpenPowerTransferNotified(ctx context.Context, transferID string, notifiedAt time.Time) error {
+	if h.db == nil {
+		return nil
+	}
+	_, err := h.db.Collection(mongomodel.OpenPowerTransfersCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": transferID, "notification_pending": true},
 		bson.M{
 			"$set":   bson.M{"notified_at": notifiedAt},
 			"$unset": bson.M{"notification_pending": ""},
