@@ -12,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
@@ -47,10 +46,6 @@ type JoinRoomTeamResponse struct {
 func (h *Handler) ScanJoin(w http.ResponseWriter, r *http.Request) {
 	player, ok := currentPlayer(w, r)
 	if !ok || !h.requireDatabase(w, r) {
-		return
-	}
-	if player.Role == authctx.PlayerRoleStaff {
-		httpx.WriteProblem(w, r, httpx.NewError(http.StatusForbidden, "staff players cannot join dorm room teams"))
 		return
 	}
 

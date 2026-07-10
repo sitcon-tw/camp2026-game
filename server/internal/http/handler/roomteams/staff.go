@@ -12,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 	"github.com/sitcon-tw/camp2026-game/internal/roomteam"
@@ -165,13 +164,6 @@ func (h *Handler) AddStaffRoomTeamMember(w http.ResponseWriter, r *http.Request)
 	}
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("room team player lookup failed", "staff_room_team_player_lookup_failed", err))
-		return
-	}
-	if player.Role == authctx.PlayerRoleStaff {
-		httpx.WriteProblem(w, r, httpx.UnprocessableEntity("invalid dorm room member", httpx.ErrorDetail{
-			Location: "body.qrcodeToken",
-			Message:  "staff players cannot join dorm room teams",
-		}))
 		return
 	}
 

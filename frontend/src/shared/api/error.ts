@@ -68,6 +68,7 @@ const detailMessageMap: Record<string, string> = {
   "question is not current": "這不是目前正在作答的題目。",
   "quiz questions are unavailable": "題庫暫時無法使用，請通知工作人員。",
   "recipe materials are already complete": "材料已經足夠，不需要自動補齊。",
+  "room team token not found": "找不到這個宿舍 QR Code，請確認是否已過期或掃描正確。",
   "round is not accepting answers": "目前不是可作答時間。",
   "same-team battles are disabled": "目前不開放同隊玩家對戰。",
   "select at least one sitone": "請至少選擇一顆小石。",
@@ -99,6 +100,8 @@ const codeMessageMap: Record<string, string> = {
   match_join_limit_lookup_failed: "目前無法確認對戰次數上限，請稍後再試。",
   me_avatar_save_failed: "頭貼更新失敗，請稍後再試。",
   me_team_avatar_save_failed: "小隊頭貼更新失敗，請稍後再試。",
+  room_team_join_failed: "加入宿舍失敗，請稍後再試。",
+  room_team_token_lookup_failed: "確認宿舍 QR Code 失敗，請稍後再試。",
   shop_purchase_failed: "購買失敗，請稍後再試。",
 }
 

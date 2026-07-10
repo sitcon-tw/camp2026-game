@@ -9,6 +9,9 @@ import (
 	"testing"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/x/mongo/driver/drivertest"
 
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
@@ -223,6 +226,46 @@ func TestStaffTeamResponsesIncludesMemberCount(t *testing.T) {
 	}
 }
 
+func TestFindPlayersByRoomNumberIncludesStaffMembers(t *testing.T) {
+	db := startStaffMockDatabase(t,
+		createStaffCursorResponse("camp2026_game_test.room_team_memberships",
+			bson.D{
+				{Key: "_id", Value: "membership-player"},
+				{Key: "room_team_id", Value: "room-208"},
+				{Key: "player_id", Value: "P1"},
+			},
+			bson.D{
+				{Key: "_id", Value: "membership-staff"},
+				{Key: "room_team_id", Value: "room-208"},
+				{Key: "player_id", Value: "S1"},
+			},
+		),
+		createStaffCursorResponse("camp2026_game_test.players",
+			bson.D{
+				{Key: "_id", Value: "P1"},
+				{Key: "nickname", Value: "Alice"},
+			},
+			bson.D{
+				{Key: "_id", Value: "S1"},
+				{Key: "nickname", Value: "Staff"},
+				{Key: "role", Value: authctx.PlayerRoleStaff},
+			},
+		),
+	)
+	handler := New(Dependencies{Content: loadTestContent(t), MongoDB: db})
+
+	players, err := handler.findPlayersByRoomNumber(t.Context(), "208")
+	if err != nil {
+		t.Fatalf("find players by room number: %v", err)
+	}
+	if len(players) != 2 {
+		t.Fatalf("expected two room members, got %#v", players)
+	}
+	if players[1].ID != "S1" || players[1].Role != authctx.PlayerRoleStaff {
+		t.Fatalf("expected staff member to be included, got %#v", players)
+	}
+}
+
 func TestValidateRewardTarget(t *testing.T) {
 	tests := []struct {
 		name string
@@ -368,4 +411,37 @@ func loadTestContent(t *testing.T) *content.Store {
 	t.Helper()
 
 	return testcontent.Load(t)
+}
+
+func startStaffMockDatabase(t *testing.T, responses ...bson.D) *mongo.Database {
+	t.Helper()
+
+	deployment := drivertest.NewMockDeployment(responses...)
+	clientOptions := options.Client()
+	clientOptions.Deployment = deployment
+
+	client, err := mongo.Connect(clientOptions)
+	if err != nil {
+		t.Fatalf("connect mock mongodb client: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = client.Disconnect(t.Context())
+	})
+
+	return client.Database("camp2026_game_test")
+}
+
+func createStaffCursorResponse(ns string, batch ...bson.D) bson.D {
+	values := make(bson.A, 0, len(batch))
+	for _, doc := range batch {
+		values = append(values, doc)
+	}
+	return bson.D{
+		{Key: "ok", Value: 1},
+		{Key: "cursor", Value: bson.D{
+			{Key: "id", Value: int64(0)},
+			{Key: "ns", Value: ns},
+			{Key: "firstBatch", Value: values},
+		}},
+	}
 }
