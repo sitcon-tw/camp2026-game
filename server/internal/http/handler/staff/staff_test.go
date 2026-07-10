@@ -240,6 +240,11 @@ func TestValidateRewardTarget(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: "dorm room target",
+			body: CreateRewardRequest{RoomNumber: "208"},
+			want: 0,
+		},
+		{
 			name: "all players target",
 			body: CreateRewardRequest{AllPlayers: true},
 			want: 0,
@@ -252,6 +257,16 @@ func TestValidateRewardTarget(t *testing.T) {
 		{
 			name: "mixed target modes",
 			body: CreateRewardRequest{PlayerID: "P1", TeamID: "T1"},
+			want: 1,
+		},
+		{
+			name: "invalid dorm room",
+			body: CreateRewardRequest{RoomNumber: "999"},
+			want: 1,
+		},
+		{
+			name: "mixed team and dorm room",
+			body: CreateRewardRequest{TeamID: "T1", RoomNumber: "208"},
 			want: 1,
 		},
 		{

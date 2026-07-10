@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { type FormEvent, useEffect, useRef, useState } from "react"
 
 import sitconLogo from "@/assets/sitcon-logo.svg"
-import { gameApi, type PlayerStatus } from "@/shared/api/game"
+import { gameApi } from "@/shared/api/game"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -78,7 +78,7 @@ export function LoginPanel({ initialToken }: LoginPanelProps) {
       queryClient.setQueryData(["me", "status"], result.player)
       queryClient.invalidateQueries({ queryKey: ["me", "home"] })
       navigate({
-        to: loginDestination(result.player),
+        to: loginDestination(),
         replace: true,
       })
     },
@@ -113,7 +113,7 @@ export function LoginPanel({ initialToken }: LoginPanelProps) {
     queryClient.setQueryData(["me", "status"], statusQuery.data)
     queryClient.invalidateQueries({ queryKey: ["me", "home"] })
     navigate({
-      to: loginDestination(statusQuery.data),
+      to: loginDestination(),
       replace: true,
     })
   }, [navigate, queryClient, statusQuery.data, statusQuery.isFetchedAfterMount])
@@ -208,8 +208,8 @@ export function LoginPanel({ initialToken }: LoginPanelProps) {
   )
 }
 
-function loginDestination(player: Pick<PlayerStatus, "role">) {
-  return player.role === "staff" ? "/staff" : "/"
+function loginDestination() {
+  return "/"
 }
 
 type StoneType = (typeof stoneTypes)[number]
