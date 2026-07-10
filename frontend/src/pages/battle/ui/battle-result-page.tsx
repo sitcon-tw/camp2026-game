@@ -121,59 +121,60 @@ export function BattleResultPage() {
                     : "對戰結束"
                 : "對戰尚未結束"}
           </span>
-          <div className="flex items-center gap-x-4">
-            {players.slice(0, 2).map((player) => {
+          <div className="grid grid-cols-2 gap-2">
+            {sortedPlayers.map((player, index) => {
               const playerSitones = player.sitoneIds
                 .map((sitoneID) => sitonesByID.get(sitoneID))
                 .filter(isSitone)
 
               return (
-                <Card
+                <div
                   key={player.playerId}
                   className={cn(
-                    "bg-accent flex-1",
+                    "border-ink bg-accent grid gap-y-2 rounded-[20px] border-2 p-4",
                     winner?.playerId === player.playerId
                       ? "text-status-success"
                       : "text-muted-foreground",
                   )}
                 >
-                  <CardContent className="grid gap-y-2">
-                    <PlayerAvatar
-                      playerId={player.playerId}
-                      nickname={player.nickname}
-                      avatarUrl={player.avatarUrl}
-                      kind={player.kind}
-                      className="border-ink mx-auto size-14 rounded-[20px] border-2"
-                    />
-                    <span className="text-center">{player.nickname}</span>
-                    <span className="text-center text-4xl font-bold">
-                      {player.score ?? 0}
-                    </span>
+                  <span className="text-muted-foreground text-center text-xs font-black">
+                    第 {index + 1} 名
+                  </span>
+                  <PlayerAvatar
+                    playerId={player.playerId}
+                    nickname={player.nickname}
+                    avatarUrl={player.avatarUrl}
+                    kind={player.kind}
+                    className="border-ink mx-auto size-14 rounded-[20px] border-2"
+                  />
+                  <span className="text-center">{player.nickname}</span>
+                  <span className="text-center text-4xl font-bold">
+                    {player.score ?? 0}
+                  </span>
+                  <span className="text-center text-xs font-bold">
+                    {player.sitoneIds.length} 顆小石
+                  </span>
+                  {playerSitones.length > 0 ? (
+                    <div
+                      className="flex justify-center gap-1 overflow-hidden"
+                      aria-label={`${player.nickname} 本場小石`}
+                    >
+                      {playerSitones.map((sitone, index) => (
+                        <SitoneIcon
+                          key={`${sitone.id}-${index}`}
+                          type={sitone.type}
+                          iconPath={sitone.iconPath}
+                          className="size-8 rounded-[11px]"
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                  {(player.answerScoreBonusPercent ?? 0) > 0 ? (
                     <span className="text-center text-xs font-bold">
-                      {player.sitoneIds.length} 顆小石
+                      答題加成 +{player.answerScoreBonusPercent}%
                     </span>
-                    {playerSitones.length > 0 ? (
-                      <div
-                        className="flex justify-center gap-1 overflow-hidden"
-                        aria-label={`${player.nickname} 本場小石`}
-                      >
-                        {playerSitones.map((sitone, index) => (
-                          <SitoneIcon
-                            key={`${sitone.id}-${index}`}
-                            type={sitone.type}
-                            iconPath={sitone.iconPath}
-                            className="size-8 rounded-[11px]"
-                          />
-                        ))}
-                      </div>
-                    ) : null}
-                    {(player.answerScoreBonusPercent ?? 0) > 0 ? (
-                      <span className="text-center text-xs font-bold">
-                        答題加成 +{player.answerScoreBonusPercent}%
-                      </span>
-                    ) : null}
-                  </CardContent>
-                </Card>
+                  ) : null}
+                </div>
               )
             })}
           </div>

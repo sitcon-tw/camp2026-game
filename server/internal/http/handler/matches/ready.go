@@ -16,7 +16,7 @@ import (
 
 // Ready godoc
 // @Summary Mark current player ready
-// @Description Marks the authenticated player ready. The match starts automatically when both players are ready.
+// @Description Marks the authenticated player ready. The match starts automatically when all required players are ready.
 // @Tags matches
 // @Produce json
 // @Security AuthCookieAuth
@@ -48,6 +48,49 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 	state, err := session.Ready(r.Context(), player)
 	if err != nil {
 		if errors.Is(err, errMatchSaveConflict) || errors.Is(err, errOpenParticipantMatchExists) {
+			writeMatchProblem(w, r, err)
+			return
+		}
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, state)
+}
+
+// AddComputerPlayer godoc
+// @Summary Add a computer player to a multiplayer waiting room
+// @Description Allows the host to fill one empty multiplayer slot with a computer player.
+// @Tags matches
+// @Produce json
+// @Security AuthCookieAuth
+// @Success 200 {object} AddComputerPlayerResponse
+// @Failure 401 {object} httpx.ProblemDetails
+// @Failure 403 {object} httpx.ProblemDetails
+// @Failure 404 {object} httpx.ProblemDetails
+// @Failure 409 {object} httpx.ProblemDetails
+// @Failure 500 {object} httpx.ProblemDetails
+// @Failure 503 {object} httpx.ProblemDetails
+// @Router /matches/{matchID}/computer-players [post]
+func (h *Handler) AddComputerPlayer(w http.ResponseWriter, r *http.Request) {
+	player, ok := currentPlayer(w, r)
+	if !ok || !h.requireDatabase(w, r) || !h.requireContent(w, r) {
+		return
+	}
+	if err := h.ensureBattleOpeningAllowed(r.Context(), "match computer fill failed"); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	matchID := chi.URLParam(r, "matchID")
+	session, err := h.sessions.GetOrLoad(r.Context(), matchID)
+	if err != nil {
+		writeMatchProblem(w, r, err)
+		return
+	}
+
+	state, err := session.AddComputerPlayer(r.Context(), player.ID)
+	if err != nil {
+		if errors.Is(err, errMatchSaveConflict) {
 			writeMatchProblem(w, r, err)
 			return
 		}

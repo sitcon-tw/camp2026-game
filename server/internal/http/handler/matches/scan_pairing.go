@@ -12,7 +12,7 @@ import (
 
 // ScanPairing godoc
 // @Summary Join on-site match pairing
-// @Description Joins a waiting two-player quiz match by scanning a short-lived QR pairing token.
+// @Description Joins a waiting quiz match by scanning a short-lived QR pairing token.
 // @Tags matches
 // @Accept json
 // @Produce json
@@ -68,12 +68,14 @@ func (h *Handler) ScanPairing(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "cannot join own pairing"))
 		return
 	}
-	if match.Status != mongomodel.MatchStatusWaiting || matchMode(match) != mongomodel.MatchModePVP {
+	if match.Status != mongomodel.MatchStatusWaiting || !matchAcceptsHumanJoin(match) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "match is not joinable"))
 		return
 	}
 	wasParticipant := isParticipant(match, player.ID)
-	if !wasParticipant && len(humanParticipantIDs(match)) >= 2 {
+	if !wasParticipant &&
+		(len(match.Players) >= matchParticipantCapacity(match) ||
+			len(humanParticipantIDs(match)) >= matchHumanCapacity(match)) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "match is full"))
 		return
 	}
@@ -98,14 +100,16 @@ func (h *Handler) ScanPairing(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteProblem(w, r, err)
 			return
 		}
-		consumed, err := h.consumePairingToken(r.Context(), pairing, player.ID)
-		if err != nil {
-			httpx.WriteProblem(w, r, httpx.InternalServerError("match pairing failed", "match_pairing_consume_failed", err))
-			return
-		}
-		if !consumed {
-			httpx.WriteProblem(w, r, httpx.NotFound("pairing token not found"))
-			return
+		if matchPairingTokenSingleUse(match) {
+			consumed, err := h.consumePairingToken(r.Context(), pairing, player.ID)
+			if err != nil {
+				httpx.WriteProblem(w, r, httpx.InternalServerError("match pairing failed", "match_pairing_consume_failed", err))
+				return
+			}
+			if !consumed {
+				httpx.WriteProblem(w, r, httpx.NotFound("pairing token not found"))
+				return
+			}
 		}
 	}
 

@@ -30,7 +30,7 @@ type computerRankEntry struct {
 }
 
 func (h *Handler) ensureComputerAnswer(ctx context.Context, match *mongomodel.Match, now time.Time) (bool, error) {
-	if match == nil || !isComputerMatch(*match) || match.Status != mongomodel.MatchStatusActive {
+	if match == nil || !matchHasComputerPlayers(*match) || match.Status != mongomodel.MatchStatusActive {
 		return false, nil
 	}
 	if activeMatchPhase(*match) != mongomodel.MatchPhaseAnswering {
@@ -40,31 +40,25 @@ func (h *Handler) ensureComputerAnswer(ctx context.Context, match *mongomodel.Ma
 		return false, nil
 	}
 
-	computerIndex := -1
-	var humanPlayer mongomodel.MatchPlayer
-	for index, player := range match.Players {
-		if isComputerPlayer(player) {
-			computerIndex = index
-			continue
-		}
-		humanPlayer = player
-	}
-	if computerIndex < 0 || humanPlayer.PlayerID == "" {
+	computerIndexes := matchComputerPlayerIndexes(*match)
+	humanPlayers := matchHumanPlayers(*match)
+	if len(computerIndexes) == 0 || len(humanPlayers) == 0 {
 		return false, nil
 	}
 
 	questionID := match.QuestionIDs[match.CurrentQuestionIndex]
-	if _, err := h.findAnswer(ctx, match.ID, computerPlayerID, questionID); err == nil {
-		return false, nil
-	} else if !errors.Is(err, mongo.ErrNoDocuments) {
-		return false, err
+	allHumansAnswered := true
+	for _, humanPlayer := range humanPlayers {
+		humanAnswered, err := h.hasPlayerAnswered(ctx, match.ID, humanPlayer.PlayerID, questionID)
+		if err != nil {
+			return false, err
+		}
+		if !humanAnswered {
+			allHumansAnswered = false
+			break
+		}
 	}
-
-	humanAnswered, err := h.hasPlayerAnswered(ctx, match.ID, humanPlayer.PlayerID, questionID)
-	if err != nil {
-		return false, err
-	}
-	if !humanAnswered && now.Before(match.RoundEndsAt) {
+	if !allHumansAnswered && now.Before(match.RoundEndsAt) {
 		return false, nil
 	}
 
@@ -76,48 +70,60 @@ func (h *Handler) ensureComputerAnswer(ctx context.Context, match *mongomodel.Ma
 	if err != nil {
 		return false, err
 	}
-	difficulty, err := h.computerDifficulty(ctx, humanPlayer.PlayerID)
+	difficulty, err := h.computerDifficulty(ctx, humanPlayers[0].PlayerID)
 	if err != nil {
 		return false, err
 	}
 	accuracy := computerAccuracy(settings, difficulty)
-	choice := computerAnswerChoice(*match, question, match.Players[computerIndex], accuracy)
-	effects, err := h.matchPlayerBattleEffects(ctx, match.Players[computerIndex])
-	if err != nil {
-		return false, err
-	}
-	correct, baseScore, score := scoreAnswer(question, choice, now, match.RoundEndsAt, effects)
-	elapsedMillis := now.Sub(match.RoundStartedAt).Milliseconds()
-	if elapsedMillis < 0 {
-		elapsedMillis = 0
-	}
 
-	answer := mongomodel.MatchAnswer{
-		ID:            matchAnswerRecordID(match.ID, computerPlayerID, questionID),
-		MatchID:       match.ID,
-		PlayerID:      computerPlayerID,
-		QuestionID:    questionID,
-		Choice:        choice,
-		Correct:       correct,
-		BaseScore:     baseScore,
-		BonusScore:    score - baseScore,
-		Score:         score,
-		ElapsedMillis: elapsedMillis,
-		AnsweredAt:    now,
-	}
-	if _, err := h.db.Collection(mongomodel.MatchAnswersCollection).InsertOne(ctx, answer); err != nil {
-		if mongo.IsDuplicateKeyError(err) {
-			return false, nil
+	answered := false
+	for _, computerIndex := range computerIndexes {
+		computerPlayer := match.Players[computerIndex]
+		if _, err := h.findAnswer(ctx, match.ID, computerPlayer.PlayerID, questionID); err == nil {
+			continue
+		} else if !errors.Is(err, mongo.ErrNoDocuments) {
+			return false, err
 		}
-		return false, err
-	}
 
-	if err := h.applyMatchAnswerScore(ctx, match.ID, computerPlayerID, score); err != nil {
-		return false, err
+		choice := computerAnswerChoice(*match, question, computerPlayer, accuracy)
+		effects, err := h.matchPlayerBattleEffects(ctx, computerPlayer)
+		if err != nil {
+			return false, err
+		}
+		correct, baseScore, score := scoreAnswer(question, choice, now, match.RoundEndsAt, effects)
+		elapsedMillis := now.Sub(match.RoundStartedAt).Milliseconds()
+		if elapsedMillis < 0 {
+			elapsedMillis = 0
+		}
+
+		answer := mongomodel.MatchAnswer{
+			ID:            matchAnswerRecordID(match.ID, computerPlayer.PlayerID, questionID),
+			MatchID:       match.ID,
+			PlayerID:      computerPlayer.PlayerID,
+			QuestionID:    questionID,
+			Choice:        choice,
+			Correct:       correct,
+			BaseScore:     baseScore,
+			BonusScore:    score - baseScore,
+			Score:         score,
+			ElapsedMillis: elapsedMillis,
+			AnsweredAt:    now,
+		}
+		if _, err := h.db.Collection(mongomodel.MatchAnswersCollection).InsertOne(ctx, answer); err != nil {
+			if mongo.IsDuplicateKeyError(err) {
+				continue
+			}
+			return false, err
+		}
+
+		if err := h.applyMatchAnswerScore(ctx, match.ID, computerPlayer.PlayerID, score); err != nil {
+			return false, err
+		}
+		match.Players[computerIndex].Score += score
+		match.Revision++
+		answered = true
 	}
-	match.Players[computerIndex].Score += score
-	match.Revision++
-	return true, nil
+	return answered, nil
 }
 
 func (h *Handler) hasPlayerAnswered(ctx context.Context, matchID string, playerID string, questionID string) (bool, error) {

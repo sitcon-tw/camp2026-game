@@ -173,6 +173,18 @@ func TestSettingsResponseIncludesSameTeamBattleToggle(t *testing.T) {
 	}
 }
 
+func TestSettingsResponseIncludesMultiplayerComputerFillToggle(t *testing.T) {
+	got := settingsResponse(gamecontrol.Settings{})
+	if got.MultiplayerComputerFillEnabled {
+		t.Fatal("expected multiplayer computer fill to be disabled by default")
+	}
+
+	got = settingsResponse(gamecontrol.Settings{MultiplayerComputerFillEnabled: true})
+	if !got.MultiplayerComputerFillEnabled {
+		t.Fatal("expected multiplayer computer fill setting in response")
+	}
+}
+
 func TestSettingsResponseIncludesMaintenanceMode(t *testing.T) {
 	got := settingsResponse(gamecontrol.Settings{
 		MaintenanceMode:    gamecontrol.MaintenanceModeDraining,

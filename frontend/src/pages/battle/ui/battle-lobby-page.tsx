@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { Lock, QrCode, ScanQrCode } from "lucide-react"
+import { Lock, QrCode, ScanQrCode, UsersRound } from "lucide-react"
 import { type ReactNode, useEffect, useState } from "react"
 import { toast } from "sonner"
 
@@ -103,6 +103,7 @@ export function BattleLobbyPage() {
       ? openMatchQuery.data
       : null
   const openMatchIsComputer = openMatch?.mode === "computer"
+  const openMatchIsMultiplayer = openMatch?.mode === "multiplayer"
   const openMatchChecking =
     openMatchQuery.isPending || openMatchQuery.isFetching
   useEffect(() => {
@@ -129,6 +130,22 @@ export function BattleLobbyPage() {
         return
       }
       toast.error(error instanceof Error ? error.message : "建立現場配對失敗")
+    },
+  })
+  const createMultiplayerMutation = useMutation({
+    mutationFn: gameApi.createMultiplayerPairing,
+    onSuccess: (pairing) => onMatchReady(pairing.match),
+    onError: (error) => {
+      if (isBattleOpeningLockedError(error)) {
+        toast.error("禁止開局")
+        return
+      }
+      if (error instanceof AppError && error.status === 409) {
+        queryClient.invalidateQueries({ queryKey: ["matches", "open"] })
+        toast.error("已有進行中的對戰，請重新加入")
+        return
+      }
+      toast.error(error instanceof Error ? error.message : "建立多人對戰失敗")
     },
   })
   const computerSettingsQuery = useQuery({
@@ -165,14 +182,15 @@ export function BattleLobbyPage() {
         return
       }
       if (error instanceof AppError && error.status === 404) {
-        toast.error("QR Code 已失效，請掃描新的現場配對 QR")
+        toast.error("QR Code 已失效，請掃描新的對戰 QR")
         return
       }
-      toast.error(error instanceof Error ? error.message : "加入現場配對失敗")
+      toast.error(error instanceof Error ? error.message : "加入對戰失敗")
     },
   })
   const battleActionPending =
     createPairingMutation.isPending ||
+    createMultiplayerMutation.isPending ||
     createComputerMutation.isPending ||
     scanPairingMutation.isPending
   const battleOpeningLocked =
@@ -217,6 +235,19 @@ export function BattleLobbyPage() {
       return
     }
     createComputerMutation.mutate()
+  }
+
+  function handleMultiplayerBattle() {
+    if (battleActionPending) return
+    if (openMatch) {
+      onMatchReady(openMatch)
+      return
+    }
+    if (battleOpeningLocked) {
+      toast.error("禁止開局")
+      return
+    }
+    createMultiplayerMutation.mutate()
   }
 
   return (
@@ -292,6 +323,84 @@ export function BattleLobbyPage() {
           : battleOpeningLocked
             ? "目前禁止開局，請等待工作人員重新開放知識王。"
             : "一位玩家顯示 QR Code，另一位玩家在現場掃描加入；QR Code 會持續更新。"}
+      </LobbyActionCard>
+      <LobbyActionCard
+        title="多人對戰"
+        locked={battleOpeningBlocked}
+        description={
+          openMatch
+            ? openMatchIsMultiplayer
+              ? "回到尚未結束的多人對戰"
+              : "已有尚未結束的知識王對戰"
+            : battleOpeningLocked
+              ? "目前禁止開局"
+              : "四人一局的知識王對戰"
+        }
+        action={
+          <div className="grid w-full gap-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              className={actionButtonClassName}
+              variant="secondary"
+              disabled={
+                openMatchChecking ||
+                battleOpeningChecking ||
+                battleActionPending ||
+                battleOpeningBlocked
+              }
+              onClick={handleMultiplayerBattle}
+            >
+              {battleOpeningBlocked ? (
+                <Lock className="size-4" />
+              ) : (
+                <UsersRound className="size-4" />
+              )}
+              {openMatchChecking || battleOpeningChecking
+                ? "同步中"
+                : openMatch
+                  ? openMatchIsMultiplayer
+                    ? "重新加入多人對戰"
+                    : "回到目前對戰"
+                  : battleOpeningLocked
+                    ? "禁止進入"
+                    : createMultiplayerMutation.isPending
+                      ? "建立中"
+                      : "建立多人房"}
+            </Button>
+            <Button
+              type="button"
+              className={actionButtonClassName}
+              variant="secondary"
+              disabled={
+                Boolean(openMatch) ||
+                openMatchChecking ||
+                battleOpeningChecking ||
+                battleActionPending ||
+                battleOpeningBlocked
+              }
+              onClick={() => setScannerOpen(true)}
+            >
+              {battleOpeningBlocked ? (
+                <Lock className="size-4" />
+              ) : (
+                <ScanQrCode className="size-4" />
+              )}
+              {battleOpeningBlocked
+                ? "禁止進入"
+                : scanPairingMutation.isPending
+                  ? "加入中"
+                  : "掃描多人 QR"}
+            </Button>
+          </div>
+        }
+      >
+        {openMatch
+          ? openMatchIsMultiplayer
+            ? "多人對戰已經開始或仍在等待房，可以直接回到原本的對戰。"
+            : "你目前有尚未結束的對戰，先回到原本的對戰再開始多人對戰。"
+          : battleOpeningLocked
+            ? "目前禁止開局，請等待工作人員重新開放知識王。"
+            : "四位玩家進入同一局，比拚答題速度與正確率。"}
       </LobbyActionCard>
       <LobbyActionCard
         title="電腦對戰"

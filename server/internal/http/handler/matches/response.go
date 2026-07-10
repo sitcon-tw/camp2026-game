@@ -6,6 +6,7 @@ type ScanMatchPairingResponse = MatchStateResponse
 type OpenMatchResponse = MatchStateResponse
 type ReadyMatchResponse = MatchStateResponse
 type UpdateLoadoutResponse = MatchStateResponse
+type AddComputerPlayerResponse = MatchStateResponse
 
 type ScanMatchPairingRequest struct {
 	Token string `json:"token" validate:"required,min=8,max=24" example:"7H9K2Q8M4RXPA3WZ"`
@@ -31,8 +32,9 @@ type AnswerAcceptedResponse struct {
 }
 
 type ComputerBattleSettingsResponse struct {
-	Enabled             bool `json:"enabled" example:"true"`
-	BattleOpeningLocked bool `json:"battleOpeningLocked" example:"false"`
+	Enabled                        bool `json:"enabled" example:"true"`
+	MultiplayerComputerFillEnabled bool `json:"multiplayerComputerFillEnabled" example:"true"`
+	BattleOpeningLocked            bool `json:"battleOpeningLocked" example:"false"`
 }
 
 type MatchStateResponse struct {

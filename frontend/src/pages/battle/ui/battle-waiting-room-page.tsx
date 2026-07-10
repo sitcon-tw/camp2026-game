@@ -22,6 +22,7 @@ import {
 } from "@/shared/ui/card"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { PageHeader } from "@/shared/ui/page-header"
+import { PlayerAvatar } from "@/shared/ui/player-avatar"
 import { SitoneIcon } from "@/shared/ui/sitone-icon"
 import { cn } from "@/shared/utils"
 
@@ -173,6 +174,15 @@ export function BattleWaitingRoomPage() {
       toast.error(error instanceof Error ? error.message : "準備失敗")
     },
   })
+  const addComputerMutation = useMutation({
+    mutationFn: () => gameApi.addMatchComputerPlayer(matchID),
+    onSuccess: (match) => {
+      queryClient.setQueryData(["matches", matchID], match)
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "補電腦失敗")
+    },
+  })
   const match = matchQuery.data
   useMatchDeadlineRefresh(matchID, match)
   const ownedSitones = ownedSitonesQuery.data ?? []
@@ -214,15 +224,35 @@ export function BattleWaitingRoomPage() {
     statusQuery.isPending
   const currentPlayerID = statusQuery.data?.playerId
   const computerMatch = match?.mode === "computer"
-  const humanPlayerCount = (match?.players ?? []).filter(
+  const multiplayerMatch = match?.mode === "multiplayer"
+  const matchPlayers = match?.players ?? []
+  const humanPlayers = (match?.players ?? []).filter(
     (player) => player.kind !== "computer",
+  )
+  const participantCount = matchPlayers.length
+  const humanPlayerCount = humanPlayers.length
+  const readyHumanPlayerCount = humanPlayers.filter(
+    (player) => player.ready,
   ).length
+  const humanPlayerCapacity = multiplayerMatch ? 4 : computerMatch ? 1 : 2
+  const humanPlayerIndexByID = new Map(
+    humanPlayers.map((player, index) => [player.playerId, index + 1]),
+  )
+  const currentPlayerIsHost = match?.hostPlayerId === currentPlayerID
+  const multiplayerHost = Boolean(multiplayerMatch && currentPlayerIsHost)
+  const multiplayerRoomFull = participantCount >= humanPlayerCapacity
+  const multiplayerJoinedHumansReadyForHostStart =
+    humanPlayerCount > 0 &&
+    humanPlayers.every(
+      (player) => player.playerId === currentPlayerID || player.ready,
+    )
   const hostCanPair = Boolean(
     matchID &&
     match?.status === "waiting" &&
     !computerMatch &&
-    match.hostPlayerId === currentPlayerID &&
-    humanPlayerCount < 2,
+    currentPlayerIsHost &&
+    participantCount < humanPlayerCapacity &&
+    humanPlayerCount < humanPlayerCapacity,
   )
   const pairingTokenQuery = useQuery({
     queryKey: ["matches", matchID, "pairing-token"],
@@ -236,13 +266,46 @@ export function BattleWaitingRoomPage() {
     retry: false,
     staleTime: 0,
   })
+  const battleSettingsQuery = useQuery({
+    queryKey: ["matches", "computer", "settings"],
+    queryFn: gameApi.computerBattleSettings,
+    enabled: Boolean(multiplayerHost && match?.status === "waiting"),
+  })
+  const multiplayerHostStartLocked =
+    multiplayerHost && battleSettingsQuery.data?.battleOpeningLocked === true
+  const multiplayerHostComputerFillEnabled =
+    battleSettingsQuery.data?.multiplayerComputerFillEnabled === true
+  const multiplayerHostCanAddComputer =
+    multiplayerHost &&
+    match?.status === "waiting" &&
+    !multiplayerRoomFull &&
+    multiplayerHostComputerFillEnabled
+  const multiplayerHostStartBlocked =
+    multiplayerHost &&
+    (!multiplayerJoinedHumansReadyForHostStart ||
+      multiplayerHostStartLocked ||
+      !multiplayerRoomFull)
+  const readyActionDisabled =
+    readyMutation.isPending ||
+    saveLoadoutMutation.isPending ||
+    !match ||
+    selectedSitoneIDs.length === 0 ||
+    (multiplayerHost ? multiplayerHostStartBlocked : loadoutLocked)
+  const readyActionLabel = (() => {
+    if (readyMutation.isPending) return "同步中"
+    if (!multiplayerHost) return loadoutLocked ? "已準備" : "準備完成"
+    if (multiplayerHostStartLocked) return "禁止開局中"
+    return "開始遊戲"
+  })()
   const pairingTokenStatusText = pairingTokenQuery.isError
     ? isBattleOpeningLockedError(pairingTokenQuery.error)
       ? "禁止開局"
       : "QR 更新失敗，稍後會再試一次。"
     : pairingTokenQuery.isFetching
       ? "正在更新 QR"
-      : "QR Code 每 3 秒更新一次。"
+      : multiplayerMatch
+        ? `已佔 ${participantCount}/${humanPlayerCapacity} 位，QR Code 每 3 秒更新一次。`
+        : "QR Code 每 3 秒更新一次。"
 
   function addSitone(record: PlayerSitone) {
     if (loadoutLocked) return
@@ -319,9 +382,13 @@ export function BattleWaitingRoomPage() {
       {hostCanPair ? (
         <Card>
           <CardHeader>
-            <CardTitle>現場配對 QR</CardTitle>
+            <CardTitle>
+              {multiplayerMatch ? "多人對戰 QR" : "現場配對 QR"}
+            </CardTitle>
             <CardDescription>
-              請讓另一位玩家在現場掃描；QR Code 會持續更新，截圖很快失效。
+              {multiplayerMatch
+                ? "請讓其他玩家在現場掃描；四人到齊後就會停止發出 QR。"
+                : "請讓另一位玩家在現場掃描；QR Code 會持續更新，截圖很快失效。"}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid justify-items-center gap-3">
@@ -333,6 +400,78 @@ export function BattleWaitingRoomPage() {
             <span className="text-muted-foreground text-center text-sm font-bold">
               {pairingTokenStatusText}
             </span>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {multiplayerMatch ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>多人等待房</CardTitle>
+            <CardDescription>
+              已佔 {participantCount}/{humanPlayerCapacity} 位，真人已準備{" "}
+              {readyHumanPlayerCount}/{humanPlayerCount} 位。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 gap-2" aria-label="多人房間進度">
+              {Array.from({ length: humanPlayerCapacity }, (_, index) => {
+                const player = matchPlayers[index]
+                if (!player) {
+                  return multiplayerHost ? (
+                    <button
+                      key={`empty-${index}`}
+                      type="button"
+                      aria-label={`補電腦到第 ${index + 1} 位`}
+                      className={cn(
+                        "border-border bg-surface-raised text-muted-foreground grid min-h-[104px] place-items-center rounded-[16px] border-2 border-dashed px-2 py-3 text-center",
+                        multiplayerHostCanAddComputer
+                          ? "hover:bg-card cursor-pointer"
+                          : "cursor-not-allowed opacity-70",
+                      )}
+                      disabled={
+                        !multiplayerHostCanAddComputer ||
+                        addComputerMutation.isPending
+                      }
+                      onClick={() => addComputerMutation.mutate()}
+                    >
+                      <Plus className="size-7" />
+                    </button>
+                  ) : (
+                    <div
+                      key={`empty-${index}`}
+                      className="border-border bg-surface-raised text-muted-foreground grid min-h-[104px] place-items-center rounded-[16px] border-2 border-dashed px-2 py-3 text-center text-xs font-black"
+                    >
+                      <span>等待玩家</span>
+                    </div>
+                  )
+                }
+                return (
+                  <div
+                    key={player.playerId}
+                    className={cn(
+                      "grid min-h-[104px] place-items-center rounded-[16px] border-2 px-2 py-3 text-center text-xs font-black",
+                      player.ready
+                        ? "border-status-success bg-card"
+                        : "border-border bg-surface-raised",
+                    )}
+                  >
+                    <span className="grid max-w-full justify-items-center gap-1.5">
+                      <PlayerAvatar
+                        playerId={player.playerId}
+                        nickname={player.nickname}
+                        avatarUrl={player.avatarUrl}
+                        kind={player.kind}
+                        className="bg-pebble-spark border-ink size-12 rounded-[14px] border-2"
+                      />
+                      <span className="line-clamp-2 max-w-full leading-tight break-words">
+                        {player.nickname}
+                      </span>
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </CardContent>
         </Card>
       ) : null}
@@ -514,7 +653,9 @@ export function BattleWaitingRoomPage() {
                 ? "電腦對手"
                 : player.playerId === match?.hostPlayerId
                   ? "房主"
-                  : "挑戰者"
+                  : multiplayerMatch
+                    ? `玩家 ${humanPlayerIndexByID.get(player.playerId) ?? ""}`
+                    : "挑戰者"
             }
             ready={player.ready}
             loadoutCount={player.sitoneIds.length}
@@ -535,17 +676,11 @@ export function BattleWaitingRoomPage() {
           </Button>
           <Button
             size="lg"
-            disabled={
-              readyMutation.isPending ||
-              saveLoadoutMutation.isPending ||
-              !match ||
-              selectedSitoneIDs.length === 0 ||
-              loadoutLocked
-            }
+            disabled={readyActionDisabled}
             onClick={() => readyMutation.mutate()}
           >
             <Check />
-            {readyMutation.isPending ? "同步中" : "準備完成"}
+            {readyActionLabel}
           </Button>
         </CardContent>
       </Card>

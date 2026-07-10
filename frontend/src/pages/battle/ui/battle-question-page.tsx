@@ -215,6 +215,84 @@ function PlayerRail({
   )
 }
 
+function MultiplayerScoreboard({
+  players,
+  currentPlayerID,
+  phase,
+}: {
+  players: MatchPlayer[]
+  currentPlayerID: string | undefined
+  phase: "answering" | "revealing" | undefined
+}) {
+  const rankedPlayers = [...players].sort(
+    (a, b) => (b.score ?? 0) - (a.score ?? 0),
+  )
+
+  return (
+    <Card>
+      <CardContent className="grid gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-lg leading-none font-black">總分排名</span>
+          <span className="text-muted-foreground text-xs font-black">
+            {players.filter((player) => player.answeredCurrentQuestion).length}/
+            {players.length} 已答
+          </span>
+        </div>
+        <div className="grid gap-2">
+          {rankedPlayers.map((player, index) => {
+            const score = player.score ?? 0
+            const maxScore = player.maxScore ?? 0
+            const self = player.playerId === currentPlayerID
+
+            return (
+              <div
+                key={player.playerId}
+                className={cn(
+                  "border-ink grid gap-1 rounded-[16px] border-2 px-3 py-2",
+                  self ? "bg-pebble-engineer-muted" : "bg-card",
+                )}
+              >
+                <div className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-2">
+                  <span className="text-muted-foreground w-[2ch] text-center text-xs font-black tabular-nums">
+                    {index + 1}
+                  </span>
+                  <PlayerAvatar
+                    playerId={player.playerId}
+                    nickname={player.nickname}
+                    avatarUrl={player.avatarUrl}
+                    kind={player.kind}
+                    className={cn(
+                      "border-ink size-8 rounded-[12px] border-2",
+                      self ? "bg-pebble-engineer" : "bg-pebble-resonate",
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-black">
+                      {player.nickname}
+                    </div>
+                    <div className="text-muted-foreground text-[11px] leading-none font-bold">
+                      {self ? "自己" : answerStatus(player, phase)}
+                    </div>
+                  </div>
+                  <span className="text-sm leading-none font-black whitespace-nowrap">
+                    {score}
+                    <span className="text-muted-foreground"> / {maxScore}</span>
+                  </span>
+                </div>
+                <ScoreMeter
+                  score={score}
+                  maxScore={maxScore}
+                  side={self ? "self" : "opponent"}
+                />
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function ChoiceAnswerBadges({
   result,
   choice,
@@ -338,6 +416,7 @@ export function BattleQuestionPage() {
   const currentPlayer = match?.players.find(
     (player) => player.playerId === statusQuery.data?.playerId,
   )
+  const multiplayerMatch = match?.mode === "multiplayer"
   const opponentPlayer = players.find(
     (player) => player.playerId !== statusQuery.data?.playerId,
   )
@@ -427,13 +506,21 @@ export function BattleQuestionPage() {
 
   return (
     <GamePageShell contentClassName="grid min-h-dvh grid-rows-[auto_minmax(0,1fr)_auto] gap-y-2 px-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-      <PlayerRail
-        label="對手"
-        player={opponentPlayer}
-        sitones={opponentSitones}
-        side="opponent"
-        phase={phase}
-      />
+      {multiplayerMatch ? (
+        <MultiplayerScoreboard
+          players={players}
+          currentPlayerID={statusQuery.data?.playerId}
+          phase={phase}
+        />
+      ) : (
+        <PlayerRail
+          label="對手"
+          player={opponentPlayer}
+          sitones={opponentSitones}
+          side="opponent"
+          phase={phase}
+        />
+      )}
 
       <div className="grid min-h-0 content-start gap-y-2">
         <Card>

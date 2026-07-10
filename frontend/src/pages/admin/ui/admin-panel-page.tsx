@@ -3950,7 +3950,7 @@ function AdminSettingsPanel({
             管理設定
           </CardTitle>
           <CardDescription>
-            控制知識王房間、電腦對戰、QRCode 掃描冷卻與公告。
+            控制知識王房間、多人與電腦對戰、QRCode 掃描冷卻與公告。
           </CardDescription>
           <CardAction>
             <Badge variant="outline">Admin only</Badge>
@@ -3964,6 +3964,19 @@ function AdminSettingsPanel({
               checked={settings.computerBattlesEnabled}
               onCheckedChange={(checked) =>
                 onUpdate({ computerBattlesEnabled: checked })
+              }
+            />
+          </div>
+
+          <div className="bg-surface-raised border-border flex items-center justify-between gap-3 rounded-[18px] border-2 p-3">
+            <Label htmlFor="multiplayer-computer-fill-enabled">
+              多人缺位用電腦補齊
+            </Label>
+            <Switch
+              id="multiplayer-computer-fill-enabled"
+              checked={settings.multiplayerComputerFillEnabled}
+              onCheckedChange={(checked) =>
+                onUpdate({ multiplayerComputerFillEnabled: checked })
               }
             />
           </div>

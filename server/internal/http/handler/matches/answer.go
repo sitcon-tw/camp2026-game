@@ -12,7 +12,7 @@ import (
 
 // Answer godoc
 // @Summary Submit match answer
-// @Description Accepts the authenticated player's answer for the current question. Correctness is revealed to both players when the round enters the reveal phase.
+// @Description Accepts the authenticated player's answer for the current question. Correctness is revealed when the round enters the reveal phase.
 // @Tags matches
 // @Accept json
 // @Produce json

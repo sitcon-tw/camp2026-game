@@ -223,7 +223,9 @@ func (s *MatchSession) Join(ctx context.Context, player mongomodel.Player) (Matc
 		s.mu.Unlock()
 		return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "match is not joinable")
 	}
-	if len(s.match.Players) >= 2 {
+	if !matchAcceptsHumanJoin(s.match) ||
+		len(s.match.Players) >= matchParticipantCapacity(s.match) ||
+		len(humanParticipantIDs(s.match)) >= matchHumanCapacity(s.match) {
 		s.mu.Unlock()
 		return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "match is full")
 	}
@@ -443,6 +445,11 @@ func (s *MatchSession) Ready(ctx context.Context, player mongomodel.Player) (Mat
 		return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "match is not waiting for ready")
 	}
 
+	matchBeforeReady := cloneMatch(s.match)
+	restoreReady := func() {
+		s.match = cloneMatch(matchBeforeReady)
+	}
+
 	idx := playerIndex(s.match, player.ID)
 	if len(s.match.Players[idx].SitoneIDs) == 0 {
 		sitoneIDs, err := s.h.defaultSitoneLoadout(ctx, player)
@@ -456,24 +463,35 @@ func (s *MatchSession) Ready(ctx context.Context, player mongomodel.Player) (Mat
 		s.mu.Unlock()
 		return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "select at least one sitone before ready")
 	}
-	wasReady := s.match.Players[idx].Ready
+
+	multiplayerMatch := matchMode(s.match) == mongomodel.MatchModeMultiplayer
+	multiplayerHostStart := multiplayerMatch && s.match.HostPlayerID == player.ID
+	if multiplayerHostStart {
+		if !multiplayerHostCanStart(s.match, player.ID) {
+			restoreReady()
+			s.mu.Unlock()
+			return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "match is not ready to start")
+		}
+	}
+
 	s.match.Players[idx].Ready = true
 	events = append(events, s.eventSnapshotLocked("player_ready"))
 
-	if allPlayersReady(s.match) {
+	if allPlayersReady(s.match) && (!multiplayerMatch || multiplayerHostStart) {
 		if err := s.h.ensureBattleOpeningAllowed(ctx, "match start failed"); err != nil {
-			s.match.Players[idx].Ready = wasReady
+			restoreReady()
 			s.mu.Unlock()
 			return MatchStateResponse{}, err
 		}
 		if err := s.h.ensureMatchSameTeamBattleAllowed(ctx, s.match); err != nil {
-			s.match.Players[idx].Ready = wasReady
+			restoreReady()
 			s.mu.Unlock()
 			return MatchStateResponse{}, err
 		}
 
 		questionIDs, err := s.h.pickQuestionIDs()
 		if err != nil {
+			restoreReady()
 			s.mu.Unlock()
 			return MatchStateResponse{}, httpx.InternalServerError("match start failed", "match_ready_pick_questions_failed", err)
 		}
@@ -486,10 +504,12 @@ func (s *MatchSession) Ready(ctx context.Context, player mongomodel.Player) (Mat
 		s.match.RoundStartedAt = now
 		s.match.RoundEndsAt = now.Add(roundDuration * time.Second)
 		if err := s.h.snapshotMatchBattleEffects(ctx, &s.match); err != nil {
+			restoreReady()
 			s.mu.Unlock()
 			return MatchStateResponse{}, httpx.InternalServerError("match start failed", "match_ready_effects_failed", err)
 		}
 		if err := s.h.ensureCurrentRoundEliminations(ctx, &s.match); err != nil {
+			restoreReady()
 			s.mu.Unlock()
 			return MatchStateResponse{}, httpx.InternalServerError("match start failed", "match_ready_eliminations_failed", err)
 		}
@@ -508,6 +528,59 @@ func (s *MatchSession) Ready(ctx context.Context, player mongomodel.Player) (Mat
 		s.h.publishEvent(ctx, event)
 	}
 	return s.h.buildMatchStateWithAnswers(ctx, match, player.ID, answers)
+}
+
+func (s *MatchSession) AddComputerPlayer(ctx context.Context, playerID string) (MatchStateResponse, error) {
+	var event Event
+	var match mongomodel.Match
+	var answers []mongomodel.MatchAnswer
+
+	s.mu.Lock()
+	if !isParticipant(s.match, playerID) {
+		s.mu.Unlock()
+		return MatchStateResponse{}, httpx.NotFound("match not found")
+	}
+	if s.match.HostPlayerID != playerID {
+		s.mu.Unlock()
+		return MatchStateResponse{}, httpx.NewError(http.StatusForbidden, "only the host can add computer players")
+	}
+	if s.match.Status != mongomodel.MatchStatusWaiting {
+		s.mu.Unlock()
+		return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "match is not waiting for players")
+	}
+	if matchMode(s.match) != mongomodel.MatchModeMultiplayer {
+		s.mu.Unlock()
+		return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "match is not multiplayer")
+	}
+	if len(s.match.Players) >= matchParticipantCapacity(s.match) {
+		s.mu.Unlock()
+		return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "match is full")
+	}
+
+	settings, err := gamecontrol.ReadSettings(ctx, s.h.db)
+	if err != nil {
+		s.mu.Unlock()
+		return MatchStateResponse{}, httpx.InternalServerError("match computer fill failed", "match_computer_fill_settings_lookup_failed", err)
+	}
+	if !settings.MultiplayerComputerFillEnabled {
+		s.mu.Unlock()
+		return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "multiplayer computer fill is disabled")
+	}
+
+	if !addMultiplayerComputerPlayer(&s.match) {
+		s.mu.Unlock()
+		return MatchStateResponse{}, httpx.NewError(http.StatusConflict, "match is full")
+	}
+	if err := s.h.saveMatch(ctx, &s.match); err != nil {
+		s.mu.Unlock()
+		return MatchStateResponse{}, err
+	}
+	event = s.eventSnapshotLocked("match_updated")
+	match, answers = s.snapshotLocked()
+	s.mu.Unlock()
+
+	s.h.publishEvent(ctx, event)
+	return s.h.buildMatchStateWithAnswers(ctx, match, playerID, answers)
 }
 
 func (s *MatchSession) UpdateLoadout(ctx context.Context, playerID string, sitoneIDs []string) (MatchStateResponse, error) {
@@ -752,7 +825,7 @@ func (s *MatchSession) advanceLocked(ctx context.Context, now time.Time) ([]Even
 }
 
 func (s *MatchSession) ensureComputerAnswerLocked(ctx context.Context, now time.Time) (bool, error) {
-	if !isComputerMatch(s.match) || s.match.Status != mongomodel.MatchStatusActive {
+	if !matchHasComputerPlayers(s.match) || s.match.Status != mongomodel.MatchStatusActive {
 		return false, nil
 	}
 	if activeMatchPhase(s.match) != mongomodel.MatchPhaseAnswering {
@@ -762,24 +835,21 @@ func (s *MatchSession) ensureComputerAnswerLocked(ctx context.Context, now time.
 		return false, nil
 	}
 
-	computerIndex := -1
-	var humanPlayer mongomodel.MatchPlayer
-	for index, player := range s.match.Players {
-		if isComputerPlayer(player) {
-			computerIndex = index
-			continue
-		}
-		humanPlayer = player
-	}
-	if computerIndex < 0 || humanPlayer.PlayerID == "" {
+	computerIndexes := matchComputerPlayerIndexes(s.match)
+	humanPlayers := matchHumanPlayers(s.match)
+	if len(computerIndexes) == 0 || len(humanPlayers) == 0 {
 		return false, nil
 	}
 
 	questionID := s.match.QuestionIDs[s.match.CurrentQuestionIndex]
-	if hasAnswer(s.answers, computerPlayerID, questionID) {
-		return false, nil
+	allHumansAnswered := true
+	for _, humanPlayer := range humanPlayers {
+		if !hasAnswer(s.answers, humanPlayer.PlayerID, questionID) {
+			allHumansAnswered = false
+			break
+		}
 	}
-	if !hasAnswer(s.answers, humanPlayer.PlayerID, questionID) && now.Before(s.match.RoundEndsAt) {
+	if !allHumansAnswered && now.Before(s.match.RoundEndsAt) {
 		return false, nil
 	}
 
@@ -791,21 +861,30 @@ func (s *MatchSession) ensureComputerAnswerLocked(ctx context.Context, now time.
 	if err != nil {
 		return false, err
 	}
-	difficulty, err := s.h.computerDifficulty(ctx, humanPlayer.PlayerID)
+	difficulty, err := s.h.computerDifficulty(ctx, humanPlayers[0].PlayerID)
 	if err != nil {
 		return false, err
 	}
 	accuracy := computerAccuracy(settings, difficulty)
-	choice := computerAnswerChoice(s.match, question, s.match.Players[computerIndex], accuracy)
-	effects, err := s.h.matchPlayerBattleEffects(ctx, s.match.Players[computerIndex])
-	if err != nil {
-		return false, err
+
+	answered := false
+	for _, computerIndex := range computerIndexes {
+		computerPlayer := s.match.Players[computerIndex]
+		if hasAnswer(s.answers, computerPlayer.PlayerID, questionID) {
+			continue
+		}
+		choice := computerAnswerChoice(s.match, question, computerPlayer, accuracy)
+		effects, err := s.h.matchPlayerBattleEffects(ctx, computerPlayer)
+		if err != nil {
+			return false, err
+		}
+		answer := buildMatchAnswer(s.match, question, computerPlayer, questionID, choice, now, effects)
+		if err := s.persistAnswerLocked(ctx, computerIndex, answer); err != nil {
+			return false, err
+		}
+		answered = true
 	}
-	answer := buildMatchAnswer(s.match, question, s.match.Players[computerIndex], questionID, choice, now, effects)
-	if err := s.persistAnswerLocked(ctx, computerIndex, answer); err != nil {
-		return false, err
-	}
-	return true, nil
+	return answered, nil
 }
 
 func (s *MatchSession) persistAnswerLocked(ctx context.Context, playerIndex int, answer mongomodel.MatchAnswer) error {
@@ -877,7 +956,7 @@ func shouldRevealRoundWithAnswers(match mongomodel.Match, answers []mongomodel.M
 			return false
 		}
 	}
-	return len(match.Players) == 2
+	return len(match.Players) == matchParticipantCapacity(match)
 }
 
 func buildMatchAnswer(

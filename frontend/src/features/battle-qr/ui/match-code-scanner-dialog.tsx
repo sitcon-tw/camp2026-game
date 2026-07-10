@@ -22,7 +22,7 @@ type MatchCodeScannerDialogProps = {
 const statusMessages: Record<QrCodeScannerStatus, string> = {
   idle: "正在啟動相機",
   starting: "正在啟動相機",
-  scanning: "對準現場配對 QR Code",
+  scanning: "對準對戰 QR Code",
   "secure-context-required": "瀏覽器需要 HTTPS 或 localhost 才能開啟相機。",
   "camera-unavailable": "這個瀏覽器無法開啟相機。",
   "permission-denied": "相機權限未開啟。",
@@ -67,7 +67,7 @@ export function MatchCodeScannerDialog({
     <Dialog open={open} onOpenChange={updateOpen}>
       <DialogContent className="gap-4">
         <DialogHeader>
-          <DialogTitle>掃描現場配對 QR Code</DialogTitle>
+          <DialogTitle>掃描對戰 QR Code</DialogTitle>
           <DialogDescription>{message}</DialogDescription>
         </DialogHeader>
 

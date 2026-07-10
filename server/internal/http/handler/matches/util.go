@@ -57,11 +57,32 @@ func isParticipant(match mongomodel.Match, playerID string) bool {
 	return playerIndex(match, playerID) >= 0
 }
 
-func matchMode(match mongomodel.Match) string {
-	if match.Mode == mongomodel.MatchModeComputer {
-		return mongomodel.MatchModeComputer
+func cloneMatch(match mongomodel.Match) mongomodel.Match {
+	out := match
+	out.OpenPlayerLocks = append([]string(nil), match.OpenPlayerLocks...)
+	out.QuestionIDs = append([]string(nil), match.QuestionIDs...)
+	out.EliminatedChoices = append([]mongomodel.MatchEliminatedChoice(nil), match.EliminatedChoices...)
+	out.Players = make([]mongomodel.MatchPlayer, len(match.Players))
+	for index, player := range match.Players {
+		out.Players[index] = player
+		out.Players[index].SitoneIDs = append([]string(nil), player.SitoneIDs...)
+		if player.BattleEffects != nil {
+			effects := *player.BattleEffects
+			out.Players[index].BattleEffects = &effects
+		}
 	}
-	return mongomodel.MatchModePVP
+	return out
+}
+
+func matchMode(match mongomodel.Match) string {
+	switch match.Mode {
+	case mongomodel.MatchModeComputer:
+		return mongomodel.MatchModeComputer
+	case mongomodel.MatchModeMultiplayer:
+		return mongomodel.MatchModeMultiplayer
+	default:
+		return mongomodel.MatchModePVP
+	}
 }
 
 func matchPlayerKind(player mongomodel.MatchPlayer) string {
@@ -79,9 +100,71 @@ func isComputerMatch(match mongomodel.Match) bool {
 	return matchMode(match) == mongomodel.MatchModeComputer
 }
 
+func matchHasComputerPlayers(match mongomodel.Match) bool {
+	for _, player := range match.Players {
+		if isComputerPlayer(player) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchHumanPlayers(match mongomodel.Match) []mongomodel.MatchPlayer {
+	players := make([]mongomodel.MatchPlayer, 0, len(match.Players))
+	for _, player := range match.Players {
+		if isComputerPlayer(player) {
+			continue
+		}
+		players = append(players, player)
+	}
+	return players
+}
+
+func matchComputerPlayerIndexes(match mongomodel.Match) []int {
+	indexes := make([]int, 0, len(match.Players))
+	for index, player := range match.Players {
+		if isComputerPlayer(player) {
+			indexes = append(indexes, index)
+		}
+	}
+	return indexes
+}
+
+func matchHumanCapacity(match mongomodel.Match) int {
+	switch matchMode(match) {
+	case mongomodel.MatchModeMultiplayer:
+		return 4
+	case mongomodel.MatchModeComputer:
+		return 1
+	default:
+		return 2
+	}
+}
+
+func matchParticipantCapacity(match mongomodel.Match) int {
+	if isComputerMatch(match) {
+		return 2
+	}
+	return matchHumanCapacity(match)
+}
+
+func matchAcceptsHumanJoin(match mongomodel.Match) bool {
+	return matchMode(match) == mongomodel.MatchModePVP ||
+		matchMode(match) == mongomodel.MatchModeMultiplayer
+}
+
 func allPlayersReady(match mongomodel.Match) bool {
-	if len(match.Players) != 2 {
+	if len(match.Players) != matchParticipantCapacity(match) {
 		return false
+	}
+	humanCount := len(humanParticipantIDs(match))
+	if humanCount == 0 {
+		return false
+	}
+	if humanCount != matchHumanCapacity(match) {
+		if matchMode(match) != mongomodel.MatchModeMultiplayer || !matchHasComputerPlayers(match) {
+			return false
+		}
 	}
 	for _, player := range match.Players {
 		if !player.Ready || len(player.SitoneIDs) == 0 {
@@ -89,6 +172,61 @@ func allPlayersReady(match mongomodel.Match) bool {
 		}
 	}
 	return true
+}
+
+func multiplayerHostCanStart(match mongomodel.Match, hostPlayerID string) bool {
+	if matchMode(match) != mongomodel.MatchModeMultiplayer ||
+		hostPlayerID == "" ||
+		match.HostPlayerID != hostPlayerID ||
+		len(match.Players) != matchParticipantCapacity(match) {
+		return false
+	}
+
+	humanCount := 0
+	for _, player := range match.Players {
+		if isComputerPlayer(player) {
+			continue
+		}
+		humanCount++
+		if player.PlayerID == hostPlayerID {
+			continue
+		}
+		if !player.Ready || len(player.SitoneIDs) == 0 {
+			return false
+		}
+	}
+	return humanCount > 0
+}
+
+func addMultiplayerComputerPlayer(match *mongomodel.Match) bool {
+	if match == nil || matchMode(*match) != mongomodel.MatchModeMultiplayer {
+		return false
+	}
+	if len(match.Players) >= matchParticipantCapacity(*match) {
+		return false
+	}
+
+	usedIDs := make(map[string]struct{}, len(match.Players))
+	for _, player := range match.Players {
+		usedIDs[player.PlayerID] = struct{}{}
+	}
+
+	for slot := 1; ; slot++ {
+		playerID := fmt.Sprintf("%s_%d", computerPlayerID, slot)
+		if _, ok := usedIDs[playerID]; ok {
+			continue
+		}
+		usedIDs[playerID] = struct{}{}
+		match.Players = append(match.Players, mongomodel.MatchPlayer{
+			PlayerID:  playerID,
+			Nickname:  fmt.Sprintf("%s %d", computerNickname, slot),
+			Kind:      mongomodel.MatchPlayerKindComputer,
+			Ready:     true,
+			Score:     0,
+			SitoneIDs: []string{computerDefaultSitone},
+		})
+		return true
+	}
 }
 
 func activeMatchPhase(match mongomodel.Match) string {
