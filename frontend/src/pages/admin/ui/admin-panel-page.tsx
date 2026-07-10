@@ -21,7 +21,13 @@ import {
   X,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
-import { type FormEvent, type ReactNode, useMemo, useState } from "react"
+import {
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 import {
   CartesianGrid,
   Cell,
@@ -919,8 +925,21 @@ function AdminCollapsibleSection({
   children: ReactNode
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
-  const isOpen = open ?? uncontrolledOpen
-  const handleOpenChange = onOpenChange ?? setUncontrolledOpen
+  const controlled = open != null
+  const isOpen = controlled ? open : uncontrolledOpen
+
+  useEffect(() => {
+    if (!controlled && defaultOpen) {
+      setUncontrolledOpen(true)
+    }
+  }, [controlled, defaultOpen])
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (!controlled) {
+      setUncontrolledOpen(nextOpen)
+    }
+    onOpenChange?.(nextOpen)
+  }
 
   return (
     <Collapsible
@@ -958,7 +977,7 @@ function AdminCollapsibleSection({
           </span>
         </button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down grid min-w-0 gap-3 overflow-hidden">
+      <CollapsibleContent className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden">
         <div className="grid min-w-0 gap-3">{children}</div>
       </CollapsibleContent>
     </Collapsible>

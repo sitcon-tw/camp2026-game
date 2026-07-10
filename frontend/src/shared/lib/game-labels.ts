@@ -87,7 +87,6 @@ const workerDormRoomNumbers = new Set([
   "205",
   "206",
   "207",
-  "219",
 ])
 
 const chineseDigits = [
