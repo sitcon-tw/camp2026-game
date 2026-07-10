@@ -1,5 +1,5 @@
 import jsQR from "jsqr"
-import { useEffect, useState, type RefObject } from "react"
+import { useEffect, useRef, useState, type RefObject } from "react"
 
 type BarcodeDetectorResult = {
   rawValue?: string
@@ -91,6 +91,11 @@ export function useQrCodeScanner({
   scanIntervalMs = 350,
 }: UseQrCodeScannerOptions) {
   const [status, setStatus] = useState<QrCodeScannerStatus>("idle")
+  const onResultRef = useRef(onResult)
+
+  useEffect(() => {
+    onResultRef.current = onResult
+  }, [onResult])
 
   useEffect(() => {
     if (!open) return
@@ -177,7 +182,7 @@ export function useQrCodeScanner({
               if (value) {
                 cancelled = true
                 cleanup()
-                onResult(value)
+                onResultRef.current(value)
                 return
               }
             }
@@ -205,7 +210,7 @@ export function useQrCodeScanner({
       cancelled = true
       cleanup()
     }
-  }, [canvasRef, onResult, open, scanIntervalMs, videoRef])
+  }, [canvasRef, open, scanIntervalMs, videoRef])
 
   return status
 }
