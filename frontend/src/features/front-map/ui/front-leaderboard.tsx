@@ -88,6 +88,7 @@ function LeaderboardRow({
         </div>
         <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold">
           <span>{entry.controlledCells} 格領土</span>
+          <span>{entry.tradeScore} 交易</span>
           <span>{entry.repairedEvents} 修復</span>
           <span>{entry.rescuedSitones} 救援</span>
         </div>

@@ -315,6 +315,8 @@ const FrontCommandKindSchema = z.enum([
   "rescue",
   "support",
   "answer_challenge",
+  "station",
+  "withdraw",
 ])
 
 const FrontMapModeSchema = z.literal("territory_grid")
@@ -350,6 +352,10 @@ const FrontTeamStateSchema = z.object({
   rescuedSitones: z.number().default(0),
   repairedEvents: z.number().default(0),
   collaborationScore: z.number().default(0),
+  tradeScore: z.number().default(0),
+  tradeHourlyEarned: z.number().default(0),
+  tradeHourlyLimit: z.number().default(300),
+  tradeWindowEndsAt: z.string().optional(),
   sitoneMilestonesReached: z.number().default(0),
   nextSitoneMilestone: z.number().optional(),
   lastCommandAt: z.string().optional(),
@@ -376,6 +382,7 @@ const FrontLeaderboardEntrySchema = z.object({
   rescuedSitones: z.number().default(0),
   repairedEvents: z.number().default(0),
   collaborationScore: z.number().default(0),
+  tradeScore: z.number().default(0),
   current: z.boolean().default(false),
 })
 
@@ -461,6 +468,41 @@ const FrontCoordinateSchema = z.object({
   y: z.number().int().nonnegative(),
 })
 
+const FrontGarrisonSchema = z.object({
+  id: z.string(),
+  playerId: z.string(),
+  teamId: z.string(),
+  x: z.number().int().nonnegative(),
+  y: z.number().int().nonnegative(),
+  sitoneIds: nullableArray(z.string()),
+  sitoneCount: z.number().int().nonnegative(),
+  defenseBonus: z.number().int().nonnegative().default(0),
+  tradeBonusPercent: z.number().int().nonnegative().default(0),
+  mine: z.boolean().default(false),
+  stationedAt: z.string(),
+})
+
+const FrontTradeRouteSchema = z.object({
+  id: z.string(),
+  sourceGarrisonId: z.string(),
+  targetGarrisonId: z.string(),
+  sourceTeamId: z.string(),
+  targetTeamId: z.string(),
+  sourceX: z.number().int().nonnegative(),
+  sourceY: z.number().int().nonnegative(),
+  targetX: z.number().int().nonnegative(),
+  targetY: z.number().int().nonnegative(),
+  distance: z.number().int().nonnegative(),
+  potentialReward: z.number().int().nonnegative(),
+  sourceReward: z.number().int().nonnegative().default(0),
+  targetReward: z.number().int().nonnegative().default(0),
+  status: z.enum(["active", "completed", "cancelled"]),
+  startedAt: z.string(),
+  arrivesAt: z.string(),
+  settledAt: z.string().optional(),
+  cancellationReason: z.string().optional(),
+})
+
 const FrontSnapshotFieldsSchema = z.object({
   serverTime: z.string().optional(),
   mapMode: FrontMapModeSchema.default("territory_grid"),
@@ -478,9 +520,11 @@ const FrontSnapshotFieldsSchema = z.object({
   availableSitones: nullableArray(FrontSitoneSchema),
   currentPlayerOpenPower: z.number().default(0),
   availableCommands: nullableArray(FrontCommandOptionSchema),
+  garrisons: nullableArray(FrontGarrisonSchema),
+  tradeRoutes: nullableArray(FrontTradeRouteSchema),
 })
 
-const FrontSnapshotResponseSchema = z.union([
+export const FrontSnapshotSchema = z.union([
   FrontSnapshotFieldsSchema.extend({
     front: FrontSessionSummarySchema,
   }).transform(({ front, ...snapshot }) => ({
@@ -490,14 +534,26 @@ const FrontSnapshotResponseSchema = z.union([
   FrontSessionSummarySchema.merge(FrontSnapshotFieldsSchema),
 ])
 
-const FrontCommandInputSchema = z.object({
-  clientCommandId: z.string(),
-  kind: FrontCommandKindSchema,
-  targetX: z.number().int().nonnegative(),
-  targetY: z.number().int().nonnegative(),
-  expectedRevision: z.number().int().nonnegative().optional(),
-  sitoneIds: z.array(z.string()).min(1).max(5),
-})
+const FrontCommandInputSchema = z
+  .object({
+    clientCommandId: z.string(),
+    kind: FrontCommandKindSchema,
+    targetX: z.number().int().nonnegative(),
+    targetY: z.number().int().nonnegative(),
+    expectedRevision: z.number().int().nonnegative().optional(),
+    sitoneIds: z.array(z.string()).max(5),
+  })
+  .superRefine((command, context) => {
+    if (command.kind !== "withdraw" && command.sitoneIds.length < 1) {
+      context.addIssue({
+        code: "too_small",
+        minimum: 1,
+        origin: "array",
+        path: ["sitoneIds"],
+        message: "至少需要一顆小石",
+      })
+    }
+  })
 
 const FrontSitoneEffectSchema = z.object({
   selectedCount: z.number().int().nonnegative().default(0),
@@ -527,6 +583,17 @@ const FrontCommandResponseSchema = z.object({
   rewardSitoneQuantity: z.number().int().nonnegative().default(0),
   sitoneIds: nullableArray(z.string()),
   sitoneEffect: FrontSitoneEffectSchema,
+  garrisonId: z.string().optional(),
+  capturedGarrisons: nullableArray(
+    z.object({
+      garrisonId: z.string(),
+      playerId: z.string(),
+      teamId: z.string(),
+      x: z.number().int().nonnegative(),
+      y: z.number().int().nonnegative(),
+      sitoneIds: nullableArray(z.string()),
+    }),
+  ),
   payload: z.record(z.string(), z.unknown()).optional(),
   accepted: z.boolean().default(false),
   applied: z.boolean().default(false),
@@ -537,7 +604,7 @@ const FrontCommandResponseSchema = z.object({
 const FrontCreateCommandResponseSchema = z.object({
   accepted: z.boolean(),
   command: FrontCommandResponseSchema,
-  front: FrontSnapshotResponseSchema,
+  front: FrontSnapshotSchema,
 })
 
 const MatchPlayerSchema = z.object({
@@ -1186,7 +1253,9 @@ export type FrontTerritoryLandmark = z.infer<
 export type FrontTerritoryGrid = z.infer<typeof FrontTerritoryGridSchema>
 export type FrontTerritoryRun = z.infer<typeof FrontTerritoryRunSchema>
 export type FrontTerritoryRow = z.infer<typeof FrontTerritoryRowSchema>
-export type FrontSnapshot = z.infer<typeof FrontSnapshotResponseSchema>
+export type FrontGarrison = z.infer<typeof FrontGarrisonSchema>
+export type FrontTradeRoute = z.infer<typeof FrontTradeRouteSchema>
+export type FrontSnapshot = z.infer<typeof FrontSnapshotSchema>
 export type FrontCommandInput = z.input<typeof FrontCommandInputSchema>
 export type FrontCommandResponse = z.infer<typeof FrontCommandResponseSchema>
 export type FrontCreateCommandResponse = z.infer<
@@ -1474,7 +1543,7 @@ export const gameApi = {
     const json = await apiClient.get(
       `/api/fronts/${encodeURIComponent(frontID)}`,
     )
-    return FrontSnapshotResponseSchema.parse(json)
+    return FrontSnapshotSchema.parse(json)
   },
 
   async createFrontCommand(frontID: string, command: FrontCommandInput) {

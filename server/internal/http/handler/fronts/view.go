@@ -17,7 +17,7 @@ func frontSummaryResponse(front mongomodel.Front) *FrontSessionSummaryResponse {
 	}
 }
 
-func detailResponse(front mongomodel.Front, currentTeamID string, sitones frontSitoneInventory, playerOpenPower int) DetailResponse {
+func detailResponse(front mongomodel.Front, currentPlayerID string, currentTeamID string, sitones frontSitoneInventory, playerOpenPower int) DetailResponse {
 	leaderboard := rankedLeaderboard(front)
 	myTeamRank := 0
 	for _, entry := range leaderboard {
@@ -41,7 +41,9 @@ func detailResponse(front mongomodel.Front, currentTeamID string, sitones frontS
 		AvailableSitones:       sitones.Available,
 		CurrentPlayerOpenPower: playerOpenPower,
 		FrontPowerSource:       "player_ledger",
-		AvailableCommands:      commandOptionResponses(front, currentTeamID, playerOpenPower),
+		AvailableCommands:      commandOptionResponses(front, currentPlayerID, currentTeamID, playerOpenPower),
+		Garrisons:              garrisonResponses(front.Garrisons, currentPlayerID),
+		TradeRoutes:            tradeRouteResponses(front.TradeRoutes),
 	}
 	if front.Territory != nil {
 		response.Grid = territoryGridResponse(front.Territory)
@@ -69,6 +71,10 @@ func teamResponses(teams []mongomodel.FrontTeam) []FrontTeamResponse {
 			RescuedSitones:          team.RescuedSitones,
 			RepairedEvents:          team.RepairedEvents,
 			CollaborationScore:      team.CollaborationScore,
+			TradeScore:              team.TradeScore,
+			TradeHourlyEarned:       team.TradeHourlyEarned,
+			TradeHourlyLimit:        team.TradeHourlyLimit,
+			TradeWindowEndsAt:       tradeWindowEndsAt(team.TradeWindowStartedAt),
 			LastCommandAt:           timePtrIfSet(team.LastCommandAt),
 		})
 	}
@@ -105,14 +111,15 @@ func leaderboardResponse(entries []mongomodel.FrontLeaderboardEntry, currentTeam
 			RescuedSitones:     entry.RescuedSitones,
 			RepairedEvents:     entry.RepairedEvents,
 			CollaborationScore: entry.CollaborationScore,
+			TradeScore:         entry.TradeScore,
 			Current:            entry.TeamID != "" && entry.TeamID == currentTeamID,
 		})
 	}
 	return out
 }
 
-func commandOptionResponses(front mongomodel.Front, currentTeamID string, playerOpenPower int) []FrontCommandOptionResponse {
-	return territoryCommandOptionResponses(front, currentTeamID, playerOpenPower)
+func commandOptionResponses(front mongomodel.Front, currentPlayerID string, currentTeamID string, playerOpenPower int) []FrontCommandOptionResponse {
+	return territoryCommandOptionResponses(front, currentPlayerID, currentTeamID, playerOpenPower)
 }
 
 func commandResponse(command mongomodel.FrontCommand) FrontCommandResponse {
@@ -134,6 +141,8 @@ func commandResponse(command mongomodel.FrontCommand) FrontCommandResponse {
 		RewardSitoneQuantity: command.RewardSitoneQuantity,
 		SitoneIDs:            append([]string(nil), command.SitoneIDs...),
 		SitoneEffect:         frontSitoneEffectResponse(command.SitoneEffect),
+		GarrisonID:           command.GarrisonID,
+		CapturedGarrisons:    capturedGarrisonResponses(command.CapturedGarrisons),
 		Payload:              clonePayload(command.Payload),
 		Accepted:             command.Accepted,
 		Applied:              command.Applied,
@@ -164,12 +173,64 @@ func commandSummaryResponse(command *mongomodel.FrontCommandSummary) *FrontComma
 		RewardSitoneQuantity: command.RewardSitoneQuantity,
 		SitoneIDs:            append([]string(nil), command.SitoneIDs...),
 		SitoneEffect:         frontSitoneEffectResponse(command.SitoneEffect),
+		GarrisonID:           command.GarrisonID,
+		CapturedGarrisons:    capturedGarrisonResponses(command.CapturedGarrisons),
 		Payload:              clonePayload(command.Payload),
 		Accepted:             command.Accepted,
 		Applied:              command.Applied,
 		RejectReason:         command.RejectReason,
 		CreatedAt:            command.CreatedAt,
 	}
+}
+
+func garrisonResponses(garrisons []mongomodel.FrontGarrison, currentPlayerID string) []FrontGarrisonResponse {
+	out := make([]FrontGarrisonResponse, 0, len(garrisons))
+	for _, garrison := range garrisons {
+		out = append(out, FrontGarrisonResponse{
+			ID: garrison.ID, PlayerID: garrison.PlayerID, TeamID: garrison.TeamID,
+			X: garrison.X, Y: garrison.Y, SitoneIDs: append([]string(nil), garrison.SitoneIDs...),
+			SitoneCount: len(garrison.SitoneIDs), DefenseBonus: garrison.DefenseBonus,
+			TradeBonusPercent: garrison.TradeBonusPercent,
+			Mine:              garrison.PlayerID != "" && garrison.PlayerID == currentPlayerID,
+			StationedAt:       garrison.StationedAt,
+		})
+	}
+	return out
+}
+
+func tradeRouteResponses(routes []mongomodel.FrontTradeRoute) []FrontTradeRouteResponse {
+	out := make([]FrontTradeRouteResponse, 0, len(routes))
+	for _, route := range routes {
+		out = append(out, FrontTradeRouteResponse{
+			ID: route.ID, SourceGarrisonID: route.SourceGarrisonID, TargetGarrisonID: route.TargetGarrisonID,
+			SourceTeamID: route.SourceTeamID, TargetTeamID: route.TargetTeamID,
+			SourceX: route.SourceX, SourceY: route.SourceY, TargetX: route.TargetX, TargetY: route.TargetY,
+			Distance: route.Distance, PotentialReward: route.PotentialReward,
+			SourceReward: route.SourceReward, TargetReward: route.TargetReward,
+			Status: route.Status, StartedAt: route.StartedAt, ArrivesAt: route.ArrivesAt,
+			SettledAt: route.SettledAt, CancellationReason: route.CancellationReason,
+		})
+	}
+	return out
+}
+
+func capturedGarrisonResponses(garrisons []mongomodel.FrontCapturedGarrison) []FrontCapturedGarrisonResponse {
+	out := make([]FrontCapturedGarrisonResponse, 0, len(garrisons))
+	for _, garrison := range garrisons {
+		out = append(out, FrontCapturedGarrisonResponse{
+			GarrisonID: garrison.GarrisonID, PlayerID: garrison.PlayerID, TeamID: garrison.TeamID,
+			X: garrison.X, Y: garrison.Y, SitoneIDs: append([]string(nil), garrison.SitoneIDs...),
+		})
+	}
+	return out
+}
+
+func tradeWindowEndsAt(startedAt time.Time) *time.Time {
+	if startedAt.IsZero() {
+		return nil
+	}
+	endsAt := startedAt.Add(time.Hour)
+	return &endsAt
 }
 
 func territoryGridResponse(territory *mongomodel.FrontTerritory) *FrontTerritoryGridResponse {

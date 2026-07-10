@@ -13,10 +13,16 @@ func cloneFront(front mongomodel.Front) mongomodel.Front {
 	front.Teams = append([]mongomodel.FrontTeam(nil), front.Teams...)
 	front.ActiveEvents = append([]mongomodel.FrontMapEvent(nil), front.ActiveEvents...)
 	front.Leaderboard = append([]mongomodel.FrontLeaderboardEntry(nil), front.Leaderboard...)
+	front.Garrisons = append([]mongomodel.FrontGarrison(nil), front.Garrisons...)
+	for i := range front.Garrisons {
+		front.Garrisons[i].SitoneIDs = append([]string(nil), front.Garrisons[i].SitoneIDs...)
+	}
+	front.TradeRoutes = append([]mongomodel.FrontTradeRoute(nil), front.TradeRoutes...)
 	if front.LastCommand != nil {
 		command := *front.LastCommand
 		command.AffectedCells = append([]mongomodel.FrontCoordinate(nil), command.AffectedCells...)
 		command.SitoneIDs = append([]string(nil), command.SitoneIDs...)
+		command.CapturedGarrisons = cloneCapturedGarrisons(command.CapturedGarrisons)
 		command.Payload = clonePayload(command.Payload)
 		front.LastCommand = &command
 	}
@@ -31,6 +37,14 @@ func cloneFront(front mongomodel.Front) mongomodel.Front {
 		front.Territory = &territory
 	}
 	return front
+}
+
+func cloneCapturedGarrisons(garrisons []mongomodel.FrontCapturedGarrison) []mongomodel.FrontCapturedGarrison {
+	out := append([]mongomodel.FrontCapturedGarrison(nil), garrisons...)
+	for i := range out {
+		out[i].SitoneIDs = append([]string(nil), out[i].SitoneIDs...)
+	}
+	return out
 }
 
 func clonePayload(payload map[string]any) map[string]any {
@@ -88,6 +102,7 @@ func deriveLeaderboard(front mongomodel.Front) []mongomodel.FrontLeaderboardEntr
 			RescuedSitones:     team.RescuedSitones,
 			RepairedEvents:     team.RepairedEvents,
 			CollaborationScore: team.CollaborationScore,
+			TradeScore:         team.TradeScore,
 			PreviousRank:       team.PreviousRank,
 		})
 	}

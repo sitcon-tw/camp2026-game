@@ -26,6 +26,8 @@ var frontCommandCosts = map[string]int{
 	"rescue":           10,
 	"support":          0,
 	"answer_challenge": 0,
+	"station":          0,
+	"withdraw":         0,
 }
 
 var (
@@ -98,13 +100,15 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if err := h.validateOwnedFrontSitones(r.Context(), player.ID, body.SitoneIDs); err != nil {
-		if errors.Is(err, errFrontSitoneNotOwned) {
-			httpx.WriteProblem(w, r, httpx.UnprocessableEntity("sitone loadout exceeds owned quantity"))
+	if body.Kind != "withdraw" {
+		if err := h.validateOwnedFrontSitones(r.Context(), player.ID, body.SitoneIDs); err != nil {
+			if errors.Is(err, errFrontSitoneNotOwned) {
+				httpx.WriteProblem(w, r, httpx.UnprocessableEntity("sitone loadout exceeds owned quantity"))
+				return
+			}
+			httpx.WriteProblem(w, r, httpx.InternalServerError("front command failed", "front_sitone_lookup_failed", err))
 			return
 		}
-		httpx.WriteProblem(w, r, httpx.InternalServerError("front command failed", "front_sitone_lookup_failed", err))
-		return
 	}
 	if body.ExpectedRevision != nil && *body.ExpectedRevision != front.Revision {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "front revision is stale"))
@@ -146,7 +150,7 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 		TargetY:          body.TargetY,
 		ExpectedRevision: body.ExpectedRevision,
 		SitoneIDs:        append([]string(nil), body.SitoneIDs...),
-		SitoneEffect:     frontSitoneEffect(h.content, body.Kind, body.SitoneIDs),
+		SitoneEffect:     frontSitoneEffect(h.content, frontSitoneEffectKind(body.Kind), body.SitoneIDs),
 		Payload:          clonePayload(body.Payload),
 		CreatedAt:        time.Now().UTC(),
 	}
@@ -190,7 +194,18 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("front command failed", "front_command_failed", err))
 		return
 	}
+	h.broker.Publish(front.ID, FrontEvent{Name: frontCommandEventName(command)})
 	h.writeCommandResponse(w, r, http.StatusAccepted, front, player, command)
+}
+
+func frontCommandEventName(command mongomodel.FrontCommand) string {
+	if len(command.CapturedGarrisons) > 0 {
+		return "garrison_captured"
+	}
+	if command.Kind == "station" || command.Kind == "withdraw" {
+		return "garrison_updated"
+	}
+	return "front_updated"
 }
 
 func (h *Handler) persistCommandWithRecompute(ctx context.Context, previousRevision int64, front mongomodel.Front, command mongomodel.FrontCommand, allowRecompute bool, playerOpenPower int) (mongomodel.Front, mongomodel.FrontCommand, error) {
@@ -232,6 +247,8 @@ func resetFrontCommandDerivedFields(command *mongomodel.FrontCommand) {
 	command.SitoneEffect.AffectedCellBonus = 0
 	command.SitoneEffect.DefenseBonus = 0
 	command.SitoneEffect.ScoreBonus = 0
+	command.GarrisonID = ""
+	command.CapturedGarrisons = nil
 }
 
 func (h *Handler) writeCommandResponse(w http.ResponseWriter, r *http.Request, status int, front mongomodel.Front, player mongomodel.Player, command mongomodel.FrontCommand) {
@@ -249,7 +266,7 @@ func (h *Handler) writeCommandResponse(w http.ResponseWriter, r *http.Request, s
 	httpx.WriteJSON(w, status, CreateCommandResponse{
 		Accepted: true,
 		Command:  commandResponse(command),
-		Front:    detailResponse(front, player.TeamID, sitones, playerOpenPower),
+		Front:    detailResponse(front, player.ID, player.TeamID, sitones, playerOpenPower),
 	})
 }
 
@@ -272,8 +289,10 @@ func (h *Handler) recordCommand(ctx context.Context, previousRevision int64, fro
 	defer session.EndSession(ctx)
 
 	_, err = session.WithTransaction(ctx, func(ctx context.Context) (any, error) {
-		if err := h.validateOwnedFrontSitones(ctx, command.PlayerID, command.SitoneIDs); err != nil {
-			return nil, err
+		if command.Kind != "withdraw" {
+			if err := h.validateOwnedFrontSitones(ctx, command.PlayerID, command.SitoneIDs); err != nil {
+				return nil, err
+			}
 		}
 		if _, err := h.db.Collection(mongomodel.FrontCommandsCollection).InsertOne(ctx, command); err != nil {
 			if mongo.IsDuplicateKeyError(err) {
@@ -282,6 +301,9 @@ func (h *Handler) recordCommand(ctx context.Context, previousRevision int64, fro
 			return nil, err
 		}
 		if err := h.deductFrontCommandOpenPower(ctx, command); err != nil {
+			return nil, err
+		}
+		if err := h.applyFrontCommandSitoneEscrow(ctx, command); err != nil {
 			return nil, err
 		}
 		if err := h.grantFrontCommandSitone(ctx, command); err != nil {
@@ -384,6 +406,8 @@ func (h *Handler) updateFrontAfterCommand(ctx context.Context, previousRevision 
 				"leaderboard":   front.Leaderboard,
 				"last_command":  summary,
 				"territory":     front.Territory,
+				"garrisons":     front.Garrisons,
+				"trade_routes":  front.TradeRoutes,
 				"updated_at":    front.UpdatedAt,
 			},
 			"$setOnInsert": bson.M{
@@ -491,7 +515,11 @@ func validateCommandRequest(body CreateCommandRequest) error {
 	if body.ClientCommandID == "" {
 		details = append(details, httpx.ErrorDetail{Location: "body.clientCommandId", Message: "clientCommandId is required"})
 	}
-	if len(body.SitoneIDs) < 1 || len(body.SitoneIDs) > maxFrontSitoneLoadout {
+	if body.Kind == "withdraw" {
+		if len(body.SitoneIDs) > 0 {
+			details = append(details, httpx.ErrorDetail{Location: "body.sitoneIds", Message: "withdraw does not accept sitoneIds"})
+		}
+	} else if len(body.SitoneIDs) < 1 || len(body.SitoneIDs) > maxFrontSitoneLoadout {
 		details = append(details, httpx.ErrorDetail{Location: "body.sitoneIds", Message: "sitoneIds must contain between 1 and 5 sitones"})
 	}
 	if body.TargetX == nil || *body.TargetX < 0 || *body.TargetX >= 64 {
@@ -507,6 +535,13 @@ func validateCommandRequest(body CreateCommandRequest) error {
 		return httpx.UnprocessableEntity("invalid front command", details...)
 	}
 	return nil
+}
+
+func frontSitoneEffectKind(kind string) string {
+	if kind == "station" {
+		return "reinforce"
+	}
+	return kind
 }
 
 func applyCommandToFront(front mongomodel.Front, command mongomodel.FrontCommand, playerOpenPower int) (mongomodel.Front, mongomodel.FrontCommand, error) {
@@ -575,6 +610,8 @@ func commandSummary(command mongomodel.FrontCommand) mongomodel.FrontCommandSumm
 		RewardSitoneQuantity: command.RewardSitoneQuantity,
 		SitoneIDs:            append([]string(nil), command.SitoneIDs...),
 		SitoneEffect:         command.SitoneEffect,
+		GarrisonID:           command.GarrisonID,
+		CapturedGarrisons:    cloneCapturedGarrisons(command.CapturedGarrisons),
 		Payload:              clonePayload(command.Payload),
 		Accepted:             command.Accepted,
 		Applied:              command.Applied,

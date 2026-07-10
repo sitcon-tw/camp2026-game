@@ -20,8 +20,7 @@ export function frontSnapshotQueryOptions(frontID: string) {
   return queryOptions({
     queryKey: frontSnapshotQueryKey(frontID),
     queryFn: () => gameApi.frontSnapshot(frontID),
-    refetchInterval: 5_000,
-    staleTime: 3_000,
+    staleTime: 30_000,
   })
 }
 

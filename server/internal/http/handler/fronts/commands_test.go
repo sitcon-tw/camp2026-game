@@ -97,7 +97,7 @@ func TestApplyTerritoryExpandUsesCoordinateAndConnectedPatch(t *testing.T) {
 
 func TestTerritoryObserverCannotPlay(t *testing.T) {
 	front := newTerritoryTestFront(2, 1)
-	response := detailResponse(front, "team-010", frontSitoneInventory{}, testPlayerOpenPower)
+	response := detailResponse(front, "player-010", "team-010", frontSitoneInventory{}, testPlayerOpenPower)
 	if response.CanPlay || len(response.AvailableCommands) != 0 {
 		t.Fatalf("expected read-only response, got %#v", response)
 	}

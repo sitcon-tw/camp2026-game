@@ -1,7 +1,9 @@
 import {
+  Castle,
   Flag,
   Focus,
   Gem,
+  Handshake,
   Info,
   MoveUpRight,
   ShieldPlus,
@@ -78,7 +80,14 @@ export function FrontHelpDialog() {
             戰線與首頁、商店使用同一份個人開源力。只有執行命令的學員會支付畫面標示的開源力，小隊其他成員不會被扣款。
           </RuleRow>
           <RuleRow icon={Gem} title="前線小石">
-            可選擇一到五顆自己擁有的小石。編隊數量會提高行動效果，符合命令專長的小石會再依能力值加成；小石不會被消耗。
+            可選擇一到五顆自己擁有的小石。一般命令不會消耗小石；駐點後會暫時離開庫存，撤回才會歸還。
+          </RuleRow>
+          <RuleRow icon={Castle} title="駐點與失守">
+            在己方非基地領土駐點可提高防禦並開啟自動交易。若領土被攻下，駐點小石會被執行攻擊的學員帶走。
+          </RuleRow>
+          <RuleRow icon={Handshake} title="自動交易" badge="每隊 300 / 小時">
+            不同小隊的駐點會自動建立 10 到 60
+            秒的交易路線；距離與小石加成會提高收益，抵達時雙方同時取得開源力與戰線分。
           </RuleRow>
           <RuleRow icon={Trophy} title="分數與獎勵" last>
             目前領土每格值 10 戰線分，失地時分數也會下降。小隊歷史最高領土每達

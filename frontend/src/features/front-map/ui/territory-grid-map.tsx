@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Castle,
   Flag,
   Handshake,
   LifeBuoy,
@@ -27,11 +28,13 @@ import {
 } from "react"
 
 import type {
+  FrontGarrison,
   FrontTerritoryBase,
   FrontTerritoryGrid,
   FrontTerritoryLandmark,
   FrontTerritoryRow,
   FrontTeamState,
+  FrontTradeRoute,
 } from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
 import { ButtonGroup } from "@/shared/ui/button-group"
@@ -61,6 +64,8 @@ type TerritoryGridMapProps = {
   bases: FrontTerritoryBase[]
   landmarks: FrontTerritoryLandmark[]
   teams: FrontTeamState[]
+  garrisons: FrontGarrison[]
+  tradeRoutes: FrontTradeRoute[]
   selectedTarget: TerritoryTarget | null
   onSelectTarget: (target: TerritoryTarget) => void
 }
@@ -127,6 +132,8 @@ export function TerritoryGridMap({
   bases,
   landmarks,
   teams,
+  garrisons,
+  tradeRoutes,
   selectedTarget,
   onSelectTarget,
 }: TerritoryGridMapProps) {
@@ -638,6 +645,60 @@ export function TerritoryGridMap({
                   aria-hidden
                 />
 
+                <svg
+                  viewBox={`0 0 ${grid.width} ${grid.height}`}
+                  preserveAspectRatio="none"
+                  className="pointer-events-none absolute inset-0 z-10 size-full overflow-visible"
+                  aria-hidden
+                >
+                  {tradeRoutes
+                    .filter((route) => route.status === "active")
+                    .map((route) => {
+                      const color =
+                        teams.find((team) => team.teamId === route.sourceTeamId)
+                          ?.color ?? "var(--power)"
+                      const timing = tradeRouteAnimationTiming(route)
+                      return (
+                        <g key={route.id}>
+                          <line
+                            x1={route.sourceX + 0.5}
+                            y1={route.sourceY + 0.5}
+                            x2={route.targetX + 0.5}
+                            y2={route.targetY + 0.5}
+                            stroke={color}
+                            strokeWidth={0.55}
+                            strokeDasharray="1.25 0.8"
+                            strokeLinecap="round"
+                            opacity={0.9}
+                          />
+                          <circle
+                            r={0.75}
+                            fill={color}
+                            stroke="var(--card)"
+                            strokeWidth={0.35}
+                          >
+                            <animate
+                              attributeName="cx"
+                              from={route.sourceX + 0.5}
+                              to={route.targetX + 0.5}
+                              dur={timing.duration}
+                              begin={timing.begin}
+                              fill="freeze"
+                            />
+                            <animate
+                              attributeName="cy"
+                              from={route.sourceY + 0.5}
+                              to={route.targetY + 0.5}
+                              dur={timing.duration}
+                              begin={timing.begin}
+                              fill="freeze"
+                            />
+                          </circle>
+                        </g>
+                      )
+                    })}
+                </svg>
+
                 <Button
                   type="button"
                   variant="ghost"
@@ -732,6 +793,38 @@ export function TerritoryGridMap({
                     </Tooltip>
                   )
                 })}
+
+                {garrisons.map((garrison) => {
+                  const selected = isSameTarget(displayedTarget, garrison)
+                  const teamName = getTeamName(garrison.teamId, teams)
+                  return (
+                    <Tooltip key={garrison.id}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon-xs"
+                          variant={garrison.mine ? "default" : "secondary"}
+                          className={cn(
+                            "absolute z-30 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-sm",
+                            selected && "ring-power ring-3",
+                          )}
+                          style={markerPosition(garrison, grid, mapView.scale)}
+                          aria-label={`${teamName}駐點，${garrison.sitoneCount} 顆小石`}
+                          aria-pressed={selected}
+                          onClick={() =>
+                            commitTarget({ x: garrison.x, y: garrison.y })
+                          }
+                        >
+                          <Castle className="size-3.5" aria-hidden />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {teamName}駐點 · {garrison.sitoneCount} 顆 · 交易 +
+                        {garrison.tradeBonusPercent}%
+                      </TooltipContent>
+                    </Tooltip>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -739,6 +832,17 @@ export function TerritoryGridMap({
       </TooltipProvider>
     </section>
   )
+}
+
+function tradeRouteAnimationTiming(route: FrontTradeRoute) {
+  const startedAt = new Date(route.startedAt).getTime()
+  const arrivesAt = new Date(route.arrivesAt).getTime()
+  const durationMs = Math.max(1_000, arrivesAt - startedAt)
+  const elapsedMs = Math.max(0, Math.min(durationMs, Date.now() - startedAt))
+  return {
+    duration: `${durationMs / 1_000}s`,
+    begin: `-${elapsedMs / 1_000}s`,
+  }
 }
 
 function MapControlButton({

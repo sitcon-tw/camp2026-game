@@ -53,6 +53,7 @@ func New(ctx context.Context) (*Application, error) {
 		return nil, err
 	}
 	handler := httpserver.NewRouter(httpserver.Dependencies{
+		Context:              ctx,
 		Log:                  log,
 		RequestTimeout:       cfg.HTTP.RequestTimeout,
 		Content:              contentStore,

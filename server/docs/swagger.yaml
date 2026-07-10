@@ -1152,7 +1152,6 @@ definitions:
         items:
           type: string
         maxItems: 5
-        minItems: 1
         type: array
       targetX:
         example: 24
@@ -1163,8 +1162,6 @@ definitions:
       type:
         example: expand
         type: string
-    required:
-    - sitoneIds
     type: object
   fronts.CreateCommandResponse:
     properties:
@@ -1207,6 +1204,10 @@ definitions:
         $ref: '#/definitions/fronts.FrontSessionSummaryResponse'
       frontPowerSource:
         type: string
+      garrisons:
+        items:
+          $ref: '#/definitions/fronts.FrontGarrisonResponse'
+        type: array
       grid:
         $ref: '#/definitions/fronts.FrontTerritoryGridResponse'
       landmarks:
@@ -1237,6 +1238,27 @@ definitions:
         items:
           $ref: '#/definitions/fronts.FrontTerritoryRowResponse'
         type: array
+      tradeRoutes:
+        items:
+          $ref: '#/definitions/fronts.FrontTradeRouteResponse'
+        type: array
+    type: object
+  fronts.FrontCapturedGarrisonResponse:
+    properties:
+      garrisonId:
+        type: string
+      playerId:
+        type: string
+      sitoneIds:
+        items:
+          type: string
+        type: array
+      teamId:
+        type: string
+      x:
+        type: integer
+      "y":
+        type: integer
     type: object
   fronts.FrontCommandOptionResponse:
     properties:
@@ -1273,6 +1295,10 @@ definitions:
         type: boolean
       capturedCellCount:
         type: integer
+      capturedGarrisons:
+        items:
+          $ref: '#/definitions/fronts.FrontCapturedGarrisonResponse'
+        type: array
       clientCommandId:
         example: front_cmd_7H9K2Q_001
         type: string
@@ -1285,6 +1311,8 @@ definitions:
         type: integer
       expectedRevision:
         type: integer
+      garrisonId:
+        type: string
       kind:
         example: expand
         type: string
@@ -1326,6 +1354,33 @@ definitions:
       "y":
         type: integer
     type: object
+  fronts.FrontGarrisonResponse:
+    properties:
+      defenseBonus:
+        type: integer
+      id:
+        type: string
+      mine:
+        type: boolean
+      playerId:
+        type: string
+      sitoneCount:
+        type: integer
+      sitoneIds:
+        items:
+          type: string
+        type: array
+      stationedAt:
+        type: string
+      teamId:
+        type: string
+      tradeBonusPercent:
+        type: integer
+      x:
+        type: integer
+      "y":
+        type: integer
+    type: object
   fronts.FrontLeaderboardEntryResponse:
     properties:
       collaborationScore:
@@ -1358,6 +1413,9 @@ definitions:
       teamName:
         example: Blue
         type: string
+      tradeScore:
+        example: 0
+        type: integer
     type: object
   fronts.FrontMapEventResponse:
     properties:
@@ -1517,6 +1575,17 @@ definitions:
       teamId:
         example: team-blue
         type: string
+      tradeHourlyEarned:
+        example: 120
+        type: integer
+      tradeHourlyLimit:
+        example: 300
+        type: integer
+      tradeScore:
+        example: 0
+        type: integer
+      tradeWindowEndsAt:
+        type: string
     type: object
   fronts.FrontTerritoryBackgroundResponse:
     properties:
@@ -1581,6 +1650,45 @@ definitions:
       ownerTeamId:
         type: string
       x:
+        type: integer
+    type: object
+  fronts.FrontTradeRouteResponse:
+    properties:
+      arrivesAt:
+        type: string
+      cancellationReason:
+        type: string
+      distance:
+        type: integer
+      id:
+        type: string
+      potentialReward:
+        type: integer
+      settledAt:
+        type: string
+      sourceGarrisonId:
+        type: string
+      sourceReward:
+        type: integer
+      sourceTeamId:
+        type: string
+      sourceX:
+        type: integer
+      sourceY:
+        type: integer
+      startedAt:
+        type: string
+      status:
+        type: string
+      targetGarrisonId:
+        type: string
+      targetReward:
+        type: integer
+      targetTeamId:
+        type: string
+      targetX:
+        type: integer
+      targetY:
         type: integer
     type: object
   fronts.LeaderboardResponse:
@@ -4550,6 +4658,44 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Create front command
+      tags:
+      - fronts
+  /fronts/{frontID}/events:
+    get:
+      description: Streams personalized front snapshots when territory, garrisons,
+        trade routes, or rankings change.
+      parameters:
+      - description: Front ID
+        in: path
+        name: frontID
+        required: true
+        type: string
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE event stream
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Stream front events
       tags:
       - fronts
   /fronts/{frontID}/leaderboard:

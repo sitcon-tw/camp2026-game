@@ -3,6 +3,7 @@ package fronts
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -22,24 +23,40 @@ var errFrontNotFound = errors.New("front not found")
 type Dependencies struct {
 	Content *content.Store
 	MongoDB *mongo.Database
+	Context context.Context
+	Log     *slog.Logger
+	Broker  *FrontBroker
 }
 
 type Handler struct {
 	content *content.Store
 	db      *mongo.Database
+	broker  *FrontBroker
+	log     *slog.Logger
 }
 
 func New(dep Dependencies) *Handler {
-	return &Handler{
+	broker := dep.Broker
+	if broker == nil {
+		broker = NewFrontBroker()
+	}
+	h := &Handler{
 		content: dep.Content,
 		db:      dep.MongoDB,
+		broker:  broker,
+		log:     dep.Log,
 	}
+	if dep.Context != nil && h.db != nil {
+		go h.runFrontTradeLoop(dep.Context)
+	}
+	return h
 }
 
 func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/fronts/current", h.Current)
 	api.Get("/fronts/{frontID}", h.Get)
 	api.Get("/fronts/{frontID}/leaderboard", h.Leaderboard)
+	api.Get("/fronts/{frontID}/events", h.Events)
 	api.Post("/fronts/{frontID}/commands", h.CreateCommand)
 }
 
@@ -126,7 +143,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("front open power unavailable", "front_open_power_lookup_failed", err))
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, detailResponse(front, player.TeamID, sitones, playerOpenPower))
+	httpx.WriteJSON(w, http.StatusOK, detailResponse(front, player.ID, player.TeamID, sitones, playerOpenPower))
 }
 
 // Leaderboard godoc
@@ -248,6 +265,11 @@ func (h *Handler) withFrontDefaults(front mongomodel.Front) mongomodel.Front {
 		}
 	}
 	if front.Territory != nil {
+		for i := range front.Teams {
+			if front.Teams[i].TradeHourlyLimit <= 0 {
+				front.Teams[i].TradeHourlyLimit = frontTradeHourlyLimit
+			}
+		}
 		syncTerritoryTeamRanks(front.Teams, front.Territory)
 		front.Leaderboard = deriveLeaderboard(front)
 	}

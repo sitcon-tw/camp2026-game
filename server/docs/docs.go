@@ -1786,6 +1786,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/fronts/{frontID}/events": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Streams personalized front snapshots when territory, garrisons, trade routes, or rankings change.",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "fronts"
+                ],
+                "summary": "Stream front events",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Front ID",
+                        "name": "frontID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SSE event stream",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/fronts/{frontID}/leaderboard": {
             "get": {
                 "security": [
@@ -6218,9 +6276,6 @@ const docTemplate = `{
         },
         "fronts.CreateCommandRequest": {
             "type": "object",
-            "required": [
-                "sitoneIds"
-            ],
             "properties": {
                 "clientCommandId": {
                     "type": "string",
@@ -6241,7 +6296,6 @@ const docTemplate = `{
                 "sitoneIds": {
                     "type": "array",
                     "maxItems": 5,
-                    "minItems": 1,
                     "items": {
                         "type": "string"
                     },
@@ -6326,6 +6380,12 @@ const docTemplate = `{
                 "frontPowerSource": {
                     "type": "string"
                 },
+                "garrisons": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontGarrisonResponse"
+                    }
+                },
                 "grid": {
                     "$ref": "#/definitions/fronts.FrontTerritoryGridResponse"
                 },
@@ -6370,6 +6430,38 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/fronts.FrontTerritoryRowResponse"
                     }
+                },
+                "tradeRoutes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontTradeRouteResponse"
+                    }
+                }
+            }
+        },
+        "fronts.FrontCapturedGarrisonResponse": {
+            "type": "object",
+            "properties": {
+                "garrisonId": {
+                    "type": "string"
+                },
+                "playerId": {
+                    "type": "string"
+                },
+                "sitoneIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "teamId": {
+                    "type": "string"
+                },
+                "x": {
+                    "type": "integer"
+                },
+                "y": {
+                    "type": "integer"
                 }
             }
         },
@@ -6423,6 +6515,12 @@ const docTemplate = `{
                 "capturedCellCount": {
                     "type": "integer"
                 },
+                "capturedGarrisons": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontCapturedGarrisonResponse"
+                    }
+                },
                 "clientCommandId": {
                     "type": "string",
                     "example": "front_cmd_7H9K2Q_001"
@@ -6439,6 +6537,9 @@ const docTemplate = `{
                 },
                 "expectedRevision": {
                     "type": "integer"
+                },
+                "garrisonId": {
+                    "type": "string"
                 },
                 "kind": {
                     "type": "string",
@@ -6500,6 +6601,47 @@ const docTemplate = `{
                 }
             }
         },
+        "fronts.FrontGarrisonResponse": {
+            "type": "object",
+            "properties": {
+                "defenseBonus": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mine": {
+                    "type": "boolean"
+                },
+                "playerId": {
+                    "type": "string"
+                },
+                "sitoneCount": {
+                    "type": "integer"
+                },
+                "sitoneIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "stationedAt": {
+                    "type": "string"
+                },
+                "teamId": {
+                    "type": "string"
+                },
+                "tradeBonusPercent": {
+                    "type": "integer"
+                },
+                "x": {
+                    "type": "integer"
+                },
+                "y": {
+                    "type": "integer"
+                }
+            }
+        },
         "fronts.FrontLeaderboardEntryResponse": {
             "type": "object",
             "properties": {
@@ -6542,6 +6684,10 @@ const docTemplate = `{
                 "teamName": {
                     "type": "string",
                     "example": "Blue"
+                },
+                "tradeScore": {
+                    "type": "integer",
+                    "example": 0
                 }
             }
         },
@@ -6769,6 +6915,21 @@ const docTemplate = `{
                 "teamId": {
                     "type": "string",
                     "example": "team-blue"
+                },
+                "tradeHourlyEarned": {
+                    "type": "integer",
+                    "example": 120
+                },
+                "tradeHourlyLimit": {
+                    "type": "integer",
+                    "example": 300
+                },
+                "tradeScore": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "tradeWindowEndsAt": {
+                    "type": "string"
                 }
             }
         },
@@ -6867,6 +7028,65 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "x": {
+                    "type": "integer"
+                }
+            }
+        },
+        "fronts.FrontTradeRouteResponse": {
+            "type": "object",
+            "properties": {
+                "arrivesAt": {
+                    "type": "string"
+                },
+                "cancellationReason": {
+                    "type": "string"
+                },
+                "distance": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "potentialReward": {
+                    "type": "integer"
+                },
+                "settledAt": {
+                    "type": "string"
+                },
+                "sourceGarrisonId": {
+                    "type": "string"
+                },
+                "sourceReward": {
+                    "type": "integer"
+                },
+                "sourceTeamId": {
+                    "type": "string"
+                },
+                "sourceX": {
+                    "type": "integer"
+                },
+                "sourceY": {
+                    "type": "integer"
+                },
+                "startedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "targetGarrisonId": {
+                    "type": "string"
+                },
+                "targetReward": {
+                    "type": "integer"
+                },
+                "targetTeamId": {
+                    "type": "string"
+                },
+                "targetX": {
+                    "type": "integer"
+                },
+                "targetY": {
                     "type": "integer"
                 }
             }

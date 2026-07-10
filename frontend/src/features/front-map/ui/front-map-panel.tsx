@@ -4,6 +4,7 @@ import {
   Clock,
   Flag,
   Gem,
+  Handshake,
   ListFilter,
   MapPinned,
   Minus,
@@ -57,6 +58,10 @@ import {
   frontSnapshotQueryKey,
   frontSnapshotQueryOptions,
 } from "../api/front.query"
+import {
+  type FrontConnectionState,
+  useFrontEvents,
+} from "../api/use-front-events"
 import { FrontHelpDialog } from "./front-help-dialog"
 import { FrontLeaderboard } from "./front-leaderboard"
 import { FrontTerritoryDrawer } from "./front-territory-drawer"
@@ -85,6 +90,7 @@ export function FrontMapPanel() {
 function FrontSnapshotPanel({ frontID }: { frontID: string }) {
   const queryClient = useQueryClient()
   const snapshotQuery = useQuery(frontSnapshotQueryOptions(frontID))
+  const connectionState = useFrontEvents(frontID)
   const [selectedTarget, setSelectedTarget] = useState<TerritoryTarget | null>(
     null,
   )
@@ -150,6 +156,13 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
             landmark.x === selectedTarget.x && landmark.y === selectedTarget.y,
         )
       : null) ?? null
+  const selectedGarrison =
+    (selectedTarget
+      ? snapshot?.garrisons.find(
+          (garrison) =>
+            garrison.x === selectedTarget.x && garrison.y === selectedTarget.y,
+        )
+      : null) ?? null
   const canAttackSelectedOwner = Boolean(
     snapshot?.myTeamId &&
     selectedTerritoryCell?.ownerTeamId &&
@@ -196,7 +209,7 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
       toast.error("觀戰隊伍不能送出戰線命令")
       return
     }
-    if (selectedSitoneIds.length === 0) {
+    if (kind !== "withdraw" && selectedSitoneIds.length === 0) {
       toast.error("請先選擇至少一顆前線小石")
       return
     }
@@ -234,7 +247,7 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
       targetX: selectedTarget.x,
       targetY: selectedTarget.y,
       expectedRevision: snapshot.revision,
-      sitoneIds: selectedSitoneIds,
+      sitoneIds: kind === "withdraw" ? [] : selectedSitoneIds,
     })
   }
 
@@ -249,6 +262,7 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
       <FrontSummaryCard
         front={currentSnapshot}
         isFetching={snapshotQuery.isFetching}
+        connectionState={connectionState}
         onRefresh={() => void snapshotQuery.refetch()}
       />
       {currentSnapshot.grid ? (
@@ -258,6 +272,8 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
           bases={currentSnapshot.bases}
           landmarks={currentSnapshot.landmarks}
           teams={currentSnapshot.teams}
+          garrisons={currentSnapshot.garrisons}
+          tradeRoutes={currentSnapshot.tradeRoutes}
           selectedTarget={selectedTarget}
           onSelectTarget={setSelectedTarget}
         />
@@ -284,6 +300,7 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
         cell={selectedTerritoryCell}
         base={selectedBase}
         landmark={selectedLandmark}
+        garrison={selectedGarrison}
         canAttackSelectedOwner={canAttackSelectedOwner}
         teams={currentSnapshot.teams}
         availableCommands={currentSnapshot.availableCommands}
@@ -300,10 +317,12 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
 function FrontSummaryCard({
   front,
   isFetching,
+  connectionState,
   onRefresh,
 }: {
   front: FrontSnapshot
   isFetching: boolean
+  connectionState: FrontConnectionState
   onRefresh: () => void
 }) {
   const myTeam = front.myTeamId
@@ -318,6 +337,11 @@ function FrontSummaryCard({
               {statusLabel(front.status)}
             </StatusBadge>
             <Badge variant="secondary">Tick {front.tick}</Badge>
+            <StatusBadge
+              tone={connectionState === "live" ? "success" : "warning"}
+            >
+              {connectionState === "live" ? "即時" : "重新連線"}
+            </StatusBadge>
             {!front.canPlay ? (
               <StatusBadge tone="magic">唯讀觀戰</StatusBadge>
             ) : null}
@@ -370,6 +394,21 @@ function FrontSummaryCard({
           <Gem className="size-3.5" aria-hidden />
           歷史最高 {myTeam.maxControlledCells} 格 · 下一顆小石{" "}
           {myTeam.nextSitoneMilestone} 格
+        </div>
+      ) : null}
+      {front.canPlay && myTeam ? (
+        <div className="bg-primary-foreground/10 flex items-center gap-2 rounded-md px-3 py-2 text-xs font-bold">
+          <Handshake className="size-3.5" aria-hidden />
+          本小時交易 {formatNumber(myTeam.tradeHourlyEarned)} /{" "}
+          {formatNumber(myTeam.tradeHourlyLimit)} · 進行中{" "}
+          {
+            front.tradeRoutes.filter(
+              (route) =>
+                route.status === "active" &&
+                (route.sourceTeamId === myTeam.teamId ||
+                  route.targetTeamId === myTeam.teamId),
+            ).length
+          }
         </div>
       ) : null}
     </Card>
@@ -656,6 +695,8 @@ function commandLabel(kind: FrontCommandKind) {
     rescue: "救援",
     support: "支援",
     answer_challenge: "挑戰",
+    station: "駐點",
+    withdraw: "撤回",
   }
   return labels[kind]
 }
@@ -788,6 +829,13 @@ function commandSuccessFeedback(
     )?.name
     details.push(`${name ?? "獲得小石"} x${command.rewardSitoneQuantity}`)
   }
+  if (command.kind === "station") details.push("小石已開始駐守與自動交易")
+  if (command.kind === "withdraw") details.push("駐點小石已返回庫存")
+  const capturedSitones = command.capturedGarrisons.reduce(
+    (total, garrison) => total + garrison.sitoneIds.length,
+    0,
+  )
+  if (capturedSitones > 0) details.push(`帶回 ${capturedSitones} 顆駐點小石`)
   return {
     title: `${commandLabel(command.kind)}完成`,
     description: details.length > 0 ? details.join(" · ") : undefined,

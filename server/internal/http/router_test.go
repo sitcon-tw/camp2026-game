@@ -529,6 +529,7 @@ func TestSwaggerJSON(t *testing.T) {
 		"/healthz",
 		"/fusions",
 		"/fusions/recipes",
+		"/fronts/{frontID}/events",
 		"/leaderboards",
 		"/me/items",
 		"/me/matches",
@@ -620,6 +621,7 @@ func TestSwaggerJSON(t *testing.T) {
 	assertSwaggerSecurity(t, spec.Paths, "/fusions", http.MethodPost, true)
 	assertSwaggerSecurity(t, spec.Paths, "/fusions/recipes", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/leaderboards", http.MethodGet, true)
+	assertSwaggerSecurity(t, spec.Paths, "/fronts/{frontID}/events", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/home", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/events", http.MethodGet, true)
 	assertSwaggerSecurity(t, spec.Paths, "/me/status", http.MethodGet, true)

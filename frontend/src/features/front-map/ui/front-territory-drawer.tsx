@@ -1,5 +1,6 @@
 import {
   BookOpenCheck,
+  Castle,
   Eye,
   Handshake,
   LifeBuoy,
@@ -8,6 +9,7 @@ import {
   ShieldCheck,
   ShieldPlus,
   Swords,
+  Undo2,
   Wrench,
   Zap,
 } from "lucide-react"
@@ -16,6 +18,7 @@ import type { ComponentType, CSSProperties } from "react"
 import type {
   FrontCommandKind,
   FrontCommandOption,
+  FrontGarrison,
   FrontSessionSummary,
   FrontSitone,
   FrontSnapshot,
@@ -48,6 +51,7 @@ type FrontTerritoryDrawerProps = {
   cell: TerritoryCellState | null
   base: FrontTerritoryBase | null
   landmark: FrontTerritoryLandmark | null
+  garrison: FrontGarrison | null
   canAttackSelectedOwner: boolean
   teams: FrontTeamState[]
   availableCommands: FrontCommandOption[]
@@ -72,6 +76,8 @@ const commandItems: CommandItem[] = [
   { kind: "rescue", label: "救援", icon: LifeBuoy },
   { kind: "support", label: "支援", icon: Handshake },
   { kind: "answer_challenge", label: "挑戰", icon: BookOpenCheck },
+  { kind: "station", label: "駐點", icon: Castle },
+  { kind: "withdraw", label: "撤回", icon: Undo2 },
 ]
 
 const coreCommandKinds = new Set<FrontCommandKind>([
@@ -97,6 +103,7 @@ export function FrontTerritoryDrawer({
   cell,
   base,
   landmark,
+  garrison,
   canAttackSelectedOwner,
   teams,
   availableCommands,
@@ -126,6 +133,7 @@ export function FrontTerritoryDrawer({
             cell={cell}
             base={base}
             landmark={landmark}
+            garrison={garrison}
             canAttackSelectedOwner={canAttackSelectedOwner}
             teams={teams}
             availableCommands={availableCommands}
@@ -148,6 +156,7 @@ function TerritoryDrawerContent({
   cell,
   base,
   landmark,
+  garrison,
   canAttackSelectedOwner,
   teams,
   availableCommands,
@@ -169,6 +178,7 @@ function TerritoryDrawerContent({
     landmark,
     cell,
     base,
+    garrison,
     myTeamId,
   )
   const defenseFull =
@@ -247,6 +257,30 @@ function TerritoryDrawerContent({
           />
         </div>
 
+        {garrison ? (
+          <div className="bg-muted border-border grid gap-2 rounded-md border px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-black">
+                <Castle className="text-primary size-4" aria-hidden />
+                {garrison.mine ? "我的駐點" : "前線駐點"}
+              </div>
+              <Badge variant="secondary">{garrison.sitoneCount} 顆</Badge>
+            </div>
+            <div className="text-muted-foreground text-xs font-bold">
+              防禦 +{garrison.defenseBonus} · 交易 +{garrison.tradeBonusPercent}
+              % · 進行中{" "}
+              {
+                front.tradeRoutes.filter(
+                  (route) =>
+                    route.status === "active" &&
+                    (route.sourceGarrisonId === garrison.id ||
+                      route.targetGarrisonId === garrison.id),
+                ).length
+              }
+            </div>
+          </div>
+        ) : null}
+
         {defenseFull ? (
           <div className="bg-muted border-border flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-bold">
             <ShieldCheck className="text-status-success size-4" aria-hidden />
@@ -303,7 +337,7 @@ function TerritoryDrawerContent({
                       : undefined
                 const enabled = Boolean(
                   playable &&
-                  selectedSitones.length > 0 &&
+                  (item.kind === "withdraw" || selectedSitones.length > 0) &&
                   (!hasCommandOptions || option?.enabled) &&
                   !localReason,
                 )
@@ -340,14 +374,16 @@ function TerritoryDrawerContent({
 
             {selectedSitones.length > 0 ? (
               <div className="bg-muted border-border grid gap-1.5 rounded-md border px-3 py-2">
-                {commandList.map(({ item }) => (
-                  <div
-                    key={item.kind}
-                    className="text-muted-foreground text-xs font-bold"
-                  >
-                    {sitonePreviewLabel(item.kind, selectedSitones)}
-                  </div>
-                ))}
+                {commandList
+                  .filter(({ item }) => item.kind !== "withdraw")
+                  .map(({ item }) => (
+                    <div
+                      key={item.kind}
+                      className="text-muted-foreground text-xs font-bold"
+                    >
+                      {sitonePreviewLabel(item.kind, selectedSitones)}
+                    </div>
+                  ))}
               </div>
             ) : null}
 
@@ -361,7 +397,8 @@ function TerritoryDrawerContent({
               </div>
             ))}
 
-            {selectedSitones.length === 0 ? (
+            {selectedSitones.length === 0 &&
+            commandList.some(({ item }) => item.kind !== "withdraw") ? (
               <div className="text-muted-foreground text-xs font-bold">
                 請先選擇至少一顆前線小石
               </div>
@@ -383,7 +420,16 @@ function sitonePreviewLabel(
   kind: FrontCommandKind,
   selectedSitones: FrontSitone[],
 ) {
-  const preview = calculateFrontSitonePreview(selectedSitones, kind)
+  const preview = calculateFrontSitonePreview(
+    selectedSitones,
+    kind === "station" ? "reinforce" : kind,
+  )
+  if (kind === "station") {
+    const baseDefense = selectedSitones.length * 5
+    const defense =
+      baseDefense + Math.ceil((baseDefense * preview.totalBonusPercent) / 100)
+    return `駐點：編隊 +${preview.squadBonusPercent}% · 防守專長 +${preview.affinityBonusPercent}% · 防禦 +${defense}、交易 +${preview.totalBonusPercent}%`
+  }
   const result = preview.affectedCells
     ? `最多 ${preview.affectedCells} 格（+${preview.affectedCellBonus}）`
     : preview.defense
@@ -407,6 +453,7 @@ function visibleCommands(
   landmark: FrontTerritoryLandmark | null,
   cell: TerritoryCellState,
   base: FrontTerritoryBase | null,
+  garrison: FrontGarrison | null,
   myTeamId: string | undefined,
 ) {
   const targetOptions = options.filter(
@@ -436,6 +483,10 @@ function visibleCommands(
         allowedKinds.add(option.kind)
       }
     }
+  }
+  if (cell.ownerTeamId === myTeamId && !base) {
+    if (!garrison) allowedKinds.add("station")
+    if (garrison?.mine) allowedKinds.add("withdraw")
   }
 
   return commandItems

@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -34,6 +35,7 @@ import (
 )
 
 type Dependencies struct {
+	Context              context.Context
 	Log                  *slog.Logger
 	RequestTimeout       time.Duration
 	Content              *content.Store
@@ -94,6 +96,7 @@ func timeoutExceptMatchEvents(timeout time.Duration) func(http.Handler) http.Han
 
 func isSSEPath(path string) bool {
 	return (strings.HasPrefix(path, "/api/matches/") && strings.HasSuffix(path, "/events")) ||
+		(strings.HasPrefix(path, "/api/fronts/") && strings.HasSuffix(path, "/events")) ||
 		path == "/api/me/events"
 }
 
@@ -138,6 +141,8 @@ func registerRoutes(api chi.Router, dep Dependencies) {
 	frontshandler.New(frontshandler.Dependencies{
 		Content: dep.Content,
 		MongoDB: dep.MongoDB,
+		Context: dep.Context,
+		Log:     dep.Log,
 	}).RegisterRoutes(maintenanceGuardedPlayerAPI)
 	matcheshandler.New(matcheshandler.Dependencies{
 		Content:            dep.Content,

@@ -316,11 +316,11 @@ func TestTerritoryOptionsAndCommandsUsePlayerOpenPower(t *testing.T) {
 	}
 	matrix[0][0] = territoryCell{Playable: true, Owner: "team-001", Defense: 20}
 	front.Territory.Rows = encodeTerritoryRows(matrix)
-	option := findTerritoryCommandOption(territoryCommandOptionResponses(front, "team-001", 9), "expand")
+	option := findTerritoryCommandOption(territoryCommandOptionResponses(front, "player-001", "team-001", 9), "expand")
 	if option == nil || option.Enabled || option.Reason != "開源力不足" {
 		t.Fatalf("unaffordable option should use the player's balance: %#v", option)
 	}
-	option = findTerritoryCommandOption(territoryCommandOptionResponses(front, "team-001", 10), "expand")
+	option = findTerritoryCommandOption(territoryCommandOptionResponses(front, "player-001", "team-001", 10), "expand")
 	if option == nil || !option.Enabled {
 		t.Fatalf("player with enough open power should be able to expand: %#v", option)
 	}

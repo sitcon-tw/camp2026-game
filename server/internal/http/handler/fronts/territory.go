@@ -19,6 +19,8 @@ const (
 	territoryAttackLimit             = 6
 	territoryReinforceLimit          = 8
 	territorySitoneMilestoneSize     = 25
+	frontTradeHourlyLimit            = 300
+	frontGarrisonDefensePerSitone    = 5
 )
 
 var territoryTeamColors = []string{
@@ -147,7 +149,7 @@ func territoryTeams() []mongomodel.FrontTeam {
 		teamID := fmt.Sprintf("team-%03d", i)
 		teams = append(teams, mongomodel.FrontTeam{
 			TeamID: teamID, Name: fmt.Sprintf("第 %d 小隊", i),
-			Color: territoryTeamColors[i-1],
+			Color: territoryTeamColors[i-1], TradeHourlyLimit: frontTradeHourlyLimit,
 		})
 	}
 	return teams
@@ -161,7 +163,7 @@ func isParticipatingTerritoryTeam(teamID string) bool {
 	return err == nil && number >= 1 && number <= 9
 }
 
-func territoryCommandOptionResponses(front mongomodel.Front, teamID string, playerOpenPower int) []FrontCommandOptionResponse {
+func territoryCommandOptionResponses(front mongomodel.Front, playerID string, teamID string, playerOpenPower int) []FrontCommandOptionResponse {
 	if front.Territory == nil || !isParticipatingTerritoryTeam(teamID) {
 		return []FrontCommandOptionResponse{}
 	}
@@ -178,6 +180,36 @@ func territoryCommandOptionResponses(front mongomodel.Front, teamID string, play
 		territoryCommandOption("attack", "攻擊", frontCommandCosts["attack"], hasEnemy, playerOpenPower),
 		territoryCommandOption("reinforce", "防守", reinforceCost, hasReinforce, playerOpenPower),
 	}
+	hasStationTarget := false
+	bases := territoryBaseSet(front.Territory.Bases)
+	for y := range matrix {
+		for x := range matrix[y] {
+			if matrix[y][x].Owner != teamID {
+				continue
+			}
+			if _, isBase := bases[[2]int{x, y}]; isBase {
+				continue
+			}
+			if _, occupied := frontGarrisonAt(front.Garrisons, x, y); !occupied {
+				hasStationTarget = true
+				break
+			}
+		}
+		if hasStationTarget {
+			break
+		}
+	}
+	hasWithdrawTarget := false
+	for _, garrison := range front.Garrisons {
+		if garrison.PlayerID == playerID {
+			hasWithdrawTarget = true
+			break
+		}
+	}
+	options = append(options,
+		territoryCommandOption("station", "駐點", 0, hasStationTarget, playerOpenPower),
+		territoryCommandOption("withdraw", "撤回", 0, hasWithdrawTarget, playerOpenPower),
+	)
 	landmarkByID := make(map[string]mongomodel.FrontMapLandmark, len(front.Territory.Landmarks))
 	for _, landmark := range front.Territory.Landmarks {
 		landmarkByID[landmark.ID] = landmark
@@ -262,6 +294,9 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	}
 	target := matrix[y][x]
 	bases := territoryBaseSet(front.Territory.Bases)
+	if command.Kind == "station" || command.Kind == "withdraw" {
+		return applyGarrisonCommand(front, matrix, teamIndex, command, bases)
+	}
 	switch command.Kind {
 	case "expand":
 		if target.Owner != "" {
@@ -320,6 +355,7 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 		enclosed = captureEnclosedTerritory(matrix, command.TeamID, bases)
 		captured = appendUniqueTerritoryCoordinates(captured, enclosed...)
 		affected = appendUniqueTerritoryCoordinates(affected, enclosed...)
+		captureFrontGarrisons(&front, &command, captured)
 	}
 	if len(affected) == 0 {
 		switch command.Kind {
@@ -404,7 +440,7 @@ func applyTerritorySitoneMilestones(team *mongomodel.FrontTeam, controlledBefore
 
 func territoryCommandIsSupported(kind string) bool {
 	switch kind {
-	case "expand", "attack", "reinforce", "repair", "rescue", "support", "answer_challenge":
+	case "expand", "attack", "reinforce", "repair", "rescue", "support", "answer_challenge", "station", "withdraw":
 		return true
 	default:
 		return false
