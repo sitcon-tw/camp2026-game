@@ -240,6 +240,33 @@ func TestReinforceAndRepairCapDefenseAtOneHundred(t *testing.T) {
 	}
 }
 
+func TestReinforceChargesProportionallyForPartialDefense(t *testing.T) {
+	state := newTestState(t)
+	for i := range state.Cells {
+		switch state.Cells[i].ID {
+		case "base_a":
+			state.Cells[i].Control = 100
+			state.Cells[i].Defense = 95
+		case "repair_a":
+			state.Cells[i].OwnerTeamID = "team-a"
+		}
+	}
+
+	next, _, err := ApplyCommand(state, Command{
+		ID: "cmd-partial-reinforce", PlayerID: "player-a", TeamID: "team-a", Kind: CommandReinforce,
+		FromCellID: "repair_a", ToCellID: "base_a", SitoneID: "stone-a",
+	})
+	if err != nil {
+		t.Fatalf("partial reinforce: %v", err)
+	}
+	if cellByID(t, next, "base_a").Defense != 100 {
+		t.Fatalf("partial reinforce did not cap at 100: %#v", cellByID(t, next, "base_a"))
+	}
+	if teamByID(t, next, "team-a").FrontOpenPower != 98 {
+		t.Fatalf("expected ceil(8*5/37)=2 front open power cost, got %#v", teamByID(t, next, "team-a"))
+	}
+}
+
 func newTestState(t *testing.T) State {
 	t.Helper()
 

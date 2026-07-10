@@ -336,7 +336,7 @@ func ValidateCommand(state State, command Command) error {
 			if team.SupportTokens <= 0 {
 				errs = append(errs, fmt.Errorf("team %q has no support tokens", command.TeamID))
 			}
-		} else if cost := CommandCost(command.Kind); cost > 0 && team.FrontOpenPower < cost {
+		} else if cost := commandCostForTarget(command.Kind, state, toIndex); cost > 0 && team.FrontOpenPower < cost {
 			errs = append(errs, fmt.Errorf("team %q needs %d front open power", command.TeamID, cost))
 		}
 	}
@@ -501,7 +501,7 @@ func applyCommandInPlace(state *State, command Command, now time.Time) (CommandR
 	if command.Kind == CommandSupport {
 		team.SupportTokens--
 	} else {
-		team.FrontOpenPower -= CommandCost(command.Kind)
+		team.FrontOpenPower -= commandCostForTarget(command.Kind, *state, toIndex)
 	}
 	team.LastCommandTick = state.Tick
 	state.PlayerLastCommandTick[command.PlayerID] = state.Tick
@@ -558,6 +558,21 @@ func applyCommandInPlace(state *State, command Command, now time.Time) (CommandR
 	team.Score += result.ScoreDelta
 	refreshTeamDerived(state)
 	return result, nil
+}
+
+func commandCostForTarget(kind string, state State, targetIndex int) int {
+	cost := CommandCost(kind)
+	if kind != CommandReinforce || targetIndex < 0 || targetIndex >= len(state.Cells) {
+		return cost
+	}
+	target := state.Cells[targetIndex]
+	controlApplied := minInt(25, maxInt(0, 100-target.Control))
+	defenseApplied := minInt(12, maxInt(0, maxDefense-target.Defense))
+	applied := controlApplied + defenseApplied
+	if applied <= 0 {
+		return 0
+	}
+	return maxInt(1, (cost*applied+37-1)/37)
 }
 
 func activateDueEvents(state *State) {
@@ -888,6 +903,13 @@ func clampInt(value int, minValue int, maxValue int) int {
 
 func maxInt(a int, b int) int {
 	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a int, b int) int {
+	if a < b {
 		return a
 	}
 	return b

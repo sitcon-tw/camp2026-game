@@ -79,18 +79,22 @@ type FrontMapLandmark struct {
 }
 
 type FrontTeam struct {
-	TeamID             string    `bson:"team_id"`
-	Name               string    `bson:"name"`
-	Color              string    `bson:"color,omitempty"`
-	Score              int       `bson:"score,omitempty"`
-	Rank               int       `bson:"rank,omitempty"`
-	PreviousRank       int       `bson:"previous_rank,omitempty"`
-	FrontOpenPower     int       `bson:"front_open_power,omitempty"`
-	ControlledCells    int       `bson:"controlled_cells,omitempty"`
-	RescuedSitones     int       `bson:"rescued_sitones,omitempty"`
-	RepairedEvents     int       `bson:"repaired_events,omitempty"`
-	CollaborationScore int       `bson:"collaboration_score,omitempty"`
-	LastCommandAt      time.Time `bson:"last_command_at,omitempty"`
+	TeamID                  string    `bson:"team_id"`
+	Name                    string    `bson:"name"`
+	Color                   string    `bson:"color,omitempty"`
+	Score                   int       `bson:"score,omitempty"`
+	Rank                    int       `bson:"rank,omitempty"`
+	PreviousRank            int       `bson:"previous_rank,omitempty"`
+	FrontOpenPower          int       `bson:"front_open_power,omitempty"`
+	EmergencyResupplies     int       `bson:"emergency_resupplies,omitempty"`
+	ControlledCells         int       `bson:"controlled_cells,omitempty"`
+	MaxControlledCells      int       `bson:"max_controlled_cells,omitempty"`
+	SitoneMilestonesReached int       `bson:"sitone_milestones_reached,omitempty"`
+	NextSitoneMilestone     int       `bson:"next_sitone_milestone,omitempty"`
+	RescuedSitones          int       `bson:"rescued_sitones,omitempty"`
+	RepairedEvents          int       `bson:"repaired_events,omitempty"`
+	CollaborationScore      int       `bson:"collaboration_score,omitempty"`
+	LastCommandAt           time.Time `bson:"last_command_at,omitempty"`
 }
 
 type FrontCell struct {
@@ -141,25 +145,33 @@ type FrontMapEvent struct {
 }
 
 type FrontCommand struct {
-	ID               string            `bson:"_id"`
-	ClientCommandID  string            `bson:"client_command_id,omitempty"`
-	FrontID          string            `bson:"front_id"`
-	PlayerID         string            `bson:"player_id"`
-	TeamID           string            `bson:"team_id,omitempty"`
-	Kind             string            `bson:"kind"`
-	Type             string            `bson:"type,omitempty"`
-	FromCellID       string            `bson:"from_cell_id,omitempty"`
-	ToCellID         string            `bson:"to_cell_id,omitempty"`
-	TargetX          *int              `bson:"target_x,omitempty"`
-	TargetY          *int              `bson:"target_y,omitempty"`
-	ExpectedRevision *int64            `bson:"expected_revision,omitempty"`
-	AffectedCells    []FrontCoordinate `bson:"affected_cells,omitempty"`
-	SitoneID         string            `bson:"sitone_id,omitempty"`
-	Payload          map[string]any    `bson:"payload,omitempty"`
-	Accepted         bool              `bson:"accepted,omitempty"`
-	Applied          bool              `bson:"applied,omitempty"`
-	RejectReason     string            `bson:"reject_reason,omitempty"`
-	CreatedAt        time.Time         `bson:"created_at"`
+	ID                      string            `bson:"_id"`
+	ClientCommandID         string            `bson:"client_command_id,omitempty"`
+	FrontID                 string            `bson:"front_id"`
+	PlayerID                string            `bson:"player_id"`
+	TeamID                  string            `bson:"team_id,omitempty"`
+	Kind                    string            `bson:"kind"`
+	Type                    string            `bson:"type,omitempty"`
+	FromCellID              string            `bson:"from_cell_id,omitempty"`
+	ToCellID                string            `bson:"to_cell_id,omitempty"`
+	TargetX                 *int              `bson:"target_x,omitempty"`
+	TargetY                 *int              `bson:"target_y,omitempty"`
+	ExpectedRevision        *int64            `bson:"expected_revision,omitempty"`
+	AffectedCells           []FrontCoordinate `bson:"affected_cells,omitempty"`
+	CapturedCellCount       int               `bson:"captured_cell_count,omitempty"`
+	EnclosedCellCount       int               `bson:"enclosed_cell_count,omitempty"`
+	ScoreDelta              int               `bson:"score_delta,omitempty"`
+	FrontOpenPowerDelta     int               `bson:"front_open_power_delta,omitempty"`
+	FrontOpenPowerCost      int               `bson:"front_open_power_cost,omitempty"`
+	EmergencyResupplyAmount int               `bson:"emergency_resupply_amount,omitempty"`
+	RewardSitoneID          string            `bson:"reward_sitone_id,omitempty"`
+	RewardSitoneQuantity    int               `bson:"reward_sitone_quantity,omitempty"`
+	SitoneID                string            `bson:"sitone_id,omitempty"`
+	Payload                 map[string]any    `bson:"payload,omitempty"`
+	Accepted                bool              `bson:"accepted,omitempty"`
+	Applied                 bool              `bson:"applied,omitempty"`
+	RejectReason            string            `bson:"reject_reason,omitempty"`
+	CreatedAt               time.Time         `bson:"created_at"`
 }
 
 type FrontCoordinate struct {
@@ -168,22 +180,30 @@ type FrontCoordinate struct {
 }
 
 type FrontCommandSummary struct {
-	ID               string            `bson:"id"`
-	ClientCommandID  string            `bson:"client_command_id,omitempty"`
-	Kind             string            `bson:"kind"`
-	Type             string            `bson:"type,omitempty"`
-	PlayerID         string            `bson:"player_id"`
-	TeamID           string            `bson:"team_id,omitempty"`
-	FromCellID       string            `bson:"from_cell_id,omitempty"`
-	ToCellID         string            `bson:"to_cell_id,omitempty"`
-	TargetX          *int              `bson:"target_x,omitempty"`
-	TargetY          *int              `bson:"target_y,omitempty"`
-	ExpectedRevision *int64            `bson:"expected_revision,omitempty"`
-	AffectedCells    []FrontCoordinate `bson:"affected_cells,omitempty"`
-	SitoneID         string            `bson:"sitone_id,omitempty"`
-	Payload          map[string]any    `bson:"payload,omitempty"`
-	Accepted         bool              `bson:"accepted,omitempty"`
-	Applied          bool              `bson:"applied,omitempty"`
-	RejectReason     string            `bson:"reject_reason,omitempty"`
-	CreatedAt        time.Time         `bson:"created_at"`
+	ID                      string            `bson:"id"`
+	ClientCommandID         string            `bson:"client_command_id,omitempty"`
+	Kind                    string            `bson:"kind"`
+	Type                    string            `bson:"type,omitempty"`
+	PlayerID                string            `bson:"player_id"`
+	TeamID                  string            `bson:"team_id,omitempty"`
+	FromCellID              string            `bson:"from_cell_id,omitempty"`
+	ToCellID                string            `bson:"to_cell_id,omitempty"`
+	TargetX                 *int              `bson:"target_x,omitempty"`
+	TargetY                 *int              `bson:"target_y,omitempty"`
+	ExpectedRevision        *int64            `bson:"expected_revision,omitempty"`
+	AffectedCells           []FrontCoordinate `bson:"affected_cells,omitempty"`
+	CapturedCellCount       int               `bson:"captured_cell_count,omitempty"`
+	EnclosedCellCount       int               `bson:"enclosed_cell_count,omitempty"`
+	ScoreDelta              int               `bson:"score_delta,omitempty"`
+	FrontOpenPowerDelta     int               `bson:"front_open_power_delta,omitempty"`
+	FrontOpenPowerCost      int               `bson:"front_open_power_cost,omitempty"`
+	EmergencyResupplyAmount int               `bson:"emergency_resupply_amount,omitempty"`
+	RewardSitoneID          string            `bson:"reward_sitone_id,omitempty"`
+	RewardSitoneQuantity    int               `bson:"reward_sitone_quantity,omitempty"`
+	SitoneID                string            `bson:"sitone_id,omitempty"`
+	Payload                 map[string]any    `bson:"payload,omitempty"`
+	Accepted                bool              `bson:"accepted,omitempty"`
+	Applied                 bool              `bson:"applied,omitempty"`
+	RejectReason            string            `bson:"reject_reason,omitempty"`
+	CreatedAt               time.Time         `bson:"created_at"`
 }

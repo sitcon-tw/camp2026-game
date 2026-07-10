@@ -24,7 +24,8 @@ type DetailResponse struct {
 	Cooldowns                 map[string]int64                `json:"cooldowns"`
 	SelectedSitones           []FrontSitoneResponse           `json:"selectedSitones"`
 	AvailableSitones          []FrontSitoneResponse           `json:"availableSitones"`
-	CurrentTeamFrontOpenPower int                             `json:"currentTeamFrontOpenPower,omitempty"`
+	CurrentTeamFrontOpenPower int                             `json:"currentTeamFrontOpenPower"`
+	FrontPowerSource          string                          `json:"frontPowerSource,omitempty"`
 	SupportTokens             int                             `json:"supportTokens,omitempty"`
 	AvailableCommands         []FrontCommandOptionResponse    `json:"availableCommands"`
 }
@@ -133,18 +134,22 @@ type FrontCellResponse struct {
 }
 
 type FrontTeamResponse struct {
-	TeamID             string     `json:"teamId" example:"team-blue"`
-	Name               string     `json:"name,omitempty" example:"Blue"`
-	Color              string     `json:"color,omitempty" example:"#2563eb"`
-	Score              int        `json:"score" example:"120"`
-	Rank               int        `json:"rank" example:"1"`
-	PreviousRank       int        `json:"previousRank,omitempty" example:"2"`
-	FrontOpenPower     int        `json:"frontOpenPower" example:"100"`
-	ControlledCells    int        `json:"controlledCells" example:"3"`
-	RescuedSitones     int        `json:"rescuedSitones" example:"0"`
-	RepairedEvents     int        `json:"repairedEvents" example:"0"`
-	CollaborationScore int        `json:"collaborationScore" example:"0"`
-	LastCommandAt      *time.Time `json:"lastCommandAt,omitempty"`
+	TeamID                  string     `json:"teamId" example:"team-blue"`
+	Name                    string     `json:"name,omitempty" example:"Blue"`
+	Color                   string     `json:"color,omitempty" example:"#2563eb"`
+	Score                   int        `json:"score" example:"120"`
+	Rank                    int        `json:"rank" example:"1"`
+	PreviousRank            int        `json:"previousRank,omitempty" example:"2"`
+	FrontOpenPower          int        `json:"frontOpenPower" example:"100"`
+	EmergencyResupplies     int        `json:"emergencyResupplies,omitempty"`
+	ControlledCells         int        `json:"controlledCells" example:"3"`
+	MaxControlledCells      int        `json:"maxControlledCells,omitempty"`
+	SitoneMilestonesReached int        `json:"sitoneMilestonesReached,omitempty"`
+	NextSitoneMilestone     int        `json:"nextSitoneMilestone,omitempty"`
+	RescuedSitones          int        `json:"rescuedSitones" example:"0"`
+	RepairedEvents          int        `json:"repairedEvents" example:"0"`
+	CollaborationScore      int        `json:"collaborationScore" example:"0"`
+	LastCommandAt           *time.Time `json:"lastCommandAt,omitempty"`
 }
 
 type FrontMapEventResponse struct {
@@ -196,24 +201,32 @@ type FrontCommandOptionResponse struct {
 }
 
 type FrontCommandResponse struct {
-	CommandID        string                    `json:"commandId" example:"front_command_507f1f77bcf86cd799439011"`
-	ClientCommandID  string                    `json:"clientCommandId,omitempty" example:"front_cmd_7H9K2Q_001"`
-	Kind             string                    `json:"kind" example:"expand"`
-	Type             string                    `json:"type,omitempty" example:"expand"`
-	PlayerID         string                    `json:"playerId" example:"7H9K2Q"`
-	TeamID           string                    `json:"teamId,omitempty" example:"team-blue"`
-	FromCellID       string                    `json:"fromCellId,omitempty" example:"base_team_001"`
-	ToCellID         string                    `json:"toCellId,omitempty" example:"system_a"`
-	TargetX          *int                      `json:"targetX,omitempty"`
-	TargetY          *int                      `json:"targetY,omitempty"`
-	ExpectedRevision *int64                    `json:"expectedRevision,omitempty"`
-	AffectedCells    []FrontCoordinateResponse `json:"affectedCells,omitempty"`
-	SitoneID         string                    `json:"sitoneId,omitempty" example:"stone_engineering_base"`
-	Payload          map[string]any            `json:"payload,omitempty"`
-	Accepted         bool                      `json:"accepted" example:"true"`
-	Applied          bool                      `json:"applied" example:"true"`
-	RejectReason     string                    `json:"rejectReason,omitempty"`
-	CreatedAt        time.Time                 `json:"createdAt"`
+	CommandID               string                    `json:"commandId" example:"front_command_507f1f77bcf86cd799439011"`
+	ClientCommandID         string                    `json:"clientCommandId,omitempty" example:"front_cmd_7H9K2Q_001"`
+	Kind                    string                    `json:"kind" example:"expand"`
+	Type                    string                    `json:"type,omitempty" example:"expand"`
+	PlayerID                string                    `json:"playerId" example:"7H9K2Q"`
+	TeamID                  string                    `json:"teamId,omitempty" example:"team-blue"`
+	FromCellID              string                    `json:"fromCellId,omitempty" example:"base_team_001"`
+	ToCellID                string                    `json:"toCellId,omitempty" example:"system_a"`
+	TargetX                 *int                      `json:"targetX,omitempty"`
+	TargetY                 *int                      `json:"targetY,omitempty"`
+	ExpectedRevision        *int64                    `json:"expectedRevision,omitempty"`
+	AffectedCells           []FrontCoordinateResponse `json:"affectedCells,omitempty"`
+	CapturedCellCount       int                       `json:"capturedCellCount"`
+	EnclosedCellCount       int                       `json:"enclosedCellCount"`
+	ScoreDelta              int                       `json:"scoreDelta"`
+	FrontOpenPowerDelta     int                       `json:"frontOpenPowerDelta"`
+	FrontOpenPowerCost      int                       `json:"frontOpenPowerCost"`
+	EmergencyResupplyAmount int                       `json:"emergencyResupplyAmount"`
+	RewardSitoneID          string                    `json:"rewardSitoneId"`
+	RewardSitoneQuantity    int                       `json:"rewardSitoneQuantity"`
+	SitoneID                string                    `json:"sitoneId,omitempty" example:"stone_engineering_base"`
+	Payload                 map[string]any            `json:"payload,omitempty"`
+	Accepted                bool                      `json:"accepted" example:"true"`
+	Applied                 bool                      `json:"applied" example:"true"`
+	RejectReason            string                    `json:"rejectReason,omitempty"`
+	CreatedAt               time.Time                 `json:"createdAt"`
 }
 
 type FrontCoordinateResponse struct {

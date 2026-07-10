@@ -159,6 +159,7 @@ function TerritoryDrawerContent({
 }) {
   const ownerColor = getTerritoryTeamColor(cell.ownerTeamId, teams)
   const ownerTeam = teams.find((team) => team.teamId === cell.ownerTeamId)
+  const myTeam = teams.find((team) => team.teamId === myTeamId)
   const ownerName = getTeamName(cell.ownerTeamId, teams)
   const playable = isPlayable(front.status) && canPlay
   const commandList = visibleCommands(
@@ -181,10 +182,17 @@ function TerritoryDrawerContent({
           : item.kind === "reinforce" && defenseFull
             ? undefined
             : option && !option.enabled
-              ? option.reason
+              ? normalizeCommandReason(option.reason)
               : undefined,
     }))
     .filter(({ reason }) => Boolean(reason))
+  const enabledCommandNotices = commandList
+    .filter(({ option }) => option?.enabled && option.reason)
+    .map(({ item, option }) => ({
+      kind: item.kind,
+      label: option?.label ?? item.label,
+      reason: normalizeCommandReason(option?.reason),
+    }))
 
   return (
     <>
@@ -257,14 +265,32 @@ function TerritoryDrawerContent({
           </div>
         ) : (
           <div className="grid gap-2">
-            <div className="flex min-w-0 items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
               <div className="text-sm font-black">命令</div>
-              {selectedSitone ? (
-                <Badge variant="secondary" className="max-w-[10rem] truncate">
-                  {selectedSitone.name}
+              <div className="ml-auto flex min-w-0 flex-wrap justify-end gap-1.5">
+                <Badge variant="outline" className="gap-1">
+                  <Zap className="size-3" aria-hidden />
+                  小隊戰線能量 {formatNumber(myTeam?.frontOpenPower)}
                 </Badge>
-              ) : null}
+                {selectedSitone ? (
+                  <Badge variant="secondary" className="max-w-[9rem] truncate">
+                    {selectedSitone.name}
+                  </Badge>
+                ) : null}
+              </div>
             </div>
+
+            {enabledCommandNotices.map((notice) => (
+              <div
+                key={notice.kind}
+                className="border-status-warning bg-status-warning/20 flex items-start gap-2 rounded-md border px-3 py-2 text-xs font-bold"
+              >
+                <Zap className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                <span>
+                  {notice.label}：{notice.reason}
+                </span>
+              </div>
+            ))}
 
             <div className="grid grid-cols-2 gap-2">
               {commandList.map(({ item, option }) => {
@@ -276,6 +302,7 @@ function TerritoryDrawerContent({
                       : undefined
                 const enabled = Boolean(
                   playable &&
+                  selectedSitone &&
                   (!hasCommandOptions || option?.enabled) &&
                   !localReason,
                 )
@@ -290,7 +317,9 @@ function TerritoryDrawerContent({
                     className="h-11 min-w-0 justify-start rounded-md px-3"
                     disabled={!enabled || commandPending}
                     aria-pressed={active}
-                    title={localReason ?? option?.reason}
+                    title={
+                      localReason ?? normalizeCommandReason(option?.reason)
+                    }
                     onClick={() => onSelectCommand(item.kind)}
                   >
                     <CommandIcon icon={item.icon} />
@@ -317,6 +346,12 @@ function TerritoryDrawerContent({
                 {item.label}：{reason}
               </div>
             ))}
+
+            {!selectedSitone ? (
+              <div className="text-muted-foreground text-xs font-bold">
+                請先選擇一顆前線小石
+              </div>
+            ) : null}
 
             {!playable ? (
               <div className="text-muted-foreground text-xs font-bold">
@@ -461,4 +496,14 @@ function isPlayable(status: FrontSessionSummary["status"]) {
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)))
+}
+
+function normalizeCommandReason(reason: string | undefined) {
+  return reason
+    ?.replaceAll("前線開源力", "小隊戰線能量")
+    .replaceAll("開源力不足", "小隊戰線能量不足")
+}
+
+function formatNumber(value: number | undefined) {
+  return value == null ? "-" : value.toLocaleString("zh-TW")
 }

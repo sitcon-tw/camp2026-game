@@ -14,6 +14,13 @@ import (
 
 const fallbackFrontOpenPower = 100
 
+const maxFrontSitoneInventory = 200
+
+type frontSitoneInventory struct {
+	Selected  []FrontSitoneResponse
+	Available []FrontSitoneResponse
+}
+
 func withCurrentPlayerTeam(front mongomodel.Front, player mongomodel.Player) mongomodel.Front {
 	teamID := strings.TrimSpace(player.TeamID)
 	if teamID == "" {
@@ -51,39 +58,75 @@ func withCurrentPlayerTeam(front mongomodel.Front, player mongomodel.Player) mon
 	return front
 }
 
-func (h *Handler) playerFrontSitones(ctx context.Context, player mongomodel.Player) ([]FrontSitoneResponse, error) {
-	ids := normalizedSitoneIDs(player.DefaultSitoneIDs)
-	if len(ids) == 0 && h.db != nil {
+func (h *Handler) playerFrontSitones(ctx context.Context, player mongomodel.Player) (frontSitoneInventory, error) {
+	defaults := normalizedSitoneIDs(player.DefaultSitoneIDs)
+	owned := append([]string(nil), defaults...)
+	if h.db != nil {
 		var err error
-		ids, err = h.playerOwnedSitoneIDs(ctx, player.ID)
+		owned, err = h.playerOwnedSitoneIDs(ctx, player.ID)
 		if err != nil {
-			return nil, err
+			return frontSitoneInventory{}, err
 		}
 	}
-	if len(ids) == 0 && h.content != nil {
+	if h.db == nil && len(owned) == 0 && h.content != nil {
 		for _, sitone := range h.content.ListSitones() {
-			ids = append(ids, sitone.ID)
-			if len(ids) >= 3 {
+			owned = append(owned, sitone.ID)
+			if len(owned) >= 3 {
 				break
 			}
 		}
 	}
+	ordered := prioritizedOwnedSitoneIDs(defaults, owned)
+	selectedIDs := selectedOwnedSitoneIDs(defaults, owned)
+	return frontSitoneInventory{
+		Selected:  h.frontSitoneResponses(selectedIDs),
+		Available: h.frontSitoneResponses(ordered),
+	}, nil
+}
 
-	out := make([]FrontSitoneResponse, 0, len(ids))
-	for _, sitoneID := range ids {
-		out = append(out, h.frontSitoneResponse(sitoneID))
-		if len(out) >= 5 {
-			break
+func prioritizedOwnedSitoneIDs(defaults []string, owned []string) []string {
+	owned = normalizedSitoneIDs(owned)
+	ownedSet := make(map[string]struct{}, len(owned))
+	for _, id := range owned {
+		ownedSet[id] = struct{}{}
+	}
+	out := make([]string, 0, len(owned))
+	seen := make(map[string]struct{}, len(owned))
+	for _, id := range normalizedSitoneIDs(defaults) {
+		if _, ok := ownedSet[id]; !ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	for _, id := range owned {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		out = append(out, id)
+	}
+	return out
+}
+
+func selectedOwnedSitoneIDs(defaults []string, owned []string) []string {
+	ownedSet := make(map[string]struct{}, len(owned))
+	for _, id := range normalizedSitoneIDs(owned) {
+		ownedSet[id] = struct{}{}
+	}
+	out := make([]string, 0, len(defaults))
+	for _, id := range normalizedSitoneIDs(defaults) {
+		if _, ok := ownedSet[id]; ok {
+			out = append(out, id)
 		}
 	}
-	return out, nil
+	return out
 }
 
 func (h *Handler) playerOwnedSitoneIDs(ctx context.Context, playerID string) ([]string, error) {
 	cursor, err := h.db.Collection(mongomodel.PlayerSitonesCollection).Find(
 		ctx,
 		bson.M{"player_id": playerID, "quantity": bson.M{"$gt": 0}},
-		options.Find().SetSort(bson.D{{Key: "sitone_id", Value: 1}}).SetLimit(5),
+		options.Find().SetSort(bson.D{{Key: "sitone_id", Value: 1}}).SetLimit(maxFrontSitoneInventory),
 	)
 	if err != nil {
 		return nil, err
@@ -104,6 +147,19 @@ func (h *Handler) playerOwnedSitoneIDs(ctx context.Context, playerID string) ([]
 		return nil, err
 	}
 	return normalizedSitoneIDs(ids), nil
+}
+
+func (h *Handler) frontSitoneResponses(ids []string) []FrontSitoneResponse {
+	out := make([]FrontSitoneResponse, 0, len(ids))
+	for _, sitoneID := range ids {
+		if h.content != nil {
+			if _, ok := h.content.GetSitone(sitoneID); !ok {
+				continue
+			}
+		}
+		out = append(out, h.frontSitoneResponse(sitoneID))
+	}
+	return out
 }
 
 func (h *Handler) frontSitoneResponse(sitoneID string) FrontSitoneResponse {

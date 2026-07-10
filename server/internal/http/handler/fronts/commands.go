@@ -32,6 +32,7 @@ var (
 	errFrontRevisionConflict      = errors.New("front revision conflict")
 	errDuplicateFrontCommand      = errors.New("duplicate front command")
 	errFrontChangedCommandInvalid = errors.New("front changed and command is no longer valid")
+	errFrontSitoneNotOwned        = errors.New("sitone is not owned")
 )
 
 // CreateCommand godoc
@@ -96,6 +97,17 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if body.SitoneID != "" {
+		owned, ownershipErr := h.playerOwnsFrontSitone(r.Context(), player.ID, body.SitoneID)
+		if ownershipErr != nil {
+			httpx.WriteProblem(w, r, httpx.InternalServerError("front command failed", "front_sitone_lookup_failed", ownershipErr))
+			return
+		}
+		if !owned {
+			httpx.WriteProblem(w, r, httpx.UnprocessableEntity("sitone is not owned"))
+			return
+		}
+	}
 	if body.ExpectedRevision != nil && *body.ExpectedRevision != front.Revision {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "front revision is stale"))
 		return
@@ -124,11 +136,15 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.UnprocessableEntity(err.Error()))
 		return
 	}
+	h.assignFrontCommandReward(&command)
 	front, command, err = h.persistCommandWithRecompute(
 		r.Context(), previousRevision, front, command, body.ExpectedRevision != nil,
 	)
 	if errors.Is(err, errFrontRevisionConflict) || errors.Is(err, errFrontChangedCommandInvalid) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "front changed while applying the command"))
+		return
+	} else if errors.Is(err, errFrontSitoneNotOwned) {
+		httpx.WriteProblem(w, r, httpx.UnprocessableEntity("sitone is not owned"))
 		return
 	} else if errors.Is(err, errDuplicateFrontCommand) {
 		existing, found, lookupErr := h.findExistingCommand(r.Context(), front.ID, player.ID, command.ClientCommandID)
@@ -159,18 +175,34 @@ func (h *Handler) persistCommandWithRecompute(ctx context.Context, previousRevis
 		}
 		previousRevision = latest.Revision
 		retryCommand := command
-		retryCommand.Accepted = false
-		retryCommand.Applied = false
-		retryCommand.RejectReason = ""
-		retryCommand.AffectedCells = nil
+		resetFrontCommandDerivedFields(&retryCommand)
 		next, applied, applyErr := applyCommandToFront(latest, retryCommand)
 		if applyErr != nil {
 			return latest, command, fmt.Errorf("%w: %v", errFrontChangedCommandInvalid, applyErr)
 		}
+		h.assignFrontCommandReward(&applied)
 		front, command = next, applied
 		err = h.recordCommand(ctx, previousRevision, front, command)
 	}
 	return front, command, err
+}
+
+func resetFrontCommandDerivedFields(command *mongomodel.FrontCommand) {
+	if command == nil {
+		return
+	}
+	command.Accepted = false
+	command.Applied = false
+	command.RejectReason = ""
+	command.AffectedCells = nil
+	command.CapturedCellCount = 0
+	command.EnclosedCellCount = 0
+	command.ScoreDelta = 0
+	command.FrontOpenPowerDelta = 0
+	command.FrontOpenPowerCost = 0
+	command.EmergencyResupplyAmount = 0
+	command.RewardSitoneID = ""
+	command.RewardSitoneQuantity = 0
 }
 
 func (h *Handler) writeCommandResponse(w http.ResponseWriter, r *http.Request, status int, front mongomodel.Front, player mongomodel.Player, command mongomodel.FrontCommand) {
@@ -206,10 +238,22 @@ func (h *Handler) recordCommand(ctx context.Context, previousRevision int64, fro
 	defer session.EndSession(ctx)
 
 	_, err = session.WithTransaction(ctx, func(ctx context.Context) (any, error) {
+		if command.SitoneID != "" {
+			owned, ownershipErr := h.playerOwnsFrontSitone(ctx, command.PlayerID, command.SitoneID)
+			if ownershipErr != nil {
+				return nil, ownershipErr
+			}
+			if !owned {
+				return nil, errFrontSitoneNotOwned
+			}
+		}
 		if _, err := h.db.Collection(mongomodel.FrontCommandsCollection).InsertOne(ctx, command); err != nil {
 			if mongo.IsDuplicateKeyError(err) {
 				return nil, errDuplicateFrontCommand
 			}
+			return nil, err
+		}
+		if err := h.grantFrontCommandSitone(ctx, command); err != nil {
 			return nil, err
 		}
 		if front.MapMode == contentFrontMapModeTerritoryGrid {
@@ -227,6 +271,23 @@ func (h *Handler) recordCommand(ctx context.Context, previousRevision int64, fro
 		return nil, nil
 	})
 	return err
+}
+
+func (h *Handler) playerOwnsFrontSitone(ctx context.Context, playerID string, sitoneID string) (bool, error) {
+	if h.content != nil {
+		if _, ok := h.content.GetSitone(sitoneID); !ok {
+			return false, nil
+		}
+	}
+	err := h.db.Collection(mongomodel.PlayerSitonesCollection).FindOne(ctx, bson.M{
+		"player_id": playerID,
+		"sitone_id": sitoneID,
+		"quantity":  bson.M{"$gt": 0},
+	}).Err()
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 func (h *Handler) updateFrontAfterCommand(ctx context.Context, previousRevision int64, front mongomodel.Front, command mongomodel.FrontCommand) error {
@@ -382,6 +443,9 @@ func validateCommandRequest(body CreateCommandRequest, mapMode string) error {
 		if body.ClientCommandID == "" {
 			details = append(details, httpx.ErrorDetail{Location: "body.clientCommandId", Message: "clientCommandId is required"})
 		}
+		if body.SitoneID == "" {
+			details = append(details, httpx.ErrorDetail{Location: "body.sitoneId", Message: "sitoneId is required"})
+		}
 		if body.TargetX == nil || *body.TargetX < 0 || *body.TargetX >= 64 {
 			details = append(details, httpx.ErrorDetail{Location: "body.targetX", Message: "targetX must be between 0 and 63"})
 		}
@@ -435,14 +499,16 @@ func applyCommandToFront(front mongomodel.Front, command mongomodel.FrontCommand
 		return front, command, errors.New("target cell is not adjacent to from cell")
 	}
 
-	cost := frontCommandCosts[command.Kind]
-	if command.Kind != "support" && front.Teams[teamIndex].FrontOpenPower < cost {
-		return front, command, errors.New("not enough front open power")
-	}
 	if err := validateCommandTarget(front, command, front.Cells[toIndex]); err != nil {
 		return front, command, err
 	}
+	cost := frontCommandCost(command.Kind, front.Cells[toIndex])
+	if command.Kind != "support" && front.Teams[teamIndex].FrontOpenPower < cost {
+		return front, command, errors.New("小隊戰線能量不足，無法執行前線命令")
+	}
 
+	startingPower := front.Teams[teamIndex].FrontOpenPower
+	previousOwner := front.Cells[toIndex].OwnerTeamID
 	if command.Kind != "support" {
 		front.Teams[teamIndex].FrontOpenPower -= cost
 	}
@@ -450,6 +516,12 @@ func applyCommandToFront(front mongomodel.Front, command mongomodel.FrontCommand
 	scoreDelta, resourceDelta := applyCommandEffect(&front, teamIndex, toIndex, command)
 	front.Teams[teamIndex].Score += scoreDelta
 	front.Teams[teamIndex].FrontOpenPower += resourceDelta
+	if previousOwner != command.TeamID && front.Cells[toIndex].OwnerTeamID == command.TeamID {
+		command.CapturedCellCount = 1
+	}
+	command.ScoreDelta = scoreDelta
+	command.FrontOpenPowerDelta = front.Teams[teamIndex].FrontOpenPower - startingPower
+	command.FrontOpenPowerCost = cost
 	front.Revision++
 	front.Tick++
 	front.UpdatedAt = command.CreatedAt
@@ -460,6 +532,20 @@ func applyCommandToFront(front mongomodel.Front, command mongomodel.FrontCommand
 	syncTeamRanks(front.Teams, front.Cells)
 	front.Leaderboard = deriveLeaderboard(front)
 	return front, command, nil
+}
+
+func frontCommandCost(kind string, target mongomodel.FrontCell) int {
+	cost := frontCommandCosts[kind]
+	if kind != "reinforce" {
+		return cost
+	}
+	controlApplied := minFrontInt(25, maxFrontInt(0, 100-target.Control))
+	defenseApplied := minFrontInt(12, maxFrontInt(0, territoryMaxDefense-target.Defense))
+	applied := controlApplied + defenseApplied
+	if applied <= 0 {
+		return 0
+	}
+	return maxFrontInt(1, (cost*applied+37-1)/37)
 }
 
 func validateCommandTarget(front mongomodel.Front, command mongomodel.FrontCommand, target mongomodel.FrontCell) error {
@@ -627,24 +713,32 @@ func maxFrontInt(a int, b int) int {
 
 func commandSummary(command mongomodel.FrontCommand) mongomodel.FrontCommandSummary {
 	return mongomodel.FrontCommandSummary{
-		ID:               command.ID,
-		ClientCommandID:  command.ClientCommandID,
-		Kind:             command.Kind,
-		Type:             command.Type,
-		PlayerID:         command.PlayerID,
-		TeamID:           command.TeamID,
-		FromCellID:       command.FromCellID,
-		ToCellID:         command.ToCellID,
-		TargetX:          command.TargetX,
-		TargetY:          command.TargetY,
-		ExpectedRevision: command.ExpectedRevision,
-		AffectedCells:    append([]mongomodel.FrontCoordinate(nil), command.AffectedCells...),
-		SitoneID:         command.SitoneID,
-		Payload:          clonePayload(command.Payload),
-		Accepted:         command.Accepted,
-		Applied:          command.Applied,
-		RejectReason:     command.RejectReason,
-		CreatedAt:        command.CreatedAt,
+		ID:                      command.ID,
+		ClientCommandID:         command.ClientCommandID,
+		Kind:                    command.Kind,
+		Type:                    command.Type,
+		PlayerID:                command.PlayerID,
+		TeamID:                  command.TeamID,
+		FromCellID:              command.FromCellID,
+		ToCellID:                command.ToCellID,
+		TargetX:                 command.TargetX,
+		TargetY:                 command.TargetY,
+		ExpectedRevision:        command.ExpectedRevision,
+		AffectedCells:           append([]mongomodel.FrontCoordinate(nil), command.AffectedCells...),
+		CapturedCellCount:       command.CapturedCellCount,
+		EnclosedCellCount:       command.EnclosedCellCount,
+		ScoreDelta:              command.ScoreDelta,
+		FrontOpenPowerDelta:     command.FrontOpenPowerDelta,
+		FrontOpenPowerCost:      command.FrontOpenPowerCost,
+		EmergencyResupplyAmount: command.EmergencyResupplyAmount,
+		RewardSitoneID:          command.RewardSitoneID,
+		RewardSitoneQuantity:    command.RewardSitoneQuantity,
+		SitoneID:                command.SitoneID,
+		Payload:                 clonePayload(command.Payload),
+		Accepted:                command.Accepted,
+		Applied:                 command.Applied,
+		RejectReason:            command.RejectReason,
+		CreatedAt:               command.CreatedAt,
 	}
 }
 

@@ -1101,6 +1101,8 @@ definitions:
         type: integer
       front:
         $ref: '#/definitions/fronts.FrontSessionSummaryResponse'
+      frontPowerSource:
+        type: string
       grid:
         $ref: '#/definitions/fronts.FrontTerritoryGridResponse'
       landmarks:
@@ -1219,6 +1221,8 @@ definitions:
       applied:
         example: true
         type: boolean
+      capturedCellCount:
+        type: integer
       clientCommandId:
         example: front_cmd_7H9K2Q_001
         type: string
@@ -1227,11 +1231,19 @@ definitions:
         type: string
       createdAt:
         type: string
+      emergencyResupplyAmount:
+        type: integer
+      enclosedCellCount:
+        type: integer
       expectedRevision:
         type: integer
       fromCellId:
         example: base_team_001
         type: string
+      frontOpenPowerCost:
+        type: integer
+      frontOpenPowerDelta:
+        type: integer
       kind:
         example: expand
         type: string
@@ -1243,6 +1255,12 @@ definitions:
         type: string
       rejectReason:
         type: string
+      rewardSitoneId:
+        type: string
+      rewardSitoneQuantity:
+        type: integer
+      scoreDelta:
+        type: integer
       sitoneId:
         example: stone_engineering_base
         type: string
@@ -1407,14 +1425,20 @@ definitions:
       controlledCells:
         example: 3
         type: integer
+      emergencyResupplies:
+        type: integer
       frontOpenPower:
         example: 100
         type: integer
       lastCommandAt:
         type: string
+      maxControlledCells:
+        type: integer
       name:
         example: Blue
         type: string
+      nextSitoneMilestone:
+        type: integer
       previousRank:
         example: 2
         type: integer
@@ -1429,6 +1453,8 @@ definitions:
         type: integer
       score:
         example: 120
+        type: integer
+      sitoneMilestonesReached:
         type: integer
       teamId:
         example: team-blue

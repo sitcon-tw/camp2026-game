@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
+  Check,
   Clock,
   Flag,
   Gem,
+  ListFilter,
   MapPinned,
   RefreshCw,
+  Search,
   Shield,
   Zap,
 } from "lucide-react"
@@ -14,10 +17,13 @@ import { toast } from "sonner"
 import type {
   FrontCommandKind,
   FrontCommandOption,
+  FrontCommandResponse,
   FrontSessionSummary,
   FrontSitone,
   FrontSnapshot,
+  PlayerSitone,
 } from "@/shared/api/game"
+import { sitoneMeta } from "@/shared/lib/game-labels"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
@@ -29,16 +35,32 @@ import {
   EmptyTitle,
 } from "@/shared/ui/empty"
 import { Skeleton } from "@/shared/ui/skeleton"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/shared/ui/input-group"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/shared/ui/sheet"
+import { SitoneIcon } from "@/shared/ui/sitone-icon"
 import { StatusBadge } from "@/shared/ui/status-badge"
 import { cn } from "@/shared/utils"
 
 import {
   frontCommandMutationOptions,
   frontCurrentQueryOptions,
+  frontPlayerSitonesQueryOptions,
+  frontPlayerSitonesQueryKey,
   frontSnapshotQueryKey,
   frontSnapshotQueryOptions,
 } from "../api/front.query"
 import { FrontLeaderboard } from "./front-leaderboard"
+import { FrontHelpDialog } from "./front-help-dialog"
 import { FrontNodeDrawer } from "./front-node-drawer"
 import { FrontTerritoryDrawer } from "./front-territory-drawer"
 import { TerritoryMap } from "./territory-map"
@@ -74,9 +96,16 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
   const [selectedCommand, setSelectedCommand] =
     useState<FrontCommandKind | null>(null)
   const snapshot = snapshotQuery.data
+  const playerSitonesQuery = useQuery({
+    ...frontPlayerSitonesQueryOptions(),
+    enabled: snapshot?.canPlay ?? false,
+  })
   const visibleSitones = useMemo(
-    () => (snapshot ? getVisibleSitones(snapshot) : []),
-    [snapshot],
+    () =>
+      snapshot
+        ? getVisibleSitones(snapshot, playerSitonesQuery.data ?? [])
+        : [],
+    [playerSitonesQuery.data, snapshot],
   )
   const selectedCell =
     snapshot?.cells.find((cell) => cell.id === selectedCellId) ?? null
@@ -141,12 +170,26 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
         },
       )
       setSelectedCommand(null)
-      toast.success(commandSuccessMessage(result.command.kind))
+      const feedback = commandSuccessFeedback(result.command, [
+        ...visibleSitones,
+        ...result.front.selectedSitones,
+        ...result.front.availableSitones,
+      ])
+      toast.success(feedback.title, { description: feedback.description })
+      if (result.command.rewardSitoneQuantity > 0) {
+        void queryClient.invalidateQueries({
+          queryKey: frontPlayerSitonesQueryKey,
+        })
+      }
     },
     onError: async (error) => {
       setSelectedCommand(null)
       await snapshotQuery.refetch()
-      toast.error(error instanceof Error ? error.message : "命令送出失敗")
+      toast.error(
+        error instanceof Error
+          ? (normalizeFrontCommandReason(error.message) ?? error.message)
+          : "命令送出失敗",
+      )
     },
   })
 
@@ -159,6 +202,10 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
         return
       }
       if (!selectedTarget || !selectedTerritoryCell) return
+      if (!selectedSitone) {
+        toast.error("請先選擇一顆前線小石")
+        return
+      }
 
       const contextualCommand = territoryContextCommandKind(
         selectedTerritoryCell.ownerTeamId,
@@ -185,7 +232,10 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
       )
 
       if (snapshot.availableCommands.length > 0 && !option?.enabled) {
-        toast.error(option?.reason ?? "這個區域目前不能使用此命令")
+        toast.error(
+          normalizeFrontCommandReason(option?.reason) ??
+            "這個區域目前不能使用此命令",
+        )
         return
       }
 
@@ -196,7 +246,7 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
         targetX: selectedTarget.x,
         targetY: selectedTarget.y,
         expectedRevision: snapshot.revision,
-        sitoneId: selectedSitone?.sitoneId,
+        sitoneId: selectedSitone.sitoneId,
       })
       return
     }
@@ -209,7 +259,10 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
       kind,
     )
     if (!option?.enabled || !option.fromCellId || !option.toCellId) {
-      toast.error(option?.reason ?? "這個節點目前不能使用這個命令")
+      toast.error(
+        normalizeFrontCommandReason(option?.reason) ??
+          "這個節點目前不能使用這個命令",
+      )
       return
     }
 
@@ -261,6 +314,9 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
           sitones={visibleSitones}
           selectedSitoneId={selectedSitone?.sitoneId ?? null}
           onSelectSitone={setSelectedSitoneId}
+          fullListLoading={playerSitonesQuery.isPending}
+          fullListError={playerSitonesQuery.isError}
+          onRetryFullList={() => void playerSitonesQuery.refetch()}
         />
       ) : null}
       <FrontLeaderboard
@@ -337,19 +393,22 @@ function FrontSummaryCard({
             {front.mapMode === "territory_grid" ? "校園領土戰" : "開源戰線"}
           </h2>
         </div>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="secondary"
-          aria-label="重新整理戰線"
-          onClick={onRefresh}
-          disabled={isFetching}
-        >
-          <RefreshCw
-            className={cn("size-4", isFetching && "animate-spin")}
-            aria-hidden
-          />
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <FrontHelpDialog mapMode={front.mapMode} />
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="secondary"
+            aria-label="重新整理戰線"
+            onClick={onRefresh}
+            disabled={isFetching}
+          >
+            <RefreshCw
+              className={cn("size-4", isFetching && "animate-spin")}
+              aria-hidden
+            />
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -360,7 +419,7 @@ function FrontSummaryCard({
         />
         <SummaryMetric
           icon={Zap}
-          label="前線開源力"
+          label="小隊戰線能量"
           value={formatNumber(frontOpenPower)}
         />
         <SummaryMetric
@@ -382,6 +441,15 @@ function FrontSummaryCard({
           />
         )}
       </div>
+      {front.mapMode === "territory_grid" &&
+      front.canPlay &&
+      myTeam?.nextSitoneMilestone ? (
+        <div className="bg-primary-foreground/10 flex items-center gap-2 rounded-md px-3 py-2 text-xs font-bold">
+          <Gem className="size-3.5" aria-hidden />
+          歷史最高 {myTeam.maxControlledCells} 格 · 下一顆小石{" "}
+          {myTeam.nextSitoneMilestone} 格
+        </div>
+      ) : null}
     </Card>
   )
 }
@@ -410,53 +478,168 @@ function FrontSitoneToolbar({
   sitones,
   selectedSitoneId,
   onSelectSitone,
+  fullListLoading,
+  fullListError,
+  onRetryFullList,
 }: {
-  sitones: FrontSitone[]
+  sitones: SelectableFrontSitone[]
   selectedSitoneId: string | null
   onSelectSitone: (sitoneID: string) => void
+  fullListLoading: boolean
+  fullListError: boolean
+  onRetryFullList: () => void
 }) {
-  return (
-    <Card className="gap-3">
-      <CardContent className="grid gap-3 px-3">
-        <div className="flex items-center gap-2">
-          <Gem className="text-primary size-4" aria-hidden />
-          <h2 className="text-base font-black">前線小石</h2>
-        </div>
-        {sitones.length > 0 ? (
-          <div className="grid grid-cols-3 gap-2">
-            {sitones.slice(0, 5).map((sitone) => {
-              const selected = sitone.sitoneId === selectedSitoneId
-              const cooldown =
-                sitone.remainingCooldownTicks ??
-                (sitone.cooldownUntilTick ? 1 : undefined)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const selectedSitone =
+    sitones.find((sitone) => sitone.sitoneId === selectedSitoneId) ?? null
+  const normalizedSearch = searchQuery.trim().toLocaleLowerCase("zh-TW")
+  const filteredSitones = sitones.filter((sitone) => {
+    if (!normalizedSearch) return true
 
-              return (
-                <Button
-                  key={sitone.sitoneId}
-                  type="button"
-                  variant={selected ? "default" : "outline"}
-                  className="h-[4.75rem] min-w-0 flex-col rounded-[1rem] px-2 py-2"
-                  disabled={!sitone.available}
-                  aria-pressed={selected}
-                  onClick={() => onSelectSitone(sitone.sitoneId)}
-                >
-                  <span className="max-w-full truncate text-sm">
-                    {sitone.name}
-                  </span>
-                  <span className="text-xs font-bold opacity-80">
-                    {cooldown ? `${cooldown} tick` : (sitone.type ?? "ready")}
-                  </span>
-                </Button>
-              )
-            })}
+    return [sitone.name, sitone.type, sitone.sitoneId].some((value) =>
+      value?.toLocaleLowerCase("zh-TW").includes(normalizedSearch),
+    )
+  })
+
+  return (
+    <>
+      <Card className="gap-3 py-4">
+        <CardContent className="grid gap-3 px-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <Gem className="text-primary size-4" aria-hidden />
+              <h2 className="text-base font-black">前線小石</h2>
+              <Badge variant="outline">{sitones.length}</Badge>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={sitones.length === 0}
+              onClick={() => setPickerOpen(true)}
+            >
+              <ListFilter className="size-4" aria-hidden />
+              選擇
+            </Button>
           </div>
-        ) : (
-          <div className="text-muted-foreground text-sm font-bold">
-            尚無可派遣小石
+
+          {selectedSitone ? (
+            <div className="border-border flex min-w-0 items-center gap-3 border-y py-3">
+              <SitoneIcon
+                type={selectedSitone.type ?? ""}
+                iconPath={selectedSitone.iconPath}
+                className="size-11 shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-black">
+                  {selectedSitone.name}
+                </div>
+                <div className="text-muted-foreground mt-1 truncate text-xs font-bold">
+                  {sitoneStatusLabel(selectedSitone)}
+                </div>
+              </div>
+              {(selectedSitone.ownedQuantity ?? 0) > 1 ? (
+                <Badge variant="secondary">
+                  x{selectedSitone.ownedQuantity}
+                </Badge>
+              ) : null}
+            </div>
+          ) : (
+            <div className="text-muted-foreground py-2 text-sm font-bold">
+              {fullListLoading ? "讀取小石中" : "尚無可派遣小石"}
+            </div>
+          )}
+
+          {fullListError ? (
+            <div className="bg-muted border-border flex items-center justify-between gap-2 rounded-md border px-3 py-2">
+              <span className="text-muted-foreground text-xs font-bold">
+                完整清單讀取失敗，目前顯示前線預設小石
+              </span>
+              <Button
+                type="button"
+                size="icon-xs"
+                variant="ghost"
+                aria-label="重新讀取完整小石清單"
+                onClick={onRetryFullList}
+              >
+                <RefreshCw className="size-3" aria-hidden />
+              </Button>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[82dvh] w-full gap-3 overflow-y-auto rounded-t-[1.25rem] md:inset-x-auto md:inset-y-0 md:top-0 md:right-0 md:bottom-0 md:left-auto md:h-full md:max-h-none md:w-[24rem] md:rounded-t-none md:rounded-l-[1.25rem] md:border-2"
+        >
+          <SheetHeader className="pr-12 pb-2">
+            <SheetTitle>選擇前線小石</SheetTitle>
+            <SheetDescription>已擁有 {sitones.length} 種小石</SheetDescription>
+          </SheetHeader>
+
+          <div className="grid gap-3 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <InputGroup>
+              <InputGroupAddon>
+                <Search className="size-4" aria-hidden />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={searchQuery}
+                placeholder="搜尋小石"
+                aria-label="搜尋已擁有的小石"
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </InputGroup>
+
+            {filteredSitones.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {filteredSitones.map((sitone) => {
+                  const selected = sitone.sitoneId === selectedSitoneId
+
+                  return (
+                    <Button
+                      key={sitone.sitoneId}
+                      type="button"
+                      variant={selected ? "default" : "outline"}
+                      className="h-16 min-w-0 justify-start gap-2 px-2"
+                      disabled={!sitone.available}
+                      aria-pressed={selected}
+                      onClick={() => {
+                        onSelectSitone(sitone.sitoneId)
+                        setPickerOpen(false)
+                      }}
+                    >
+                      <SitoneIcon
+                        type={sitone.type ?? ""}
+                        iconPath={sitone.iconPath}
+                        className="size-9 shrink-0"
+                      />
+                      <span className="min-w-0 flex-1 text-left">
+                        <span className="block truncate text-xs font-black">
+                          {sitone.name}
+                        </span>
+                        <span className="mt-1 block truncate text-[11px] font-bold opacity-75">
+                          {sitoneStatusLabel(sitone)}
+                        </span>
+                      </span>
+                      {selected ? (
+                        <Check className="size-4 shrink-0" aria-hidden />
+                      ) : null}
+                    </Button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-muted-foreground py-8 text-center text-sm font-bold">
+                找不到符合的小石
+              </div>
+            )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }
 
@@ -509,17 +692,62 @@ function NoFrontCard() {
   )
 }
 
-function getVisibleSitones(snapshot: FrontSnapshot) {
-  const sitoneMap = new Map<string, FrontSitone>()
+type SelectableFrontSitone = FrontSitone & {
+  ownedQuantity?: number
+}
 
-  snapshot.selectedSitones.forEach((sitone) =>
-    sitoneMap.set(sitone.sitoneId, sitone),
-  )
-  snapshot.availableSitones.forEach((sitone) =>
-    sitoneMap.set(sitone.sitoneId, sitone),
+function getVisibleSitones(
+  snapshot: FrontSnapshot,
+  ownedSitones: PlayerSitone[],
+) {
+  const sitoneMap = new Map<string, SelectableFrontSitone>()
+  const frontStates = [
+    ...snapshot.selectedSitones,
+    ...snapshot.availableSitones,
+  ]
+  const frontStateByID = new Map(
+    frontStates.map((sitone) => [sitone.sitoneId, sitone] as const),
   )
 
-  return [...sitoneMap.values()].slice(0, 5)
+  ownedSitones
+    .filter((record) => record.quantity > 0)
+    .forEach((record) => {
+      const frontState = frontStateByID.get(record.sitoneId)
+      sitoneMap.set(record.sitoneId, {
+        sitoneId: record.sitoneId,
+        name: record.sitone.name,
+        type: record.sitone.type,
+        iconPath: record.sitone.iconPath,
+        available: frontState?.available ?? true,
+        cooldownUntilTick: frontState?.cooldownUntilTick,
+        remainingCooldownTicks: frontState?.remainingCooldownTicks,
+        assignedCellId: frontState?.assignedCellId,
+        ownedQuantity: record.quantity,
+      })
+    })
+
+  frontStates.forEach((sitone) => {
+    const existing = sitoneMap.get(sitone.sitoneId)
+    sitoneMap.set(sitone.sitoneId, {
+      ...existing,
+      ...sitone,
+      ownedQuantity: existing?.ownedQuantity,
+    })
+  })
+
+  return [...sitoneMap.values()].sort((first, second) => {
+    if (first.available !== second.available) return first.available ? -1 : 1
+    return first.name.localeCompare(second.name, "zh-TW")
+  })
+}
+
+function sitoneStatusLabel(sitone: FrontSitone) {
+  const cooldown =
+    sitone.remainingCooldownTicks ?? (sitone.cooldownUntilTick ? 1 : undefined)
+
+  if (cooldown) return `冷卻 ${cooldown} tick`
+  if (!sitone.available) return "目前不可派遣"
+  return sitone.type ? sitoneMeta(sitone.type).label : "可派遣"
 }
 
 function statusLabel(status: FrontSessionSummary["status"]) {
@@ -621,19 +849,56 @@ function newClientCommandID() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-function commandSuccessMessage(kind: FrontCommandKind) {
+function commandSuccessFeedback(
+  command: FrontCommandResponse,
+  sitones: SelectableFrontSitone[],
+) {
   const labels: Record<FrontCommandKind, string> = {
-    expand: "擴張已送出",
-    attack: "攻擊已送出",
-    reinforce: "防守已送出",
+    expand: "擴張完成",
+    attack: "攻擊完成",
+    reinforce: "防守完成",
     repair: "修復已完成",
-    scout: "偵查已送出",
+    scout: "偵查完成",
     rescue: "救援已完成",
-    support: "支援已送出",
-    answer_challenge: "挑戰已送出",
+    support: "支援完成",
+    answer_challenge: "挑戰完成",
+  }
+  const details: string[] = []
+
+  if (command.capturedCellCount > 0) {
+    details.push(`取得 ${command.capturedCellCount} 格`)
+  }
+  if (command.enclosedCellCount > 0) {
+    details.push(`包圍 ${command.enclosedCellCount} 格`)
+  }
+  if (command.scoreDelta > 0) details.push(`+${command.scoreDelta} 戰線分`)
+  if (command.emergencyResupplyAmount > 0) {
+    details.push(`啟用一次性基地補給 +${command.emergencyResupplyAmount}`)
+  }
+  if (command.kind === "support" && command.frontOpenPowerDelta > 0) {
+    details.push(`小隊戰線能量 +${command.frontOpenPowerDelta}`)
+  }
+  if (command.rewardSitoneId && command.rewardSitoneQuantity > 0) {
+    const sitoneName = sitones.find(
+      (sitone) => sitone.sitoneId === command.rewardSitoneId,
+    )?.name
+    details.push(
+      sitoneName
+        ? `獲得 ${sitoneName} x${command.rewardSitoneQuantity}`
+        : `獲得小石 x${command.rewardSitoneQuantity}`,
+    )
   }
 
-  return labels[kind]
+  return {
+    title: labels[command.kind],
+    description: details.length > 0 ? details.join(" · ") : undefined,
+  }
+}
+
+function normalizeFrontCommandReason(reason: string | undefined) {
+  return reason
+    ?.replaceAll("前線開源力", "小隊戰線能量")
+    .replaceAll("開源力不足", "小隊戰線能量不足")
 }
 
 function formatTime(value: string | undefined) {

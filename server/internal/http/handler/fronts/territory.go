@@ -18,6 +18,10 @@ const (
 	territoryExpandLimit             = 8
 	territoryAttackLimit             = 6
 	territoryReinforceLimit          = 8
+	territoryEmergencyResupplyAmount = 30
+	territoryEmergencyResupplyLimit  = 1
+	territorySitoneMilestoneSize     = 25
+	territoryInitialFrontOpenPower   = 300
 )
 
 var territoryTeamColors = []string{
@@ -39,7 +43,7 @@ type territoryCandidate struct {
 
 func frontFromTerritoryTemplate(template content.TerritoryMapTemplate) mongomodel.Front {
 	territory := territoryFromTemplate(template)
-	teams := territoryTeams(100)
+	teams := territoryTeams(territoryInitialFrontOpenPower)
 	syncTerritoryTeamRanks(teams, territory)
 	events := territoryEvents(territory.Landmarks)
 	front := mongomodel.Front{
@@ -165,17 +169,20 @@ func territoryCommandOptionResponses(front mongomodel.Front, teamID string) []Fr
 		return []FrontCommandOptionResponse{}
 	}
 	power := teamFrontOpenPower(front.Teams, teamID)
+	teamIndex := frontTeamIndex(front.Teams, teamID)
+	canEmergencyResupply := teamIndex >= 0 && front.Teams[teamIndex].EmergencyResupplies < territoryEmergencyResupplyLimit
 	matrix, err := decodeTerritoryRows(front.Territory)
 	if err != nil {
 		return []FrontCommandOptionResponse{}
 	}
 	hasNeutral := len(territoryBoundaryCandidates(matrix, teamID, "")) > 0
 	hasEnemy := len(territoryEnemyBoundaryCandidates(matrix, teamID, territoryBaseSet(front.Territory.Bases))) > 0
-	hasReinforce := len(territoryReinforceCandidates(matrix, teamID)) > 0
+	reinforceCost := territoryReinforceCost(matrix, teamID, 0, 0, territoryReinforceLimit)
+	hasReinforce := reinforceCost > 0
 	options := []FrontCommandOptionResponse{
-		territoryCommandOption("expand", "擴張", frontCommandCosts["expand"], hasNeutral, power),
-		territoryCommandOption("attack", "攻擊", frontCommandCosts["attack"], hasEnemy, power),
-		territoryCommandOption("reinforce", "防守", frontCommandCosts["reinforce"], hasReinforce, power),
+		territoryCommandOption("expand", "擴張", frontCommandCosts["expand"], hasNeutral, power, canEmergencyResupply),
+		territoryCommandOption("attack", "攻擊", frontCommandCosts["attack"], hasEnemy, power, canEmergencyResupply),
+		territoryCommandOption("reinforce", "防守", reinforceCost, hasReinforce, power, canEmergencyResupply),
 	}
 	landmarkByID := make(map[string]mongomodel.FrontMapLandmark, len(front.Territory.Landmarks))
 	for _, landmark := range front.Territory.Landmarks {
@@ -192,7 +199,7 @@ func territoryCommandOptionResponses(front mongomodel.Front, teamID string) []Fr
 		}
 		x, y := landmark.X, landmark.Y
 		owned := matrix[y][x].Owner == teamID
-		option := territoryCommandOption(kind, label, frontCommandCosts[kind], owned, power)
+		option := territoryCommandOption(kind, label, frontCommandCosts[kind], owned, power, canEmergencyResupply)
 		option.TargetX = &x
 		option.TargetY = &y
 		if !owned {
@@ -218,16 +225,19 @@ func territoryEventCommand(eventKind string) (string, string) {
 	}
 }
 
-func territoryCommandOption(kind string, label string, cost int, hasTarget bool, power int) FrontCommandOptionResponse {
-	option := FrontCommandOptionResponse{Kind: kind, Label: label, Cost: cost, Enabled: hasTarget && power >= cost}
+func territoryCommandOption(kind string, label string, cost int, hasTarget bool, power int, canEmergencyResupply bool) FrontCommandOptionResponse {
+	hasPower := power >= cost || (cost > 0 && canEmergencyResupply)
+	option := FrontCommandOptionResponse{Kind: kind, Label: label, Cost: cost, Enabled: hasTarget && hasPower}
 	if !hasTarget {
 		if kind == "reinforce" {
 			option.Reason = "邊界防禦已滿或沒有可防守領土"
 		} else {
 			option.Reason = "目前沒有可用目標"
 		}
+	} else if !hasPower {
+		option.Reason = "小隊戰線能量不足"
 	} else if power < cost {
-		option.Reason = "前線開源力不足"
+		option.Reason = "將自動使用本場一次性的 30 點基地補給"
 	}
 	return option
 }
@@ -282,18 +292,33 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	if !supported || !territoryCommandIsSupported(command.Kind) {
 		return front, command, errors.New("command is unsupported on a territory map")
 	}
+	if command.Kind == "reinforce" {
+		cost = territoryReinforceCost(matrix, command.TeamID, x, y, territoryReinforceLimit)
+	}
+	startingPower := front.Teams[teamIndex].FrontOpenPower
+	controlledBefore := territoryControlledCellCount(matrix, command.TeamID)
+	emergencyResupplyAmount := 0
 	if front.Teams[teamIndex].FrontOpenPower < cost {
-		return front, command, errors.New("not enough front open power")
+		if cost > 0 && front.Teams[teamIndex].EmergencyResupplies < territoryEmergencyResupplyLimit {
+			front.Teams[teamIndex].FrontOpenPower += territoryEmergencyResupplyAmount
+			front.Teams[teamIndex].EmergencyResupplies++
+			emergencyResupplyAmount = territoryEmergencyResupplyAmount
+		}
+		if front.Teams[teamIndex].FrontOpenPower < cost {
+			return front, command, errors.New("小隊戰線能量不足，無法執行前線命令")
+		}
 	}
 
 	var affected []mongomodel.FrontCoordinate
+	var captured []mongomodel.FrontCoordinate
 	scoreDelta := 0
 	resourceDelta := 0
 	switch command.Kind {
 	case "expand":
 		affected = expandTerritory(matrix, command.TeamID, x, y, territoryExpandLimit)
+		captured = append(captured, affected...)
 	case "attack":
-		affected, _ = attackTerritory(matrix, command.TeamID, target.Owner, x, y, territoryAttackLimit, bases)
+		affected, captured = attackTerritory(matrix, command.TeamID, target.Owner, x, y, territoryAttackLimit, bases)
 	case "reinforce":
 		affected = reinforceTerritory(matrix, command.TeamID, x, y, territoryReinforceLimit)
 	case "repair", "rescue", "support", "answer_challenge":
@@ -302,6 +327,12 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 		if landmarkErr != nil {
 			return front, command, landmarkErr
 		}
+	}
+	enclosed := []mongomodel.FrontCoordinate(nil)
+	if (command.Kind == "expand" || command.Kind == "attack") && len(captured) > 0 {
+		enclosed = captureEnclosedTerritory(matrix, command.TeamID, bases)
+		captured = appendUniqueTerritoryCoordinates(captured, enclosed...)
+		affected = appendUniqueTerritoryCoordinates(affected, enclosed...)
 	}
 	if len(affected) == 0 {
 		switch command.Kind {
@@ -313,6 +344,9 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 			return front, command, errors.New("there is no attackable enemy boundary near that direction")
 		}
 	}
+	capturedScoreDelta := len(captured) * 10
+	controlledAfter := territoryControlledCellCount(matrix, command.TeamID)
+	milestonesEarned := applyTerritorySitoneMilestones(&front.Teams[teamIndex], controlledBefore, controlledAfter)
 
 	front.Teams[teamIndex].FrontOpenPower -= cost
 	front.Teams[teamIndex].FrontOpenPower += resourceDelta
@@ -325,11 +359,45 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	command.Accepted = true
 	command.Applied = true
 	command.AffectedCells = affected
+	command.CapturedCellCount = len(captured)
+	command.EnclosedCellCount = len(enclosed)
+	command.ScoreDelta = scoreDelta + capturedScoreDelta
+	command.FrontOpenPowerDelta = front.Teams[teamIndex].FrontOpenPower - startingPower
+	command.FrontOpenPowerCost = cost
+	command.EmergencyResupplyAmount = emergencyResupplyAmount
+	command.RewardSitoneQuantity += milestonesEarned
 	summary := commandSummary(command)
 	front.LastCommand = &summary
 	syncTerritoryTeamRanks(front.Teams, front.Territory)
 	front.Leaderboard = deriveLeaderboard(front)
 	return front, command, nil
+}
+
+func territoryControlledCellCount(matrix [][]territoryCell, teamID string) int {
+	count := 0
+	for y := range matrix {
+		for x := range matrix[y] {
+			if matrix[y][x].Playable && matrix[y][x].Owner == teamID {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func applyTerritorySitoneMilestones(team *mongomodel.FrontTeam, controlledBefore int, controlledAfter int) int {
+	if team == nil {
+		return 0
+	}
+	previousMax := maxFrontInt(team.MaxControlledCells, controlledBefore)
+	previousReached := maxFrontInt(team.SitoneMilestonesReached, previousMax/territorySitoneMilestoneSize)
+	previousMax = maxFrontInt(previousMax, previousReached*territorySitoneMilestoneSize)
+	newMax := maxFrontInt(previousMax, controlledAfter)
+	newReached := maxFrontInt(previousReached, newMax/territorySitoneMilestoneSize)
+	team.MaxControlledCells = newMax
+	team.SitoneMilestonesReached = newReached
+	team.NextSitoneMilestone = (newReached + 1) * territorySitoneMilestoneSize
+	return newReached - previousReached
 }
 
 func territoryCommandIsSupported(kind string) bool {
@@ -432,7 +500,7 @@ func expandTerritory(matrix [][]territoryCell, teamID string, targetX int, targe
 	return affected
 }
 
-func attackTerritory(matrix [][]territoryCell, teamID string, targetOwner string, targetX int, targetY int, limit int, bases map[[2]int]string) ([]mongomodel.FrontCoordinate, int) {
+func attackTerritory(matrix [][]territoryCell, teamID string, targetOwner string, targetX int, targetY int, limit int, bases map[[2]int]string) ([]mongomodel.FrontCoordinate, []mongomodel.FrontCoordinate) {
 	candidates := territoryEnemyBoundaryCandidates(matrix, teamID, bases)
 	filtered := candidates[:0]
 	for _, candidate := range candidates {
@@ -443,7 +511,7 @@ func attackTerritory(matrix [][]territoryCell, teamID string, targetOwner string
 	candidates = filtered
 	sortTerritoryCandidates(candidates, targetX, targetY)
 	if len(candidates) == 0 {
-		return nil, 0
+		return nil, nil
 	}
 	start := candidates[0]
 	candidateSet := make(map[[2]int]bool, len(candidates))
@@ -455,7 +523,7 @@ func attackTerritory(matrix [][]territoryCell, teamID string, targetOwner string
 	queue := []mongomodel.FrontCoordinate{{X: start.X, Y: start.Y}}
 	seen := map[[2]int]bool{{start.X, start.Y}: true}
 	affected := make([]mongomodel.FrontCoordinate, 0, limit)
-	captured := 0
+	captured := make([]mongomodel.FrontCoordinate, 0, limit)
 	for len(queue) > 0 && len(affected) < limit {
 		coordinate := queue[0]
 		queue = queue[1:]
@@ -467,7 +535,7 @@ func attackTerritory(matrix [][]territoryCell, teamID string, targetOwner string
 		if cell.Defense == 0 {
 			cell.Owner = teamID
 			cell.Defense = territoryInitialDefense
-			captured++
+			captured = append(captured, coordinate)
 		}
 		affected = append(affected, coordinate)
 		neighbors := territoryNeighbors(matrix, coordinate.X, coordinate.Y)
@@ -496,16 +564,40 @@ func attackTerritory(matrix [][]territoryCell, teamID string, targetOwner string
 func reinforceTerritory(matrix [][]territoryCell, teamID string, targetX int, targetY int, limit int) []mongomodel.FrontCoordinate {
 	candidates := territoryReinforceCandidates(matrix, teamID)
 	sortTerritoryCandidates(candidates, targetX, targetY)
-	if len(candidates) > limit {
-		candidates = candidates[:limit]
-	}
-	affected := make([]mongomodel.FrontCoordinate, 0, len(candidates))
+	remainingBudget := limit * 25
+	affected := make([]mongomodel.FrontCoordinate, 0, minFrontInt(len(candidates), limit))
 	for _, candidate := range candidates {
+		if remainingBudget <= 0 {
+			break
+		}
 		cell := &matrix[candidate.Y][candidate.X]
-		cell.Defense = clampFrontInt(cell.Defense+25, 0, territoryMaxDefense)
+		applied := minFrontInt(25, minFrontInt(territoryMaxDefense-cell.Defense, remainingBudget))
+		if applied <= 0 {
+			continue
+		}
+		cell.Defense += applied
+		remainingBudget -= applied
 		affected = append(affected, mongomodel.FrontCoordinate{X: candidate.X, Y: candidate.Y})
 	}
 	return affected
+}
+
+func territoryReinforceCost(matrix [][]territoryCell, teamID string, targetX int, targetY int, limit int) int {
+	candidates := territoryReinforceCandidates(matrix, teamID)
+	sortTerritoryCandidates(candidates, targetX, targetY)
+	budget := limit * 25
+	applied := 0
+	for _, candidate := range candidates {
+		if applied >= budget {
+			break
+		}
+		missing := territoryMaxDefense - matrix[candidate.Y][candidate.X].Defense
+		applied += minFrontInt(25, minFrontInt(missing, budget-applied))
+	}
+	if applied <= 0 {
+		return 0
+	}
+	return maxFrontInt(1, (frontCommandCosts["reinforce"]*applied+budget-1)/budget)
 }
 
 func territoryBoundaryCandidates(matrix [][]territoryCell, teamID string, targetOwner string) []territoryCandidate {
@@ -590,6 +682,142 @@ func territoryBaseSet(bases []mongomodel.FrontTerritoryBase) map[[2]int]string {
 	return out
 }
 
+func captureEnclosedTerritory(matrix [][]territoryCell, teamID string, bases map[[2]int]string) []mongomodel.FrontCoordinate {
+	if len(matrix) == 0 || len(matrix[0]) == 0 {
+		return nil
+	}
+	height, width := len(matrix), len(matrix[0])
+	directions := [][2]int{{0, -1}, {-1, 0}, {1, 0}, {0, 1}}
+
+	outsideBlocked := make([][]bool, height)
+	for y := range outsideBlocked {
+		outsideBlocked[y] = make([]bool, width)
+	}
+	blockedQueue := make([]mongomodel.FrontCoordinate, 0)
+	enqueueBlocked := func(x int, y int) {
+		if x < 0 || y < 0 || x >= width || y >= height || matrix[y][x].Playable || outsideBlocked[y][x] {
+			return
+		}
+		outsideBlocked[y][x] = true
+		blockedQueue = append(blockedQueue, mongomodel.FrontCoordinate{X: x, Y: y})
+	}
+	for x := 0; x < width; x++ {
+		enqueueBlocked(x, 0)
+		enqueueBlocked(x, height-1)
+	}
+	for y := 0; y < height; y++ {
+		enqueueBlocked(0, y)
+		enqueueBlocked(width-1, y)
+	}
+	for len(blockedQueue) > 0 {
+		coordinate := blockedQueue[0]
+		blockedQueue = blockedQueue[1:]
+		for _, direction := range directions {
+			enqueueBlocked(coordinate.X+direction[0], coordinate.Y+direction[1])
+		}
+	}
+
+	exteriorReachable := make([][]bool, height)
+	for y := range exteriorReachable {
+		exteriorReachable[y] = make([]bool, width)
+	}
+	exteriorQueue := make([]mongomodel.FrontCoordinate, 0)
+	enqueueExterior := func(x int, y int) {
+		if x < 0 || y < 0 || x >= width || y >= height || !matrix[y][x].Playable || matrix[y][x].Owner == teamID || exteriorReachable[y][x] {
+			return
+		}
+		exteriorReachable[y][x] = true
+		exteriorQueue = append(exteriorQueue, mongomodel.FrontCoordinate{X: x, Y: y})
+	}
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if !matrix[y][x].Playable || matrix[y][x].Owner == teamID {
+				continue
+			}
+			isExterior := x == 0 || y == 0 || x == width-1 || y == height-1
+			for _, direction := range directions {
+				nx, ny := x+direction[0], y+direction[1]
+				if nx >= 0 && ny >= 0 && nx < width && ny < height && outsideBlocked[ny][nx] {
+					isExterior = true
+				}
+			}
+			if isExterior {
+				enqueueExterior(x, y)
+			}
+		}
+	}
+	for len(exteriorQueue) > 0 {
+		coordinate := exteriorQueue[0]
+		exteriorQueue = exteriorQueue[1:]
+		for _, direction := range directions {
+			enqueueExterior(coordinate.X+direction[0], coordinate.Y+direction[1])
+		}
+	}
+
+	processed := make([][]bool, height)
+	for y := range processed {
+		processed[y] = make([]bool, width)
+	}
+	captured := make([]mongomodel.FrontCoordinate, 0)
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if !matrix[y][x].Playable || matrix[y][x].Owner == teamID || exteriorReachable[y][x] || processed[y][x] {
+				continue
+			}
+			component := []mongomodel.FrontCoordinate{{X: x, Y: y}}
+			processed[y][x] = true
+			protectedByBase := false
+			for index := 0; index < len(component); index++ {
+				coordinate := component[index]
+				if baseTeam, isBase := bases[[2]int{coordinate.X, coordinate.Y}]; isBase && baseTeam != teamID {
+					protectedByBase = true
+				}
+				for _, direction := range directions {
+					nx, ny := coordinate.X+direction[0], coordinate.Y+direction[1]
+					if nx < 0 || ny < 0 || nx >= width || ny >= height || processed[ny][nx] || exteriorReachable[ny][nx] {
+						continue
+					}
+					if matrix[ny][nx].Playable && matrix[ny][nx].Owner != teamID {
+						processed[ny][nx] = true
+						component = append(component, mongomodel.FrontCoordinate{X: nx, Y: ny})
+					}
+				}
+			}
+			if protectedByBase {
+				continue
+			}
+			for _, coordinate := range component {
+				matrix[coordinate.Y][coordinate.X].Owner = teamID
+				matrix[coordinate.Y][coordinate.X].Defense = territoryInitialDefense
+				captured = append(captured, coordinate)
+			}
+		}
+	}
+	sort.Slice(captured, func(i, j int) bool {
+		if captured[i].Y != captured[j].Y {
+			return captured[i].Y < captured[j].Y
+		}
+		return captured[i].X < captured[j].X
+	})
+	return captured
+}
+
+func appendUniqueTerritoryCoordinates(existing []mongomodel.FrontCoordinate, additions ...mongomodel.FrontCoordinate) []mongomodel.FrontCoordinate {
+	seen := make(map[[2]int]struct{}, len(existing)+len(additions))
+	for _, coordinate := range existing {
+		seen[[2]int{coordinate.X, coordinate.Y}] = struct{}{}
+	}
+	for _, coordinate := range additions {
+		key := [2]int{coordinate.X, coordinate.Y}
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		existing = append(existing, coordinate)
+	}
+	return existing
+}
+
 func decodeTerritoryRows(territory *mongomodel.FrontTerritory) ([][]territoryCell, error) {
 	if territory == nil || territory.Width <= 0 || territory.Height <= 0 {
 		return nil, errors.New("territory dimensions are invalid")
@@ -651,6 +879,9 @@ func syncTerritoryTeamRanks(teams []mongomodel.FrontTeam, territory *mongomodel.
 	}
 	for i := range teams {
 		teams[i].ControlledCells = controlled[teams[i].TeamID]
+		teams[i].MaxControlledCells = maxFrontInt(teams[i].MaxControlledCells, teams[i].ControlledCells)
+		teams[i].SitoneMilestonesReached = maxFrontInt(teams[i].SitoneMilestonesReached, teams[i].MaxControlledCells/territorySitoneMilestoneSize)
+		teams[i].NextSitoneMilestone = (teams[i].SitoneMilestonesReached + 1) * territorySitoneMilestoneSize
 	}
 	sort.SliceStable(teams, func(i, j int) bool {
 		iTotal := teams[i].Score + teams[i].ControlledCells*10

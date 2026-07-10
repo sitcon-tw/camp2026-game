@@ -274,6 +274,10 @@ func (h *Handler) withFrontDefaults(front mongomodel.Front) mongomodel.Front {
 			front.Current = true
 		}
 	}
+	if front.MapMode == content.FrontMapModeTerritoryGrid && front.Territory != nil {
+		syncTerritoryTeamRanks(front.Teams, front.Territory)
+		front.Leaderboard = deriveLeaderboard(front)
+	}
 	if front.CreatedAt.IsZero() {
 		front.CreatedAt = seedFrontUpdatedAt
 	}

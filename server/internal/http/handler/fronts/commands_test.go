@@ -22,6 +22,11 @@ func TestCampusTerritorySnapshotUsesConfiguredMap(t *testing.T) {
 	if len(front.Teams) != 9 || len(front.Territory.Bases) != 9 {
 		t.Fatalf("expected nine teams and bases, got teams=%d bases=%d", len(front.Teams), len(front.Territory.Bases))
 	}
+	for _, team := range front.Teams {
+		if team.FrontOpenPower != territoryInitialFrontOpenPower {
+			t.Fatalf("expected territory team %s to start with %d front open power, got %d", team.TeamID, territoryInitialFrontOpenPower, team.FrontOpenPower)
+		}
+	}
 	if len(front.ActiveEvents) != 4 {
 		t.Fatalf("expected four actionable landmark events, got %#v", front.ActiveEvents)
 	}
@@ -214,14 +219,14 @@ func TestApplyTerritoryReinforceCapsDefenseAndDoesNotScore(t *testing.T) {
 	if nextMatrix[0][0].Defense != 100 {
 		t.Fatalf("expected capped defense, got %#v", nextMatrix[0][0])
 	}
-	if next.Teams[0].FrontOpenPower != 92 || next.Teams[0].Score != 0 {
+	if next.Teams[0].FrontOpenPower != 99 || next.Teams[0].Score != 0 {
 		t.Fatalf("unexpected reinforce accounting: %#v", next.Teams[0])
 	}
 }
 
 func TestTerritoryObserverCannotPlay(t *testing.T) {
 	front := newTerritoryTestFront(2, 1)
-	response := detailResponse(front, "team-010", nil)
+	response := detailResponse(front, "team-010", frontSitoneInventory{})
 	if response.CanPlay || len(response.AvailableCommands) != 0 {
 		t.Fatalf("expected read-only response, got %#v", response)
 	}

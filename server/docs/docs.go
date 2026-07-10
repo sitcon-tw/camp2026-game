@@ -5520,6 +5520,9 @@ const docTemplate = `{
                 "front": {
                     "$ref": "#/definitions/fronts.FrontSessionSummaryResponse"
                 },
+                "frontPowerSource": {
+                    "type": "string"
+                },
                 "grid": {
                     "$ref": "#/definitions/fronts.FrontTerritoryGridResponse"
                 },
@@ -5690,6 +5693,9 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": true
                 },
+                "capturedCellCount": {
+                    "type": "integer"
+                },
                 "clientCommandId": {
                     "type": "string",
                     "example": "front_cmd_7H9K2Q_001"
@@ -5701,12 +5707,24 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "emergencyResupplyAmount": {
+                    "type": "integer"
+                },
+                "enclosedCellCount": {
+                    "type": "integer"
+                },
                 "expectedRevision": {
                     "type": "integer"
                 },
                 "fromCellId": {
                     "type": "string",
                     "example": "base_team_001"
+                },
+                "frontOpenPowerCost": {
+                    "type": "integer"
+                },
+                "frontOpenPowerDelta": {
+                    "type": "integer"
                 },
                 "kind": {
                     "type": "string",
@@ -5722,6 +5740,15 @@ const docTemplate = `{
                 },
                 "rejectReason": {
                     "type": "string"
+                },
+                "rewardSitoneId": {
+                    "type": "string"
+                },
+                "rewardSitoneQuantity": {
+                    "type": "integer"
+                },
+                "scoreDelta": {
+                    "type": "integer"
                 },
                 "sitoneId": {
                     "type": "string",
@@ -5955,6 +5982,9 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 3
                 },
+                "emergencyResupplies": {
+                    "type": "integer"
+                },
                 "frontOpenPower": {
                     "type": "integer",
                     "example": 100
@@ -5962,9 +5992,15 @@ const docTemplate = `{
                 "lastCommandAt": {
                     "type": "string"
                 },
+                "maxControlledCells": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string",
                     "example": "Blue"
+                },
+                "nextSitoneMilestone": {
+                    "type": "integer"
                 },
                 "previousRank": {
                     "type": "integer",
@@ -5985,6 +6021,9 @@ const docTemplate = `{
                 "score": {
                     "type": "integer",
                     "example": 120
+                },
+                "sitoneMilestonesReached": {
+                    "type": "integer"
                 },
                 "teamId": {
                     "type": "string",

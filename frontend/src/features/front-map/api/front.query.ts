@@ -3,6 +3,7 @@ import { mutationOptions, queryOptions } from "@tanstack/react-query"
 import { gameApi, type FrontCommandInput } from "@/shared/api/game"
 
 export const frontCurrentQueryKey = ["fronts", "current"] as const
+export const frontPlayerSitonesQueryKey = ["me", "sitones"] as const
 
 export function frontSnapshotQueryKey(frontID: string) {
   return ["fronts", "snapshot", frontID] as const
@@ -22,6 +23,14 @@ export function frontSnapshotQueryOptions(frontID: string) {
     queryFn: () => gameApi.frontSnapshot(frontID),
     refetchInterval: 5_000,
     staleTime: 3_000,
+  })
+}
+
+export function frontPlayerSitonesQueryOptions() {
+  return queryOptions({
+    queryKey: frontPlayerSitonesQueryKey,
+    queryFn: () => gameApi.playerSitones(),
+    staleTime: 30_000,
   })
 }
 

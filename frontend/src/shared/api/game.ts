@@ -373,9 +373,13 @@ const FrontTeamStateSchema = z.object({
   previousRank: z.number().optional(),
   frontOpenPower: z.number().default(0),
   controlledCells: z.number().default(0),
+  maxControlledCells: z.number().default(0),
   rescuedSitones: z.number().default(0),
   repairedEvents: z.number().default(0),
   collaborationScore: z.number().default(0),
+  emergencyResupplies: z.number().default(0),
+  sitoneMilestonesReached: z.number().default(0),
+  nextSitoneMilestone: z.number().optional(),
   lastCommandAt: z.string().optional(),
 })
 
@@ -562,6 +566,12 @@ const FrontCommandInputSchema = z
         message: "Territory front command requires a client command ID",
       })
     }
+    if (hasTerritoryTarget && !command.sitoneId) {
+      context.addIssue({
+        code: "custom",
+        message: "Territory front command requires a sitone",
+      })
+    }
   })
 
 const FrontCommandResponseSchema = z.object({
@@ -577,6 +587,14 @@ const FrontCommandResponseSchema = z.object({
   targetY: z.number().int().nonnegative().optional(),
   expectedRevision: z.number().int().nonnegative().optional(),
   affectedCells: nullableArray(FrontCoordinateSchema),
+  capturedCellCount: z.number().int().nonnegative().default(0),
+  enclosedCellCount: z.number().int().nonnegative().default(0),
+  scoreDelta: z.number().int().default(0),
+  frontOpenPowerDelta: z.number().int().default(0),
+  frontOpenPowerCost: z.number().int().nonnegative().optional(),
+  emergencyResupplyAmount: z.number().int().nonnegative().default(0),
+  rewardSitoneId: z.string().optional(),
+  rewardSitoneQuantity: z.number().int().nonnegative().default(0),
   sitoneId: z.string().optional(),
   payload: z.record(z.string(), z.unknown()).optional(),
   accepted: z.boolean().default(false),
