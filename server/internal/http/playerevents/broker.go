@@ -3,20 +3,22 @@ package playerevents
 import "sync"
 
 type RewardGrantedEvent struct {
-	RewardID      string `json:"rewardId,omitempty"`
-	Kind          string `json:"kind"`
-	RefID         string `json:"refId,omitempty"`
-	Name          string `json:"name"`
-	Quantity      int    `json:"quantity,omitempty"`
-	Amount        int    `json:"amount,omitempty"`
-	ItemType      string `json:"itemType,omitempty"`
-	SitoneType    string `json:"sitoneType,omitempty"`
-	IconPath      string `json:"iconPath,omitempty"`
-	Source        string `json:"source,omitempty"`
-	StaffPlayerID string `json:"staffPlayerId,omitempty"`
-	StaffNickname string `json:"staffNickname,omitempty"`
-	OccurredAt    string `json:"occurredAt"`
-	Delayed       bool   `json:"delayed,omitempty"`
+	RewardID       string `json:"rewardId,omitempty"`
+	Kind           string `json:"kind"`
+	RefID          string `json:"refId,omitempty"`
+	Name           string `json:"name"`
+	Quantity       int    `json:"quantity,omitempty"`
+	Amount         int    `json:"amount,omitempty"`
+	ItemType       string `json:"itemType,omitempty"`
+	SitoneType     string `json:"sitoneType,omitempty"`
+	IconPath       string `json:"iconPath,omitempty"`
+	Source         string `json:"source,omitempty"`
+	StaffPlayerID  string `json:"staffPlayerId,omitempty"`
+	StaffNickname  string `json:"staffNickname,omitempty"`
+	SenderPlayerID string `json:"senderPlayerId,omitempty"`
+	SenderNickname string `json:"senderNickname,omitempty"`
+	OccurredAt     string `json:"occurredAt"`
+	Delayed        bool   `json:"delayed,omitempty"`
 }
 
 type InventoryTrimmedEvent struct {

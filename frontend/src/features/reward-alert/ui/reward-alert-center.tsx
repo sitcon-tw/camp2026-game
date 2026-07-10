@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query"
 import { SparklesIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
@@ -35,6 +36,8 @@ const PlayerRewardEventSchema = z.object({
   source: z.string().optional(),
   staffPlayerId: z.string().optional(),
   staffNickname: z.string().optional(),
+  senderPlayerId: z.string().optional(),
+  senderNickname: z.string().optional(),
   occurredAt: z.string(),
   delayed: z.boolean().optional(),
 })
@@ -72,6 +75,11 @@ type GainCardProps = {
 }
 
 function rewardDetail(event: PlayerRewardEvent, fallback: string) {
+  if (event.source === "open_power_transfer") {
+    const sender = event.senderNickname || event.senderPlayerId || "隊友"
+    if (event.delayed) return `${sender} 在你離線期間轉帳給你`
+    return `${sender} 轉帳給你`
+  }
   if (event.source !== "staff_reward") return fallback
   if (event.delayed) {
     if (event.staffNickname) {
@@ -120,9 +128,10 @@ function GainCard({
 function RewardNoticeCard({ event }: { event: PlayerRewardEvent }) {
   if (event.kind === "open_power") {
     const amount = event.amount ?? 0
+    const transfer = event.source === "open_power_transfer"
     return (
       <GainCard
-        badge="獲得開源力"
+        badge={transfer ? "收到轉帳" : "獲得開源力"}
         title={`+${amount} OP`}
         detail={rewardDetail(event, "開源力已入帳")}
         accentClassName="bg-pebble-spark"
@@ -238,6 +247,7 @@ function InventoryTrimmedNoticeCard({
 }
 
 export function RewardAlertCenter() {
+  const queryClient = useQueryClient()
   const [noticeQueue, setNoticeQueue] = useState<Notice[]>([])
   const activeNotice = noticeQueue[0] ?? null
 
@@ -269,6 +279,10 @@ export function RewardAlertCenter() {
     const handleRewardGranted = (message: MessageEvent<string>) => {
       try {
         const event = PlayerRewardEventSchema.parse(JSON.parse(message.data))
+        if (event.kind === "open_power") {
+          void queryClient.invalidateQueries({ queryKey: ["me", "home"] })
+          void queryClient.invalidateQueries({ queryKey: ["me", "status"] })
+        }
         setNoticeQueue((current) => [...current, { kind: "reward", event }])
       } catch {
         // Ignore malformed events and keep the stream alive.
@@ -330,7 +344,7 @@ export function RewardAlertCenter() {
       clearReconnectTimeout()
       closeSource()
     }
-  }, [])
+  }, [queryClient])
 
   return (
     <Dialog
@@ -348,12 +362,18 @@ export function RewardAlertCenter() {
           <DialogTitle>
             {activeNotice?.kind === "inventory_trimmed"
               ? "小石離家出走"
-              : "獲得獎勵"}
+              : activeNotice?.kind === "reward" &&
+                  activeNotice.event.source === "open_power_transfer"
+                ? "開源力到帳"
+                : "獲得獎勵"}
           </DialogTitle>
           <DialogDescription>
             {activeNotice?.kind === "inventory_trimmed"
               ? "小石暫時離開基地補充設備。"
-              : "新的獎勵已加入你的帳號。"}
+              : activeNotice?.kind === "reward" &&
+                  activeNotice.event.source === "open_power_transfer"
+                ? "隊友轉來的開源力已加入你的帳號。"
+                : "新的獎勵已加入你的帳號。"}
           </DialogDescription>
         </DialogHeader>
         {activeNotice?.kind === "reward" ? (

@@ -137,6 +137,48 @@ func TestIndexModelsByCollection(t *testing.T) {
 			},
 		},
 		{
+			collection: mongomodel.OpenPowerTransfersCollection,
+			name:       "open_power_transfers_created",
+			keys: bson.D{
+				{Key: "created_at", Value: -1},
+				{Key: "_id", Value: -1},
+			},
+		},
+		{
+			collection: mongomodel.OpenPowerTransfersCollection,
+			name:       "open_power_transfers_team_created",
+			keys: bson.D{
+				{Key: "team_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+		},
+		{
+			collection: mongomodel.OpenPowerTransfersCollection,
+			name:       "open_power_transfers_sender_created",
+			keys: bson.D{
+				{Key: "sender_player_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+		},
+		{
+			collection: mongomodel.OpenPowerTransfersCollection,
+			name:       "open_power_transfers_recipient_created",
+			keys: bson.D{
+				{Key: "recipient_player_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+		},
+		{
+			collection: mongomodel.OpenPowerTransfersCollection,
+			name:       "open_power_transfers_unnotified_recipient_created",
+			keys: bson.D{
+				{Key: "recipient_player_id", Value: 1},
+				{Key: "created_at", Value: 1},
+				{Key: "_id", Value: 1},
+			},
+			partial: bson.M{"notification_pending": true},
+		},
+		{
 			collection: mongomodel.PlayerItemsCollection,
 			name:       "player_items_player_item",
 			keys: bson.D{

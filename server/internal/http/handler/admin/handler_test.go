@@ -302,6 +302,49 @@ func TestHistoryRejectsUnsupportedBucket(t *testing.T) {
 	}
 }
 
+func TestAdminOpenPowerTransfersLimit(t *testing.T) {
+	if got := adminOpenPowerTransfersLimit(""); got != adminOpenPowerTransfersDefaultLimit {
+		t.Fatalf("expected default limit, got %d", got)
+	}
+	if got := adminOpenPowerTransfersLimit("12"); got != 12 {
+		t.Fatalf("expected parsed limit, got %d", got)
+	}
+	if got := adminOpenPowerTransfersLimit("-1"); got != adminOpenPowerTransfersDefaultLimit {
+		t.Fatalf("expected invalid limit to use default, got %d", got)
+	}
+	if got := adminOpenPowerTransfersLimit("999999"); got != adminOpenPowerTransfersMaxLimit {
+		t.Fatalf("expected max limit clamp, got %d", got)
+	}
+}
+
+func TestOpenPowerTransferResponseIncludesPlayerAndTeamMetadata(t *testing.T) {
+	createdAt := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	got := openPowerTransferResponse(
+		mongomodel.OpenPowerTransfer{
+			ID:                "transfer-a",
+			TeamID:            "team-a",
+			SenderPlayerID:    "player-a",
+			RecipientPlayerID: "player-b",
+			Amount:            120,
+			CreatedAt:         createdAt,
+		},
+		map[string]mongomodel.Player{
+			"player-a": {ID: "player-a", Nickname: "Alice"},
+			"player-b": {ID: "player-b", Nickname: "Bob"},
+		},
+		map[string]mongomodel.Team{
+			"team-a": {ID: "team-a", Name: "Alpha"},
+		},
+	)
+
+	if got.TransferID != "transfer-a" || got.TeamID != "team-a" || got.TeamName != "Alpha" {
+		t.Fatalf("unexpected transfer identifiers: %#v", got)
+	}
+	if got.SenderNickname != "Alice" || got.RecipientNickname != "Bob" || got.Amount != 120 || !got.CreatedAt.Equal(createdAt) {
+		t.Fatalf("unexpected transfer metadata: %#v", got)
+	}
+}
+
 func TestNormalizeUpdateTeamRequestTrimsFields(t *testing.T) {
 	got := normalizeUpdateTeamRequest(UpdateTeamRequest{
 		Name:      "  Blue Team  ",

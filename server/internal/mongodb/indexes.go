@@ -66,6 +66,7 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.MatchAnswersCollection, models: matchAnswerIndexModels()},
 		{collection: mongomodel.MatchItemDropsCollection, models: matchItemDropIndexModels()},
 		{collection: mongomodel.OpenPowerRecordsCollection, models: openPowerRecordIndexModels()},
+		{collection: mongomodel.OpenPowerTransfersCollection, models: openPowerTransferIndexModels()},
 		{collection: mongomodel.PlayerItemsCollection, models: playerItemIndexModels()},
 		{collection: mongomodel.PlayerSitonesCollection, models: playerSitoneIndexModels()},
 		{collection: mongomodel.ShopPurchasesCollection, models: shopPurchaseIndexModels()},
@@ -226,6 +227,49 @@ func openPowerRecordIndexModels() []mongo.IndexModel {
 				{Key: "player_id", Value: 1},
 			},
 			Options: options.Index().SetName("open_power_records_reason_source_player"),
+		},
+	}
+}
+
+func openPowerTransferIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "created_at", Value: -1},
+				{Key: "_id", Value: -1},
+			},
+			Options: options.Index().SetName("open_power_transfers_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "team_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+			Options: options.Index().SetName("open_power_transfers_team_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "sender_player_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+			Options: options.Index().SetName("open_power_transfers_sender_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "recipient_player_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+			Options: options.Index().SetName("open_power_transfers_recipient_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "recipient_player_id", Value: 1},
+				{Key: "created_at", Value: 1},
+				{Key: "_id", Value: 1},
+			},
+			Options: options.Index().
+				SetName("open_power_transfers_unnotified_recipient_created").
+				SetPartialFilterExpression(bson.M{"notification_pending": true}),
 		},
 	}
 }

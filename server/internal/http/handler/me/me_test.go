@@ -111,6 +111,7 @@ func TestEventsStreamsPendingStaffRewardsOnConnect(t *testing.T) {
 			{Key: "_id", Value: "staff-a"},
 			{Key: "nickname", Value: "Staff One"},
 		}),
+		createMeCursorResponse("camp2026_game_test.open_power_transfers"),
 		createMeCursorResponse("camp2026_game_test.inventory_trims"),
 		updateMeResponse(1),
 	)
@@ -159,6 +160,7 @@ func TestEventsStreamsPendingStaffRewardsOnConnect(t *testing.T) {
 func TestEventsStreamsPendingInventoryTrimsOnConnect(t *testing.T) {
 	createdAt := time.Date(2026, 7, 7, 9, 30, 0, 0, time.UTC)
 	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.open_power_transfers"),
 		createMeCursorResponse("camp2026_game_test.inventory_trims", bson.D{
 			{Key: "_id", Value: "trim-offline"},
 			{Key: "player_id", Value: "7H9K2Q"},
@@ -208,6 +210,100 @@ func TestEventsStreamsPendingInventoryTrimsOnConnect(t *testing.T) {
 	}
 	if !strings.Contains(body, `"sitoneCount":2`) || !strings.Contains(body, `"openPower":500`) {
 		t.Fatalf("expected trim quantities, got %q", body)
+	}
+}
+
+func TestEventsStreamsPendingOpenPowerTransfersOnConnect(t *testing.T) {
+	createdAt := time.Date(2026, 7, 11, 8, 30, 0, 0, time.UTC)
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.open_power_transfers", bson.D{
+			{Key: "_id", Value: "transfer-offline"},
+			{Key: "sender_player_id", Value: "player-a"},
+			{Key: "recipient_player_id", Value: "7H9K2Q"},
+			{Key: "team_id", Value: "team-a"},
+			{Key: "amount", Value: 120},
+			{Key: "created_at", Value: createdAt},
+			{Key: "notification_pending", Value: true},
+		}),
+		createMeCursorResponse("camp2026_game_test.players", bson.D{
+			{Key: "_id", Value: "player-a"},
+			{Key: "nickname", Value: "Alice"},
+		}),
+		createMeCursorResponse("camp2026_game_test.inventory_trims"),
+		updateMeResponse(1),
+	)
+	handler := New(Dependencies{
+		MongoDB: db,
+		Broker:  playerevents.NewBroker(),
+	})
+	req := authenticatedRequest(mongomodel.Player{ID: "7H9K2Q"})
+	ctx, cancel := context.WithCancel(req.Context())
+	req = req.WithContext(ctx)
+	res := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		handler.Events(res, req)
+	}()
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for {
+		body := res.Body.String()
+		if strings.Contains(body, `"rewardId":"transfer-offline"`) && strings.Contains(body, `"senderNickname":"Alice"`) {
+			break
+		}
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+
+	body := res.Body.String()
+	if !strings.Contains(body, "event: reward_granted") {
+		t.Fatalf("expected transfer reward event, got %q", body)
+	}
+	if !strings.Contains(body, `"source":"open_power_transfer"`) || !strings.Contains(body, `"amount":120`) {
+		t.Fatalf("expected transfer payload fields, got %q", body)
+	}
+	if !strings.Contains(body, `"senderPlayerId":"player-a"`) || !strings.Contains(body, `"senderNickname":"Alice"`) || !strings.Contains(body, `"delayed":true`) {
+		t.Fatalf("expected sender and delayed fields, got %q", body)
+	}
+}
+
+func TestPublishOpenPowerTransferReceivedDeliversLiveRewardEvent(t *testing.T) {
+	createdAt := time.Date(2026, 7, 11, 8, 30, 0, 0, time.UTC)
+	db := startMeMockDatabase(t, updateMeResponse(1))
+	broker := playerevents.NewBroker()
+	handler := New(Dependencies{
+		MongoDB: db,
+		Broker:  broker,
+	})
+	events, unsubscribe := broker.Subscribe("player-b")
+	defer unsubscribe()
+
+	handler.publishOpenPowerTransferReceived(
+		context.Background(),
+		mongomodel.Player{ID: "player-a", Nickname: "Alice"},
+		"player-b",
+		mongomodel.OpenPowerTransfer{ID: "transfer-live", Amount: 120, CreatedAt: createdAt},
+	)
+
+	select {
+	case event := <-events:
+		if event.Name != "reward_granted" || event.Reward == nil {
+			t.Fatalf("expected reward_granted event, got %#v", event)
+		}
+		if event.Reward.Source != playerevents.OpenPowerTransferSource || event.Reward.Amount != 120 {
+			t.Fatalf("expected transfer open power payload, got %#v", event.Reward)
+		}
+		if event.Reward.SenderPlayerID != "player-a" || event.Reward.SenderNickname != "Alice" || event.Reward.Delayed {
+			t.Fatalf("expected live sender payload, got %#v", event.Reward)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("expected live open power transfer event")
 	}
 }
 
@@ -351,6 +447,106 @@ func TestStaffStatusResponseKeepsStaffRoleWhenNoTeamIsLoaded(t *testing.T) {
 	}
 	if response.Role != "staff" {
 		t.Fatalf("expected staff role, got %q", response.Role)
+	}
+}
+
+func TestCreateOpenPowerTransferTransfersToSameTeamMember(t *testing.T) {
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.players", bson.D{
+			{Key: "_id", Value: "player-b"},
+			{Key: "nickname", Value: "Bob"},
+			{Key: "team_id", Value: "team-a"},
+		}),
+		updateMeResponse(1),
+		updateMeResponse(1),
+		createMeCursorResponse("camp2026_game_test.open_power_records", bson.D{{Key: "total", Value: 500}}),
+		createMeCursorResponse("camp2026_game_test.open_power_records", bson.D{{Key: "total", Value: 20}}),
+		insertMeResponse(2),
+		insertMeResponse(1),
+		deleteMeResponse(1),
+		deleteMeResponse(1),
+	)
+	handler := New(Dependencies{MongoDB: db})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "player-a", Nickname: "Alice", TeamID: "team-a"},
+		http.MethodPost,
+		"/api/me/open-power-transfers",
+		`{"recipientPlayerId":" player-b ","amount":120}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.CreateOpenPowerTransfer(res, req)
+
+	if res.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, res.Code, res.Body.String())
+	}
+	var body OpenPowerTransferResponse
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.TransferID == "" || body.SenderPlayerID != "player-a" || body.RecipientPlayerID != "player-b" {
+		t.Fatalf("unexpected transfer identifiers: %#v", body)
+	}
+	if body.Amount != 120 || body.SenderOpenPowerAfter != 380 || body.RecipientOpenPowerAfter != 140 {
+		t.Fatalf("unexpected transfer balances: %#v", body)
+	}
+	if body.TeamID != "team-a" || body.SenderNickname != "Alice" || body.RecipientNickname != "Bob" {
+		t.Fatalf("unexpected transfer metadata: %#v", body)
+	}
+}
+
+func TestCreateOpenPowerTransferRejectsDifferentTeam(t *testing.T) {
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.players", bson.D{
+			{Key: "_id", Value: "player-b"},
+			{Key: "nickname", Value: "Bob"},
+			{Key: "team_id", Value: "team-b"},
+		}),
+	)
+	handler := New(Dependencies{MongoDB: db})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "player-a", Nickname: "Alice", TeamID: "team-a"},
+		http.MethodPost,
+		"/api/me/open-power-transfers",
+		`{"recipientPlayerId":"player-b","amount":120}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.CreateOpenPowerTransfer(res, req)
+
+	problem := assertProblem(t, res, http.StatusForbidden)
+	if problem.Detail != "open power transfers require same team" {
+		t.Fatalf("unexpected problem: %#v", problem)
+	}
+}
+
+func TestCreateOpenPowerTransferRejectsInsufficientOpenPower(t *testing.T) {
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.players", bson.D{
+			{Key: "_id", Value: "player-b"},
+			{Key: "nickname", Value: "Bob"},
+			{Key: "team_id", Value: "team-a"},
+		}),
+		updateMeResponse(1),
+		updateMeResponse(1),
+		createMeCursorResponse("camp2026_game_test.open_power_records", bson.D{{Key: "total", Value: 50}}),
+		deleteMeResponse(1),
+		deleteMeResponse(1),
+	)
+	handler := New(Dependencies{MongoDB: db})
+	req := authenticatedJSONRequest(
+		mongomodel.Player{ID: "player-a", Nickname: "Alice", TeamID: "team-a"},
+		http.MethodPost,
+		"/api/me/open-power-transfers",
+		`{"recipientPlayerId":"player-b","amount":120}`,
+	)
+	res := httptest.NewRecorder()
+
+	handler.CreateOpenPowerTransfer(res, req)
+
+	problem := assertProblem(t, res, http.StatusConflict)
+	if problem.Detail != "insufficient open power for transfer" {
+		t.Fatalf("unexpected problem: %#v", problem)
 	}
 }
 
@@ -1043,6 +1239,20 @@ func updateMeResponse(modified int32) bson.D {
 		{Key: "ok", Value: 1},
 		{Key: "n", Value: modified},
 		{Key: "nModified", Value: modified},
+	}
+}
+
+func insertMeResponse(inserted int32) bson.D {
+	return bson.D{
+		{Key: "ok", Value: 1},
+		{Key: "n", Value: inserted},
+	}
+}
+
+func deleteMeResponse(deleted int32) bson.D {
+	return bson.D{
+		{Key: "ok", Value: 1},
+		{Key: "n", Value: deleted},
 	}
 }
 

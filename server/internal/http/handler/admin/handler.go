@@ -58,6 +58,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/admin/gift-history", h.GiftHistory)
 	api.Get("/admin/history", h.History)
 	api.Get("/admin/student-changes", h.ListStudentChanges)
+	api.Get("/admin/open-power-transfers", h.ListOpenPowerTransfers)
 	api.Post("/admin/inventory-trims", h.CreateInventoryTrim)
 	api.Put("/admin/players/{playerID}/balance", h.UpdatePlayerBalance)
 	api.Get("/admin/settings", h.GetSettings)

@@ -179,6 +179,19 @@ const PurchaseResponseSchema = z.object({
   item: ShopItemSchema,
 })
 
+const OpenPowerTransferResponseSchema = z.object({
+  transferId: z.string(),
+  senderPlayerId: z.string(),
+  senderNickname: z.string(),
+  recipientPlayerId: z.string(),
+  recipientNickname: z.string(),
+  teamId: z.string(),
+  amount: z.number(),
+  senderOpenPowerAfter: z.number(),
+  recipientOpenPowerAfter: z.number(),
+  createdAt: z.string(),
+})
+
 const FusionComponentSchema = z.object({
   kind: z.enum(["item", "sitone"]),
   id: z.string(),
@@ -1176,6 +1189,22 @@ const GiftHistoryResponseSchema = z.object({
   entries: nullableArray(GiftHistoryEntrySchema),
 })
 
+const AdminOpenPowerTransferEntrySchema = z.object({
+  transferId: z.string(),
+  teamId: z.string(),
+  teamName: z.string().optional(),
+  senderPlayerId: z.string(),
+  senderNickname: z.string().optional(),
+  recipientPlayerId: z.string(),
+  recipientNickname: z.string().optional(),
+  amount: z.number(),
+  createdAt: z.string(),
+})
+
+const AdminOpenPowerTransfersResponseSchema = z.object({
+  transfers: nullableArray(AdminOpenPowerTransferEntrySchema),
+})
+
 const AdminStudentChangeEntrySchema = z.object({
   changeId: z.string(),
   source: z.string(),
@@ -1223,6 +1252,9 @@ export type ShopItem = z.infer<typeof ShopItemSchema>
 export type FusionRecipe = z.infer<typeof FusionRecipeSchema>
 export type FusionFillMissingMaterialsResponse = z.infer<
   typeof FusionFillMissingMaterialsResponseSchema
+>
+export type OpenPowerTransferResponse = z.infer<
+  typeof OpenPowerTransferResponseSchema
 >
 export type LeaderboardScope = z.infer<
   typeof LeaderboardResponseSchema
@@ -1337,6 +1369,9 @@ export type AdminDashboardHistoryPoint = z.infer<
   typeof AdminDashboardHistoryPointSchema
 >
 export type GiftHistoryEntry = z.infer<typeof GiftHistoryEntrySchema>
+export type AdminOpenPowerTransferEntry = z.infer<
+  typeof AdminOpenPowerTransferEntrySchema
+>
 export type AdminStudentChangeEntry = z.infer<
   typeof AdminStudentChangeEntrySchema
 >
@@ -1492,6 +1527,16 @@ export const gameApi = {
       json: { itemId: itemID },
     })
     return PurchaseResponseSchema.parse(json)
+  },
+
+  async createOpenPowerTransfer(input: {
+    recipientPlayerId: string
+    amount: number
+  }) {
+    const json = await apiClient.post("/api/me/open-power-transfers", {
+      json: input,
+    })
+    return OpenPowerTransferResponseSchema.parse(json)
   },
 
   async fusionRecipes() {
@@ -1744,6 +1789,13 @@ export const gameApi = {
   async adminGiftHistory() {
     const json = await apiClient.get("/api/admin/gift-history")
     return GiftHistoryResponseSchema.parse(json).entries
+  },
+
+  async adminOpenPowerTransfers(limit = 200) {
+    const json = await apiClient.get("/api/admin/open-power-transfers", {
+      searchParams: { limit },
+    })
+    return AdminOpenPowerTransfersResponseSchema.parse(json).transfers
   },
 
   async adminStudentChanges(limit = 300) {

@@ -42,3 +42,28 @@ func TestStaffRewardGrantedEventBuildsDelayedItemEvent(t *testing.T) {
 		t.Fatalf("expected occurredAt %q, got %q", createdAt.Format(time.RFC3339Nano), event.OccurredAt)
 	}
 }
+
+func TestOpenPowerTransferReceivedEvent(t *testing.T) {
+	createdAt := time.Date(2026, 7, 11, 8, 30, 0, 0, time.UTC)
+	event := OpenPowerTransferReceivedEvent(
+		mongomodel.OpenPowerTransfer{
+			ID:                "transfer-a",
+			SenderPlayerID:    "player-a",
+			RecipientPlayerID: "player-b",
+			Amount:            120,
+			CreatedAt:         createdAt,
+		},
+		mongomodel.Player{ID: "player-a", Nickname: "Alice"},
+		true,
+	)
+
+	if event.RewardID != "transfer-a" || event.Kind != "open_power" || event.Name != "開源力" || event.Amount != 120 {
+		t.Fatalf("unexpected transfer reward fields: %#v", event)
+	}
+	if event.Source != OpenPowerTransferSource || event.SenderPlayerID != "player-a" || event.SenderNickname != "Alice" || !event.Delayed {
+		t.Fatalf("unexpected transfer delivery fields: %#v", event)
+	}
+	if event.OccurredAt != createdAt.Format(time.RFC3339Nano) {
+		t.Fatalf("expected occurredAt %q, got %q", createdAt.Format(time.RFC3339Nano), event.OccurredAt)
+	}
+}

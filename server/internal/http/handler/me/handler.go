@@ -14,13 +14,15 @@ import (
 )
 
 type Dependencies struct {
-	Content *content.Store
-	MongoDB *mongo.Database
-	Broker  *playerevents.Broker
+	Content     *content.Store
+	MongoClient *mongo.Client
+	MongoDB     *mongo.Database
+	Broker      *playerevents.Broker
 }
 
 type Handler struct {
 	content *content.Store
+	client  *mongo.Client
 	db      *mongo.Database
 	broker  *playerevents.Broker
 }
@@ -28,6 +30,7 @@ type Handler struct {
 func New(dep Dependencies) *Handler {
 	return &Handler{
 		content: dep.Content,
+		client:  dep.MongoClient,
 		db:      dep.MongoDB,
 		broker:  dep.Broker,
 	}
@@ -47,6 +50,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/me/items", h.ListItems)
 	api.Get("/me/qrcode", h.QRCode)
 	api.Get("/me/gift-history", h.GiftHistory)
+	api.Post("/me/open-power-transfers", h.CreateOpenPowerTransfer)
 	api.Get("/me/matches", h.ListCompletedMatches)
 }
 
