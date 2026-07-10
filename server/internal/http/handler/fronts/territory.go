@@ -18,10 +18,7 @@ const (
 	territoryExpandLimit             = 8
 	territoryAttackLimit             = 6
 	territoryReinforceLimit          = 8
-	territoryEmergencyResupplyAmount = 30
-	territoryEmergencyResupplyLimit  = 1
 	territorySitoneMilestoneSize     = 25
-	territoryInitialFrontOpenPower   = 300
 )
 
 var territoryTeamColors = []string{
@@ -43,7 +40,7 @@ type territoryCandidate struct {
 
 func frontFromTerritoryTemplate(template content.TerritoryMapTemplate) mongomodel.Front {
 	territory := territoryFromTemplate(template)
-	teams := territoryTeams(territoryInitialFrontOpenPower)
+	teams := territoryTeams()
 	syncTerritoryTeamRanks(teams, territory)
 	events := territoryEvents(territory.Landmarks)
 	front := mongomodel.Front{
@@ -144,13 +141,13 @@ func territoryEventKind(kind string) string {
 	}
 }
 
-func territoryTeams(frontOpenPower int) []mongomodel.FrontTeam {
+func territoryTeams() []mongomodel.FrontTeam {
 	teams := make([]mongomodel.FrontTeam, 0, 9)
 	for i := 1; i <= 9; i++ {
 		teamID := fmt.Sprintf("team-%03d", i)
 		teams = append(teams, mongomodel.FrontTeam{
 			TeamID: teamID, Name: fmt.Sprintf("第 %d 小隊", i),
-			Color: territoryTeamColors[i-1], FrontOpenPower: frontOpenPower,
+			Color: territoryTeamColors[i-1],
 		})
 	}
 	return teams
@@ -164,13 +161,10 @@ func isParticipatingTerritoryTeam(teamID string) bool {
 	return err == nil && number >= 1 && number <= 9
 }
 
-func territoryCommandOptionResponses(front mongomodel.Front, teamID string) []FrontCommandOptionResponse {
+func territoryCommandOptionResponses(front mongomodel.Front, teamID string, playerOpenPower int) []FrontCommandOptionResponse {
 	if front.Territory == nil || !isParticipatingTerritoryTeam(teamID) {
 		return []FrontCommandOptionResponse{}
 	}
-	power := teamFrontOpenPower(front.Teams, teamID)
-	teamIndex := frontTeamIndex(front.Teams, teamID)
-	canEmergencyResupply := teamIndex >= 0 && front.Teams[teamIndex].EmergencyResupplies < territoryEmergencyResupplyLimit
 	matrix, err := decodeTerritoryRows(front.Territory)
 	if err != nil {
 		return []FrontCommandOptionResponse{}
@@ -180,9 +174,9 @@ func territoryCommandOptionResponses(front mongomodel.Front, teamID string) []Fr
 	reinforceCost := territoryReinforceCost(matrix, teamID, 0, 0, territoryReinforceLimit)
 	hasReinforce := reinforceCost > 0
 	options := []FrontCommandOptionResponse{
-		territoryCommandOption("expand", "擴張", frontCommandCosts["expand"], hasNeutral, power, canEmergencyResupply),
-		territoryCommandOption("attack", "攻擊", frontCommandCosts["attack"], hasEnemy, power, canEmergencyResupply),
-		territoryCommandOption("reinforce", "防守", reinforceCost, hasReinforce, power, canEmergencyResupply),
+		territoryCommandOption("expand", "擴張", frontCommandCosts["expand"], hasNeutral, playerOpenPower),
+		territoryCommandOption("attack", "攻擊", frontCommandCosts["attack"], hasEnemy, playerOpenPower),
+		territoryCommandOption("reinforce", "防守", reinforceCost, hasReinforce, playerOpenPower),
 	}
 	landmarkByID := make(map[string]mongomodel.FrontMapLandmark, len(front.Territory.Landmarks))
 	for _, landmark := range front.Territory.Landmarks {
@@ -199,7 +193,7 @@ func territoryCommandOptionResponses(front mongomodel.Front, teamID string) []Fr
 		}
 		x, y := landmark.X, landmark.Y
 		owned := matrix[y][x].Owner == teamID
-		option := territoryCommandOption(kind, label, frontCommandCosts[kind], owned, power, canEmergencyResupply)
+		option := territoryCommandOption(kind, label, frontCommandCosts[kind], owned, playerOpenPower)
 		option.TargetX = &x
 		option.TargetY = &y
 		if !owned {
@@ -217,7 +211,7 @@ func territoryEventCommand(eventKind string) (string, string) {
 	case "rescue":
 		return "rescue", "救援"
 	case "resource":
-		return "support", "取得資源"
+		return "support", "採集小石"
 	case "challenge":
 		return "answer_challenge", "挑戰"
 	default:
@@ -225,8 +219,8 @@ func territoryEventCommand(eventKind string) (string, string) {
 	}
 }
 
-func territoryCommandOption(kind string, label string, cost int, hasTarget bool, power int, canEmergencyResupply bool) FrontCommandOptionResponse {
-	hasPower := power >= cost || (cost > 0 && canEmergencyResupply)
+func territoryCommandOption(kind string, label string, cost int, hasTarget bool, playerOpenPower int) FrontCommandOptionResponse {
+	hasPower := playerOpenPower >= cost
 	option := FrontCommandOptionResponse{Kind: kind, Label: label, Cost: cost, Enabled: hasTarget && hasPower}
 	if !hasTarget {
 		if kind == "reinforce" {
@@ -235,14 +229,12 @@ func territoryCommandOption(kind string, label string, cost int, hasTarget bool,
 			option.Reason = "目前沒有可用目標"
 		}
 	} else if !hasPower {
-		option.Reason = "小隊戰線能量不足"
-	} else if power < cost {
-		option.Reason = "將自動使用本場一次性的 30 點基地補給"
+		option.Reason = "開源力不足"
 	}
 	return option
 }
 
-func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontCommand) (mongomodel.Front, mongomodel.FrontCommand, error) {
+func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontCommand, playerOpenPower int) (mongomodel.Front, mongomodel.FrontCommand, error) {
 	if !isPlayableFrontStatus(front.Status) {
 		return front, command, errors.New("front is not accepting commands")
 	}
@@ -295,24 +287,15 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	if command.Kind == "reinforce" {
 		cost = territoryReinforceCost(matrix, command.TeamID, x, y, territoryReinforceLimit)
 	}
-	startingPower := front.Teams[teamIndex].FrontOpenPower
 	controlledBefore := territoryControlledCellCount(matrix, command.TeamID)
-	emergencyResupplyAmount := 0
-	if front.Teams[teamIndex].FrontOpenPower < cost {
-		if cost > 0 && front.Teams[teamIndex].EmergencyResupplies < territoryEmergencyResupplyLimit {
-			front.Teams[teamIndex].FrontOpenPower += territoryEmergencyResupplyAmount
-			front.Teams[teamIndex].EmergencyResupplies++
-			emergencyResupplyAmount = territoryEmergencyResupplyAmount
-		}
-		if front.Teams[teamIndex].FrontOpenPower < cost {
-			return front, command, errors.New("小隊戰線能量不足，無法執行前線命令")
-		}
+	if playerOpenPower < cost {
+		return front, command, fmt.Errorf("%w: 無法執行前線命令", errFrontInsufficientOpenPower)
 	}
 
 	var affected []mongomodel.FrontCoordinate
 	var captured []mongomodel.FrontCoordinate
 	scoreDelta := 0
-	resourceDelta := 0
+	landmarkSitoneReward := 0
 	switch command.Kind {
 	case "expand":
 		affected = expandTerritory(matrix, command.TeamID, x, y, territoryExpandLimit)
@@ -323,7 +306,7 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 		affected = reinforceTerritory(matrix, command.TeamID, x, y, territoryReinforceLimit)
 	case "repair", "rescue", "support", "answer_challenge":
 		var landmarkErr error
-		affected, scoreDelta, resourceDelta, landmarkErr = applyTerritoryLandmarkCommand(&front, matrix, teamIndex, command)
+		affected, scoreDelta, landmarkSitoneReward, landmarkErr = applyTerritoryLandmarkCommand(&front, matrix, teamIndex, command)
 		if landmarkErr != nil {
 			return front, command, landmarkErr
 		}
@@ -348,8 +331,6 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	controlledAfter := territoryControlledCellCount(matrix, command.TeamID)
 	milestonesEarned := applyTerritorySitoneMilestones(&front.Teams[teamIndex], controlledBefore, controlledAfter)
 
-	front.Teams[teamIndex].FrontOpenPower -= cost
-	front.Teams[teamIndex].FrontOpenPower += resourceDelta
 	front.Teams[teamIndex].LastCommandAt = command.CreatedAt
 	front.Teams[teamIndex].Score += scoreDelta
 	front.Territory.Rows = encodeTerritoryRows(matrix)
@@ -362,10 +343,9 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	command.CapturedCellCount = len(captured)
 	command.EnclosedCellCount = len(enclosed)
 	command.ScoreDelta = scoreDelta + capturedScoreDelta
-	command.FrontOpenPowerDelta = front.Teams[teamIndex].FrontOpenPower - startingPower
+	command.FrontOpenPowerDelta = -cost
 	command.FrontOpenPowerCost = cost
-	command.EmergencyResupplyAmount = emergencyResupplyAmount
-	command.RewardSitoneQuantity += milestonesEarned
+	command.RewardSitoneQuantity += milestonesEarned + landmarkSitoneReward
 	summary := commandSummary(command)
 	front.LastCommand = &summary
 	syncTerritoryTeamRanks(front.Teams, front.Territory)
@@ -425,7 +405,7 @@ func applyTerritoryLandmarkCommand(front *mongomodel.Front, matrix [][]territory
 		return nil, 0, 0, errors.New("landmark event is no longer active")
 	}
 
-	scoreDelta, resourceDelta := 0, 0
+	scoreDelta, sitoneReward := 0, 0
 	switch command.Kind {
 	case "repair":
 		matrix[y][x].Defense = clampFrontInt(matrix[y][x].Defense+25, 0, territoryMaxDefense)
@@ -435,17 +415,14 @@ func applyTerritoryLandmarkCommand(front *mongomodel.Front, matrix [][]territory
 		front.Teams[teamIndex].RescuedSitones++
 		scoreDelta = 30
 	case "support":
-		resourceDelta = landmark.InitialResource
-		if resourceDelta <= 0 {
-			resourceDelta = 20
-		}
+		sitoneReward = 1
 		scoreDelta = 10
 	case "answer_challenge":
 		front.Teams[teamIndex].CollaborationScore += 3
 		scoreDelta = 20
 	}
 	removeActiveFrontEventAtCell(front, landmark.ID)
-	return []mongomodel.FrontCoordinate{{X: x, Y: y}}, scoreDelta, resourceDelta, nil
+	return []mongomodel.FrontCoordinate{{X: x, Y: y}}, scoreDelta, sitoneReward, nil
 }
 
 func territoryLandmarkAt(landmarks []mongomodel.FrontMapLandmark, x int, y int) (mongomodel.FrontMapLandmark, bool) {

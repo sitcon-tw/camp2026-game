@@ -15,6 +15,7 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
+	"github.com/sitcon-tw/camp2026-game/internal/openpower"
 )
 
 var errFrontNotFound = errors.New("front not found")
@@ -121,7 +122,12 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("front sitones unavailable", "front_sitones_lookup_failed", err))
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, detailResponse(front, player.TeamID, sitones))
+	playerOpenPower, err := openpower.TotalForPlayer(r.Context(), h.db, player.ID)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("front open power unavailable", "front_open_power_lookup_failed", err))
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, detailResponse(front, player.TeamID, sitones, playerOpenPower))
 }
 
 // Leaderboard godoc

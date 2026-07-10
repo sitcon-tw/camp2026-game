@@ -24,7 +24,7 @@ const ACTIONS: {
   {
     id: "front",
     label: "開源戰線",
-    desc: "佔領節點、守住小隊開源力",
+    desc: "使用開源力，和小隊爭奪領土",
     icon: "front",
     primary: true,
     to: "/front",

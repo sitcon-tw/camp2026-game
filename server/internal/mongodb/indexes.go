@@ -13,7 +13,6 @@ import (
 )
 
 const indexTimeout = 2 * time.Minute
-const shopPurchaseLocksCollection = "shop_purchase_locks"
 
 type collectionIndexModels struct {
 	collection string
@@ -47,7 +46,7 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.PlayerItemsCollection, models: playerItemIndexModels()},
 		{collection: mongomodel.PlayerSitonesCollection, models: playerSitoneIndexModels()},
 		{collection: mongomodel.ShopPurchasesCollection, models: shopPurchaseIndexModels()},
-		{collection: shopPurchaseLocksCollection, models: shopPurchaseLockIndexModels()},
+		{collection: mongomodel.OpenPowerLocksCollection, models: openPowerLockIndexModels()},
 		{collection: mongomodel.StaffRewardsCollection, models: staffRewardIndexModels()},
 		{collection: mongomodel.StaffRewardTokensCollection, models: staffRewardTokenIndexModels()},
 		{collection: mongomodel.StaffRewardTokenClaimsCollection, models: staffRewardTokenClaimIndexModels()},
@@ -241,11 +240,11 @@ func shopPurchaseIndexModels() []mongo.IndexModel {
 	}
 }
 
-func shopPurchaseLockIndexModels() []mongo.IndexModel {
+func openPowerLockIndexModels() []mongo.IndexModel {
 	return []mongo.IndexModel{
 		{
 			Keys:    bson.D{{Key: "expires_at", Value: 1}},
-			Options: options.Index().SetName("shop_purchase_locks_expires_at_ttl").SetExpireAfterSeconds(0),
+			Options: options.Index().SetName("open_power_locks_expires_at_ttl").SetExpireAfterSeconds(0),
 		},
 	}
 }

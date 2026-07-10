@@ -17,7 +17,7 @@ func frontSummaryResponse(front mongomodel.Front) *FrontSessionSummaryResponse {
 	}
 }
 
-func detailResponse(front mongomodel.Front, currentTeamID string, sitones frontSitoneInventory) DetailResponse {
+func detailResponse(front mongomodel.Front, currentTeamID string, sitones frontSitoneInventory, playerOpenPower int) DetailResponse {
 	leaderboard := rankedLeaderboard(front)
 	myTeamRank := 0
 	for _, entry := range leaderboard {
@@ -28,23 +28,23 @@ func detailResponse(front mongomodel.Front, currentTeamID string, sitones frontS
 	}
 
 	response := DetailResponse{
-		Front:                     *frontSummaryResponse(front),
-		MapMode:                   front.MapMode,
-		CanPlay:                   front.MapMode != contentFrontMapModeTerritoryGrid || isParticipatingTerritoryTeam(currentTeamID),
-		ServerTime:                front.UpdatedAt,
-		Cells:                     cellResponses(front.Cells),
-		Teams:                     teamResponses(front.Teams),
-		ActiveEvents:              eventResponses(front.ActiveEvents),
-		Leaderboard:               leaderboardResponse(leaderboard, currentTeamID),
-		MyTeamID:                  currentTeamID,
-		MyTeamRank:                myTeamRank,
-		Cooldowns:                 map[string]int64{},
-		SelectedSitones:           sitones.Selected,
-		AvailableSitones:          sitones.Available,
-		CurrentTeamFrontOpenPower: teamFrontOpenPower(front.Teams, currentTeamID),
-		FrontPowerSource:          "team_session",
-		SupportTokens:             frontSupportTokens(front),
-		AvailableCommands:         commandOptionResponses(front, currentTeamID),
+		Front:                  *frontSummaryResponse(front),
+		MapMode:                front.MapMode,
+		CanPlay:                front.MapMode != contentFrontMapModeTerritoryGrid || isParticipatingTerritoryTeam(currentTeamID),
+		ServerTime:             front.UpdatedAt,
+		Cells:                  cellResponses(front.Cells),
+		Teams:                  teamResponses(front.Teams),
+		ActiveEvents:           eventResponses(front.ActiveEvents),
+		Leaderboard:            leaderboardResponse(leaderboard, currentTeamID),
+		MyTeamID:               currentTeamID,
+		MyTeamRank:             myTeamRank,
+		Cooldowns:              map[string]int64{},
+		SelectedSitones:        sitones.Selected,
+		AvailableSitones:       sitones.Available,
+		CurrentPlayerOpenPower: playerOpenPower,
+		FrontPowerSource:       "player_ledger",
+		SupportTokens:          frontSupportTokens(front),
+		AvailableCommands:      commandOptionResponses(front, currentTeamID, playerOpenPower),
 	}
 	if front.Territory != nil {
 		response.Grid = territoryGridResponse(front.Territory)
@@ -88,8 +88,6 @@ func teamResponses(teams []mongomodel.FrontTeam) []FrontTeamResponse {
 			Score:                   team.Score,
 			Rank:                    team.Rank,
 			PreviousRank:            team.PreviousRank,
-			FrontOpenPower:          team.FrontOpenPower,
-			EmergencyResupplies:     team.EmergencyResupplies,
 			ControlledCells:         team.ControlledCells,
 			MaxControlledCells:      team.MaxControlledCells,
 			SitoneMilestonesReached: team.SitoneMilestonesReached,
@@ -139,12 +137,11 @@ func leaderboardResponse(entries []mongomodel.FrontLeaderboardEntry, currentTeam
 	return out
 }
 
-func commandOptionResponses(front mongomodel.Front, currentTeamID string) []FrontCommandOptionResponse {
+func commandOptionResponses(front mongomodel.Front, currentTeamID string, playerOpenPower int) []FrontCommandOptionResponse {
 	if front.MapMode == contentFrontMapModeTerritoryGrid {
-		return territoryCommandOptionResponses(front, currentTeamID)
+		return territoryCommandOptionResponses(front, currentTeamID, playerOpenPower)
 	}
 	out := make([]FrontCommandOptionResponse, 0, len(front.Cells)*4)
-	frontOpenPower := teamFrontOpenPower(front.Teams, currentTeamID)
 	eventByCell := make(map[string]mongomodel.FrontMapEvent, len(front.ActiveEvents))
 	for _, event := range front.ActiveEvents {
 		if event.CellID != "" {
@@ -165,29 +162,29 @@ func commandOptionResponses(front mongomodel.Front, currentTeamID string) []Fron
 		}
 
 		out = append(out,
-			commandOptionForCell("expand", "擴張", 10, sourceID, cell, cell.OwnerTeamID == "", frontOpenPower),
-			commandOptionForCell("attack", "攻擊", 15, sourceID, cell, cell.OwnerTeamID != "" && cell.OwnerTeamID != currentTeamID, frontOpenPower),
-			commandOptionForCell("reinforce", "防守", frontCommandCost("reinforce", cell), sourceID, cell, cell.OwnerTeamID == currentTeamID && (cell.Control < 100 || cell.Defense < territoryMaxDefense), frontOpenPower),
-			commandOptionForCell("scout", "偵查", 4, sourceID, cell, true, frontOpenPower),
+			commandOptionForCell("expand", "擴張", 10, sourceID, cell, cell.OwnerTeamID == "", playerOpenPower),
+			commandOptionForCell("attack", "攻擊", 15, sourceID, cell, cell.OwnerTeamID != "" && cell.OwnerTeamID != currentTeamID, playerOpenPower),
+			commandOptionForCell("reinforce", "防守", frontCommandCost("reinforce", cell), sourceID, cell, cell.OwnerTeamID == currentTeamID && (cell.Control < 100 || cell.Defense < territoryMaxDefense), playerOpenPower),
+			commandOptionForCell("scout", "偵查", 4, sourceID, cell, true, playerOpenPower),
 		)
 		if event, ok := eventByCell[cell.ID]; ok {
 			switch event.Kind {
 			case "repair":
-				out = append(out, commandOptionForCell("repair", "修復", 12, sourceID, cell, true, frontOpenPower))
+				out = append(out, commandOptionForCell("repair", "修復", 12, sourceID, cell, true, playerOpenPower))
 			case "rescue":
-				out = append(out, commandOptionForCell("rescue", "救援", 10, sourceID, cell, true, frontOpenPower))
+				out = append(out, commandOptionForCell("rescue", "救援", 10, sourceID, cell, true, playerOpenPower))
 			case "challenge":
 				out = append(out, FrontCommandOptionResponse{Kind: "answer_challenge", Label: "挑戰", Enabled: true, Cost: 0, FromCellID: sourceID, ToCellID: cell.ID})
 			case "resource":
-				out = append(out, FrontCommandOptionResponse{Kind: "support", Label: "支援", Enabled: true, Cost: 0, FromCellID: sourceID, ToCellID: cell.ID})
+				out = append(out, FrontCommandOptionResponse{Kind: "support", Label: "採集小石", Enabled: true, Cost: 0, FromCellID: sourceID, ToCellID: cell.ID})
 			}
 		}
 	}
 	return out
 }
 
-func commandOptionForCell(kind string, label string, cost int, sourceID string, cell mongomodel.FrontCell, targetEnabled bool, frontOpenPower int) FrontCommandOptionResponse {
-	enabled := targetEnabled && frontOpenPower >= cost
+func commandOptionForCell(kind string, label string, cost int, sourceID string, cell mongomodel.FrontCell, targetEnabled bool, playerOpenPower int) FrontCommandOptionResponse {
+	enabled := targetEnabled && playerOpenPower >= cost
 	option := FrontCommandOptionResponse{
 		Kind:       kind,
 		Label:      label,
@@ -199,7 +196,7 @@ func commandOptionForCell(kind string, label string, cost int, sourceID string, 
 	if !targetEnabled {
 		option.Reason = "目標類型不符合命令"
 	} else if !enabled {
-		option.Reason = "小隊戰線能量不足"
+		option.Reason = "開源力不足"
 	}
 	return option
 }
@@ -225,43 +222,31 @@ func firstOwnedNeighborCellID(cells []mongomodel.FrontCell, cellID string, teamI
 	return ""
 }
 
-func teamFrontOpenPower(teams []mongomodel.FrontTeam, teamID string) int {
-	for _, team := range teams {
-		if team.TeamID == teamID {
-			return team.FrontOpenPower
-		}
-	}
-	return 0
-}
-
 func commandResponse(command mongomodel.FrontCommand) FrontCommandResponse {
 	return FrontCommandResponse{
-		CommandID:               command.ID,
-		ClientCommandID:         command.ClientCommandID,
-		Kind:                    command.Kind,
-		Type:                    command.Type,
-		PlayerID:                command.PlayerID,
-		TeamID:                  command.TeamID,
-		FromCellID:              command.FromCellID,
-		ToCellID:                command.ToCellID,
-		TargetX:                 command.TargetX,
-		TargetY:                 command.TargetY,
-		ExpectedRevision:        command.ExpectedRevision,
-		AffectedCells:           coordinateResponses(command.AffectedCells),
-		CapturedCellCount:       command.CapturedCellCount,
-		EnclosedCellCount:       command.EnclosedCellCount,
-		ScoreDelta:              command.ScoreDelta,
-		FrontOpenPowerDelta:     command.FrontOpenPowerDelta,
-		FrontOpenPowerCost:      command.FrontOpenPowerCost,
-		EmergencyResupplyAmount: command.EmergencyResupplyAmount,
-		RewardSitoneID:          command.RewardSitoneID,
-		RewardSitoneQuantity:    command.RewardSitoneQuantity,
-		SitoneID:                command.SitoneID,
-		Payload:                 clonePayload(command.Payload),
-		Accepted:                command.Accepted,
-		Applied:                 command.Applied,
-		RejectReason:            command.RejectReason,
-		CreatedAt:               command.CreatedAt,
+		CommandID:            command.ID,
+		ClientCommandID:      command.ClientCommandID,
+		Kind:                 command.Kind,
+		Type:                 command.Type,
+		PlayerID:             command.PlayerID,
+		TeamID:               command.TeamID,
+		FromCellID:           command.FromCellID,
+		ToCellID:             command.ToCellID,
+		TargetX:              command.TargetX,
+		TargetY:              command.TargetY,
+		ExpectedRevision:     command.ExpectedRevision,
+		AffectedCells:        coordinateResponses(command.AffectedCells),
+		CapturedCellCount:    command.CapturedCellCount,
+		EnclosedCellCount:    command.EnclosedCellCount,
+		ScoreDelta:           command.ScoreDelta,
+		RewardSitoneID:       command.RewardSitoneID,
+		RewardSitoneQuantity: command.RewardSitoneQuantity,
+		SitoneID:             command.SitoneID,
+		Payload:              clonePayload(command.Payload),
+		Accepted:             command.Accepted,
+		Applied:              command.Applied,
+		RejectReason:         command.RejectReason,
+		CreatedAt:            command.CreatedAt,
 	}
 }
 
@@ -270,32 +255,29 @@ func commandSummaryResponse(command *mongomodel.FrontCommandSummary) *FrontComma
 		return nil
 	}
 	return &FrontCommandResponse{
-		CommandID:               command.ID,
-		ClientCommandID:         command.ClientCommandID,
-		Kind:                    command.Kind,
-		Type:                    command.Type,
-		PlayerID:                command.PlayerID,
-		TeamID:                  command.TeamID,
-		FromCellID:              command.FromCellID,
-		ToCellID:                command.ToCellID,
-		TargetX:                 command.TargetX,
-		TargetY:                 command.TargetY,
-		ExpectedRevision:        command.ExpectedRevision,
-		AffectedCells:           coordinateResponses(command.AffectedCells),
-		CapturedCellCount:       command.CapturedCellCount,
-		EnclosedCellCount:       command.EnclosedCellCount,
-		ScoreDelta:              command.ScoreDelta,
-		FrontOpenPowerDelta:     command.FrontOpenPowerDelta,
-		FrontOpenPowerCost:      command.FrontOpenPowerCost,
-		EmergencyResupplyAmount: command.EmergencyResupplyAmount,
-		RewardSitoneID:          command.RewardSitoneID,
-		RewardSitoneQuantity:    command.RewardSitoneQuantity,
-		SitoneID:                command.SitoneID,
-		Payload:                 clonePayload(command.Payload),
-		Accepted:                command.Accepted,
-		Applied:                 command.Applied,
-		RejectReason:            command.RejectReason,
-		CreatedAt:               command.CreatedAt,
+		CommandID:            command.ID,
+		ClientCommandID:      command.ClientCommandID,
+		Kind:                 command.Kind,
+		Type:                 command.Type,
+		PlayerID:             command.PlayerID,
+		TeamID:               command.TeamID,
+		FromCellID:           command.FromCellID,
+		ToCellID:             command.ToCellID,
+		TargetX:              command.TargetX,
+		TargetY:              command.TargetY,
+		ExpectedRevision:     command.ExpectedRevision,
+		AffectedCells:        coordinateResponses(command.AffectedCells),
+		CapturedCellCount:    command.CapturedCellCount,
+		EnclosedCellCount:    command.EnclosedCellCount,
+		ScoreDelta:           command.ScoreDelta,
+		RewardSitoneID:       command.RewardSitoneID,
+		RewardSitoneQuantity: command.RewardSitoneQuantity,
+		SitoneID:             command.SitoneID,
+		Payload:              clonePayload(command.Payload),
+		Accepted:             command.Accepted,
+		Applied:              command.Applied,
+		RejectReason:         command.RejectReason,
+		CreatedAt:            command.CreatedAt,
 	}
 }
 

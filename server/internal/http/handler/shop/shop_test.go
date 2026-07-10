@@ -1,10 +1,8 @@
 package shop
 
 import (
-	"errors"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/testcontent"
@@ -98,97 +96,6 @@ func TestOpenPowerTotalPipeline(t *testing.T) {
 	}
 	if got != "player-a" {
 		t.Fatalf("expected player id match, got %#v", got)
-	}
-}
-
-func TestShopPurchaseLockDocumentsArePlayerScoped(t *testing.T) {
-	now := time.Date(2026, 6, 29, 12, 0, 0, 0, time.UTC)
-	lockID := shopPurchaseLockID("player-a")
-	ownerID := "shop_purchase_lock_owner"
-
-	if lockID != "shop_purchase:player-a" {
-		t.Fatalf("unexpected lock id: %q", lockID)
-	}
-
-	filter := shopPurchaseLockFilter(lockID, ownerID, now)
-	if filter["_id"] != lockID {
-		t.Fatalf("expected lock id filter, got %#v", filter)
-	}
-	clauses, ok := filter["$or"].(bson.A)
-	if !ok || len(clauses) != 2 {
-		t.Fatalf("expected expired-or-owner filter, got %#v", filter["$or"])
-	}
-	expired, ok := clauses[0].(bson.M)
-	if !ok {
-		t.Fatalf("expected expired clause, got %#v", clauses[0])
-	}
-	expiresAt, ok := expired["expires_at"].(bson.M)
-	if !ok || !expiresAt["$lte"].(time.Time).Equal(now) {
-		t.Fatalf("expected expired lock comparison, got %#v", expired)
-	}
-	owner, ok := clauses[1].(bson.M)
-	if !ok || owner["owner_id"] != ownerID {
-		t.Fatalf("expected owner clause, got %#v", clauses[1])
-	}
-
-	update := shopPurchaseLockUpdate(lockID, "player-a", ownerID, now)
-	set, ok := update["$set"].(bson.M)
-	if !ok {
-		t.Fatalf("expected set update, got %#v", update)
-	}
-	if set["owner_id"] != ownerID {
-		t.Fatalf("expected owner update, got %#v", set)
-	}
-	lockExpiresAt, ok := set["expires_at"].(time.Time)
-	if !ok || !lockExpiresAt.Equal(now.Add(shopPurchaseLockTTL)) {
-		t.Fatalf("expected lock expiry, got %#v", set["expires_at"])
-	}
-	setOnInsert, ok := update["$setOnInsert"].(bson.M)
-	if !ok {
-		t.Fatalf("expected setOnInsert update, got %#v", update)
-	}
-	if setOnInsert["_id"] != lockID || setOnInsert["player_id"] != "player-a" {
-		t.Fatalf("expected player-scoped insert fields, got %#v", setOnInsert)
-	}
-	createdAt, ok := setOnInsert["created_at"].(time.Time)
-	if !ok || !createdAt.Equal(now) {
-		t.Fatalf("expected created_at, got %#v", setOnInsert["created_at"])
-	}
-
-	insert := shopPurchaseLockInsert(lockID, "player-a", ownerID, now)
-	if insert["_id"] != lockID || insert["player_id"] != "player-a" || insert["owner_id"] != ownerID {
-		t.Fatalf("expected complete insert document, got %#v", insert)
-	}
-	insertExpiresAt, ok := insert["expires_at"].(time.Time)
-	if !ok || !insertExpiresAt.Equal(now.Add(shopPurchaseLockTTL)) {
-		t.Fatalf("expected insert expiry, got %#v", insert["expires_at"])
-	}
-}
-
-func TestShopPurchaseLockBusy(t *testing.T) {
-	if !shopPurchaseLockBusy(mongo.ErrNoDocuments) {
-		t.Fatal("expected no matching lock document to be treated as contention")
-	}
-	if !shopPurchaseLockBusy(mongo.CommandError{Code: 11000, Message: "duplicate key"}) {
-		t.Fatal("expected duplicate findAndModify command error to be treated as contention")
-	}
-	if !shopPurchaseLockBusy(mongo.WriteException{WriteErrors: mongo.WriteErrors{
-		{Code: 11000, Message: "duplicate key"},
-	}}) {
-		t.Fatal("expected duplicate lock insert to be treated as contention")
-	}
-	if !shopPurchaseLockBusy(errors.New(`Plan executor error during findAndModify :: caused by :: E11000 duplicate key error collection: camp2026.shop_purchase_locks index: _id_ dup key: { _id: "shop_purchase:tg_player" }`)) {
-		t.Fatal("expected duplicate lock insert message to be treated as contention")
-	}
-
-	for _, err := range []error{
-		errors.New("database unavailable"),
-		mongo.CommandError{Code: 20, Message: "not a duplicate key"},
-		errors.New("duplicate key wording without server duplicate code"),
-	} {
-		if shopPurchaseLockBusy(err) {
-			t.Fatalf("expected %v not to be lock contention", err)
-		}
 	}
 }
 

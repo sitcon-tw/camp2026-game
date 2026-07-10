@@ -2,7 +2,10 @@ package model
 
 import "time"
 
-const OpenPowerRecordsCollection = "open_power_records"
+const (
+	OpenPowerRecordsCollection = "open_power_records"
+	OpenPowerLocksCollection   = "open_power_locks"
+)
 
 type OpenPowerRecord struct {
 	ID        string    `bson:"_id"`

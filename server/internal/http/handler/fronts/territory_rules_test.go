@@ -19,7 +19,7 @@ func TestTerritoryAttackClosesAndCapturesEnclosure(t *testing.T) {
 	front.Territory.Rows = encodeTerritoryRows(matrix)
 	x, y := 2, 1
 
-	next, command, err := applyCommandToFront(front, mongomodel.FrontCommand{
+	next, command, err := applyTestCommandToFront(front, mongomodel.FrontCommand{
 		ID: "close-pocket", PlayerID: "player-1", TeamID: "team-001", Kind: "attack",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
 	})
@@ -136,7 +136,7 @@ func TestTerritoryResourceLandmarkRequiresExplicitOneShotSupport(t *testing.T) {
 	front.Territory.Rows = encodeTerritoryRows(matrix)
 	x, y := landmark.X, landmark.Y
 
-	capturedFront, captureCommand, err := applyCommandToFront(front, mongomodel.FrontCommand{
+	capturedFront, captureCommand, err := applyTestCommandToFront(front, mongomodel.FrontCommand{
 		ID: "capture-resource", PlayerID: "player-1", TeamID: "team-001", Kind: "expand",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
 	})
@@ -157,32 +157,31 @@ func TestTerritoryResourceLandmarkRequiresExplicitOneShotSupport(t *testing.T) {
 		t.Fatal("capturing resource landmark removed its explicit support event")
 	}
 
-	supportedFront, supportCommand, err := applyCommandToFront(capturedFront, mongomodel.FrontCommand{
+	supportedFront, supportCommand, err := applyTestCommandToFront(capturedFront, mongomodel.FrontCommand{
 		ID: "support-resource", PlayerID: "player-1", TeamID: "team-001", Kind: "support",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
 	})
 	if err != nil {
 		t.Fatalf("support resource landmark: %v", err)
 	}
-	if supportCommand.FrontOpenPowerCost != 0 || supportCommand.FrontOpenPowerDelta != landmark.InitialResource || supportCommand.EmergencyResupplyAmount != 0 {
-		t.Fatalf("support did not report the one-shot resource grant: %#v", supportCommand)
+	if supportCommand.FrontOpenPowerCost != 0 || supportCommand.FrontOpenPowerDelta != 0 || supportCommand.RewardSitoneQuantity != 1 {
+		t.Fatalf("support must grant exactly one sitone without open power: %#v", supportCommand)
 	}
-	if supportedFront.Teams[0].FrontOpenPower != territoryInitialFrontOpenPower-10+landmark.InitialResource {
-		t.Fatalf("unexpected front power after support: %#v", supportedFront.Teams[0])
+	if supportedFront.Teams[0].FrontOpenPower != 0 {
+		t.Fatalf("resource support must not create a team balance: %#v", supportedFront.Teams[0])
 	}
 	if activeEventKindAtFrontCell(supportedFront, landmark.ID) != "" {
 		t.Fatal("support should consume the resource event")
 	}
 
-	beforePower := supportedFront.Teams[0].FrontOpenPower
-	rejected, _, err := applyCommandToFront(supportedFront, mongomodel.FrontCommand{
+	rejected, _, err := applyTestCommandToFront(supportedFront, mongomodel.FrontCommand{
 		ID: "support-resource-again", PlayerID: "player-1", TeamID: "team-001", Kind: "support",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
 	})
 	if err == nil {
 		t.Fatal("resolved resource landmark should reject a second support command")
 	}
-	if rejected.Teams[0].FrontOpenPower != beforePower || rejected.Revision != supportedFront.Revision {
+	if rejected.Teams[0].FrontOpenPower != 0 || rejected.Revision != supportedFront.Revision {
 		t.Fatalf("rejected second support mutated the front: %#v", rejected.Teams[0])
 	}
 }
@@ -206,7 +205,7 @@ func TestTerritoryRescueAssignsOneDeterministicReward(t *testing.T) {
 	front.Territory.Rows = encodeTerritoryRows(matrix)
 	x, y := landmark.X, landmark.Y
 
-	_, command, err := applyCommandToFront(front, mongomodel.FrontCommand{
+	_, command, err := applyTestCommandToFront(front, mongomodel.FrontCommand{
 		ID: "rescue-reward", ClientCommandID: "client-rescue", FrontID: front.ID,
 		PlayerID: "acting-player", TeamID: "team-001", Kind: "rescue",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
@@ -240,7 +239,7 @@ func TestTerritoryEnclosureCanCrossMultipleSitoneMilestones(t *testing.T) {
 	front.Teams[0].NextSitoneMilestone = 50
 	x, y := 6, 1
 
-	next, command, err := applyCommandToFront(front, mongomodel.FrontCommand{
+	next, command, err := applyTestCommandToFront(front, mongomodel.FrontCommand{
 		ID: "multi-milestone", ClientCommandID: "client-multi", FrontID: front.ID,
 		PlayerID: "player-1", TeamID: "team-001", Kind: "attack",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
@@ -312,7 +311,7 @@ func TestWithFrontDefaultsDerivesPersistedTerritoryMilestoneProgress(t *testing.
 	}
 }
 
-func TestTerritoryEmergencyResupplyIsExplicitAndOncePerTeam(t *testing.T) {
+func TestTerritoryOptionsAndCommandsUsePlayerOpenPower(t *testing.T) {
 	front := newTerritoryTestFront(20, 1)
 	matrix, err := decodeTerritoryRows(front.Territory)
 	if err != nil {
@@ -320,37 +319,22 @@ func TestTerritoryEmergencyResupplyIsExplicitAndOncePerTeam(t *testing.T) {
 	}
 	matrix[0][0] = territoryCell{Playable: true, Owner: "team-001", Defense: 20}
 	front.Territory.Rows = encodeTerritoryRows(matrix)
-	front.Teams[0].FrontOpenPower = 0
-
-	option := findTerritoryCommandOption(territoryCommandOptionResponses(front, "team-001"), "expand")
+	option := findTerritoryCommandOption(territoryCommandOptionResponses(front, "team-001", 9), "expand")
+	if option == nil || option.Enabled || option.Reason != "開源力不足" {
+		t.Fatalf("unaffordable option should use the player's balance: %#v", option)
+	}
+	option = findTerritoryCommandOption(territoryCommandOptionResponses(front, "team-001", 10), "expand")
 	if option == nil || !option.Enabled {
-		t.Fatalf("one-time resupply should keep the low-power option enabled: %#v", option)
-	}
-	x, y := 19, 0
-	next, command, err := applyCommandToFront(front, mongomodel.FrontCommand{
-		ID: "resupply-expand", PlayerID: "player-1", TeamID: "team-001", Kind: "expand",
-		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
-	})
-	if err != nil {
-		t.Fatalf("apply command with emergency resupply: %v", err)
-	}
-	if next.Teams[0].EmergencyResupplies != 1 || next.Teams[0].FrontOpenPower != 20 {
-		t.Fatalf("unexpected team resupply state: %#v", next.Teams[0])
-	}
-	if command.FrontOpenPowerCost != 10 || command.EmergencyResupplyAmount != 30 || command.FrontOpenPowerDelta != 20 {
-		t.Fatalf("resupply and cost must be reported separately: %#v", command)
+		t.Fatalf("player with enough open power should be able to expand: %#v", option)
 	}
 
-	next.Teams[0].FrontOpenPower = 0
-	option = findTerritoryCommandOption(territoryCommandOptionResponses(next, "team-001"), "expand")
-	if option == nil || option.Enabled {
-		t.Fatalf("used resupply must not keep an unaffordable option enabled: %#v", option)
-	}
-	if _, _, err := applyCommandToFront(next, mongomodel.FrontCommand{
-		ID: "resupply-expand-2", PlayerID: "player-1", TeamID: "team-001", Kind: "expand",
+	x, y := 19, 0
+	next, _, err := applyCommandToFront(front, mongomodel.FrontCommand{
+		ID: "insufficient-expand", PlayerID: "player-1", TeamID: "team-001", Kind: "expand",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
-	}); err == nil {
-		t.Fatal("expected a second zero-power command to be rejected after the resupply was used")
+	}, 9)
+	if err == nil || next.Revision != front.Revision {
+		t.Fatalf("insufficient personal open power must reject without mutation: next=%#v err=%v", next, err)
 	}
 }
 
@@ -366,7 +350,7 @@ func TestTerritoryReinforceSpreadsBudgetAcrossPartialCells(t *testing.T) {
 	front.Territory.Rows = encodeTerritoryRows(matrix)
 	x, y := 0, 0
 
-	next, command, err := applyCommandToFront(front, mongomodel.FrontCommand{
+	next, command, err := applyTestCommandToFront(front, mongomodel.FrontCommand{
 		ID: "reinforce-budget", PlayerID: "player-1", TeamID: "team-001", Kind: "reinforce",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
 	})

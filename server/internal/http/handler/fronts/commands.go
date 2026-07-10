@@ -15,6 +15,7 @@ import (
 
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
+	"github.com/sitcon-tw/camp2026-game/internal/openpower"
 )
 
 var frontCommandCosts = map[string]int{
@@ -33,6 +34,7 @@ var (
 	errDuplicateFrontCommand      = errors.New("duplicate front command")
 	errFrontChangedCommandInvalid = errors.New("front changed and command is no longer valid")
 	errFrontSitoneNotOwned        = errors.New("sitone is not owned")
+	errFrontInsufficientOpenPower = errors.New("insufficient open power")
 )
 
 // CreateCommand godoc
@@ -112,6 +114,29 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "front revision is stale"))
 		return
 	}
+	releaseOpenPowerLock, err := openpower.AcquirePlayerLock(r.Context(), h.db, player.ID)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("front command failed", "front_open_power_lock_failed", err))
+		return
+	}
+	defer releaseOpenPowerLock()
+
+	if body.ClientCommandID != "" {
+		existing, found, lookupErr := h.findExistingCommand(r.Context(), front.ID, player.ID, body.ClientCommandID)
+		if lookupErr != nil {
+			httpx.WriteProblem(w, r, httpx.InternalServerError("front command failed", "front_command_lookup_failed", lookupErr))
+			return
+		}
+		if found {
+			h.writeCommandResponse(w, r, http.StatusAccepted, front, player, existing)
+			return
+		}
+	}
+	playerOpenPower, err := openpower.TotalForPlayer(r.Context(), h.db, player.ID)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("front command failed", "front_open_power_lookup_failed", err))
+		return
+	}
 
 	command := mongomodel.FrontCommand{
 		ID:               newID("front_command"),
@@ -131,20 +156,27 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:        time.Now().UTC(),
 	}
 	previousRevision := front.Revision
-	front, command, err = applyCommandToFront(front, command)
+	front, command, err = applyCommandToFront(front, command, playerOpenPower)
 	if err != nil {
+		if errors.Is(err, errFrontInsufficientOpenPower) {
+			httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "insufficient open power"))
+			return
+		}
 		httpx.WriteProblem(w, r, httpx.UnprocessableEntity(err.Error()))
 		return
 	}
 	h.assignFrontCommandReward(&command)
 	front, command, err = h.persistCommandWithRecompute(
-		r.Context(), previousRevision, front, command, body.ExpectedRevision != nil,
+		r.Context(), previousRevision, front, command, body.ExpectedRevision != nil, playerOpenPower,
 	)
 	if errors.Is(err, errFrontRevisionConflict) || errors.Is(err, errFrontChangedCommandInvalid) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "front changed while applying the command"))
 		return
 	} else if errors.Is(err, errFrontSitoneNotOwned) {
 		httpx.WriteProblem(w, r, httpx.UnprocessableEntity("sitone is not owned"))
+		return
+	} else if errors.Is(err, errFrontInsufficientOpenPower) {
+		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "insufficient open power"))
 		return
 	} else if errors.Is(err, errDuplicateFrontCommand) {
 		existing, found, lookupErr := h.findExistingCommand(r.Context(), front.ID, player.ID, command.ClientCommandID)
@@ -166,7 +198,7 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 	h.writeCommandResponse(w, r, http.StatusAccepted, front, player, command)
 }
 
-func (h *Handler) persistCommandWithRecompute(ctx context.Context, previousRevision int64, front mongomodel.Front, command mongomodel.FrontCommand, allowRecompute bool) (mongomodel.Front, mongomodel.FrontCommand, error) {
+func (h *Handler) persistCommandWithRecompute(ctx context.Context, previousRevision int64, front mongomodel.Front, command mongomodel.FrontCommand, allowRecompute bool, playerOpenPower int) (mongomodel.Front, mongomodel.FrontCommand, error) {
 	err := h.recordCommand(ctx, previousRevision, front, command)
 	for attempt := 0; allowRecompute && errors.Is(err, errFrontRevisionConflict) && attempt < 3; attempt++ {
 		latest, lookupErr := h.frontByID(ctx, front.ID)
@@ -176,7 +208,7 @@ func (h *Handler) persistCommandWithRecompute(ctx context.Context, previousRevis
 		previousRevision = latest.Revision
 		retryCommand := command
 		resetFrontCommandDerivedFields(&retryCommand)
-		next, applied, applyErr := applyCommandToFront(latest, retryCommand)
+		next, applied, applyErr := applyCommandToFront(latest, retryCommand, playerOpenPower)
 		if applyErr != nil {
 			return latest, command, fmt.Errorf("%w: %v", errFrontChangedCommandInvalid, applyErr)
 		}
@@ -211,11 +243,16 @@ func (h *Handler) writeCommandResponse(w http.ResponseWriter, r *http.Request, s
 		httpx.WriteProblem(w, r, httpx.InternalServerError("front sitones unavailable", "front_sitones_lookup_failed", err))
 		return
 	}
+	playerOpenPower, err := openpower.TotalForPlayer(r.Context(), h.db, player.ID)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("front open power unavailable", "front_open_power_lookup_failed", err))
+		return
+	}
 
 	httpx.WriteJSON(w, status, CreateCommandResponse{
 		Accepted: true,
 		Command:  commandResponse(command),
-		Front:    detailResponse(front, player.TeamID, sitones),
+		Front:    detailResponse(front, player.TeamID, sitones, playerOpenPower),
 	})
 }
 
@@ -253,6 +290,9 @@ func (h *Handler) recordCommand(ctx context.Context, previousRevision int64, fro
 			}
 			return nil, err
 		}
+		if err := h.deductFrontCommandOpenPower(ctx, command); err != nil {
+			return nil, err
+		}
 		if err := h.grantFrontCommandSitone(ctx, command); err != nil {
 			return nil, err
 		}
@@ -269,6 +309,28 @@ func (h *Handler) recordCommand(ctx context.Context, previousRevision int64, fro
 			return nil, err
 		}
 		return nil, nil
+	})
+	return err
+}
+
+func (h *Handler) deductFrontCommandOpenPower(ctx context.Context, command mongomodel.FrontCommand) error {
+	if command.FrontOpenPowerCost <= 0 {
+		return nil
+	}
+	balance, err := openpower.TotalForPlayer(ctx, h.db, command.PlayerID)
+	if err != nil {
+		return err
+	}
+	if balance < command.FrontOpenPowerCost {
+		return errFrontInsufficientOpenPower
+	}
+	_, err = h.db.Collection(mongomodel.OpenPowerRecordsCollection).InsertOne(ctx, mongomodel.OpenPowerRecord{
+		ID:        "front_open_power_" + command.ID,
+		PlayerID:  command.PlayerID,
+		Amount:    -command.FrontOpenPowerCost,
+		Reason:    "front_command",
+		Source:    command.ID,
+		CreatedAt: command.CreatedAt,
 	})
 	return err
 }
@@ -472,9 +534,9 @@ func validateCommandRequest(body CreateCommandRequest, mapMode string) error {
 	return nil
 }
 
-func applyCommandToFront(front mongomodel.Front, command mongomodel.FrontCommand) (mongomodel.Front, mongomodel.FrontCommand, error) {
+func applyCommandToFront(front mongomodel.Front, command mongomodel.FrontCommand, playerOpenPower int) (mongomodel.Front, mongomodel.FrontCommand, error) {
 	if front.MapMode == contentFrontMapModeTerritoryGrid {
-		return applyTerritoryCommand(front, command)
+		return applyTerritoryCommand(front, command, playerOpenPower)
 	}
 	if !isPlayableFrontStatus(front.Status) {
 		return front, command, errors.New("front is not accepting commands")
@@ -503,25 +565,21 @@ func applyCommandToFront(front mongomodel.Front, command mongomodel.FrontCommand
 		return front, command, err
 	}
 	cost := frontCommandCost(command.Kind, front.Cells[toIndex])
-	if command.Kind != "support" && front.Teams[teamIndex].FrontOpenPower < cost {
-		return front, command, errors.New("小隊戰線能量不足，無法執行前線命令")
+	if playerOpenPower < cost {
+		return front, command, fmt.Errorf("%w: 無法執行前線命令", errFrontInsufficientOpenPower)
 	}
 
-	startingPower := front.Teams[teamIndex].FrontOpenPower
 	previousOwner := front.Cells[toIndex].OwnerTeamID
-	if command.Kind != "support" {
-		front.Teams[teamIndex].FrontOpenPower -= cost
-	}
 	front.Teams[teamIndex].LastCommandAt = command.CreatedAt
-	scoreDelta, resourceDelta := applyCommandEffect(&front, teamIndex, toIndex, command)
+	scoreDelta, sitoneReward := applyCommandEffect(&front, teamIndex, toIndex, command)
 	front.Teams[teamIndex].Score += scoreDelta
-	front.Teams[teamIndex].FrontOpenPower += resourceDelta
 	if previousOwner != command.TeamID && front.Cells[toIndex].OwnerTeamID == command.TeamID {
 		command.CapturedCellCount = 1
 	}
 	command.ScoreDelta = scoreDelta
-	command.FrontOpenPowerDelta = front.Teams[teamIndex].FrontOpenPower - startingPower
+	command.FrontOpenPowerDelta = -cost
 	command.FrontOpenPowerCost = cost
+	command.RewardSitoneQuantity += sitoneReward
 	front.Revision++
 	front.Tick++
 	front.UpdatedAt = command.CreatedAt
@@ -573,6 +631,10 @@ func validateCommandTarget(front mongomodel.Front, command mongomodel.FrontComma
 		if activeEventKindAtFrontCell(front, target.ID) != "rescue" {
 			return errors.New("target has no active rescue event")
 		}
+	case "support":
+		if activeEventKindAtFrontCell(front, target.ID) != "resource" {
+			return errors.New("target has no active resource event")
+		}
 	}
 	return nil
 }
@@ -584,7 +646,7 @@ func applyCommandEffect(front *mongomodel.Front, teamIndex int, cellIndex int, c
 		addFrontPressure(cell, command.TeamID, 55)
 		if frontPressureFor(cell, command.TeamID) >= 50 {
 			captureFrontCell(cell, command.TeamID, 55, 8)
-			return 20, collectFrontCellResource(cell)
+			return 20, sitoneRewardForCollectedResource(collectFrontCellResource(cell))
 		}
 		return 4, 0
 	case "attack":
@@ -593,7 +655,7 @@ func applyCommandEffect(front *mongomodel.Front, teamIndex int, cellIndex int, c
 		cell.Defense = maxFrontInt(0, cell.Defense-10)
 		if cell.Control == 0 || frontPressureFor(cell, command.TeamID) >= 60 {
 			captureFrontCell(cell, command.TeamID, 45, 6)
-			return 25, collectFrontCellResource(cell)
+			return 25, sitoneRewardForCollectedResource(collectFrontCellResource(cell))
 		}
 		return 8, 0
 	case "reinforce":
@@ -616,13 +678,26 @@ func applyCommandEffect(front *mongomodel.Front, teamIndex int, cellIndex int, c
 		addFrontPressure(cell, command.TeamID, 8)
 		front.Teams[teamIndex].CollaborationScore++
 		return 3, 0
-	case "support", "answer_challenge":
+	case "support":
+		removeActiveFrontEventAtCell(front, cell.ID)
+		cell.EventID = ""
+		addFrontPressure(cell, command.TeamID, 15)
+		front.Teams[teamIndex].CollaborationScore += 3
+		return 3, 1
+	case "answer_challenge":
 		addFrontPressure(cell, command.TeamID, 15)
 		front.Teams[teamIndex].CollaborationScore += 3
 		return 3, 0
 	default:
 		return 0, 0
 	}
+}
+
+func sitoneRewardForCollectedResource(resource int) int {
+	if resource > 0 {
+		return 1
+	}
+	return 0
 }
 
 func isPlayableFrontStatus(status string) bool {

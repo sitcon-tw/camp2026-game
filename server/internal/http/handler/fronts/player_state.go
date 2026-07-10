@@ -12,8 +12,6 @@ import (
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
 )
 
-const fallbackFrontOpenPower = 100
-
 const maxFrontSitoneInventory = 200
 
 type frontSitoneInventory struct {
@@ -33,23 +31,16 @@ func withCurrentPlayerTeam(front mongomodel.Front, player mongomodel.Player) mon
 	}
 
 	teamIndex := frontTeamIndex(front.Teams, teamID)
-	newTeam := false
 	if teamIndex < 0 {
 		front.Teams = append(front.Teams, mongomodel.FrontTeam{
-			TeamID:         teamID,
-			Name:           teamID,
-			FrontOpenPower: fallbackFrontOpenPower,
+			TeamID: teamID,
+			Name:   teamID,
 		})
 		teamIndex = len(front.Teams) - 1
-		newTeam = true
 	}
 	if front.Teams[teamIndex].Name == "" {
 		front.Teams[teamIndex].Name = teamID
 	}
-	if newTeam && front.Teams[teamIndex].FrontOpenPower == 0 {
-		front.Teams[teamIndex].FrontOpenPower = fallbackFrontOpenPower
-	}
-
 	if !teamControlsAnyCell(front.Cells, teamID) {
 		assignBaseCellToTeam(front.Cells, teamID)
 	}

@@ -1,7 +1,9 @@
 package fronts
 
 import (
+	"errors"
 	"testing"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -95,6 +97,35 @@ func TestGrantFrontCommandSitoneIsSourceIdempotent(t *testing.T) {
 	}
 	if err := handler.grantFrontCommandSitone(t.Context(), command); err != nil {
 		t.Fatalf("idempotent reward replay: %v", err)
+	}
+}
+
+func TestDeductFrontCommandOpenPowerWritesPlayerLedger(t *testing.T) {
+	db := startFrontMockDatabase(t,
+		frontCursorResponse(bson.D{{Key: "_id", Value: nil}, {Key: "total", Value: 800}}),
+		bson.D{{Key: "ok", Value: 1}, {Key: "n", Value: int32(1)}},
+	)
+	handler := New(Dependencies{MongoDB: db})
+	command := mongomodel.FrontCommand{
+		ID: "command-1", PlayerID: "player-1", FrontOpenPowerCost: 15,
+		CreatedAt: time.Date(2026, time.July, 10, 12, 0, 0, 0, time.UTC),
+	}
+
+	if err := handler.deductFrontCommandOpenPower(t.Context(), command); err != nil {
+		t.Fatalf("deduct command open power: %v", err)
+	}
+}
+
+func TestDeductFrontCommandOpenPowerRejectsInsufficientBalance(t *testing.T) {
+	db := startFrontMockDatabase(t,
+		frontCursorResponse(bson.D{{Key: "_id", Value: nil}, {Key: "total", Value: 9}}),
+	)
+	handler := New(Dependencies{MongoDB: db})
+	err := handler.deductFrontCommandOpenPower(t.Context(), mongomodel.FrontCommand{
+		ID: "command-1", PlayerID: "player-1", FrontOpenPowerCost: 10,
+	})
+	if !errors.Is(err, errFrontInsufficientOpenPower) {
+		t.Fatalf("expected insufficient open power, got %v", err)
 	}
 }
 

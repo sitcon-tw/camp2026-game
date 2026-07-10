@@ -1095,9 +1095,10 @@ definitions:
         type: array
       cooldowns:
         additionalProperties:
+          format: int64
           type: integer
         type: object
-      currentTeamFrontOpenPower:
+      currentPlayerOpenPower:
         type: integer
       front:
         $ref: '#/definitions/fronts.FrontSessionSummaryResponse'
@@ -1231,8 +1232,6 @@ definitions:
         type: string
       createdAt:
         type: string
-      emergencyResupplyAmount:
-        type: integer
       enclosedCellCount:
         type: integer
       expectedRevision:
@@ -1240,10 +1239,6 @@ definitions:
       fromCellId:
         example: base_team_001
         type: string
-      frontOpenPowerCost:
-        type: integer
-      frontOpenPowerDelta:
-        type: integer
       kind:
         example: expand
         type: string
@@ -1424,11 +1419,6 @@ definitions:
         type: string
       controlledCells:
         example: 3
-        type: integer
-      emergencyResupplies:
-        type: integer
-      frontOpenPower:
-        example: 100
         type: integer
       lastCommandAt:
         type: string

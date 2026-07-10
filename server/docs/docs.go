@@ -5511,10 +5511,11 @@ const docTemplate = `{
                 "cooldowns": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "integer"
+                        "type": "integer",
+                        "format": "int64"
                     }
                 },
-                "currentTeamFrontOpenPower": {
+                "currentPlayerOpenPower": {
                     "type": "integer"
                 },
                 "front": {
@@ -5707,9 +5708,6 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "emergencyResupplyAmount": {
-                    "type": "integer"
-                },
                 "enclosedCellCount": {
                     "type": "integer"
                 },
@@ -5719,12 +5717,6 @@ const docTemplate = `{
                 "fromCellId": {
                     "type": "string",
                     "example": "base_team_001"
-                },
-                "frontOpenPowerCost": {
-                    "type": "integer"
-                },
-                "frontOpenPowerDelta": {
-                    "type": "integer"
                 },
                 "kind": {
                     "type": "string",
@@ -5981,13 +5973,6 @@ const docTemplate = `{
                 "controlledCells": {
                     "type": "integer",
                     "example": 3
-                },
-                "emergencyResupplies": {
-                    "type": "integer"
-                },
-                "frontOpenPower": {
-                    "type": "integer",
-                    "example": 100
                 },
                 "lastCommandAt": {
                     "type": "string"

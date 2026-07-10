@@ -27,9 +27,9 @@ var seedFronts = map[string]mongomodel.Front{
 			{ID: "commons", Name: "Commons", X: 2, Y: 0, Terrain: "center", Zone: "frontier", Control: 40, Defense: 30, Resource: 30, NeighborIDs: []string{"gate"}},
 		},
 		Teams: []mongomodel.FrontTeam{
-			{TeamID: "team-blue", Name: "Blue", Color: "#2563eb", Score: 120, FrontOpenPower: 100, ControlledCells: 2},
-			{TeamID: "team-green", Name: "Green", Color: "#16a34a", Score: 95, FrontOpenPower: 100},
-			{TeamID: "team-gold", Name: "Gold", Color: "#ca8a04", Score: 80, FrontOpenPower: 100},
+			{TeamID: "team-blue", Name: "Blue", Color: "#2563eb", Score: 120, ControlledCells: 2},
+			{TeamID: "team-green", Name: "Green", Color: "#16a34a", Score: 95},
+			{TeamID: "team-gold", Name: "Gold", Color: "#ca8a04", Score: 80},
 		},
 		CreatedAt: seedFrontUpdatedAt,
 		UpdatedAt: seedFrontUpdatedAt,
@@ -74,7 +74,7 @@ func (h *Handler) fallbackFrontByID(frontID string) (mongomodel.Front, bool) {
 }
 
 func frontFromTemplate(template content.FrontMapTemplate) mongomodel.Front {
-	teams := templateTeams(template.InitialFrontOpenPower)
+	teams := templateTeams()
 	cells := templateCells(template, teams)
 	events := templateEvents(template)
 	attachEventIDs(cells, events)
@@ -95,15 +95,8 @@ func frontFromTemplate(template content.FrontMapTemplate) mongomodel.Front {
 	}
 }
 
-func templateTeams(frontOpenPower int) []mongomodel.FrontTeam {
-	teams := append([]mongomodel.FrontTeam(nil), seedTeams...)
-	if frontOpenPower <= 0 {
-		frontOpenPower = 100
-	}
-	for i := range teams {
-		teams[i].FrontOpenPower = frontOpenPower
-	}
-	return teams
+func templateTeams() []mongomodel.FrontTeam {
+	return append([]mongomodel.FrontTeam(nil), seedTeams...)
 }
 
 func templateCells(template content.FrontMapTemplate, teams []mongomodel.FrontTeam) []mongomodel.FrontCell {
@@ -179,7 +172,7 @@ func syncTeamRanks(teams []mongomodel.FrontTeam, cells []mongomodel.FrontCell) {
 	for i := range teams {
 		teams[i].ControlledCells = controlled[teams[i].TeamID]
 		if teams[i].Score == 0 {
-			teams[i].Score = teams[i].FrontOpenPower + controlled[teams[i].TeamID]*10 + resources[teams[i].TeamID]
+			teams[i].Score = controlled[teams[i].TeamID]*10 + resources[teams[i].TeamID]
 		}
 	}
 
@@ -315,7 +308,7 @@ func deriveLeaderboard(front mongomodel.Front) []mongomodel.FrontLeaderboardEntr
 		seenTeams[team.TeamID] = struct{}{}
 		score := team.Score
 		if score == 0 {
-			score = team.FrontOpenPower + cellCounts[team.TeamID]*10 + resources[team.TeamID]
+			score = cellCounts[team.TeamID]*10 + resources[team.TeamID]
 		}
 		entries = append(entries, mongomodel.FrontLeaderboardEntry{
 			TeamID:             team.TeamID,

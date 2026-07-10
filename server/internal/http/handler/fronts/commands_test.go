@@ -9,6 +9,12 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/testcontent"
 )
 
+const testPlayerOpenPower = 1000
+
+func applyTestCommandToFront(front mongomodel.Front, command mongomodel.FrontCommand) (mongomodel.Front, mongomodel.FrontCommand, error) {
+	return applyCommandToFront(front, command, testPlayerOpenPower)
+}
+
 func TestCampusTerritorySnapshotUsesConfiguredMap(t *testing.T) {
 	store := testcontent.Load(t)
 	template, ok := store.GetTerritoryMap("campus_territory_v1")
@@ -23,8 +29,8 @@ func TestCampusTerritorySnapshotUsesConfiguredMap(t *testing.T) {
 		t.Fatalf("expected nine teams and bases, got teams=%d bases=%d", len(front.Teams), len(front.Territory.Bases))
 	}
 	for _, team := range front.Teams {
-		if team.FrontOpenPower != territoryInitialFrontOpenPower {
-			t.Fatalf("expected territory team %s to start with %d front open power, got %d", team.TeamID, territoryInitialFrontOpenPower, team.FrontOpenPower)
+		if team.FrontOpenPower != 0 {
+			t.Fatalf("territory team %s must not have a separate front balance, got %d", team.TeamID, team.FrontOpenPower)
 		}
 	}
 	if len(front.ActiveEvents) != 4 {
@@ -85,7 +91,7 @@ func TestTerritoryRepairLandmarkRequiresOwnershipAndResolvesOnce(t *testing.T) {
 		ID: "repair-1", PlayerID: "player-1", TeamID: "team-001", Kind: "repair",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
 	}
-	if _, _, err := applyCommandToFront(front, command); err == nil || !strings.Contains(err.Error(), "control the landmark") {
+	if _, _, err := applyTestCommandToFront(front, command); err == nil || !strings.Contains(err.Error(), "control the landmark") {
 		t.Fatalf("expected ownership error, got %v", err)
 	}
 
@@ -93,7 +99,7 @@ func TestTerritoryRepairLandmarkRequiresOwnershipAndResolvesOnce(t *testing.T) {
 	matrix[y][x].Owner = "team-001"
 	matrix[y][x].Defense = 95
 	front.Territory.Rows = encodeTerritoryRows(matrix)
-	next, _, err := applyCommandToFront(front, command)
+	next, _, err := applyTestCommandToFront(front, command)
 	if err != nil {
 		t.Fatalf("resolve repair: %v", err)
 	}
@@ -104,7 +110,7 @@ func TestTerritoryRepairLandmarkRequiresOwnershipAndResolvesOnce(t *testing.T) {
 	if activeEventKindAtFrontCell(next, landmark.ID) != "" {
 		t.Fatal("repair event should be one-shot")
 	}
-	if _, _, err := applyCommandToFront(next, command); err == nil || !strings.Contains(err.Error(), "no longer active") {
+	if _, _, err := applyTestCommandToFront(next, command); err == nil || !strings.Contains(err.Error(), "no longer active") {
 		t.Fatalf("expected resolved event rejection, got %v", err)
 	}
 }
@@ -119,7 +125,7 @@ func TestApplyTerritoryExpandUsesCoordinateAndConnectedPatch(t *testing.T) {
 	front.Territory.Rows = encodeTerritoryRows(matrix)
 	x, y := 11, 1
 
-	next, command, err := applyCommandToFront(front, mongomodel.FrontCommand{
+	next, command, err := applyTestCommandToFront(front, mongomodel.FrontCommand{
 		ID: "expand-1", PlayerID: "player-1", TeamID: "team-001", Kind: "expand",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
 	})
@@ -129,7 +135,7 @@ func TestApplyTerritoryExpandUsesCoordinateAndConnectedPatch(t *testing.T) {
 	if len(command.AffectedCells) != territoryExpandLimit {
 		t.Fatalf("expected %d affected cells, got %#v", territoryExpandLimit, command.AffectedCells)
 	}
-	if next.Teams[0].FrontOpenPower != 90 || next.Teams[0].Score != 0 {
+	if next.Teams[0].FrontOpenPower != 0 || next.Teams[0].Score != 0 {
 		t.Fatalf("unexpected expand accounting: %#v", next.Teams[0])
 	}
 	nextMatrix, err := decodeTerritoryRows(next.Territory)
@@ -156,7 +162,7 @@ func TestApplyTerritoryAttackNeverCapturesBase(t *testing.T) {
 	front.Territory.Rows = encodeTerritoryRows(matrix)
 	x, y := 1, 0
 
-	next, command, err := applyCommandToFront(front, mongomodel.FrontCommand{
+	next, command, err := applyTestCommandToFront(front, mongomodel.FrontCommand{
 		ID: "attack-1", PlayerID: "player-1", TeamID: "team-001", Kind: "attack",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
 	})
@@ -174,7 +180,7 @@ func TestApplyTerritoryAttackNeverCapturesBase(t *testing.T) {
 		t.Fatalf("unexpected attack patch: %#v", command.AffectedCells)
 	}
 	baseX := 2
-	if _, _, err := applyCommandToFront(front, mongomodel.FrontCommand{
+	if _, _, err := applyTestCommandToFront(front, mongomodel.FrontCommand{
 		ID: "attack-base", PlayerID: "player-1", TeamID: "team-001", Kind: "attack",
 		TargetX: &baseX, TargetY: &y, CreatedAt: time.Now().UTC(),
 	}); err == nil || !strings.Contains(err.Error(), "cannot be attacked") {
@@ -189,14 +195,14 @@ func TestApplyTerritoryReinforceRejectsFullAreaWithoutCostOrScore(t *testing.T) 
 	front.Territory.Rows = encodeTerritoryRows(matrix)
 	x, y := 0, 0
 
-	next, _, err := applyCommandToFront(front, mongomodel.FrontCommand{
+	next, _, err := applyTestCommandToFront(front, mongomodel.FrontCommand{
 		ID: "reinforce-full", PlayerID: "player-1", TeamID: "team-001", Kind: "reinforce",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
 	})
 	if err == nil || !strings.Contains(err.Error(), "maximum defense") {
 		t.Fatalf("expected maximum defense rejection, got %v", err)
 	}
-	if next.Revision != front.Revision || next.Teams[0].FrontOpenPower != 100 || next.Teams[0].Score != 0 {
+	if next.Revision != front.Revision || next.Teams[0].FrontOpenPower != 0 || next.Teams[0].Score != 0 {
 		t.Fatalf("rejected reinforce mutated state: %#v", next.Teams[0])
 	}
 }
@@ -208,7 +214,7 @@ func TestApplyTerritoryReinforceCapsDefenseAndDoesNotScore(t *testing.T) {
 	front.Territory.Rows = encodeTerritoryRows(matrix)
 	x, y := 0, 0
 
-	next, _, err := applyCommandToFront(front, mongomodel.FrontCommand{
+	next, _, err := applyTestCommandToFront(front, mongomodel.FrontCommand{
 		ID: "reinforce-1", PlayerID: "player-1", TeamID: "team-001", Kind: "reinforce",
 		TargetX: &x, TargetY: &y, CreatedAt: time.Now().UTC(),
 	})
@@ -219,19 +225,19 @@ func TestApplyTerritoryReinforceCapsDefenseAndDoesNotScore(t *testing.T) {
 	if nextMatrix[0][0].Defense != 100 {
 		t.Fatalf("expected capped defense, got %#v", nextMatrix[0][0])
 	}
-	if next.Teams[0].FrontOpenPower != 99 || next.Teams[0].Score != 0 {
+	if next.Teams[0].FrontOpenPower != 0 || next.Teams[0].Score != 0 {
 		t.Fatalf("unexpected reinforce accounting: %#v", next.Teams[0])
 	}
 }
 
 func TestTerritoryObserverCannotPlay(t *testing.T) {
 	front := newTerritoryTestFront(2, 1)
-	response := detailResponse(front, "team-010", frontSitoneInventory{})
+	response := detailResponse(front, "team-010", frontSitoneInventory{}, testPlayerOpenPower)
 	if response.CanPlay || len(response.AvailableCommands) != 0 {
 		t.Fatalf("expected read-only response, got %#v", response)
 	}
 	x, y := 0, 0
-	_, _, err := applyCommandToFront(front, mongomodel.FrontCommand{TeamID: "team-010", Kind: "expand", TargetX: &x, TargetY: &y})
+	_, _, err := applyTestCommandToFront(front, mongomodel.FrontCommand{TeamID: "team-010", Kind: "expand", TargetX: &x, TargetY: &y})
 	if err == nil || !strings.Contains(err.Error(), "not allowed") {
 		t.Fatalf("expected observer command rejection, got %v", err)
 	}
@@ -246,7 +252,7 @@ func TestLegacyReinforceRejectsFullyDefendedTargetWithoutCost(t *testing.T) {
 		},
 		Teams: []mongomodel.FrontTeam{{TeamID: "team-a", FrontOpenPower: 100}},
 	}
-	_, _, err := applyCommandToFront(front, mongomodel.FrontCommand{
+	_, _, err := applyTestCommandToFront(front, mongomodel.FrontCommand{
 		TeamID: "team-a", Kind: "reinforce", FromCellID: "from", ToCellID: "to", CreatedAt: time.Now().UTC(),
 	})
 	if err == nil || !strings.Contains(err.Error(), "maximum defense") {
@@ -268,7 +274,7 @@ func newTerritoryTestFront(width int, height int) mongomodel.Front {
 		ID: "territory-test", MapID: "territory-test", MapMode: contentFrontMapModeTerritoryGrid,
 		Status: mongomodel.FrontStatusOpenPlay, Revision: 1,
 		Territory: &mongomodel.FrontTerritory{Width: width, Height: height, Connectivity: 4, Rows: encodeTerritoryRows(matrix)},
-		Teams:     territoryTeams(100),
+		Teams:     territoryTeams(),
 	}
 }
 
@@ -313,7 +319,7 @@ func TestApplyCommandToFrontCapturesNeutralCell(t *testing.T) {
 		CreatedAt:  createdAt,
 	}
 
-	next, appliedCommand, err := applyCommandToFront(front, command)
+	next, appliedCommand, err := applyTestCommandToFront(front, command)
 	if err != nil {
 		t.Fatalf("apply command: %v", err)
 	}
@@ -324,8 +330,14 @@ func TestApplyCommandToFrontCapturesNeutralCell(t *testing.T) {
 	if next.Cells[1].OwnerTeamID != "team-a" || next.Cells[1].Resource != 0 {
 		t.Fatalf("expected captured frontier with collected resource, got %#v", next.Cells[1])
 	}
-	if next.Teams[0].FrontOpenPower != 110 {
-		t.Fatalf("expected open power 110 after cost and resource, got %d", next.Teams[0].FrontOpenPower)
+	if next.Teams[0].FrontOpenPower != 100 {
+		t.Fatalf("team front balance must remain untouched, got %d", next.Teams[0].FrontOpenPower)
+	}
+	if appliedCommand.FrontOpenPowerCost != 10 || appliedCommand.FrontOpenPowerDelta != -10 {
+		t.Fatalf("expected personal open power cost on command, got %#v", appliedCommand)
+	}
+	if appliedCommand.RewardSitoneQuantity != 1 {
+		t.Fatalf("captured resource should grant one sitone, got %#v", appliedCommand)
 	}
 	if next.Tick != 1 || next.Revision != 2 || !next.UpdatedAt.Equal(createdAt) {
 		t.Fatalf("expected tick/revision/update time to advance, got tick=%d revision=%d updated=%s", next.Tick, next.Revision, next.UpdatedAt)

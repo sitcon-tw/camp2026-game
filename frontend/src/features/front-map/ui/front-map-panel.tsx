@@ -176,6 +176,7 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
         ...result.front.availableSitones,
       ])
       toast.success(feedback.title, { description: feedback.description })
+      void queryClient.invalidateQueries({ queryKey: ["me", "status"] })
       if (result.command.rewardSitoneQuantity > 0) {
         void queryClient.invalidateQueries({
           queryKey: frontPlayerSitonesQueryKey,
@@ -373,9 +374,6 @@ function FrontSummaryCard({
   const myTeam = front.myTeamId
     ? front.teams.find((team) => team.teamId === front.myTeamId)
     : undefined
-  const frontOpenPower =
-    front.currentTeamFrontOpenPower ?? myTeam?.frontOpenPower
-
   return (
     <Card className="bg-ink text-primary-foreground gap-4 px-4 py-4">
       <div className="flex items-start justify-between gap-3">
@@ -419,8 +417,8 @@ function FrontSummaryCard({
         />
         <SummaryMetric
           icon={Zap}
-          label="小隊戰線能量"
-          value={formatNumber(frontOpenPower)}
+          label="開源力"
+          value={formatNumber(front.currentPlayerOpenPower)}
         />
         <SummaryMetric
           icon={Flag}
@@ -860,7 +858,7 @@ function commandSuccessFeedback(
     repair: "修復已完成",
     scout: "偵查完成",
     rescue: "救援已完成",
-    support: "支援完成",
+    support: "小石採集完成",
     answer_challenge: "挑戰完成",
   }
   const details: string[] = []
@@ -872,12 +870,6 @@ function commandSuccessFeedback(
     details.push(`包圍 ${command.enclosedCellCount} 格`)
   }
   if (command.scoreDelta > 0) details.push(`+${command.scoreDelta} 戰線分`)
-  if (command.emergencyResupplyAmount > 0) {
-    details.push(`啟用一次性基地補給 +${command.emergencyResupplyAmount}`)
-  }
-  if (command.kind === "support" && command.frontOpenPowerDelta > 0) {
-    details.push(`小隊戰線能量 +${command.frontOpenPowerDelta}`)
-  }
   if (command.rewardSitoneId && command.rewardSitoneQuantity > 0) {
     const sitoneName = sitones.find(
       (sitone) => sitone.sitoneId === command.rewardSitoneId,
@@ -897,8 +889,6 @@ function commandSuccessFeedback(
 
 function normalizeFrontCommandReason(reason: string | undefined) {
   return reason
-    ?.replaceAll("前線開源力", "小隊戰線能量")
-    .replaceAll("開源力不足", "小隊戰線能量不足")
 }
 
 function formatTime(value: string | undefined) {

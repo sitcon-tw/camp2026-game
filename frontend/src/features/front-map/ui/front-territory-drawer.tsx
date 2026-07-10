@@ -18,6 +18,7 @@ import type {
   FrontCommandOption,
   FrontSessionSummary,
   FrontSitone,
+  FrontSnapshot,
   FrontTerritoryBase,
   FrontTerritoryLandmark,
   FrontTeamState,
@@ -39,7 +40,7 @@ import { getTeamName, getTerritoryTeamColor } from "./front-map-style"
 import type { TerritoryCellState, TerritoryTarget } from "./territory-grid-map"
 
 type FrontTerritoryDrawerProps = {
-  front: FrontSessionSummary
+  front: FrontSnapshot
   canPlay: boolean
   myTeamId?: string
   target: TerritoryTarget | null
@@ -159,7 +160,6 @@ function TerritoryDrawerContent({
 }) {
   const ownerColor = getTerritoryTeamColor(cell.ownerTeamId, teams)
   const ownerTeam = teams.find((team) => team.teamId === cell.ownerTeamId)
-  const myTeam = teams.find((team) => team.teamId === myTeamId)
   const ownerName = getTeamName(cell.ownerTeamId, teams)
   const playable = isPlayable(front.status) && canPlay
   const commandList = visibleCommands(
@@ -270,7 +270,7 @@ function TerritoryDrawerContent({
               <div className="ml-auto flex min-w-0 flex-wrap justify-end gap-1.5">
                 <Badge variant="outline" className="gap-1">
                   <Zap className="size-3" aria-hidden />
-                  小隊戰線能量 {formatNumber(myTeam?.frontOpenPower)}
+                  開源力 {formatNumber(front.currentPlayerOpenPower)}
                 </Badge>
                 {selectedSitone ? (
                   <Badge variant="secondary" className="max-w-[9rem] truncate">
@@ -500,8 +500,6 @@ function clampPercent(value: number) {
 
 function normalizeCommandReason(reason: string | undefined) {
   return reason
-    ?.replaceAll("前線開源力", "小隊戰線能量")
-    .replaceAll("開源力不足", "小隊戰線能量不足")
 }
 
 function formatNumber(value: number | undefined) {
