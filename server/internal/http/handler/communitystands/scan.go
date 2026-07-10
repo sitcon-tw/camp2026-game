@@ -153,11 +153,19 @@ func (h *Handler) writeStandClaim(w http.ResponseWriter, r *http.Request, player
 	h.publishRewardGranted(playerID, reward)
 
 	httpx.WriteJSON(w, http.StatusCreated, ClaimResponse{
-		ClaimID: claimID,
-		Stand:   standResponse(stand, reward),
-		Reward:  reward,
-		Claimed: true,
+		ClaimID:                 claimID,
+		Stand:                   standResponse(stand, reward),
+		Reward:                  reward,
+		Claimed:                 true,
+		QRCodeScanCooldownUntil: qrCodeScanCooldownUntil(reservation),
 	})
+}
+
+func qrCodeScanCooldownUntil(reservation qrcooldown.Reservation) string {
+	if reservation.ExpiresAt.IsZero() {
+		return ""
+	}
+	return reservation.ExpiresAt.Format(time.RFC3339)
 }
 
 func (h *Handler) reserveQRCodeScanCooldown(ctx context.Context, playerID string, sourceID string, settings gamecontrol.Settings, now time.Time) (qrcooldown.Reservation, bool, error) {

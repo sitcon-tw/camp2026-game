@@ -5079,6 +5079,10 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": true
                 },
+                "qrCodeScanCooldownUntil": {
+                    "type": "string",
+                    "example": "2026-07-08T08:15:00Z"
+                },
                 "reward": {
                     "$ref": "#/definitions/communitystands.RewardResponse"
                 },
@@ -7217,6 +7221,10 @@ const docTemplate = `{
         "staff.ClaimRewardTokenResponse": {
             "type": "object",
             "properties": {
+                "qrCodeScanCooldownUntil": {
+                    "type": "string",
+                    "example": "2026-07-08T08:15:00Z"
+                },
                 "reward": {
                     "$ref": "#/definitions/staff.RewardResponse"
                 },

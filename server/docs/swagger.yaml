@@ -963,6 +963,9 @@ definitions:
       claimed:
         example: true
         type: boolean
+      qrCodeScanCooldownUntil:
+        example: "2026-07-08T08:15:00Z"
+        type: string
       reward:
         $ref: '#/definitions/communitystands.RewardResponse'
       stand:
@@ -2466,6 +2469,9 @@ definitions:
     type: object
   staff.ClaimRewardTokenResponse:
     properties:
+      qrCodeScanCooldownUntil:
+        example: "2026-07-08T08:15:00Z"
+        type: string
       reward:
         $ref: '#/definitions/staff.RewardResponse'
       rewardId:

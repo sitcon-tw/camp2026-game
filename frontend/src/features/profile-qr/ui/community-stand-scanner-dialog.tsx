@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   CheckCircle2,
+  Clock,
   ExternalLink,
   Gift,
   RotateCcw,
   ScanLine,
 } from "lucide-react"
-import { type FormEvent, useCallback, useRef, useState } from "react"
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import { AppError } from "@/shared/api/error"
@@ -57,8 +58,41 @@ export function CommunityStandScannerDialog({
   const [manualMessage, setManualMessage] = useState<string | null>(null)
   const [qrToken, setQRToken] = useState<string | null>(null)
   const [staffRewardToken, setStaffRewardToken] = useState<string | null>(null)
+  const [qrClaimCooldownUntil, setQRClaimCooldownUntil] = useState<
+    string | null
+  >(null)
+  const [qrClaimCooldownActive, setQRClaimCooldownActive] = useState(false)
   const activeQRToken = qrToken ?? ""
   const activeStaffRewardToken = staffRewardToken ?? ""
+
+  useEffect(() => {
+    if (!qrClaimCooldownUntil) return
+    const expiresAt = Date.parse(qrClaimCooldownUntil)
+    if (!Number.isFinite(expiresAt)) return
+    const delay = Math.max(0, expiresAt - Date.now())
+
+    const timer = window.setTimeout(() => {
+      setQRClaimCooldownUntil(null)
+      setQRClaimCooldownActive(false)
+    }, delay)
+    return () => window.clearTimeout(timer)
+  }, [qrClaimCooldownUntil])
+
+  const activateQRClaimCooldown = useCallback((until?: string) => {
+    if (!until) {
+      setQRClaimCooldownUntil(null)
+      setQRClaimCooldownActive(false)
+      return
+    }
+    const expiresAt = Date.parse(until)
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      setQRClaimCooldownUntil(null)
+      setQRClaimCooldownActive(false)
+      return
+    }
+    setQRClaimCooldownUntil(until)
+    setQRClaimCooldownActive(true)
+  }, [])
 
   const resetScanner = useCallback(() => {
     setQRToken(null)
@@ -101,6 +135,7 @@ export function CommunityStandScannerDialog({
   const staffRewardClaimMutation = useMutation({
     mutationFn: () => gameApi.claimStaffRewardToken(activeStaffRewardToken),
     onSuccess: (result) => {
+      activateQRClaimCooldown(result.qrCodeScanCooldownUntil)
       void queryClient.invalidateQueries({ queryKey: ["me"] })
       toast.success(`已領取 ${rewardText(result.reward)}`)
     },
@@ -120,6 +155,7 @@ export function CommunityStandScannerDialog({
   const claimMutation = useMutation({
     mutationFn: () => gameApi.claimCommunityStandByQRToken(activeQRToken),
     onSuccess: (result) => {
+      activateQRClaimCooldown(result.qrCodeScanCooldownUntil)
       queryClient.setQueryData(["community", "stand", "scan", activeQRToken], {
         stand: result.stand,
         claimed: true,
@@ -215,11 +251,17 @@ export function CommunityStandScannerDialog({
                 type="button"
                 disabled={
                   staffRewardClaimMutation.isPending ||
-                  staffRewardClaimMutation.isSuccess
+                  staffRewardClaimMutation.isSuccess ||
+                  qrClaimCooldownActive
                 }
                 onClick={() => staffRewardClaimMutation.mutate()}
               >
-                {staffRewardClaimMutation.isSuccess ? (
+                {qrClaimCooldownActive ? (
+                  <>
+                    <Clock className="size-4" aria-hidden />
+                    領取冷卻中
+                  </>
+                ) : staffRewardClaimMutation.isSuccess ? (
                   <>
                     <CheckCircle2 className="size-4" aria-hidden />
                     已領取
@@ -354,11 +396,18 @@ export function CommunityStandScannerDialog({
                   <Button
                     type="button"
                     disabled={
-                      standQuery.data.claimed || claimMutation.isPending
+                      standQuery.data.claimed ||
+                      claimMutation.isPending ||
+                      qrClaimCooldownActive
                     }
                     onClick={() => claimMutation.mutate()}
                   >
-                    {standQuery.data.claimed ? (
+                    {qrClaimCooldownActive ? (
+                      <>
+                        <Clock className="size-4" aria-hidden />
+                        領取冷卻中
+                      </>
+                    ) : standQuery.data.claimed ? (
                       <>
                         <CheckCircle2 className="size-4" aria-hidden />
                         已領取

@@ -36,10 +36,11 @@ type DetailResponse struct {
 }
 
 type ClaimResponse struct {
-	ClaimID string         `json:"claimId" example:"community_claim_507f1f77bcf86cd799439011"`
-	Stand   StandResponse  `json:"stand"`
-	Reward  RewardResponse `json:"reward"`
-	Claimed bool           `json:"claimed" example:"true"`
+	ClaimID                 string         `json:"claimId" example:"community_claim_507f1f77bcf86cd799439011"`
+	Stand                   StandResponse  `json:"stand"`
+	Reward                  RewardResponse `json:"reward"`
+	Claimed                 bool           `json:"claimed" example:"true"`
+	QRCodeScanCooldownUntil string         `json:"qrCodeScanCooldownUntil,omitempty" example:"2026-07-08T08:15:00Z"`
 }
 
 type DisplayResponse struct {

@@ -25,19 +25,34 @@ func TestReserveFilterOnlyMatchesExpiredCooldown(t *testing.T) {
 
 func TestReserveUpdateSetsExpiry(t *testing.T) {
 	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
-	update := ReserveUpdate("qr_scan_cooldown:player-a", "player-a", "owner-a", now, 3*time.Minute)
+	expiresAt := now.Add(3 * time.Minute)
+	update := ReserveUpdate("qr_scan_cooldown:player-a", "player-a", "owner-a", now, expiresAt)
 
 	set, ok := update["$set"].(bson.M)
 	if !ok {
 		t.Fatalf("expected $set update, got %#v", update)
 	}
-	expiresAt, ok := set["expires_at"].(time.Time)
-	if !ok || !expiresAt.Equal(now.Add(3*time.Minute)) {
+	gotExpiresAt, ok := set["expires_at"].(time.Time)
+	if !ok || !gotExpiresAt.Equal(expiresAt) {
 		t.Fatalf("expected expiry three minutes later, got %#v", set["expires_at"])
 	}
 	setOnInsert, ok := update["$setOnInsert"].(bson.M)
 	if !ok || setOnInsert["player_id"] != "player-a" {
 		t.Fatalf("expected inserted player id, got %#v", update)
+	}
+}
+
+func TestReserveInsertSetsExpiry(t *testing.T) {
+	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
+	expiresAt := now.Add(5 * time.Minute)
+	insert := ReserveInsert("qr_scan_cooldown:player-a", "player-a", "owner-a", now, expiresAt)
+
+	if insert["_id"] != "qr_scan_cooldown:player-a" || insert["player_id"] != "player-a" {
+		t.Fatalf("expected cooldown identity, got %#v", insert)
+	}
+	gotExpiresAt, ok := insert["expires_at"].(time.Time)
+	if !ok || !gotExpiresAt.Equal(expiresAt) {
+		t.Fatalf("expected inserted expiry, got %#v", insert["expires_at"])
 	}
 }
 
