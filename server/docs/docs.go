@@ -1309,6 +1309,259 @@ const docTemplate = `{
                 }
             }
         },
+        "/fronts/current": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns the current front snapshot. Falls back to a deterministic bootstrap snapshot when MongoDB has no current front document.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fronts"
+                ],
+                "summary": "Get current front",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/fronts.CurrentResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/fronts/{frontID}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns a front snapshot by ID. Falls back to deterministic bootstrap fronts when MongoDB has no matching document.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fronts"
+                ],
+                "summary": "Get front",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Front ID",
+                        "name": "frontID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/fronts.DetailResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/fronts/{frontID}/commands": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Accepts a front command for the authenticated player, applies it to the front snapshot, and records the command.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fronts"
+                ],
+                "summary": "Create front command",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Front ID",
+                        "name": "frontID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Front command",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/fronts.CreateCommandRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/fronts.CreateCommandResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/fronts/{frontID}/leaderboard": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns the ranked front leaderboard from the snapshot.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fronts"
+                ],
+                "summary": "Get front leaderboard",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Front ID",
+                        "name": "frontID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/fronts.LeaderboardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/fusions": {
             "post": {
                 "security": [
@@ -5180,6 +5433,732 @@ const docTemplate = `{
                 "websiteUrl": {
                     "type": "string",
                     "example": "https://sitcon.org"
+                }
+            }
+        },
+        "fronts.CreateCommandRequest": {
+            "type": "object",
+            "properties": {
+                "clientCommandId": {
+                    "type": "string",
+                    "example": "front_cmd_7H9K2Q_001"
+                },
+                "expectedRevision": {
+                    "type": "integer",
+                    "example": 4
+                },
+                "fromCellId": {
+                    "type": "string",
+                    "example": "base_team_001"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "expand"
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "sitoneId": {
+                    "type": "string",
+                    "example": "stone_engineering_base"
+                },
+                "targetX": {
+                    "type": "integer",
+                    "example": 24
+                },
+                "targetY": {
+                    "type": "integer",
+                    "example": 18
+                },
+                "toCellId": {
+                    "type": "string",
+                    "example": "system_a"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "expand"
+                }
+            }
+        },
+        "fronts.CreateCommandResponse": {
+            "type": "object",
+            "properties": {
+                "accepted": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "command": {
+                    "$ref": "#/definitions/fronts.FrontCommandResponse"
+                },
+                "front": {
+                    "$ref": "#/definitions/fronts.DetailResponse"
+                }
+            }
+        },
+        "fronts.CurrentResponse": {
+            "type": "object",
+            "properties": {
+                "front": {
+                    "$ref": "#/definitions/fronts.FrontSessionSummaryResponse"
+                }
+            }
+        },
+        "fronts.DetailResponse": {
+            "type": "object",
+            "properties": {
+                "activeEvents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontMapEventResponse"
+                    }
+                },
+                "availableCommands": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontCommandOptionResponse"
+                    }
+                },
+                "availableSitones": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontSitoneResponse"
+                    }
+                },
+                "bases": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontTerritoryBaseResponse"
+                    }
+                },
+                "canPlay": {
+                    "type": "boolean"
+                },
+                "cells": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontCellResponse"
+                    }
+                },
+                "cooldowns": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "currentPlayerOpenPower": {
+                    "type": "integer"
+                },
+                "front": {
+                    "$ref": "#/definitions/fronts.FrontSessionSummaryResponse"
+                },
+                "frontPowerSource": {
+                    "type": "string"
+                },
+                "grid": {
+                    "$ref": "#/definitions/fronts.FrontTerritoryGridResponse"
+                },
+                "landmarks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontMapLandmarkResponse"
+                    }
+                },
+                "leaderboard": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontLeaderboardEntryResponse"
+                    }
+                },
+                "mapMode": {
+                    "type": "string"
+                },
+                "myTeamId": {
+                    "type": "string"
+                },
+                "myTeamRank": {
+                    "type": "integer"
+                },
+                "selectedSitones": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontSitoneResponse"
+                    }
+                },
+                "serverTime": {
+                    "type": "string"
+                },
+                "supportTokens": {
+                    "type": "integer"
+                },
+                "teams": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontTeamResponse"
+                    }
+                },
+                "territoryRows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontTerritoryRowResponse"
+                    }
+                }
+            }
+        },
+        "fronts.FrontCellResponse": {
+            "type": "object",
+            "properties": {
+                "control": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "defense": {
+                    "type": "integer",
+                    "example": 6
+                },
+                "eventId": {
+                    "type": "string",
+                    "example": "evt_config_bug"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "base_team_001"
+                },
+                "lockedUntil": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Base Team 001"
+                },
+                "neighborIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ownerTeamId": {
+                    "type": "string",
+                    "example": "team-blue"
+                },
+                "pressureByTeam": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "resource": {
+                    "type": "integer",
+                    "example": 40
+                },
+                "terrain": {
+                    "type": "string",
+                    "example": "base"
+                },
+                "x": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "y": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "zone": {
+                    "type": "string",
+                    "example": "base"
+                }
+            }
+        },
+        "fronts.FrontCommandOptionResponse": {
+            "type": "object",
+            "properties": {
+                "cost": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "fromCellId": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "expand"
+                },
+                "label": {
+                    "type": "string",
+                    "example": "Expand"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "sitoneId": {
+                    "type": "string"
+                },
+                "targetX": {
+                    "type": "integer"
+                },
+                "targetY": {
+                    "type": "integer"
+                },
+                "toCellId": {
+                    "type": "string"
+                }
+            }
+        },
+        "fronts.FrontCommandResponse": {
+            "type": "object",
+            "properties": {
+                "accepted": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "affectedCells": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontCoordinateResponse"
+                    }
+                },
+                "applied": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "capturedCellCount": {
+                    "type": "integer"
+                },
+                "clientCommandId": {
+                    "type": "string",
+                    "example": "front_cmd_7H9K2Q_001"
+                },
+                "commandId": {
+                    "type": "string",
+                    "example": "front_command_507f1f77bcf86cd799439011"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "enclosedCellCount": {
+                    "type": "integer"
+                },
+                "expectedRevision": {
+                    "type": "integer"
+                },
+                "fromCellId": {
+                    "type": "string",
+                    "example": "base_team_001"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "expand"
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "playerId": {
+                    "type": "string",
+                    "example": "7H9K2Q"
+                },
+                "rejectReason": {
+                    "type": "string"
+                },
+                "rewardSitoneId": {
+                    "type": "string"
+                },
+                "rewardSitoneQuantity": {
+                    "type": "integer"
+                },
+                "scoreDelta": {
+                    "type": "integer"
+                },
+                "sitoneId": {
+                    "type": "string",
+                    "example": "stone_engineering_base"
+                },
+                "targetX": {
+                    "type": "integer"
+                },
+                "targetY": {
+                    "type": "integer"
+                },
+                "teamId": {
+                    "type": "string",
+                    "example": "team-blue"
+                },
+                "toCellId": {
+                    "type": "string",
+                    "example": "system_a"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "expand"
+                }
+            }
+        },
+        "fronts.FrontCoordinateResponse": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "integer"
+                },
+                "y": {
+                    "type": "integer"
+                }
+            }
+        },
+        "fronts.FrontLeaderboardEntryResponse": {
+            "type": "object",
+            "properties": {
+                "collaborationScore": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "controlledCells": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "current": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "previousRank": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "rank": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "repairedEvents": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "rescuedSitones": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "score": {
+                    "type": "integer",
+                    "example": 120
+                },
+                "teamId": {
+                    "type": "string",
+                    "example": "team-blue"
+                },
+                "teamName": {
+                    "type": "string",
+                    "example": "Blue"
+                }
+            }
+        },
+        "fronts.FrontMapEventResponse": {
+            "type": "object",
+            "properties": {
+                "cellId": {
+                    "type": "string",
+                    "example": "repair_a"
+                },
+                "expiresAfterTicks": {
+                    "type": "integer",
+                    "example": 300
+                },
+                "expiresAtTick": {
+                    "type": "integer",
+                    "example": 300
+                },
+                "id": {
+                    "type": "string",
+                    "example": "evt_config_bug"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "repair"
+                },
+                "severity": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "startsAtTick": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Config repair"
+                }
+            }
+        },
+        "fronts.FrontMapLandmarkResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "initialDefense": {
+                    "type": "integer"
+                },
+                "initialResource": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "x": {
+                    "type": "integer"
+                },
+                "y": {
+                    "type": "integer"
+                }
+            }
+        },
+        "fronts.FrontSessionSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "completedAt": {
+                    "type": "string"
+                },
+                "endsAt": {
+                    "type": "string"
+                },
+                "frozenAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "camp_day1_training"
+                },
+                "mapId": {
+                    "type": "string",
+                    "example": "camp_day1_training"
+                },
+                "mapMode": {
+                    "type": "string",
+                    "example": "territory_grid"
+                },
+                "revision": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "startsAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "open_play"
+                },
+                "tick": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
+        "fronts.FrontSitoneResponse": {
+            "type": "object",
+            "properties": {
+                "assignedCellId": {
+                    "type": "string"
+                },
+                "available": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "cooldownUntilTick": {
+                    "type": "integer"
+                },
+                "iconPath": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Engineering Stone"
+                },
+                "remainingCooldownTicks": {
+                    "type": "integer"
+                },
+                "sitoneId": {
+                    "type": "string",
+                    "example": "stone_engineering_base"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "engineering"
+                }
+            }
+        },
+        "fronts.FrontTeamResponse": {
+            "type": "object",
+            "properties": {
+                "collaborationScore": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "color": {
+                    "type": "string",
+                    "example": "#2563eb"
+                },
+                "controlledCells": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "lastCommandAt": {
+                    "type": "string"
+                },
+                "maxControlledCells": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Blue"
+                },
+                "nextSitoneMilestone": {
+                    "type": "integer"
+                },
+                "previousRank": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "rank": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "repairedEvents": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "rescuedSitones": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "score": {
+                    "type": "integer",
+                    "example": 120
+                },
+                "sitoneMilestonesReached": {
+                    "type": "integer"
+                },
+                "teamId": {
+                    "type": "string",
+                    "example": "team-blue"
+                }
+            }
+        },
+        "fronts.FrontTerritoryBackgroundResponse": {
+            "type": "object",
+            "properties": {
+                "height": {
+                    "type": "integer"
+                },
+                "src": {
+                    "type": "string"
+                },
+                "width": {
+                    "type": "integer"
+                }
+            }
+        },
+        "fronts.FrontTerritoryBaseResponse": {
+            "type": "object",
+            "properties": {
+                "coreDefense": {
+                    "type": "integer"
+                },
+                "initialRadius": {
+                    "type": "integer"
+                },
+                "teamId": {
+                    "type": "string"
+                },
+                "x": {
+                    "type": "integer"
+                },
+                "y": {
+                    "type": "integer"
+                }
+            }
+        },
+        "fronts.FrontTerritoryGridResponse": {
+            "type": "object",
+            "properties": {
+                "background": {
+                    "$ref": "#/definitions/fronts.FrontTerritoryBackgroundResponse"
+                },
+                "connectivity": {
+                    "type": "integer",
+                    "example": 4
+                },
+                "height": {
+                    "type": "integer",
+                    "example": 57
+                },
+                "origin": {
+                    "$ref": "#/definitions/fronts.FrontTerritoryOriginResponse"
+                },
+                "width": {
+                    "type": "integer",
+                    "example": 64
+                }
+            }
+        },
+        "fronts.FrontTerritoryOriginResponse": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "integer"
+                },
+                "y": {
+                    "type": "integer"
+                }
+            }
+        },
+        "fronts.FrontTerritoryRowResponse": {
+            "type": "object",
+            "properties": {
+                "runs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontTerritoryRunResponse"
+                    }
+                },
+                "y": {
+                    "type": "integer"
+                }
+            }
+        },
+        "fronts.FrontTerritoryRunResponse": {
+            "type": "object",
+            "properties": {
+                "defense": {
+                    "type": "integer"
+                },
+                "length": {
+                    "type": "integer"
+                },
+                "ownerTeamId": {
+                    "type": "string"
+                },
+                "x": {
+                    "type": "integer"
+                }
+            }
+        },
+        "fronts.LeaderboardResponse": {
+            "type": "object",
+            "properties": {
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontLeaderboardEntryResponse"
+                    }
+                },
+                "frontId": {
+                    "type": "string",
+                    "example": "camp_day1_training"
                 }
             }
         },

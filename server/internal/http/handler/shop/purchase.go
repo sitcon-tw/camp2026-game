@@ -19,13 +19,6 @@ import (
 )
 
 const purchaseQuantity = 1
-const shopPurchaseLocksCollection = "shop_purchase_locks"
-
-const (
-	shopPurchaseLockTTL            = time.Minute
-	shopPurchaseLockRetryDelay     = 25 * time.Millisecond
-	shopPurchaseLockReleaseTimeout = 2 * time.Second
-)
 
 var errInsufficientOpenPower = errors.New("insufficient open power")
 
@@ -119,7 +112,7 @@ type purchaseResult struct {
 }
 
 func (h *Handler) purchaseItem(ctx context.Context, playerID string, item content.Item) (purchaseResult, error) {
-	releaseLock, err := h.acquireShopPurchaseLock(ctx, playerID)
+	releaseLock, err := openpower.AcquirePlayerLock(ctx, h.db, playerID)
 	if err != nil {
 		return purchaseResult{}, err
 	}
@@ -134,116 +127,6 @@ func (h *Handler) purchaseItem(ctx context.Context, playerID string, item conten
 		return h.purchaseItemWithoutTransaction(ctx, playerID, item)
 	}
 	return result, err
-}
-
-func (h *Handler) acquireShopPurchaseLock(ctx context.Context, playerID string) (func(), error) {
-	lockID := shopPurchaseLockID(playerID)
-	ownerID := newID("shop_purchase_lock")
-	collection := h.db.Collection(shopPurchaseLocksCollection)
-
-	for {
-		now := time.Now()
-		updateResult, err := collection.UpdateOne(
-			ctx,
-			shopPurchaseLockFilter(lockID, ownerID, now),
-			shopPurchaseLockUpdate(lockID, playerID, ownerID, now),
-		)
-		if err != nil {
-			return nil, err
-		}
-		if updateResult.MatchedCount > 0 {
-			return func() {
-				h.releaseShopPurchaseLock(lockID, ownerID)
-			}, nil
-		}
-
-		_, err = collection.InsertOne(ctx, shopPurchaseLockInsert(lockID, playerID, ownerID, now))
-		if err == nil {
-			return func() {
-				h.releaseShopPurchaseLock(lockID, ownerID)
-			}, nil
-		}
-		if !shopPurchaseLockBusy(err) {
-			return nil, err
-		}
-		if err := sleepContext(ctx, shopPurchaseLockRetryDelay); err != nil {
-			return nil, err
-		}
-	}
-}
-
-func (h *Handler) releaseShopPurchaseLock(lockID string, ownerID string) {
-	ctx, cancel := context.WithTimeout(context.Background(), shopPurchaseLockReleaseTimeout)
-	defer cancel()
-
-	_, _ = h.db.Collection(shopPurchaseLocksCollection).DeleteOne(ctx, bson.M{
-		"_id":      lockID,
-		"owner_id": ownerID,
-	})
-}
-
-func shopPurchaseLockFilter(lockID string, ownerID string, now time.Time) bson.M {
-	return bson.M{
-		"_id": lockID,
-		"$or": bson.A{
-			bson.M{"expires_at": bson.M{"$lte": now}},
-			bson.M{"owner_id": ownerID},
-		},
-	}
-}
-
-func shopPurchaseLockUpdate(lockID string, playerID string, ownerID string, now time.Time) bson.M {
-	return bson.M{
-		"$set": bson.M{
-			"owner_id":   ownerID,
-			"expires_at": now.Add(shopPurchaseLockTTL),
-			"updated_at": now,
-		},
-		"$setOnInsert": bson.M{
-			"_id":        lockID,
-			"player_id":  playerID,
-			"created_at": now,
-		},
-	}
-}
-
-func shopPurchaseLockInsert(lockID string, playerID string, ownerID string, now time.Time) bson.M {
-	return bson.M{
-		"_id":        lockID,
-		"player_id":  playerID,
-		"owner_id":   ownerID,
-		"expires_at": now.Add(shopPurchaseLockTTL),
-		"created_at": now,
-		"updated_at": now,
-	}
-}
-
-func shopPurchaseLockID(playerID string) string {
-	return "shop_purchase:" + playerID
-}
-
-func shopPurchaseLockBusy(err error) bool {
-	return errors.Is(err, mongo.ErrNoDocuments) || mongo.IsDuplicateKeyError(err) || duplicateKeyMessage(err)
-}
-
-func duplicateKeyMessage(err error) bool {
-	if err == nil {
-		return false
-	}
-	message := err.Error()
-	return strings.Contains(message, "E11000") && strings.Contains(message, "duplicate key")
-}
-
-func sleepContext(ctx context.Context, delay time.Duration) error {
-	timer := time.NewTimer(delay)
-	defer timer.Stop()
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-timer.C:
-		return nil
-	}
 }
 
 func (h *Handler) purchaseItemWithTransaction(ctx context.Context, playerID string, item content.Item) (purchaseResult, error) {

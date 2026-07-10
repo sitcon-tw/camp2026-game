@@ -734,8 +734,8 @@ func TestTeamMemberResponsesSkipsInvalidPlayers(t *testing.T) {
 
 func TestHomeActions(t *testing.T) {
 	actions := homeActions(gamecontrol.DefaultSettings())
-	if len(actions) != 8 {
-		t.Fatalf("expected 8 home actions, got %#v", actions)
+	if len(actions) != 9 {
+		t.Fatalf("expected 9 home actions, got %#v", actions)
 	}
 	for _, action := range actions {
 		if action.ID == "" || action.Label == "" || !action.Enabled {

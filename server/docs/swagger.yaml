@@ -1036,6 +1036,510 @@ definitions:
         example: https://sitcon.org
         type: string
     type: object
+  fronts.CreateCommandRequest:
+    properties:
+      clientCommandId:
+        example: front_cmd_7H9K2Q_001
+        type: string
+      expectedRevision:
+        example: 4
+        type: integer
+      fromCellId:
+        example: base_team_001
+        type: string
+      kind:
+        example: expand
+        type: string
+      payload:
+        additionalProperties: {}
+        type: object
+      sitoneId:
+        example: stone_engineering_base
+        type: string
+      targetX:
+        example: 24
+        type: integer
+      targetY:
+        example: 18
+        type: integer
+      toCellId:
+        example: system_a
+        type: string
+      type:
+        example: expand
+        type: string
+    type: object
+  fronts.CreateCommandResponse:
+    properties:
+      accepted:
+        example: true
+        type: boolean
+      command:
+        $ref: '#/definitions/fronts.FrontCommandResponse'
+      front:
+        $ref: '#/definitions/fronts.DetailResponse'
+    type: object
+  fronts.CurrentResponse:
+    properties:
+      front:
+        $ref: '#/definitions/fronts.FrontSessionSummaryResponse'
+    type: object
+  fronts.DetailResponse:
+    properties:
+      activeEvents:
+        items:
+          $ref: '#/definitions/fronts.FrontMapEventResponse'
+        type: array
+      availableCommands:
+        items:
+          $ref: '#/definitions/fronts.FrontCommandOptionResponse'
+        type: array
+      availableSitones:
+        items:
+          $ref: '#/definitions/fronts.FrontSitoneResponse'
+        type: array
+      bases:
+        items:
+          $ref: '#/definitions/fronts.FrontTerritoryBaseResponse'
+        type: array
+      canPlay:
+        type: boolean
+      cells:
+        items:
+          $ref: '#/definitions/fronts.FrontCellResponse'
+        type: array
+      cooldowns:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      currentPlayerOpenPower:
+        type: integer
+      front:
+        $ref: '#/definitions/fronts.FrontSessionSummaryResponse'
+      frontPowerSource:
+        type: string
+      grid:
+        $ref: '#/definitions/fronts.FrontTerritoryGridResponse'
+      landmarks:
+        items:
+          $ref: '#/definitions/fronts.FrontMapLandmarkResponse'
+        type: array
+      leaderboard:
+        items:
+          $ref: '#/definitions/fronts.FrontLeaderboardEntryResponse'
+        type: array
+      mapMode:
+        type: string
+      myTeamId:
+        type: string
+      myTeamRank:
+        type: integer
+      selectedSitones:
+        items:
+          $ref: '#/definitions/fronts.FrontSitoneResponse'
+        type: array
+      serverTime:
+        type: string
+      supportTokens:
+        type: integer
+      teams:
+        items:
+          $ref: '#/definitions/fronts.FrontTeamResponse'
+        type: array
+      territoryRows:
+        items:
+          $ref: '#/definitions/fronts.FrontTerritoryRowResponse'
+        type: array
+    type: object
+  fronts.FrontCellResponse:
+    properties:
+      control:
+        example: 100
+        type: integer
+      defense:
+        example: 6
+        type: integer
+      eventId:
+        example: evt_config_bug
+        type: string
+      id:
+        example: base_team_001
+        type: string
+      lockedUntil:
+        type: string
+      name:
+        example: Base Team 001
+        type: string
+      neighborIds:
+        items:
+          type: string
+        type: array
+      ownerTeamId:
+        example: team-blue
+        type: string
+      pressureByTeam:
+        additionalProperties:
+          type: integer
+        type: object
+      resource:
+        example: 40
+        type: integer
+      terrain:
+        example: base
+        type: string
+      x:
+        example: 0
+        type: integer
+      "y":
+        example: 0
+        type: integer
+      zone:
+        example: base
+        type: string
+    type: object
+  fronts.FrontCommandOptionResponse:
+    properties:
+      cost:
+        example: 5
+        type: integer
+      enabled:
+        example: true
+        type: boolean
+      fromCellId:
+        type: string
+      kind:
+        example: expand
+        type: string
+      label:
+        example: Expand
+        type: string
+      reason:
+        type: string
+      sitoneId:
+        type: string
+      targetX:
+        type: integer
+      targetY:
+        type: integer
+      toCellId:
+        type: string
+    type: object
+  fronts.FrontCommandResponse:
+    properties:
+      accepted:
+        example: true
+        type: boolean
+      affectedCells:
+        items:
+          $ref: '#/definitions/fronts.FrontCoordinateResponse'
+        type: array
+      applied:
+        example: true
+        type: boolean
+      capturedCellCount:
+        type: integer
+      clientCommandId:
+        example: front_cmd_7H9K2Q_001
+        type: string
+      commandId:
+        example: front_command_507f1f77bcf86cd799439011
+        type: string
+      createdAt:
+        type: string
+      enclosedCellCount:
+        type: integer
+      expectedRevision:
+        type: integer
+      fromCellId:
+        example: base_team_001
+        type: string
+      kind:
+        example: expand
+        type: string
+      payload:
+        additionalProperties: {}
+        type: object
+      playerId:
+        example: 7H9K2Q
+        type: string
+      rejectReason:
+        type: string
+      rewardSitoneId:
+        type: string
+      rewardSitoneQuantity:
+        type: integer
+      scoreDelta:
+        type: integer
+      sitoneId:
+        example: stone_engineering_base
+        type: string
+      targetX:
+        type: integer
+      targetY:
+        type: integer
+      teamId:
+        example: team-blue
+        type: string
+      toCellId:
+        example: system_a
+        type: string
+      type:
+        example: expand
+        type: string
+    type: object
+  fronts.FrontCoordinateResponse:
+    properties:
+      x:
+        type: integer
+      "y":
+        type: integer
+    type: object
+  fronts.FrontLeaderboardEntryResponse:
+    properties:
+      collaborationScore:
+        example: 0
+        type: integer
+      controlledCells:
+        example: 3
+        type: integer
+      current:
+        example: true
+        type: boolean
+      previousRank:
+        example: 2
+        type: integer
+      rank:
+        example: 1
+        type: integer
+      repairedEvents:
+        example: 0
+        type: integer
+      rescuedSitones:
+        example: 0
+        type: integer
+      score:
+        example: 120
+        type: integer
+      teamId:
+        example: team-blue
+        type: string
+      teamName:
+        example: Blue
+        type: string
+    type: object
+  fronts.FrontMapEventResponse:
+    properties:
+      cellId:
+        example: repair_a
+        type: string
+      expiresAfterTicks:
+        example: 300
+        type: integer
+      expiresAtTick:
+        example: 300
+        type: integer
+      id:
+        example: evt_config_bug
+        type: string
+      kind:
+        example: repair
+        type: string
+      severity:
+        example: 1
+        type: integer
+      startsAtTick:
+        example: 0
+        type: integer
+      title:
+        example: Config repair
+        type: string
+    type: object
+  fronts.FrontMapLandmarkResponse:
+    properties:
+      id:
+        type: string
+      initialDefense:
+        type: integer
+      initialResource:
+        type: integer
+      kind:
+        type: string
+      label:
+        type: string
+      x:
+        type: integer
+      "y":
+        type: integer
+    type: object
+  fronts.FrontSessionSummaryResponse:
+    properties:
+      completedAt:
+        type: string
+      endsAt:
+        type: string
+      frozenAt:
+        type: string
+      id:
+        example: camp_day1_training
+        type: string
+      mapId:
+        example: camp_day1_training
+        type: string
+      mapMode:
+        example: territory_grid
+        type: string
+      revision:
+        example: 1
+        type: integer
+      startsAt:
+        type: string
+      status:
+        example: open_play
+        type: string
+      tick:
+        example: 0
+        type: integer
+    type: object
+  fronts.FrontSitoneResponse:
+    properties:
+      assignedCellId:
+        type: string
+      available:
+        example: true
+        type: boolean
+      cooldownUntilTick:
+        type: integer
+      iconPath:
+        type: string
+      name:
+        example: Engineering Stone
+        type: string
+      remainingCooldownTicks:
+        type: integer
+      sitoneId:
+        example: stone_engineering_base
+        type: string
+      type:
+        example: engineering
+        type: string
+    type: object
+  fronts.FrontTeamResponse:
+    properties:
+      collaborationScore:
+        example: 0
+        type: integer
+      color:
+        example: '#2563eb'
+        type: string
+      controlledCells:
+        example: 3
+        type: integer
+      lastCommandAt:
+        type: string
+      maxControlledCells:
+        type: integer
+      name:
+        example: Blue
+        type: string
+      nextSitoneMilestone:
+        type: integer
+      previousRank:
+        example: 2
+        type: integer
+      rank:
+        example: 1
+        type: integer
+      repairedEvents:
+        example: 0
+        type: integer
+      rescuedSitones:
+        example: 0
+        type: integer
+      score:
+        example: 120
+        type: integer
+      sitoneMilestonesReached:
+        type: integer
+      teamId:
+        example: team-blue
+        type: string
+    type: object
+  fronts.FrontTerritoryBackgroundResponse:
+    properties:
+      height:
+        type: integer
+      src:
+        type: string
+      width:
+        type: integer
+    type: object
+  fronts.FrontTerritoryBaseResponse:
+    properties:
+      coreDefense:
+        type: integer
+      initialRadius:
+        type: integer
+      teamId:
+        type: string
+      x:
+        type: integer
+      "y":
+        type: integer
+    type: object
+  fronts.FrontTerritoryGridResponse:
+    properties:
+      background:
+        $ref: '#/definitions/fronts.FrontTerritoryBackgroundResponse'
+      connectivity:
+        example: 4
+        type: integer
+      height:
+        example: 57
+        type: integer
+      origin:
+        $ref: '#/definitions/fronts.FrontTerritoryOriginResponse'
+      width:
+        example: 64
+        type: integer
+    type: object
+  fronts.FrontTerritoryOriginResponse:
+    properties:
+      x:
+        type: integer
+      "y":
+        type: integer
+    type: object
+  fronts.FrontTerritoryRowResponse:
+    properties:
+      runs:
+        items:
+          $ref: '#/definitions/fronts.FrontTerritoryRunResponse'
+        type: array
+      "y":
+        type: integer
+    type: object
+  fronts.FrontTerritoryRunResponse:
+    properties:
+      defense:
+        type: integer
+      length:
+        type: integer
+      ownerTeamId:
+        type: string
+      x:
+        type: integer
+    type: object
+  fronts.LeaderboardResponse:
+    properties:
+      entries:
+        items:
+          $ref: '#/definitions/fronts.FrontLeaderboardEntryResponse'
+        type: array
+      frontId:
+        example: camp_day1_training
+        type: string
+    type: object
   fusions.CreateRequest:
     properties:
       recipeId:
@@ -3559,6 +4063,171 @@ paths:
       summary: Claim community stand reward by QR token
       tags:
       - community-stands
+  /fronts/{frontID}:
+    get:
+      description: Returns a front snapshot by ID. Falls back to deterministic bootstrap
+        fronts when MongoDB has no matching document.
+      parameters:
+      - description: Front ID
+        in: path
+        name: frontID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fronts.DetailResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get front
+      tags:
+      - fronts
+  /fronts/{frontID}/commands:
+    post:
+      consumes:
+      - application/json
+      description: Accepts a front command for the authenticated player, applies it
+        to the front snapshot, and records the command.
+      parameters:
+      - description: Front ID
+        in: path
+        name: frontID
+        required: true
+        type: string
+      - description: Front command
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/fronts.CreateCommandRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/fronts.CreateCommandResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Create front command
+      tags:
+      - fronts
+  /fronts/{frontID}/leaderboard:
+    get:
+      description: Returns the ranked front leaderboard from the snapshot.
+      parameters:
+      - description: Front ID
+        in: path
+        name: frontID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fronts.LeaderboardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get front leaderboard
+      tags:
+      - fronts
+  /fronts/current:
+    get:
+      description: Returns the current front snapshot. Falls back to a deterministic
+        bootstrap snapshot when MongoDB has no current front document.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fronts.CurrentResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Get current front
+      tags:
+      - fronts
   /fusions:
     post:
       consumes:

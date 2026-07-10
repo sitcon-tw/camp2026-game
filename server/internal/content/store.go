@@ -27,6 +27,9 @@ type Store struct {
 	fusionRecipesByID map[string]FusionRecipe
 	quizQuestions     []QuizQuestion
 	quizQuestionsByID map[string]QuizQuestion
+	frontMaps         []FrontMapTemplate
+	frontMapsByID     map[string]FrontMapTemplate
+	territoryMap      *TerritoryMapTemplate
 }
 
 func Load(dir string) (*Store, error) {
@@ -74,6 +77,26 @@ func Load(dir string) (*Store, error) {
 		return nil, err
 	}
 
+	frontMapsPath := filepath.Join(resolvedDir, frontMapsFile)
+	frontMapsDoc, err := loadTOMLFile[frontMapsDocument](frontMapsPath)
+	var frontMaps []FrontMapTemplate
+	frontMapsByID := map[string]FrontMapTemplate{}
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
+	} else {
+		frontMaps, frontMapsByID, err = validateFrontMaps(frontMapsPath, frontMapsDoc.FrontMaps)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	territoryMap, err := loadTerritoryMap(resolvedDir)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Store{
 		sitones:           sitones,
 		sitonesByID:       sitonesByID,
@@ -83,6 +106,9 @@ func Load(dir string) (*Store, error) {
 		fusionRecipesByID: fusionRecipesByID,
 		quizQuestions:     quizQuestions,
 		quizQuestionsByID: quizQuestionsByID,
+		frontMaps:         frontMaps,
+		frontMapsByID:     frontMapsByID,
+		territoryMap:      territoryMap,
 	}, nil
 }
 

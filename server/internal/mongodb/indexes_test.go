@@ -165,8 +165,8 @@ func TestIndexModelsByCollection(t *testing.T) {
 			partial: bson.M{"repeatable": bson.M{"$in": bson.A{false, nil}}},
 		},
 		{
-			collection:         shopPurchaseLocksCollection,
-			name:               "shop_purchase_locks_expires_at_ttl",
+			collection:         mongomodel.OpenPowerLocksCollection,
+			name:               "open_power_locks_expires_at_ttl",
 			keys:               bson.D{{Key: "expires_at", Value: 1}},
 			expireAfterSeconds: int32Pointer(0),
 		},

@@ -22,11 +22,18 @@ const ACTIONS: {
   primary?: boolean
 }[] = [
   {
+    id: "front",
+    label: "開源戰線",
+    desc: "使用開源力，和小隊爭奪領土",
+    icon: "front",
+    primary: true,
+    to: "/front",
+  },
+  {
     id: "battle",
     label: "知識王試煉",
     desc: "召開戰局或掃描戰碼進場",
     icon: "battle",
-    primary: true,
     to: "/battle",
   },
   {

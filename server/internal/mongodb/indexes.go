@@ -14,7 +14,6 @@ import (
 )
 
 const indexTimeout = 2 * time.Minute
-const shopPurchaseLocksCollection = "shop_purchase_locks"
 
 type collectionIndexModels struct {
 	collection string
@@ -25,7 +24,7 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 	indexCtx, cancel := context.WithTimeout(ctx, indexTimeout)
 	defer cancel()
 
-	for _, collectionIndexes := range indexModelsByCollection() {
+	for _, collectionIndexes := range allIndexModelsByCollection() {
 		collection := db.Collection(collectionIndexes.collection)
 		if _, err := collection.Indexes().CreateMany(indexCtx, collectionIndexes.models); err != nil {
 			return fmt.Errorf("ensure %s indexes: %w", collectionIndexes.collection, err)
@@ -55,6 +54,10 @@ func ignorableIndexDropError(err error) bool {
 	return commandErr.Code == 26 || commandErr.Code == 27
 }
 
+func allIndexModelsByCollection() []collectionIndexModels {
+	return append(indexModelsByCollection(), frontIndexModelsByCollection()...)
+}
+
 func indexModelsByCollection() []collectionIndexModels {
 	return []collectionIndexModels{
 		{collection: mongomodel.PlayersCollection, models: playerIndexModels()},
@@ -66,7 +69,7 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.PlayerItemsCollection, models: playerItemIndexModels()},
 		{collection: mongomodel.PlayerSitonesCollection, models: playerSitoneIndexModels()},
 		{collection: mongomodel.ShopPurchasesCollection, models: shopPurchaseIndexModels()},
-		{collection: shopPurchaseLocksCollection, models: shopPurchaseLockIndexModels()},
+		{collection: mongomodel.OpenPowerLocksCollection, models: openPowerLockIndexModels()},
 		{collection: mongomodel.StaffRewardsCollection, models: staffRewardIndexModels()},
 		{collection: mongomodel.StaffRewardTokensCollection, models: staffRewardTokenIndexModels()},
 		{collection: mongomodel.StaffRewardTokenClaimsCollection, models: staffRewardTokenClaimIndexModels()},
@@ -76,6 +79,13 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.CommunityStandClaimsCollection, models: communityStandClaimIndexModels()},
 		{collection: mongomodel.RoomTeamsCollection, models: roomTeamIndexModels()},
 		{collection: mongomodel.RoomTeamMembershipsCollection, models: roomTeamMembershipIndexModels()},
+	}
+}
+
+func frontIndexModelsByCollection() []collectionIndexModels {
+	return []collectionIndexModels{
+		{collection: mongomodel.FrontsCollection, models: frontIndexModels()},
+		{collection: mongomodel.FrontCommandsCollection, models: frontCommandIndexModels()},
 	}
 }
 
@@ -259,11 +269,11 @@ func shopPurchaseIndexModels() []mongo.IndexModel {
 	}
 }
 
-func shopPurchaseLockIndexModels() []mongo.IndexModel {
+func openPowerLockIndexModels() []mongo.IndexModel {
 	return []mongo.IndexModel{
 		{
 			Keys:    bson.D{{Key: "expires_at", Value: 1}},
-			Options: options.Index().SetName("shop_purchase_locks_expires_at_ttl").SetExpireAfterSeconds(0),
+			Options: options.Index().SetName("open_power_locks_expires_at_ttl").SetExpireAfterSeconds(0),
 		},
 	}
 }
@@ -422,6 +432,50 @@ func communityStandVisitIndexModels() []mongo.IndexModel {
 				{Key: "last_visited_at", Value: -1},
 			},
 			Options: options.Index().SetName("community_stand_visits_stand_last_visited"),
+		},
+	}
+}
+
+func frontIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "current", Value: -1},
+				{Key: "updated_at", Value: -1},
+				{Key: "_id", Value: 1},
+			},
+			Options: options.Index().SetName("fronts_current_updated"),
+		},
+	}
+}
+
+func frontCommandIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "front_id", Value: 1},
+				{Key: "created_at", Value: -1},
+				{Key: "_id", Value: -1},
+			},
+			Options: options.Index().SetName("front_commands_front_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "player_id", Value: 1},
+				{Key: "created_at", Value: -1},
+			},
+			Options: options.Index().SetName("front_commands_player_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "front_id", Value: 1},
+				{Key: "player_id", Value: 1},
+				{Key: "client_command_id", Value: 1},
+			},
+			Options: options.Index().
+				SetName("front_commands_front_player_client_command").
+				SetUnique(true).
+				SetPartialFilterExpression(bson.M{"client_command_id": bson.M{"$gt": ""}}),
 		},
 	}
 }

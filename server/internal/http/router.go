@@ -19,6 +19,7 @@ import (
 	authhandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/auth"
 	cataloghandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/catalog"
 	communitystandshandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/communitystands"
+	frontshandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/fronts"
 	fusionshandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/fusions"
 	leaderboardshandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/leaderboards"
 	matcheshandler "github.com/sitcon-tw/camp2026-game/internal/http/handler/matches"
@@ -134,6 +135,10 @@ func registerRoutes(api chi.Router, dep Dependencies) {
 		Content: dep.Content,
 		MongoDB: dep.MongoDB,
 	}).RegisterRoutes(playerAPI)
+	frontshandler.New(frontshandler.Dependencies{
+		Content: dep.Content,
+		MongoDB: dep.MongoDB,
+	}).RegisterRoutes(maintenanceGuardedPlayerAPI)
 	matcheshandler.New(matcheshandler.Dependencies{
 		Content:            dep.Content,
 		MongoClient:        dep.MongoClient,
