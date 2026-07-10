@@ -17,6 +17,8 @@ const (
 	codeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 )
 
+const openPowerRewardVariancePercent = 10
+
 func newID(prefix string) (string, error) {
 	value, err := randomString(idAlphabet, 12)
 	if err != nil {
@@ -291,6 +293,27 @@ func openPowerReward(score int) int {
 	return score/10 + 20
 }
 
+func multiplayerOpenPowerReward(match mongomodel.Match, player mongomodel.MatchPlayer) int {
+	if isComputerPlayer(player) {
+		return 0
+	}
+	if player.Score <= 0 {
+		return 0
+	}
+	baseReward := openPowerReward(player.Score)
+	variance := deterministicOpenPowerRewardVariance(match.ID, player.PlayerID)
+	reward := applySignedPercentBonus(baseReward, variance)
+	if reward < 1 {
+		return 1
+	}
+	return reward
+}
+
+func deterministicOpenPowerRewardVariance(matchID, playerID string) int {
+	span := openPowerRewardVariancePercent*2 + 1
+	return deterministicPercent("open-power-reward", matchID, playerID)%span - openPowerRewardVariancePercent
+}
+
 func matchHasClearWinner(match mongomodel.Match) bool {
 	_, ok := clearMatchWinner(match)
 	return ok
@@ -321,6 +344,10 @@ func clearMatchWinner(match mongomodel.Match) (mongomodel.MatchPlayer, bool) {
 }
 
 func matchOpenPowerReward(match mongomodel.Match, player mongomodel.MatchPlayer, effects battleEffects) int {
+	if matchMode(match) == mongomodel.MatchModeMultiplayer {
+		return applyPercentBonus(multiplayerOpenPowerReward(match, player), effects.OpenPowerBonusPercent)
+	}
+
 	winner, ok := clearMatchWinner(match)
 	if !ok || winner.PlayerID != player.PlayerID {
 		return 0
@@ -329,6 +356,16 @@ func matchOpenPowerReward(match mongomodel.Match, player mongomodel.MatchPlayer,
 }
 
 func matchBaseOpenPowerReward(match mongomodel.Match, player mongomodel.MatchPlayer) int {
+	if matchMode(match) == mongomodel.MatchModeMultiplayer {
+		if isComputerPlayer(player) {
+			return 0
+		}
+		if player.Score <= 0 {
+			return 0
+		}
+		return openPowerReward(player.Score)
+	}
+
 	winner, ok := clearMatchWinner(match)
 	if !ok || winner.PlayerID != player.PlayerID {
 		return 0

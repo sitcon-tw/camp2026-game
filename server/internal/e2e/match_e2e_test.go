@@ -35,9 +35,11 @@ const (
 	playerAID          = "player-a"
 	playerBID          = "player-b"
 	playerCID          = "player-c"
+	playerDID          = "player-d"
 	playerAToken       = "auth-token-player-a-123456"
 	playerBToken       = "auth-token-player-b-123456"
 	playerCToken       = "auth-token-player-c-123456"
+	playerDToken       = "auth-token-player-d-123456"
 	opponentMatchLimit = 10
 )
 
@@ -156,6 +158,63 @@ func TestMatchFlowE2E(t *testing.T) {
 	assertDatabaseState(t, ctx, db, created.MatchID, completed)
 }
 
+func TestMultiplayerMatchRewardsAllScoringHumansE2E(t *testing.T) {
+	ctx := t.Context()
+	mongoClient, db := startMongo(t, ctx)
+	seedPlayersAndTeams(t, ctx, db)
+
+	server := newE2EServer(t, mongoClient, db)
+	defer server.Close()
+
+	playerACookie := login(t, server.URL, playerAToken)
+	playerBCookie := login(t, server.URL, playerBToken)
+	playerCCookie := login(t, server.URL, playerCToken)
+	playerDCookie := login(t, server.URL, playerDToken)
+
+	var pairing matchPairing
+	body := postJSON(t, server.URL+"/api/matches/multiplayer/pairings", nil, []*http.Cookie{playerACookie}, http.StatusCreated)
+	decodeJSON(t, body, &pairing)
+	if pairing.Match.Status != "waiting" || len(pairing.Match.Players) != 1 {
+		t.Fatalf("expected multiplayer host waiting room, got %#v", pairing.Match)
+	}
+
+	scanPairing(t, server.URL, pairing.Token, playerBCookie, http.StatusOK)
+	scanPairing(t, server.URL, pairing.Token, playerCCookie, http.StatusOK)
+	joined := scanPairing(t, server.URL, pairing.Token, playerDCookie, http.StatusOK)
+	if joined.Status != "waiting" || len(joined.Players) != 4 {
+		t.Fatalf("expected full multiplayer waiting room, got %#v", joined)
+	}
+
+	for _, cookie := range []*http.Cookie{playerBCookie, playerCCookie, playerDCookie, playerACookie} {
+		postJSON(t, server.URL+"/api/matches/"+pairing.Match.MatchID+"/ready", nil, []*http.Cookie{cookie}, http.StatusOK)
+	}
+
+	for i := 0; i < 10; i++ {
+		state := waitForAnsweringQuestion(t, server.URL, pairing.Match.MatchID, playerACookie, i)
+		questionID := state.CurrentQuestion.QuestionID
+		choice := correctChoiceForTest(questionID)
+		for _, cookie := range []*http.Cookie{playerACookie, playerBCookie, playerCCookie, playerDCookie} {
+			postJSON(t, server.URL+"/api/matches/"+pairing.Match.MatchID+"/answers", map[string]string{
+				"questionId": questionID,
+				"choice":     choice,
+			}, []*http.Cookie{cookie}, http.StatusAccepted)
+		}
+	}
+
+	completed := waitForCompletedMatch(t, server.URL, pairing.Match.MatchID, playerACookie)
+	for _, playerID := range []string{playerAID, playerBID, playerCID, playerDID} {
+		player := completed.player(playerID)
+		if player.Score == nil || *player.Score <= 0 {
+			t.Fatalf("expected positive score for %s, got %#v", playerID, player)
+		}
+		if player.OpenPowerReward == nil || *player.OpenPowerReward <= 0 {
+			t.Fatalf("expected positive multiplayer open power reward for %s, got %#v", playerID, player)
+		}
+	}
+
+	assertMultiplayerRewardRecords(t, ctx, db, pairing.Match.MatchID, []string{playerAID, playerBID, playerCID, playerDID})
+}
+
 func TestWaitingRoomLeaveFlowE2E(t *testing.T) {
 	ctx := t.Context()
 	mongoClient, db := startMongo(t, ctx)
@@ -271,6 +330,21 @@ func scanPairing(t *testing.T, serverURL string, token string, playerCookie *htt
 	return state
 }
 
+func correctChoiceForTest(questionID string) string {
+	switch questionID {
+	case "quiz-001", "quiz-005", "quiz-009":
+		return "A"
+	case "quiz-002", "quiz-006", "quiz-010":
+		return "B"
+	case "quiz-003", "quiz-007":
+		return "C"
+	case "quiz-004", "quiz-008":
+		return "D"
+	default:
+		panic(fmt.Sprintf("unknown test quiz question %q", questionID))
+	}
+}
+
 func startMongo(t *testing.T, ctx context.Context) (*mongo.Client, *mongo.Database) {
 	t.Helper()
 
@@ -345,6 +419,14 @@ func seedPlayersAndTeams(t *testing.T, ctx context.Context, db *mongo.Database) 
 			TeamID:      "team-b",
 			AvatarURL:   "https://example.test/avatar/carol.png",
 		},
+		mongomodel.Player{
+			ID:          playerDID,
+			AuthToken:   playerDToken,
+			QRCodeToken: "qr-token-player-d",
+			Nickname:    "Dave",
+			TeamID:      "team-a",
+			AvatarURL:   "https://example.test/avatar/dave.png",
+		},
 	})
 	if err != nil {
 		t.Fatalf("seed players: %v", err)
@@ -383,6 +465,18 @@ func seedPlayersAndTeams(t *testing.T, ctx context.Context, db *mongo.Database) 
 			ID:       "player-b-stone_resonance_base",
 			PlayerID: playerBID,
 			SitoneID: "stone_resonance_base",
+			Quantity: 1,
+		},
+		mongomodel.PlayerSitone{
+			ID:       "player-c-stone_explorer_base",
+			PlayerID: playerCID,
+			SitoneID: "stone_explorer_base",
+			Quantity: 1,
+		},
+		mongomodel.PlayerSitone{
+			ID:       "player-d-stone_inspiration_base",
+			PlayerID: playerDID,
+			SitoneID: "stone_inspiration_base",
 			Quantity: 1,
 		},
 	})
@@ -830,6 +924,50 @@ func assertDatabaseState(t *testing.T, ctx context.Context, db *mongo.Database, 
 	}
 	if record.Amount <= 0 {
 		t.Fatalf("expected positive open power amount, got %#v", record)
+	}
+}
+
+func assertMultiplayerRewardRecords(t *testing.T, ctx context.Context, db *mongo.Database, matchID string, playerIDs []string) {
+	t.Helper()
+
+	sourcePattern := "^quiz_match:" + regexp.QuoteMeta(matchID) + ":player:"
+	cursor, err := db.Collection(mongomodel.OpenPowerRecordsCollection).Find(ctx, bson.M{
+		"source": bson.M{"$regex": sourcePattern},
+		"reason": "quiz_match_completed",
+	})
+	if err != nil {
+		t.Fatalf("find multiplayer open power records: %v", err)
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var records []mongomodel.OpenPowerRecord
+	if err := cursor.All(ctx, &records); err != nil {
+		t.Fatalf("decode multiplayer open power records: %v", err)
+	}
+	if len(records) != len(playerIDs) {
+		t.Fatalf("expected %d multiplayer open power records, got %#v", len(playerIDs), records)
+	}
+
+	wantPlayers := make(map[string]struct{}, len(playerIDs))
+	for _, playerID := range playerIDs {
+		wantPlayers[playerID] = struct{}{}
+	}
+	for _, record := range records {
+		if _, ok := wantPlayers[record.PlayerID]; !ok {
+			t.Fatalf("unexpected multiplayer reward player: %#v", record)
+		}
+		if record.Source != "quiz_match:"+matchID+":player:"+record.PlayerID {
+			t.Fatalf("unexpected multiplayer reward source: %#v", record)
+		}
+		if record.Amount <= 0 {
+			t.Fatalf("expected positive multiplayer open power amount, got %#v", record)
+		}
+		delete(wantPlayers, record.PlayerID)
+	}
+	if len(wantPlayers) > 0 {
+		t.Fatalf("missing multiplayer reward records for players: %#v", wantPlayers)
 	}
 }
 
