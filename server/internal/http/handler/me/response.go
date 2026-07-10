@@ -57,6 +57,23 @@ type HomeActionResponse struct {
 	Enabled bool   `json:"enabled" example:"true"`
 }
 
+type AchievementListResponse struct {
+	Achievements         []AchievementResponse `json:"achievements"`
+	CollectedSitoneCount int                   `json:"collectedSitoneCount"`
+	TotalSitoneCount     int                   `json:"totalSitoneCount"`
+	UnlockedCount        int                   `json:"unlockedCount"`
+}
+
+type AchievementResponse struct {
+	Key                 string     `json:"key" example:"codex_tier_01"`
+	Name                string     `json:"name" example:"石來運轉"`
+	Tier                int        `json:"tier,omitempty" example:"1"`
+	RequiredSitoneCount int        `json:"requiredSitoneCount" example:"5"`
+	OpenPowerReward     int        `json:"openPowerReward,omitempty" example:"500"`
+	Unlocked            bool       `json:"unlocked" example:"true"`
+	UnlockedAt          *time.Time `json:"unlockedAt,omitempty"`
+}
+
 type QRCodeResponse struct {
 	QRCodeToken string `json:"qrcodeToken" example:"qr_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok"`
 }

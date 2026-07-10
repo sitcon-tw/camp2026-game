@@ -51,6 +51,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Get("/me/qrcode", h.QRCode)
 	api.Get("/me/gift-history", h.GiftHistory)
 	api.Post("/me/open-power-transfers", h.CreateOpenPowerTransfer)
+	api.Get("/me/achievements", h.ListAchievements)
 	api.Get("/me/matches", h.ListCompletedMatches)
 }
 

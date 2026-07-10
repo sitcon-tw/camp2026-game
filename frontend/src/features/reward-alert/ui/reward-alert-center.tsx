@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import { z } from "zod"
 
+import { achievementAssetFor } from "@/features/achievements/lib/achievement-assets"
 import {
   itemTypeClass,
   itemTypeLabel,
@@ -55,9 +56,24 @@ const InventoryTrimmedEventSchema = z.object({
 
 type InventoryTrimmedEvent = z.infer<typeof InventoryTrimmedEventSchema>
 
+const AchievementUnlockedEventSchema = z.object({
+  achievementId: z.string().optional(),
+  key: z.string(),
+  name: z.string(),
+  tier: z.number().optional(),
+  requiredSitoneCount: z.number(),
+  sitoneCount: z.number(),
+  openPowerReward: z.number().optional(),
+  occurredAt: z.string(),
+  delayed: z.boolean().optional(),
+})
+
+type AchievementUnlockedEvent = z.infer<typeof AchievementUnlockedEventSchema>
+
 type Notice =
   | { kind: "reward"; event: PlayerRewardEvent }
   | { kind: "inventory_trimmed"; event: InventoryTrimmedEvent }
+  | { kind: "achievement_unlocked"; event: AchievementUnlockedEvent }
 
 const runawaySitoneImagePath =
   "/game-icons/alerts/sitone-runaway-memory-20260708.png"
@@ -246,6 +262,59 @@ function InventoryTrimmedNoticeCard({
   )
 }
 
+function AchievementNoticeCard({ event }: { event: AchievementUnlockedEvent }) {
+  const asset = achievementAssetFor(event.key)
+
+  return (
+    <section
+      className="bg-card border-ink relative grid gap-4 overflow-hidden rounded-[28px] border-2 p-3 text-center"
+      style={{ boxShadow: "6px 6px 0 var(--border)" }}
+    >
+      <div
+        className="border-ink bg-secondary text-secondary-foreground absolute top-3 right-3 z-10 rounded-full border-2 px-3 py-1 text-xs font-black"
+        aria-hidden
+      >
+        {asset.badge}
+      </div>
+
+      <div className="border-ink bg-muted relative aspect-square overflow-hidden rounded-[22px] border-2">
+        <img
+          src={toOptimizedImageSrc(asset.notificationImagePath)}
+          alt="小石慶祝完成圖鑑里程碑"
+          className="size-full object-cover"
+          loading="lazy"
+          draggable={false}
+          onError={(event) => {
+            event.currentTarget.onerror = null
+            event.currentTarget.src =
+              toOptimizedImageSrc(runawaySitoneImagePath) ??
+              runawaySitoneImagePath
+          }}
+        />
+      </div>
+
+      <div className="grid gap-2 px-1 pb-1">
+        <p className="text-muted-foreground text-[11px] font-black tracking-[0.08em] uppercase">
+          Achievement Unlocked
+        </p>
+        <h2 className="text-[24px] leading-none font-black tracking-normal">
+          {event.name}
+        </h2>
+        <p className="text-muted-foreground text-sm leading-relaxed font-bold">
+          {asset.detail}
+        </p>
+      </div>
+
+      <div
+        className="bg-surface-raised border-border rounded-[18px] border-2 px-3 py-2 text-sm font-black"
+        aria-label="成就獎勵"
+      >
+        {asset.rewardLine}
+      </div>
+    </section>
+  )
+}
+
 export function RewardAlertCenter() {
   const queryClient = useQueryClient()
   const [noticeQueue, setNoticeQueue] = useState<Notice[]>([])
@@ -303,6 +372,20 @@ export function RewardAlertCenter() {
       }
     }
 
+    const handleAchievementUnlocked = (message: MessageEvent<string>) => {
+      try {
+        const event = AchievementUnlockedEventSchema.parse(
+          JSON.parse(message.data),
+        )
+        setNoticeQueue((current) => [
+          ...current,
+          { kind: "achievement_unlocked", event },
+        ])
+      } catch {
+        // Ignore malformed events and keep the stream alive.
+      }
+    }
+
     const scheduleReconnect = () => {
       if (disposed || reconnectTimeout != null) return
 
@@ -335,6 +418,7 @@ export function RewardAlertCenter() {
       source.onerror = handleError
       source.addEventListener("reward_granted", handleRewardGranted)
       source.addEventListener("inventory_trimmed", handleInventoryTrimmed)
+      source.addEventListener("achievement_unlocked", handleAchievementUnlocked)
     }
 
     connect()
@@ -365,7 +449,9 @@ export function RewardAlertCenter() {
               : activeNotice?.kind === "reward" &&
                   activeNotice.event.source === "open_power_transfer"
                 ? "開源力到帳"
-                : "獲得獎勵"}
+                : activeNotice?.kind === "achievement_unlocked"
+                  ? "解鎖成就"
+                  : "獲得獎勵"}
           </DialogTitle>
           <DialogDescription>
             {activeNotice?.kind === "inventory_trimmed"
@@ -373,7 +459,9 @@ export function RewardAlertCenter() {
               : activeNotice?.kind === "reward" &&
                   activeNotice.event.source === "open_power_transfer"
                 ? "隊友轉來的開源力已加入你的帳號。"
-                : "新的獎勵已加入你的帳號。"}
+                : activeNotice?.kind === "achievement_unlocked"
+                  ? "圖鑑里程碑已達成，獎勵已加入你的帳號。"
+                  : "新的獎勵已加入你的帳號。"}
           </DialogDescription>
         </DialogHeader>
         {activeNotice?.kind === "reward" ? (
@@ -381,6 +469,9 @@ export function RewardAlertCenter() {
         ) : null}
         {activeNotice?.kind === "inventory_trimmed" ? (
           <InventoryTrimmedNoticeCard event={activeNotice.event} />
+        ) : null}
+        {activeNotice?.kind === "achievement_unlocked" ? (
+          <AchievementNoticeCard event={activeNotice.event} />
         ) : null}
         <DialogFooter>
           <Button

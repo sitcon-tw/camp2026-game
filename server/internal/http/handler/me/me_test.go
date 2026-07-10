@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/x/mongo/driver/drivertest"
 
+	"github.com/sitcon-tw/camp2026-game/internal/achievement"
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/gamecontrol"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
@@ -97,6 +98,7 @@ func TestEventsStreamsRewardGrantedEvent(t *testing.T) {
 func TestEventsStreamsPendingStaffRewardsOnConnect(t *testing.T) {
 	createdAt := time.Date(2026, 7, 7, 9, 30, 0, 0, time.UTC)
 	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.player_sitones", bson.D{{Key: "n", Value: int32(0)}}),
 		createMeCursorResponse("camp2026_game_test.staff_rewards", bson.D{
 			{Key: "_id", Value: "reward-offline"},
 			{Key: "staff_player_id", Value: "staff-a"},
@@ -113,6 +115,7 @@ func TestEventsStreamsPendingStaffRewardsOnConnect(t *testing.T) {
 		}),
 		createMeCursorResponse("camp2026_game_test.open_power_transfers"),
 		createMeCursorResponse("camp2026_game_test.inventory_trims"),
+		createMeCursorResponse("camp2026_game_test.achievements"),
 		updateMeResponse(1),
 	)
 	handler := New(Dependencies{
@@ -170,6 +173,7 @@ func TestEventsStreamsPendingInventoryTrimsOnConnect(t *testing.T) {
 			{Key: "created_at", Value: createdAt},
 			{Key: "notification_pending", Value: true},
 		}),
+		createMeCursorResponse("camp2026_game_test.achievements"),
 		updateMeResponse(1),
 	)
 	handler := New(Dependencies{
@@ -230,6 +234,7 @@ func TestEventsStreamsPendingOpenPowerTransfersOnConnect(t *testing.T) {
 			{Key: "nickname", Value: "Alice"},
 		}),
 		createMeCursorResponse("camp2026_game_test.inventory_trims"),
+		createMeCursorResponse("camp2026_game_test.achievements"),
 		updateMeResponse(1),
 	)
 	handler := New(Dependencies{
@@ -304,6 +309,86 @@ func TestPublishOpenPowerTransferReceivedDeliversLiveRewardEvent(t *testing.T) {
 		}
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("expected live open power transfer event")
+	}
+}
+
+func TestEventsStreamsPendingAchievementOnConnect(t *testing.T) {
+	createdAt := time.Date(2026, 7, 10, 9, 30, 0, 0, time.UTC)
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.open_power_transfers"),
+		createMeCursorResponse("camp2026_game_test.inventory_trims"),
+		createMeCursorResponse("camp2026_game_test.achievements", bson.D{
+			{Key: "_id", Value: "achievement-player-a-codex-tier-01"},
+			{Key: "player_id", Value: "7H9K2Q"},
+			{Key: "key", Value: "codex_tier_01"},
+			{Key: "name", Value: "石來運轉"},
+			{Key: "tier", Value: 1},
+			{Key: "sort_order", Value: 1},
+			{Key: "required_sitone_count", Value: 5},
+			{Key: "sitone_count", Value: 7},
+			{Key: "open_power_reward", Value: 500},
+			{Key: "created_at", Value: createdAt},
+			{Key: "notification_pending", Value: true},
+		}),
+		updateMeResponse(1),
+	)
+	handler := New(Dependencies{MongoDB: db, Broker: playerevents.NewBroker()})
+	req := authenticatedRequest(mongomodel.Player{ID: "7H9K2Q"})
+	ctx, cancel := context.WithCancel(req.Context())
+	req = req.WithContext(ctx)
+	res := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		handler.Events(res, req)
+	}()
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for {
+		if strings.Contains(res.Body.String(), `"achievementId":"achievement-player-a-codex-tier-01"`) || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+
+	body := res.Body.String()
+	if !strings.Contains(body, "event: achievement_unlocked") {
+		t.Fatalf("expected achievement event, got %q", body)
+	}
+	if !strings.Contains(body, `"name":"石來運轉"`) || !strings.Contains(body, `"openPowerReward":500`) {
+		t.Fatalf("expected achievement payload, got %q", body)
+	}
+	if !strings.Contains(body, `"delayed":true`) {
+		t.Fatalf("expected delayed achievement payload, got %q", body)
+	}
+}
+
+func TestListAchievementsReturnsCompleteLockedCatalog(t *testing.T) {
+	db := startMeMockDatabase(t,
+		createMeCursorResponse("camp2026_game_test.player_sitones", bson.D{{Key: "n", Value: int32(4)}}),
+		createMeCursorResponse("camp2026_game_test.achievements"),
+	)
+	handler := New(Dependencies{Content: loadTestContent(t), MongoDB: db})
+	req := authenticatedRequest(mongomodel.Player{ID: "7H9K2Q"})
+	res := httptest.NewRecorder()
+
+	handler.ListAchievements(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, res.Code, res.Body.String())
+	}
+	var body AchievementListResponse
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode achievements response: %v", err)
+	}
+	if len(body.Achievements) != 11 || body.UnlockedCount != 0 {
+		t.Fatalf("unexpected achievements response: %#v", body)
+	}
+	if body.CollectedSitoneCount != 4 || body.TotalSitoneCount != len(loadTestContent(t).ListSitones()) {
+		t.Fatalf("unexpected collection progress: %#v", body)
 	}
 }
 
@@ -1077,6 +1162,27 @@ func TestMapPlayerSitonesSkipsMissingCatalogDefinition(t *testing.T) {
 	}
 	if len(sitones) != 0 {
 		t.Fatalf("expected missing catalog sitone to be skipped, got %#v", sitones)
+	}
+}
+
+func TestMapAchievementResponsesIncludesLockedAndUnlockedAchievements(t *testing.T) {
+	unlockedAt := time.Date(2026, 7, 10, 9, 30, 0, 0, time.UTC)
+	definitions := achievement.CodexDefinitions(52)
+	responses, unlockedCount := mapAchievementResponses(definitions, map[string]mongomodel.Achievement{
+		"codex_tier_01": {
+			Key:       "codex_tier_01",
+			CreatedAt: unlockedAt,
+		},
+	})
+
+	if len(responses) != 11 || unlockedCount != 1 {
+		t.Fatalf("unexpected achievement summary: count=%d unlocked=%d", len(responses), unlockedCount)
+	}
+	if !responses[0].Unlocked || responses[0].UnlockedAt == nil || !responses[0].UnlockedAt.Equal(unlockedAt) {
+		t.Fatalf("expected first achievement to be unlocked: %#v", responses[0])
+	}
+	if responses[1].Unlocked || responses[1].UnlockedAt != nil {
+		t.Fatalf("expected second achievement to stay locked: %#v", responses[1])
 	}
 }
 

@@ -213,6 +213,26 @@ func TestIndexModelsByCollection(t *testing.T) {
 			expireAfterSeconds: int32Pointer(0),
 		},
 		{
+			collection: mongomodel.AchievementsCollection,
+			name:       "achievements_player_key",
+			keys: bson.D{
+				{Key: "player_id", Value: 1},
+				{Key: "key", Value: 1},
+			},
+			unique: true,
+		},
+		{
+			collection: mongomodel.AchievementsCollection,
+			name:       "achievements_unnotified_player_created",
+			keys: bson.D{
+				{Key: "player_id", Value: 1},
+				{Key: "created_at", Value: 1},
+				{Key: "sort_order", Value: 1},
+				{Key: "_id", Value: 1},
+			},
+			partial: bson.M{"notification_pending": true},
+		},
+		{
 			collection: mongomodel.StaffRewardsCollection,
 			name:       "staff_rewards_recipient_created",
 			keys: bson.D{

@@ -11,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
+	"github.com/sitcon-tw/camp2026-game/internal/achievement"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
@@ -49,19 +50,29 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 	eventCh, unsubscribe := h.broker.Subscribe(player.ID)
 	defer unsubscribe()
 
-	pendingEvents, err := h.pendingStaffRewardEvents(r.Context(), player.ID, time.Now().UTC())
+	connectedAt := time.Now().UTC()
+	if _, err := h.reconcileCodexAchievements(r.Context(), player.ID, connectedAt); err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_achievement_reconcile_failed", err))
+		return
+	}
+	pendingEvents, err := h.pendingStaffRewardEvents(r.Context(), player.ID, connectedAt)
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_pending_rewards_failed", err))
 		return
 	}
-	pendingTransferEvents, err := h.pendingOpenPowerTransferEvents(r.Context(), player.ID, time.Now().UTC())
+	pendingTransferEvents, err := h.pendingOpenPowerTransferEvents(r.Context(), player.ID, connectedAt)
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_pending_transfers_failed", err))
 		return
 	}
-	pendingTrimEvents, err := h.pendingInventoryTrimEvents(r.Context(), player.ID, time.Now().UTC())
+	pendingTrimEvents, err := h.pendingInventoryTrimEvents(r.Context(), player.ID, connectedAt)
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_pending_trims_failed", err))
+		return
+	}
+	pendingAchievementEvents, err := h.pendingAchievementEvents(r.Context(), player.ID, connectedAt, true)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("event stream is unavailable", "player_events_pending_achievements_failed", err))
 		return
 	}
 
@@ -97,6 +108,9 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if !h.writeAchievementEvents(r.Context(), w, flusher, pendingAchievementEvents) {
+		return
+	}
 
 	heartbeat := time.NewTicker(20 * time.Second)
 	defer heartbeat.Stop()
@@ -114,6 +128,13 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 			}
 			flusher.Flush()
 		case <-heartbeat.C:
+			now := time.Now().UTC()
+			if _, err := h.reconcileCodexAchievements(r.Context(), player.ID, now); err == nil {
+				pending, pendingErr := h.pendingAchievementEvents(r.Context(), player.ID, now, false)
+				if pendingErr == nil && !h.writeAchievementEvents(r.Context(), w, flusher, pending) {
+					return
+				}
+			}
 			_, _ = fmt.Fprint(w, "event: keepalive\ndata: {}\n\n")
 			flusher.Flush()
 		}
@@ -135,6 +156,23 @@ type pendingOpenPowerTransferEvent struct {
 	Event      playerevents.Event
 }
 
+type pendingAchievementEvent struct {
+	AchievementID string
+	Event         playerevents.Event
+}
+
+func (h *Handler) reconcileCodexAchievements(ctx context.Context, playerID string, now time.Time) (int, error) {
+	if h.db == nil || h.content == nil {
+		return 0, nil
+	}
+	sitones := h.content.ListSitones()
+	ids := make([]string, 0, len(sitones))
+	for _, sitone := range sitones {
+		ids = append(ids, sitone.ID)
+	}
+	return achievement.ReconcileCodex(ctx, h.db, playerID, ids, now)
+}
+
 func (h *Handler) pendingStaffRewardEvents(ctx context.Context, playerID string, connectedAt time.Time) ([]pendingStaffRewardEvent, error) {
 	if h.db == nil || h.content == nil {
 		return nil, nil
@@ -148,7 +186,7 @@ func (h *Handler) pendingStaffRewardEvents(ctx context.Context, playerID string,
 			"created_at":           bson.M{"$lte": connectedAt},
 		},
 		options.Find().
-			SetSort(bson.D{{Key: "created_at", Value: 1}, {Key: "_id", Value: 1}}).
+			SetSort(bson.D{{Key: "created_at", Value: 1}, {Key: "sort_order", Value: 1}, {Key: "_id", Value: 1}}).
 			SetLimit(100),
 	)
 	if err != nil {
@@ -277,6 +315,48 @@ func (h *Handler) pendingInventoryTrimEvents(ctx context.Context, playerID strin
 			Event: playerevents.Event{
 				Name:             playerevents.InventoryTrimmedEventName,
 				InventoryTrimmed: &event,
+			},
+		})
+	}
+	return events, nil
+}
+
+func (h *Handler) pendingAchievementEvents(ctx context.Context, playerID string, connectedAt time.Time, delayed bool) ([]pendingAchievementEvent, error) {
+	if h.db == nil {
+		return nil, nil
+	}
+
+	cursor, err := h.db.Collection(mongomodel.AchievementsCollection).Find(
+		ctx,
+		bson.M{
+			"player_id":            playerID,
+			"notification_pending": true,
+			"created_at":           bson.M{"$lte": connectedAt},
+		},
+		options.Find().
+			SetSort(bson.D{{Key: "created_at", Value: 1}, {Key: "_id", Value: 1}}).
+			SetLimit(100),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	var records []mongomodel.Achievement
+	if err := cursor.All(ctx, &records); err != nil {
+		return nil, err
+	}
+
+	events := make([]pendingAchievementEvent, 0, len(records))
+	for _, record := range records {
+		event := playerevents.AchievementUnlocked(record, delayed)
+		events = append(events, pendingAchievementEvent{
+			AchievementID: record.ID,
+			Event: playerevents.Event{
+				Name:                playerevents.AchievementUnlockedEventName,
+				AchievementUnlocked: &event,
 			},
 		})
 	}
@@ -412,6 +492,34 @@ func (h *Handler) markInventoryTrimNotified(ctx context.Context, trimID string, 
 	return err
 }
 
+func (h *Handler) writeAchievementEvents(ctx context.Context, w http.ResponseWriter, flusher http.Flusher, events []pendingAchievementEvent) bool {
+	for _, event := range events {
+		if !writePlayerEventSSE(w, event.Event) {
+			return false
+		}
+		flusher.Flush()
+		if err := h.markAchievementNotified(ctx, event.AchievementID, time.Now().UTC()); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+func (h *Handler) markAchievementNotified(ctx context.Context, achievementID string, notifiedAt time.Time) error {
+	if h.db == nil {
+		return nil
+	}
+	_, err := h.db.Collection(mongomodel.AchievementsCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": achievementID, "notification_pending": true},
+		bson.M{
+			"$set":   bson.M{"notified_at": notifiedAt},
+			"$unset": bson.M{"notification_pending": ""},
+		},
+	)
+	return err
+}
+
 func writePlayerEventSSE(w http.ResponseWriter, event playerevents.Event) bool {
 	var payload any
 	switch event.Name {
@@ -425,6 +533,11 @@ func writePlayerEventSSE(w http.ResponseWriter, event playerevents.Event) bool {
 			return true
 		}
 		payload = event.InventoryTrimmed
+	case playerevents.AchievementUnlockedEventName:
+		if event.AchievementUnlocked == nil {
+			return true
+		}
+		payload = event.AchievementUnlocked
 	default:
 		return true
 	}

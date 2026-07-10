@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { type FormEvent, useEffect, useMemo, useState } from "react"
-import { ArrowRightLeft, ChevronRight, Lock, LogOut } from "lucide-react"
+import {
+  ArrowRightLeft,
+  ChevronRight,
+  Lock,
+  LogOut,
+  Trophy,
+} from "lucide-react"
 import { toast } from "sonner"
 import { AppError } from "@/shared/api/error"
 import { gameApi } from "@/shared/api/game"
@@ -23,68 +29,29 @@ import {
   type GameFeatureIconName,
 } from "@/shared/ui/game-feature-icon"
 
-const ACTIONS: {
-  id: string
+type CollectionEntry = {
   label: string
-  desc: string
+  count: (input: { sitones: number; items: number; rank?: number }) => string
   icon: GameFeatureIconName
   to: string
-  primary?: boolean
-}[] = [
-  {
-    id: "front",
-    label: "開源戰線",
-    desc: "使用開源力，和小隊爭奪領土",
-    icon: "front",
-    primary: true,
-    to: "/front",
-  },
-  {
-    id: "battle",
-    label: "知識王試煉",
-    desc: "召開戰局或掃描戰碼進場",
-    icon: "battle",
-    to: "/battle",
-  },
-  {
-    id: "qrcode",
-    label: "冒險者通行證",
-    desc: "出示身份，也能掃描社群攤位",
-    icon: "pass",
-    to: "/profile/qr",
-  },
-  {
-    id: "shop",
-    label: "補給商店",
-    desc: "消耗開源力兌換素材與外觀",
-    icon: "shop",
-    to: "/shop",
-  },
-]
+}
 
-const STAFF_ACTIONS: (typeof ACTIONS)[number][] = [
+const STAFF_COLLECTIONS: CollectionEntry[] = [
   {
-    id: "staff",
     label: "關主發放台",
-    desc: "掃描通行證發放小石與戰利品",
+    count: () => "掃描通行證發獎",
     icon: "pass",
     to: "/rewards",
   },
   {
-    id: "dorms",
     label: "宿舍管理員",
-    desc: "選擇房號，產生宿舍加入 QR Code",
+    count: () => "房號與成員管理",
     icon: "dorm",
     to: "/dorms",
   },
 ]
 
-const COLLECTIONS: {
-  label: string
-  count: (input: { sitones: number; items: number; rank?: number }) => string
-  icon: GameFeatureIconName
-  to: string
-}[] = [
+const COLLECTIONS: CollectionEntry[] = [
   {
     label: "小石圖鑑",
     count: ({ sitones }) => `已收 ${sitones} 顆`,
@@ -189,12 +156,10 @@ export function HomeBasePage() {
   const battleEnabled = actionEnabledByID.get("battle") ?? true
   const battleLocked = !battleEnabled
   const frontEnabled = actionEnabledByID.get("front") ?? true
-  const baseActions =
-    player?.role === "staff" ? [...STAFF_ACTIONS, ...ACTIONS] : ACTIONS
-  const actions = baseActions.map((action) => ({
-    ...action,
-    enabled: actionEnabledByID.get(action.id) ?? true,
-  }))
+  const isStaff = player?.role === "staff"
+  const collections = isStaff
+    ? [...STAFF_COLLECTIONS, ...COLLECTIONS]
+    : COLLECTIONS
   const logoutAction = async () => {
     await apiClient.post("/api/auth/logout")
     navigate({ to: "/login", replace: true })
@@ -555,57 +520,43 @@ export function HomeBasePage() {
           )}
         </section>
 
-        <section className="grid gap-[10px]" aria-label="任務入口">
-          {actions.map((action) => {
-            const disabled = !action.enabled
-
-            return (
-              <article
-                key={action.label}
-                aria-disabled={disabled || undefined}
-                className={[
-                  "bg-card border-ink grid grid-cols-[52px_1fr_88px] items-center gap-[10px] rounded-[18px] border-2 p-[13px]",
-                  action.primary ? "bg-surface-raised" : "",
-                  disabled ? "opacity-70 grayscale" : "",
-                ].join(" ")}
-              >
-                <div
-                  className="grid size-[52px] -rotate-[4deg] place-items-center"
-                  aria-hidden
-                >
-                  <GameFeatureIcon name={action.icon} className="size-[52px]" />
-                </div>
-                <div>
-                  <h3 className="mb-[3px] text-[18px] font-black">
-                    {action.label}
-                  </h3>
-                  <p className="text-muted-foreground m-0 text-[13px] leading-[1.45]">
-                    {action.desc}
-                  </p>
-                </div>
-                {disabled ? (
-                  <span
-                    aria-disabled
-                    className="bg-card border-ink text-muted-foreground flex min-h-[40px] cursor-not-allowed items-center justify-center gap-1 rounded-[13px] border-2 text-sm font-black opacity-80"
-                    style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
-                  >
-                    <Lock className="size-4" aria-hidden />
-                    禁止
-                  </span>
-                ) : (
-                  <Link
-                    to={action.to}
-                    className="bg-card border-ink focus-visible:outline-power flex min-h-[40px] items-center justify-center gap-1 rounded-[13px] border-2 text-sm font-black no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
-                    style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
-                  >
-                    出發
-                    <ChevronRight className="size-4" aria-hidden />
-                  </Link>
-                )}
-              </article>
-            )
-          })}
-        </section>
+        <aside
+          className="bg-card border-ink relative overflow-hidden rounded-[22px] border-2 p-4"
+          style={{ boxShadow: "4px 4px 0 rgba(23,35,58,.14)" }}
+          aria-label="成就圖鑑入口"
+        >
+          <div
+            className="bg-primary/15 pointer-events-none absolute inset-y-0 left-0 w-2"
+            aria-hidden
+          />
+          <div className="grid grid-cols-[58px_1fr_auto] items-center gap-3">
+            <div
+              className="bg-pebble-spark border-ink grid size-[58px] place-items-center rounded-[18px] border-2"
+              aria-hidden
+            >
+              <Trophy className="size-8" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-primary mb-0.5 text-[11px] font-black tracking-[0.08em] uppercase">
+                Achievements
+              </p>
+              <h2 className="text-[20px] leading-tight font-black tracking-normal">
+                成就圖鑑
+              </h2>
+              <p className="text-muted-foreground mt-1 text-[13px] leading-[1.45] font-bold">
+                查看小石收藏里程碑與獲得時間
+              </p>
+            </div>
+            <Link
+              to="/achievements"
+              className="bg-card border-ink focus-visible:outline-power flex min-h-[44px] min-w-[84px] items-center justify-center gap-1 rounded-[14px] border-2 px-3 text-sm font-black no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
+              style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
+            >
+              查看
+              <ChevronRight className="size-4" aria-hidden />
+            </Link>
+          </div>
+        </aside>
 
         <section
           className="bg-card border-ink rounded-[22px] border-2 p-[15px]"
@@ -615,10 +566,10 @@ export function HomeBasePage() {
             Adventurer Log
           </p>
           <h2 className="mb-3 text-[22px] font-black tracking-normal">
-            圖鑑、背包、鍛造與戰績
+            {isStaff ? "管理、圖鑑與戰績" : "圖鑑、背包、鍛造與戰績"}
           </h2>
           <div className="grid grid-cols-2 gap-[9px]">
-            {COLLECTIONS.map((item) => {
+            {collections.map((item) => {
               return (
                 <Link
                   key={item.label}

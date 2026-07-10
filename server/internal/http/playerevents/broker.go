@@ -30,10 +30,23 @@ type InventoryTrimmedEvent struct {
 	Delayed     bool   `json:"delayed,omitempty"`
 }
 
+type AchievementUnlockedEvent struct {
+	AchievementID       string `json:"achievementId,omitempty"`
+	Key                 string `json:"key"`
+	Name                string `json:"name"`
+	Tier                int    `json:"tier,omitempty"`
+	RequiredSitoneCount int    `json:"requiredSitoneCount"`
+	SitoneCount         int    `json:"sitoneCount"`
+	OpenPowerReward     int    `json:"openPowerReward,omitempty"`
+	OccurredAt          string `json:"occurredAt"`
+	Delayed             bool   `json:"delayed,omitempty"`
+}
+
 type Event struct {
-	Name             string
-	Reward           *RewardGrantedEvent
-	InventoryTrimmed *InventoryTrimmedEvent
+	Name                string
+	Reward              *RewardGrantedEvent
+	InventoryTrimmed    *InventoryTrimmedEvent
+	AchievementUnlocked *AchievementUnlockedEvent
 }
 
 type Broker struct {
