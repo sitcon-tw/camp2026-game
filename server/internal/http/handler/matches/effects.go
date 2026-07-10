@@ -191,6 +191,13 @@ func applyPercentBonus(value int, bonusPercent int) int {
 	return value + value*bonusPercent/100
 }
 
+func applySignedPercentBonus(value int, bonusPercent int) int {
+	if value <= 0 || bonusPercent == 0 {
+		return value
+	}
+	return value + value*bonusPercent/100
+}
+
 func deterministicPercent(parts ...string) int {
 	return int(deterministicUint64(parts...) % 100)
 }

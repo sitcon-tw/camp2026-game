@@ -115,6 +115,92 @@ func TestMatchOpenPowerRewardAppliesBonus(t *testing.T) {
 	}
 }
 
+func TestMultiplayerOpenPowerRewardUsesPlayerScoreWithVariance(t *testing.T) {
+	match := mongomodel.Match{
+		ID:   "match_multiplayer_rewards",
+		Mode: mongomodel.MatchModeMultiplayer,
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: "P1", Score: 340},
+			{PlayerID: "P2", Score: 220},
+			{PlayerID: "P3", Score: 220},
+			{PlayerID: "P4", Score: 80},
+		},
+	}
+
+	for _, player := range match.Players {
+		base := openPowerReward(player.Score)
+		got := matchOpenPowerReward(match, player, battleEffects{})
+		minReward := applySignedPercentBonus(base, -openPowerRewardVariancePercent)
+		maxReward := applySignedPercentBonus(base, openPowerRewardVariancePercent)
+		if got < minReward || got > maxReward {
+			t.Fatalf("expected multiplayer reward for %s in [%d,%d], got %d", player.PlayerID, minReward, maxReward, got)
+		}
+		if again := matchOpenPowerReward(match, player, battleEffects{}); again != got {
+			t.Fatalf("expected deterministic multiplayer reward for %s, got %d then %d", player.PlayerID, got, again)
+		}
+		if baseGot := matchBaseOpenPowerReward(match, player); baseGot != base {
+			t.Fatalf("expected multiplayer base reward %d for %s, got %d", base, player.PlayerID, baseGot)
+		}
+	}
+
+	if matchBaseOpenPowerReward(match, match.Players[1]) != matchBaseOpenPowerReward(match, match.Players[2]) {
+		t.Fatal("expected tied multiplayer players to share the same base reward")
+	}
+}
+
+func TestMultiplayerOpenPowerRewardSkipsZeroScore(t *testing.T) {
+	match := mongomodel.Match{
+		ID:   "match_multiplayer_zero_score",
+		Mode: mongomodel.MatchModeMultiplayer,
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: "P1", Score: 0},
+		},
+	}
+
+	if got := matchOpenPowerReward(match, match.Players[0], battleEffects{}); got != 0 {
+		t.Fatalf("expected zero-score multiplayer reward 0, got %d", got)
+	}
+	if got := matchBaseOpenPowerReward(match, match.Players[0]); got != 0 {
+		t.Fatalf("expected zero-score multiplayer base reward 0, got %d", got)
+	}
+}
+
+func TestMultiplayerOpenPowerRewardSkipsComputerPlayer(t *testing.T) {
+	match := mongomodel.Match{
+		ID:   "match_multiplayer_computer_player",
+		Mode: mongomodel.MatchModeMultiplayer,
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: computerPlayerID, Kind: mongomodel.MatchPlayerKindComputer, Score: 340},
+		},
+	}
+
+	if got := matchOpenPowerReward(match, match.Players[0], battleEffects{}); got != 0 {
+		t.Fatalf("expected multiplayer computer reward 0, got %d", got)
+	}
+	if got := matchBaseOpenPowerReward(match, match.Players[0]); got != 0 {
+		t.Fatalf("expected multiplayer computer base reward 0, got %d", got)
+	}
+}
+
+func TestMultiplayerOpenPowerRewardAppliesBonusAfterVariance(t *testing.T) {
+	match := mongomodel.Match{
+		ID:   "match_multiplayer_bonus",
+		Mode: mongomodel.MatchModeMultiplayer,
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: "P1", Score: 340},
+		},
+	}
+
+	variedReward := multiplayerOpenPowerReward(match, match.Players[0])
+	want := applyPercentBonus(variedReward, 40)
+	if got := matchOpenPowerReward(match, match.Players[0], battleEffects{OpenPowerBonusPercent: 40}); got != want {
+		t.Fatalf("expected boosted multiplayer reward %d, got %d", want, got)
+	}
+	if got := matchBaseOpenPowerReward(match, match.Players[0]); got != openPowerReward(340) {
+		t.Fatalf("expected unvaried multiplayer base reward %d, got %d", openPowerReward(340), got)
+	}
+}
+
 func TestBattleEffectsStackWithoutCaps(t *testing.T) {
 	handler := New(Dependencies{Content: loadTestContent(t)})
 
