@@ -360,7 +360,7 @@ const MatchQuestionResultSchema = MatchQuestionSchema.extend({
 export const MatchStateSchema = z.object({
   matchId: z.string(),
   code: z.string().optional(),
-  mode: z.enum(["pvp", "computer"]).default("pvp"),
+  mode: z.enum(["pvp", "computer", "multiplayer"]).default("pvp"),
   status: z.enum(["waiting", "active", "completed"]),
   phase: z.enum(["answering", "revealing"]).optional(),
   hostPlayerId: z.string(),
@@ -411,6 +411,7 @@ const AnswerAcceptedSchema = z.object({
 
 const ComputerBattleSettingsSchema = z.object({
   enabled: z.boolean(),
+  multiplayerComputerFillEnabled: z.boolean().default(false),
   battleOpeningLocked: z.boolean().default(false),
 })
 
@@ -544,6 +545,7 @@ const AdminClassTimeBattleLockSessionSchema = z.object({
 
 const AdminSettingsSchema = z.object({
   computerBattlesEnabled: z.boolean(),
+  multiplayerComputerFillEnabled: z.boolean().default(false),
   sameTeamBattlesEnabled: z.boolean(),
   computerEasyAccuracy: z.number(),
   computerNormalAccuracy: z.number(),
@@ -682,7 +684,7 @@ const AdminDashboardInventoryEntrySchema = z.object({
 const AdminDashboardRecentMatchSchema = z.object({
   matchId: z.string(),
   code: z.string().optional(),
-  mode: z.enum(["pvp", "computer"]),
+  mode: z.enum(["pvp", "computer", "multiplayer"]),
   status: z.enum(["waiting", "active", "completed"]),
   playerCount: z.number(),
   winnerPlayerId: z.string().optional(),
@@ -1103,6 +1105,11 @@ export const gameApi = {
     return MatchPairingResponseSchema.parse(json)
   },
 
+  async createMultiplayerPairing() {
+    const json = await apiClient.post("/api/matches/multiplayer/pairings")
+    return MatchPairingResponseSchema.parse(json)
+  },
+
   async computerBattleSettings() {
     const json = await apiClient.get("/api/matches/computer/settings")
     return ComputerBattleSettingsSchema.parse(json)
@@ -1110,6 +1117,13 @@ export const gameApi = {
 
   async createComputerMatch() {
     const json = await apiClient.post("/api/matches/computer")
+    return MatchStateSchema.parse(json)
+  },
+
+  async addMatchComputerPlayer(matchID: string) {
+    const json = await apiClient.post(
+      `/api/matches/${encodeURIComponent(matchID)}/computer-players`,
+    )
     return MatchStateSchema.parse(json)
   },
 

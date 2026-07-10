@@ -41,8 +41,9 @@ func (h *Handler) ComputerSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	locked := settings.BattleOpeningLocked(time.Now())
 	httpx.WriteJSON(w, http.StatusOK, ComputerBattleSettingsResponse{
-		Enabled:             settings.ComputerBattlesEnabled && !locked,
-		BattleOpeningLocked: locked,
+		Enabled:                        settings.ComputerBattlesEnabled && !locked,
+		MultiplayerComputerFillEnabled: settings.MultiplayerComputerFillEnabled,
+		BattleOpeningLocked:            locked,
 	})
 }
 

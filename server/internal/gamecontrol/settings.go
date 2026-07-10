@@ -34,23 +34,24 @@ const (
 var classTimeLocation = time.FixedZone("Asia/Taipei", 8*60*60)
 
 type Settings struct {
-	ID                          string           `bson:"_id"`
-	ComputerBattlesEnabled      bool             `bson:"computer_battles_enabled"`
-	SameTeamBattlesDisabled     bool             `bson:"same_team_battles_disabled"`
-	ComputerEasyAccuracy        int              `bson:"computer_easy_accuracy"`
-	ComputerNormalAccuracy      int              `bson:"computer_normal_accuracy"`
-	ComputerHardAccuracy        int              `bson:"computer_hard_accuracy"`
-	ClassTimeBattleLockEnabled  bool             `bson:"class_time_battle_lock_enabled"`
-	ClassTimeBattleLockStart    string           `bson:"class_time_battle_lock_start"`
-	ClassTimeBattleLockEnd      string           `bson:"class_time_battle_lock_end"`
-	ClassTimeBattleLockSessions []ClockTimeRange `bson:"class_time_battle_lock_sessions,omitempty"`
-	BattleOpeningOverride       string           `bson:"battle_opening_override"`
-	QRCodeScanCooldownEnabled   bool             `bson:"qr_code_scan_cooldown_enabled"`
-	QRCodeScanCooldownMinutes   int              `bson:"qr_code_scan_cooldown_minutes"`
-	MaintenanceMode             string           `bson:"maintenance_mode"`
-	MaintenanceMessage          string           `bson:"maintenance_message,omitempty"`
-	MaintenanceStartedAt        time.Time        `bson:"maintenance_started_at,omitempty"`
-	UpdatedAt                   time.Time        `bson:"updated_at,omitempty"`
+	ID                             string           `bson:"_id"`
+	ComputerBattlesEnabled         bool             `bson:"computer_battles_enabled"`
+	MultiplayerComputerFillEnabled bool             `bson:"multiplayer_computer_fill_enabled"`
+	SameTeamBattlesDisabled        bool             `bson:"same_team_battles_disabled"`
+	ComputerEasyAccuracy           int              `bson:"computer_easy_accuracy"`
+	ComputerNormalAccuracy         int              `bson:"computer_normal_accuracy"`
+	ComputerHardAccuracy           int              `bson:"computer_hard_accuracy"`
+	ClassTimeBattleLockEnabled     bool             `bson:"class_time_battle_lock_enabled"`
+	ClassTimeBattleLockStart       string           `bson:"class_time_battle_lock_start"`
+	ClassTimeBattleLockEnd         string           `bson:"class_time_battle_lock_end"`
+	ClassTimeBattleLockSessions    []ClockTimeRange `bson:"class_time_battle_lock_sessions,omitempty"`
+	BattleOpeningOverride          string           `bson:"battle_opening_override"`
+	QRCodeScanCooldownEnabled      bool             `bson:"qr_code_scan_cooldown_enabled"`
+	QRCodeScanCooldownMinutes      int              `bson:"qr_code_scan_cooldown_minutes"`
+	MaintenanceMode                string           `bson:"maintenance_mode"`
+	MaintenanceMessage             string           `bson:"maintenance_message,omitempty"`
+	MaintenanceStartedAt           time.Time        `bson:"maintenance_started_at,omitempty"`
+	UpdatedAt                      time.Time        `bson:"updated_at,omitempty"`
 }
 
 type ClockTimeRange struct {

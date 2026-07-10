@@ -68,9 +68,14 @@ func (h *Handler) pairingResponse(ctx context.Context, match mongomodel.Match, p
 func matchCanIssuePairingToken(match mongomodel.Match, playerID string) bool {
 	return match.Status == mongomodel.MatchStatusWaiting &&
 		match.HostPlayerID == playerID &&
-		matchMode(match) == mongomodel.MatchModePVP &&
+		matchAcceptsHumanJoin(match) &&
 		isParticipant(match, playerID) &&
-		len(humanParticipantIDs(match)) == 1
+		len(match.Players) < matchParticipantCapacity(match) &&
+		len(humanParticipantIDs(match)) < matchHumanCapacity(match)
+}
+
+func matchPairingTokenSingleUse(match mongomodel.Match) bool {
+	return matchMode(match) == mongomodel.MatchModePVP
 }
 
 func (h *Handler) findActivePairingToken(ctx context.Context, token string, now time.Time) (mongomodel.MatchPairing, error) {

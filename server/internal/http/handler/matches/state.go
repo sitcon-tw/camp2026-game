@@ -317,7 +317,7 @@ func (h *Handler) shouldRevealRound(ctx context.Context, match mongomodel.Match,
 			return false, nil
 		}
 	}
-	return len(match.Players) == 2, nil
+	return len(match.Players) == matchParticipantCapacity(match), nil
 }
 
 func (h *Handler) findMatchOpenPowerRewards(ctx context.Context, matchID string) ([]mongomodel.OpenPowerRecord, error) {

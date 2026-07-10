@@ -11,8 +11,9 @@ const (
 )
 
 const (
-	MatchModePVP      = "pvp"
-	MatchModeComputer = "computer"
+	MatchModePVP         = "pvp"
+	MatchModeComputer    = "computer"
+	MatchModeMultiplayer = "multiplayer"
 )
 
 const (

@@ -79,20 +79,21 @@ type LoginResponse struct {
 }
 
 type SettingsRequest struct {
-	ComputerBattlesEnabled      *bool                               `json:"computerBattlesEnabled" validate:"required"`
-	SameTeamBattlesEnabled      *bool                               `json:"sameTeamBattlesEnabled" validate:"required"`
-	ComputerEasyAccuracy        *int                                `json:"computerEasyAccuracy" validate:"required,min=0,max=100"`
-	ComputerNormalAccuracy      *int                                `json:"computerNormalAccuracy" validate:"required,min=0,max=100"`
-	ComputerHardAccuracy        *int                                `json:"computerHardAccuracy" validate:"required,min=0,max=100"`
-	ClassTimeBattleLockEnabled  *bool                               `json:"classTimeBattleLockEnabled" validate:"required"`
-	ClassTimeBattleLockStart    string                              `json:"classTimeBattleLockStart"`
-	ClassTimeBattleLockEnd      string                              `json:"classTimeBattleLockEnd"`
-	ClassTimeBattleLockSessions []ClassTimeBattleLockSessionRequest `json:"classTimeBattleLockSessions"`
-	BattleOpeningOverride       string                              `json:"battleOpeningOverride" validate:"required,oneof=schedule force_open force_closed"`
-	QRCodeScanCooldownEnabled   *bool                               `json:"qrCodeScanCooldownEnabled" validate:"required"`
-	QRCodeScanCooldownMinutes   *int                                `json:"qrCodeScanCooldownMinutes" validate:"required,min=1,max=1440"`
-	MaintenanceMode             string                              `json:"maintenanceMode"`
-	MaintenanceMessage          string                              `json:"maintenanceMessage"`
+	ComputerBattlesEnabled         *bool                               `json:"computerBattlesEnabled" validate:"required"`
+	MultiplayerComputerFillEnabled *bool                               `json:"multiplayerComputerFillEnabled" validate:"required"`
+	SameTeamBattlesEnabled         *bool                               `json:"sameTeamBattlesEnabled" validate:"required"`
+	ComputerEasyAccuracy           *int                                `json:"computerEasyAccuracy" validate:"required,min=0,max=100"`
+	ComputerNormalAccuracy         *int                                `json:"computerNormalAccuracy" validate:"required,min=0,max=100"`
+	ComputerHardAccuracy           *int                                `json:"computerHardAccuracy" validate:"required,min=0,max=100"`
+	ClassTimeBattleLockEnabled     *bool                               `json:"classTimeBattleLockEnabled" validate:"required"`
+	ClassTimeBattleLockStart       string                              `json:"classTimeBattleLockStart"`
+	ClassTimeBattleLockEnd         string                              `json:"classTimeBattleLockEnd"`
+	ClassTimeBattleLockSessions    []ClassTimeBattleLockSessionRequest `json:"classTimeBattleLockSessions"`
+	BattleOpeningOverride          string                              `json:"battleOpeningOverride" validate:"required,oneof=schedule force_open force_closed"`
+	QRCodeScanCooldownEnabled      *bool                               `json:"qrCodeScanCooldownEnabled" validate:"required"`
+	QRCodeScanCooldownMinutes      *int                                `json:"qrCodeScanCooldownMinutes" validate:"required,min=1,max=1440"`
+	MaintenanceMode                string                              `json:"maintenanceMode"`
+	MaintenanceMessage             string                              `json:"maintenanceMessage"`
 }
 
 type ClassTimeBattleLockSessionRequest struct {
@@ -101,22 +102,23 @@ type ClassTimeBattleLockSessionRequest struct {
 }
 
 type SettingsResponse struct {
-	ComputerBattlesEnabled      bool                                 `json:"computerBattlesEnabled"`
-	SameTeamBattlesEnabled      bool                                 `json:"sameTeamBattlesEnabled"`
-	ComputerEasyAccuracy        int                                  `json:"computerEasyAccuracy"`
-	ComputerNormalAccuracy      int                                  `json:"computerNormalAccuracy"`
-	ComputerHardAccuracy        int                                  `json:"computerHardAccuracy"`
-	ClassTimeBattleLockEnabled  bool                                 `json:"classTimeBattleLockEnabled"`
-	ClassTimeBattleLockStart    string                               `json:"classTimeBattleLockStart"`
-	ClassTimeBattleLockEnd      string                               `json:"classTimeBattleLockEnd"`
-	ClassTimeBattleLockSessions []ClassTimeBattleLockSessionResponse `json:"classTimeBattleLockSessions"`
-	BattleOpeningOverride       string                               `json:"battleOpeningOverride"`
-	BattleOpeningLocked         bool                                 `json:"battleOpeningLocked"`
-	QRCodeScanCooldownEnabled   bool                                 `json:"qrCodeScanCooldownEnabled"`
-	QRCodeScanCooldownMinutes   int                                  `json:"qrCodeScanCooldownMinutes"`
-	MaintenanceMode             string                               `json:"maintenanceMode"`
-	MaintenanceMessage          string                               `json:"maintenanceMessage"`
-	MaintenanceActive           bool                                 `json:"maintenanceActive"`
+	ComputerBattlesEnabled         bool                                 `json:"computerBattlesEnabled"`
+	MultiplayerComputerFillEnabled bool                                 `json:"multiplayerComputerFillEnabled"`
+	SameTeamBattlesEnabled         bool                                 `json:"sameTeamBattlesEnabled"`
+	ComputerEasyAccuracy           int                                  `json:"computerEasyAccuracy"`
+	ComputerNormalAccuracy         int                                  `json:"computerNormalAccuracy"`
+	ComputerHardAccuracy           int                                  `json:"computerHardAccuracy"`
+	ClassTimeBattleLockEnabled     bool                                 `json:"classTimeBattleLockEnabled"`
+	ClassTimeBattleLockStart       string                               `json:"classTimeBattleLockStart"`
+	ClassTimeBattleLockEnd         string                               `json:"classTimeBattleLockEnd"`
+	ClassTimeBattleLockSessions    []ClassTimeBattleLockSessionResponse `json:"classTimeBattleLockSessions"`
+	BattleOpeningOverride          string                               `json:"battleOpeningOverride"`
+	BattleOpeningLocked            bool                                 `json:"battleOpeningLocked"`
+	QRCodeScanCooldownEnabled      bool                                 `json:"qrCodeScanCooldownEnabled"`
+	QRCodeScanCooldownMinutes      int                                  `json:"qrCodeScanCooldownMinutes"`
+	MaintenanceMode                string                               `json:"maintenanceMode"`
+	MaintenanceMessage             string                               `json:"maintenanceMessage"`
+	MaintenanceActive              bool                                 `json:"maintenanceActive"`
 }
 
 type ClassTimeBattleLockSessionResponse struct {
@@ -230,19 +232,20 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	settings, err := gamecontrol.SaveSettings(r.Context(), h.db, gamecontrol.Settings{
-		ComputerBattlesEnabled:      *body.ComputerBattlesEnabled,
-		SameTeamBattlesDisabled:     !*body.SameTeamBattlesEnabled,
-		ComputerEasyAccuracy:        *body.ComputerEasyAccuracy,
-		ComputerNormalAccuracy:      *body.ComputerNormalAccuracy,
-		ComputerHardAccuracy:        *body.ComputerHardAccuracy,
-		ClassTimeBattleLockEnabled:  *body.ClassTimeBattleLockEnabled,
-		ClassTimeBattleLockSessions: classTimeBattleLockSessionsFromRequest(body),
-		BattleOpeningOverride:       body.BattleOpeningOverride,
-		QRCodeScanCooldownEnabled:   *body.QRCodeScanCooldownEnabled,
-		QRCodeScanCooldownMinutes:   *body.QRCodeScanCooldownMinutes,
-		MaintenanceMode:             maintenanceMode,
-		MaintenanceMessage:          strings.TrimSpace(body.MaintenanceMessage),
-		MaintenanceStartedAt:        maintenanceStartedAt(maintenanceMode),
+		ComputerBattlesEnabled:         *body.ComputerBattlesEnabled,
+		MultiplayerComputerFillEnabled: *body.MultiplayerComputerFillEnabled,
+		SameTeamBattlesDisabled:        !*body.SameTeamBattlesEnabled,
+		ComputerEasyAccuracy:           *body.ComputerEasyAccuracy,
+		ComputerNormalAccuracy:         *body.ComputerNormalAccuracy,
+		ComputerHardAccuracy:           *body.ComputerHardAccuracy,
+		ClassTimeBattleLockEnabled:     *body.ClassTimeBattleLockEnabled,
+		ClassTimeBattleLockSessions:    classTimeBattleLockSessionsFromRequest(body),
+		BattleOpeningOverride:          body.BattleOpeningOverride,
+		QRCodeScanCooldownEnabled:      *body.QRCodeScanCooldownEnabled,
+		QRCodeScanCooldownMinutes:      *body.QRCodeScanCooldownMinutes,
+		MaintenanceMode:                maintenanceMode,
+		MaintenanceMessage:             strings.TrimSpace(body.MaintenanceMessage),
+		MaintenanceStartedAt:           maintenanceStartedAt(maintenanceMode),
 	})
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("settings update failed", "admin_settings_update_failed", err))
@@ -349,22 +352,23 @@ func adminSessionValue(password string) string {
 func settingsResponse(settings gamecontrol.Settings) SettingsResponse {
 	settings.Normalize()
 	return SettingsResponse{
-		ComputerBattlesEnabled:      settings.ComputerBattlesEnabled,
-		SameTeamBattlesEnabled:      settings.SameTeamBattlesEnabled(),
-		ComputerEasyAccuracy:        settings.ComputerEasyAccuracy,
-		ComputerNormalAccuracy:      settings.ComputerNormalAccuracy,
-		ComputerHardAccuracy:        settings.ComputerHardAccuracy,
-		ClassTimeBattleLockEnabled:  settings.ClassTimeBattleLockEnabled,
-		ClassTimeBattleLockStart:    settings.ClassTimeBattleLockStart,
-		ClassTimeBattleLockEnd:      settings.ClassTimeBattleLockEnd,
-		ClassTimeBattleLockSessions: classTimeBattleLockSessionsResponse(settings.ClassTimeBattleLockSessions),
-		BattleOpeningOverride:       settings.BattleOpeningOverride,
-		BattleOpeningLocked:         settings.BattleOpeningLocked(time.Now()),
-		QRCodeScanCooldownEnabled:   settings.QRCodeScanCooldownEnabled,
-		QRCodeScanCooldownMinutes:   settings.QRCodeScanCooldownMinutes,
-		MaintenanceMode:             settings.MaintenanceMode,
-		MaintenanceMessage:          settings.MaintenanceMessage,
-		MaintenanceActive:           settings.MaintenanceActive(),
+		ComputerBattlesEnabled:         settings.ComputerBattlesEnabled,
+		MultiplayerComputerFillEnabled: settings.MultiplayerComputerFillEnabled,
+		SameTeamBattlesEnabled:         settings.SameTeamBattlesEnabled(),
+		ComputerEasyAccuracy:           settings.ComputerEasyAccuracy,
+		ComputerNormalAccuracy:         settings.ComputerNormalAccuracy,
+		ComputerHardAccuracy:           settings.ComputerHardAccuracy,
+		ClassTimeBattleLockEnabled:     settings.ClassTimeBattleLockEnabled,
+		ClassTimeBattleLockStart:       settings.ClassTimeBattleLockStart,
+		ClassTimeBattleLockEnd:         settings.ClassTimeBattleLockEnd,
+		ClassTimeBattleLockSessions:    classTimeBattleLockSessionsResponse(settings.ClassTimeBattleLockSessions),
+		BattleOpeningOverride:          settings.BattleOpeningOverride,
+		BattleOpeningLocked:            settings.BattleOpeningLocked(time.Now()),
+		QRCodeScanCooldownEnabled:      settings.QRCodeScanCooldownEnabled,
+		QRCodeScanCooldownMinutes:      settings.QRCodeScanCooldownMinutes,
+		MaintenanceMode:                settings.MaintenanceMode,
+		MaintenanceMessage:             settings.MaintenanceMessage,
+		MaintenanceActive:              settings.MaintenanceActive(),
 	}
 }
 

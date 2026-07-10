@@ -25,6 +25,27 @@ import (
 // @Failure 503 {object} httpx.ProblemDetails
 // @Router /matches/pairings [post]
 func (h *Handler) CreatePairing(w http.ResponseWriter, r *http.Request) {
+	h.createPairingMatch(w, r, mongomodel.MatchModePVP)
+}
+
+// CreateMultiplayerPairing godoc
+// @Summary Create multiplayer match pairing
+// @Description Creates a four-player quiz match and returns a short-lived QR pairing token for the authenticated host.
+// @Tags matches
+// @Produce json
+// @Security AuthCookieAuth
+// @Success 201 {object} MatchPairingResponse
+// @Success 200 {object} MatchPairingResponse
+// @Failure 401 {object} httpx.ProblemDetails
+// @Failure 409 {object} httpx.ProblemDetails
+// @Failure 500 {object} httpx.ProblemDetails
+// @Failure 503 {object} httpx.ProblemDetails
+// @Router /matches/multiplayer/pairings [post]
+func (h *Handler) CreateMultiplayerPairing(w http.ResponseWriter, r *http.Request) {
+	h.createPairingMatch(w, r, mongomodel.MatchModeMultiplayer)
+}
+
+func (h *Handler) createPairingMatch(w http.ResponseWriter, r *http.Request, mode string) {
 	player, ok := currentPlayer(w, r)
 	if !ok || !h.requireDatabase(w, r) || !h.requireContent(w, r) {
 		return
@@ -36,7 +57,7 @@ func (h *Handler) CreatePairing(w http.ResponseWriter, r *http.Request) {
 
 	openMatch, err := h.findOpenParticipantMatch(r.Context(), player.ID)
 	if err == nil {
-		h.writeExistingPairingOrConflict(w, r, openMatch, player.ID)
+		h.writeExistingPairingOrConflict(w, r, openMatch, player.ID, mode)
 		return
 	}
 	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
@@ -58,7 +79,7 @@ func (h *Handler) CreatePairing(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	match := mongomodel.Match{
 		ID:           matchID,
-		Mode:         mongomodel.MatchModePVP,
+		Mode:         mode,
 		Status:       mongomodel.MatchStatusWaiting,
 		HostPlayerID: player.ID,
 		OpenHostLock: player.ID,
@@ -80,7 +101,7 @@ func (h *Handler) CreatePairing(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := h.db.Collection(mongomodel.MatchesCollection).InsertOne(r.Context(), match); err != nil {
 		if mongo.IsDuplicateKeyError(err) {
-			h.writePairingConflictForOpenMatch(w, r, player.ID)
+			h.writePairingConflictForOpenMatch(w, r, player.ID, mode)
 			return
 		}
 		httpx.WriteProblem(w, r, httpx.InternalServerError("match creation failed", "match_insert_failed", err))
@@ -110,8 +131,9 @@ func (h *Handler) writeExistingPairingOrConflict(
 	r *http.Request,
 	match mongomodel.Match,
 	playerID string,
+	mode string,
 ) {
-	if !matchCanIssuePairingToken(match, playerID) {
+	if matchMode(match) != mode || !matchCanIssuePairingToken(match, playerID) {
 		writeOpenParticipantMatchConflict(w, r)
 		return
 	}
@@ -124,10 +146,10 @@ func (h *Handler) writeExistingPairingOrConflict(
 	httpx.WriteJSON(w, http.StatusOK, response)
 }
 
-func (h *Handler) writePairingConflictForOpenMatch(w http.ResponseWriter, r *http.Request, playerID string) {
+func (h *Handler) writePairingConflictForOpenMatch(w http.ResponseWriter, r *http.Request, playerID string, mode string) {
 	match, err := h.findOpenParticipantMatch(r.Context(), playerID)
 	if err == nil {
-		h.writeExistingPairingOrConflict(w, r, match, playerID)
+		h.writeExistingPairingOrConflict(w, r, match, playerID, mode)
 		return
 	}
 	if errors.Is(err, mongo.ErrNoDocuments) {

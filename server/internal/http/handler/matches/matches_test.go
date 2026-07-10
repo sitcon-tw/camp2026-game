@@ -137,8 +137,8 @@ func TestBattleEffectsStackWithoutCaps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("battle effects: %v", err)
 	}
-	if effects.OpenPowerBonusPercent != 50 || effects.MaterialDropBonusPercent != 25 {
-		t.Fatalf("expected open power bonus 50 and material drop bonus 25, got %#v", effects)
+	if effects.OpenPowerBonusPercent != 15 || effects.MaterialDropBonusPercent != 15 {
+		t.Fatalf("expected open power bonus 15 and material drop bonus 15, got %#v", effects)
 	}
 
 	effects, err = handler.battleEffects(t.Context(), "P1", []string{
@@ -361,7 +361,7 @@ func TestOpenParticipantMatchFilterMatchesWaitingAndActiveParticipant(t *testing
 	}
 }
 
-func TestMatchCanIssuePairingTokenRequiresWaitingPVPHostOnly(t *testing.T) {
+func TestMatchCanIssuePairingTokenRequiresWaitingHumanMatchHostOnly(t *testing.T) {
 	match := mongomodel.Match{
 		Mode:         mongomodel.MatchModePVP,
 		Status:       mongomodel.MatchStatusWaiting,
@@ -384,6 +384,20 @@ func TestMatchCanIssuePairingTokenRequiresWaitingPVPHostOnly(t *testing.T) {
 	}
 
 	match.Players = match.Players[:1]
+	match.Mode = mongomodel.MatchModeMultiplayer
+	match.Players = append(match.Players,
+		mongomodel.MatchPlayer{PlayerID: "P2", Kind: mongomodel.MatchPlayerKindHuman},
+		mongomodel.MatchPlayer{PlayerID: "P3", Kind: mongomodel.MatchPlayerKindHuman},
+	)
+	if !matchCanIssuePairingToken(match, "P1") {
+		t.Fatal("expected waiting multiplayer host to issue pairing token before room is full")
+	}
+	match.Players = append(match.Players, mongomodel.MatchPlayer{PlayerID: "P4", Kind: mongomodel.MatchPlayerKindHuman})
+	if matchCanIssuePairingToken(match, "P1") {
+		t.Fatal("expected full multiplayer match to be unable to issue pairing token")
+	}
+
+	match.Players = match.Players[:1]
 	match.Status = mongomodel.MatchStatusActive
 	if matchCanIssuePairingToken(match, "P1") {
 		t.Fatal("expected active match to be unable to issue pairing token")
@@ -393,6 +407,15 @@ func TestMatchCanIssuePairingTokenRequiresWaitingPVPHostOnly(t *testing.T) {
 	match.Mode = mongomodel.MatchModeComputer
 	if matchCanIssuePairingToken(match, "P1") {
 		t.Fatal("expected computer match to be unable to issue pairing token")
+	}
+}
+
+func TestMatchPairingTokenSingleUseOnlyForPVP(t *testing.T) {
+	if !matchPairingTokenSingleUse(mongomodel.Match{Mode: mongomodel.MatchModePVP}) {
+		t.Fatal("expected PVP pairing token to be single-use")
+	}
+	if matchPairingTokenSingleUse(mongomodel.Match{Mode: mongomodel.MatchModeMultiplayer}) {
+		t.Fatal("expected multiplayer pairing token to remain reusable until it expires")
 	}
 }
 
@@ -486,6 +509,66 @@ func TestAllPlayersReady(t *testing.T) {
 	match.Players[1].SitoneIDs = nil
 	if allPlayersReady(match) {
 		t.Fatal("expected not all players ready without loadout")
+	}
+
+	match = mongomodel.Match{
+		Mode: mongomodel.MatchModeMultiplayer,
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: "P1", Ready: true, SitoneIDs: []string{"stone_engineering_base"}},
+			{PlayerID: "P2", Ready: true, SitoneIDs: []string{"stone_resonance_base"}},
+			{PlayerID: "P3", Ready: true, SitoneIDs: []string{"stone_explorer_base"}},
+			{PlayerID: "P4", Ready: true, SitoneIDs: []string{"stone_inspiration_base"}},
+		},
+	}
+	if !allPlayersReady(match) {
+		t.Fatal("expected four ready multiplayer players to start")
+	}
+	match.Players = match.Players[:3]
+	if allPlayersReady(match) {
+		t.Fatal("expected multiplayer match to wait for four players")
+	}
+
+	addMultiplayerComputerPlayer(&match)
+	if !allPlayersReady(match) {
+		t.Fatal("expected multiplayer match with ready humans and computer fill to start")
+	}
+}
+
+func TestMultiplayerHostCanStartRequiresJoinedHumansReady(t *testing.T) {
+	match := mongomodel.Match{
+		Mode:         mongomodel.MatchModeMultiplayer,
+		HostPlayerID: "P1",
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: "P1", Kind: mongomodel.MatchPlayerKindHuman, Ready: false, SitoneIDs: []string{"stone_engineering_base"}},
+			{PlayerID: "P2", Kind: mongomodel.MatchPlayerKindHuman, Ready: false, SitoneIDs: []string{"stone_resonance_base"}},
+		},
+	}
+	if multiplayerHostCanStart(match, "P1") {
+		t.Fatal("expected host start to wait for joined player readiness")
+	}
+
+	match.Players[1].Ready = true
+	if multiplayerHostCanStart(match, "P1") {
+		t.Fatal("expected host start to wait for four occupied slots")
+	}
+	if multiplayerHostCanStart(match, "P2") {
+		t.Fatal("expected non-host player to be unable to start multiplayer match")
+	}
+
+	addMultiplayerComputerPlayer(&match)
+	addMultiplayerComputerPlayer(&match)
+	if !multiplayerHostCanStart(match, "P1") {
+		t.Fatal("expected host to start after empty slots are filled and joined humans are ready")
+	}
+
+	match.Players = []mongomodel.MatchPlayer{
+		{PlayerID: "P1", Kind: mongomodel.MatchPlayerKindHuman, Ready: false, SitoneIDs: []string{"stone_engineering_base"}},
+		{PlayerID: "P2", Kind: mongomodel.MatchPlayerKindHuman, Ready: true, SitoneIDs: []string{"stone_resonance_base"}},
+		mongomodel.MatchPlayer{PlayerID: "P3", Kind: mongomodel.MatchPlayerKindHuman, Ready: true, SitoneIDs: []string{"stone_explorer_base"}},
+		mongomodel.MatchPlayer{PlayerID: "P4", Kind: mongomodel.MatchPlayerKindHuman, Ready: true, SitoneIDs: []string{"stone_inspiration_base"}},
+	}
+	if !multiplayerHostCanStart(match, "P1") {
+		t.Fatal("expected host to start full room after joined humans are ready")
 	}
 }
 
@@ -588,6 +671,26 @@ func TestShouldRevealRoundWithInMemoryAnswers(t *testing.T) {
 	if !shouldRevealRoundWithAnswers(match, nil, match.RoundEndsAt) {
 		t.Fatal("expected round deadline to reveal without answers")
 	}
+
+	match.Mode = mongomodel.MatchModeMultiplayer
+	match.Players = []mongomodel.MatchPlayer{
+		{PlayerID: "P1"},
+		{PlayerID: "P2"},
+		{PlayerID: "P3"},
+		{PlayerID: "P4"},
+	}
+	answers = []mongomodel.MatchAnswer{
+		{PlayerID: "P1", QuestionID: "quiz-001"},
+		{PlayerID: "P2", QuestionID: "quiz-001"},
+		{PlayerID: "P3", QuestionID: "quiz-001"},
+	}
+	if shouldRevealRoundWithAnswers(match, answers, now) {
+		t.Fatal("expected multiplayer round to wait for the fourth answer")
+	}
+	answers = append(answers, mongomodel.MatchAnswer{PlayerID: "P4", QuestionID: "quiz-001"})
+	if !shouldRevealRoundWithAnswers(match, answers, now) {
+		t.Fatal("expected all multiplayer players answered to reveal")
+	}
 }
 
 func TestMatchSessionTickBroadcastsActiveStateEverySecond(t *testing.T) {
@@ -640,6 +743,11 @@ func TestMatchModeAndPlayerKindDefaults(t *testing.T) {
 	player := mongomodel.MatchPlayer{Kind: mongomodel.MatchPlayerKindComputer}
 	if !isComputerMatch(match) || !isComputerPlayer(player) {
 		t.Fatalf("expected computer match/player helpers to detect computer values")
+	}
+
+	match.Mode = mongomodel.MatchModeMultiplayer
+	if got := matchMode(match); got != mongomodel.MatchModeMultiplayer {
+		t.Fatalf("expected multiplayer match mode, got %q", got)
 	}
 }
 
