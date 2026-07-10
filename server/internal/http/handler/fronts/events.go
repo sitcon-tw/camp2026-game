@@ -16,7 +16,7 @@ import (
 
 // Events godoc
 // @Summary Stream front events
-// @Description Streams personalized front snapshots when territory, garrisons, trade routes, or rankings change.
+// @Description Streams personalized front snapshots when territory, garrisons, rails, trains, or rankings change.
 // @Tags fronts
 // @Produce text/event-stream
 // @Security AuthCookieAuth

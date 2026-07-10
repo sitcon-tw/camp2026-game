@@ -407,6 +407,7 @@ func (h *Handler) updateFrontAfterCommand(ctx context.Context, previousRevision 
 				"last_command":  summary,
 				"territory":     front.Territory,
 				"garrisons":     front.Garrisons,
+				"rail_segments": front.RailSegments,
 				"trade_routes":  front.TradeRoutes,
 				"updated_at":    front.UpdatedAt,
 			},

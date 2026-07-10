@@ -67,10 +67,10 @@ func applyGarrisonCommand(
 		command.SitoneIDs = append([]string(nil), garrison.SitoneIDs...)
 		matrix[y][x].Defense = maxFrontInt(0, matrix[y][x].Defense-garrison.DefenseBonus)
 		front.Garrisons = removeFrontGarrison(front.Garrisons, garrison.ID)
-		cancelFrontTradeRoutes(&front, map[string]struct{}{garrison.ID: {}}, command.CreatedAt, "garrison withdrawn")
 	default:
 		return front, command, errors.New("unsupported garrison command")
 	}
+	reconcileFrontRailNetwork(&front, command.CreatedAt, "garrison network changed")
 
 	front.Teams[teamIndex].LastCommandAt = command.CreatedAt
 	front.Territory.Rows = encodeTerritoryRows(matrix)
@@ -131,26 +131,8 @@ func captureFrontGarrisons(front *mongomodel.Front, command *mongomodel.FrontCom
 		})
 	}
 	front.Garrisons = remaining
-	cancelFrontTradeRoutes(front, removedIDs, command.CreatedAt, "garrison captured")
-}
-
-func cancelFrontTradeRoutes(front *mongomodel.Front, garrisonIDs map[string]struct{}, cancelledAt time.Time, reason string) {
-	if front == nil || len(garrisonIDs) == 0 {
-		return
-	}
-	for i := range front.TradeRoutes {
-		route := &front.TradeRoutes[i]
-		if route.Status != frontTradeRouteActive {
-			continue
-		}
-		_, sourceRemoved := garrisonIDs[route.SourceGarrisonID]
-		_, targetRemoved := garrisonIDs[route.TargetGarrisonID]
-		if !sourceRemoved && !targetRemoved {
-			continue
-		}
-		route.Status = frontTradeRouteCancelled
-		route.CancellationReason = reason
-		route.SettledAt = timePtr(cancelledAt)
+	if len(removedIDs) > 0 {
+		reconcileFrontRailNetwork(front, command.CreatedAt, "garrison captured")
 	}
 }
 

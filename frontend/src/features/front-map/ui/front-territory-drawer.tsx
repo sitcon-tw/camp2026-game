@@ -274,7 +274,10 @@ function TerritoryDrawerContent({
                   (route) =>
                     route.status === "active" &&
                     (route.sourceGarrisonId === garrison.id ||
-                      route.targetGarrisonId === garrison.id),
+                      route.targetGarrisonId === garrison.id ||
+                      route.waypoints.some(
+                        (waypoint) => waypoint.garrisonId === garrison.id,
+                      )),
                 ).length
               }
             </div>

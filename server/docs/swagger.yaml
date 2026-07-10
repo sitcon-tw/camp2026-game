@@ -1260,6 +1260,10 @@ definitions:
         type: string
       myTeamRank:
         type: integer
+      railSegments:
+        items:
+          $ref: '#/definitions/fronts.FrontRailSegmentResponse'
+        type: array
       selectedSitones:
         items:
           $ref: '#/definitions/fronts.FrontSitoneResponse'
@@ -1497,6 +1501,25 @@ definitions:
       "y":
         type: integer
     type: object
+  fronts.FrontRailSegmentResponse:
+    properties:
+      distance:
+        type: integer
+      id:
+        type: string
+      sourceGarrisonId:
+        type: string
+      sourceX:
+        type: integer
+      sourceY:
+        type: integer
+      targetGarrisonId:
+        type: string
+      targetX:
+        type: integer
+      targetY:
+        type: integer
+    type: object
   fronts.FrontSessionSummaryResponse:
     properties:
       completedAt:
@@ -1698,6 +1721,8 @@ definitions:
         type: integer
       id:
         type: string
+      nextStopIndex:
+        type: integer
       potentialReward:
         type: integer
       settledAt:
@@ -1725,6 +1750,31 @@ definitions:
       targetX:
         type: integer
       targetY:
+        type: integer
+      waypoints:
+        items:
+          $ref: '#/definitions/fronts.FrontTradeWaypointResponse'
+        type: array
+    type: object
+  fronts.FrontTradeWaypointResponse:
+    properties:
+      arrivesAt:
+        type: string
+      garrisonId:
+        type: string
+      potentialReward:
+        type: integer
+      settledAt:
+        type: string
+      sourceReward:
+        type: integer
+      targetReward:
+        type: integer
+      teamId:
+        type: string
+      x:
+        type: integer
+      "y":
         type: integer
     type: object
   fronts.LeaderboardResponse:
@@ -4778,7 +4828,7 @@ paths:
   /fronts/{frontID}/events:
     get:
       description: Streams personalized front snapshots when territory, garrisons,
-        trade routes, or rankings change.
+        rails, trains, or rankings change.
       parameters:
       - description: Front ID
         in: path

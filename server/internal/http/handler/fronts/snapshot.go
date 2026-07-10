@@ -17,7 +17,11 @@ func cloneFront(front mongomodel.Front) mongomodel.Front {
 	for i := range front.Garrisons {
 		front.Garrisons[i].SitoneIDs = append([]string(nil), front.Garrisons[i].SitoneIDs...)
 	}
+	front.RailSegments = append([]mongomodel.FrontRailSegment(nil), front.RailSegments...)
 	front.TradeRoutes = append([]mongomodel.FrontTradeRoute(nil), front.TradeRoutes...)
+	for i := range front.TradeRoutes {
+		front.TradeRoutes[i].Waypoints = append([]mongomodel.FrontTradeWaypoint(nil), front.TradeRoutes[i].Waypoints...)
+	}
 	if front.LastCommand != nil {
 		command := *front.LastCommand
 		command.AffectedCells = append([]mongomodel.FrontCoordinate(nil), command.AffectedCells...)

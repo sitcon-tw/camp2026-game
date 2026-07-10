@@ -16,6 +16,10 @@ const frontEventNames = [
   "garrison_captured",
   "trade_started",
   "trade_completed",
+  "rail_updated",
+  "train_started",
+  "train_arrived",
+  "train_cancelled",
 ] as const
 
 export type FrontConnectionState = "connecting" | "live" | "reconnecting"

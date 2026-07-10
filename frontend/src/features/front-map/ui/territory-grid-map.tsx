@@ -11,6 +11,7 @@ import {
   Radar,
   RotateCcw,
   Swords,
+  TrainFront,
   Wrench,
   ZoomIn,
   ZoomOut,
@@ -29,12 +30,14 @@ import {
 
 import type {
   FrontGarrison,
+  FrontRailSegment,
   FrontTerritoryBase,
   FrontTerritoryGrid,
   FrontTerritoryLandmark,
   FrontTerritoryRow,
   FrontTeamState,
   FrontTradeRoute,
+  FrontTradeWaypoint,
 } from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
 import { ButtonGroup } from "@/shared/ui/button-group"
@@ -65,6 +68,7 @@ type TerritoryGridMapProps = {
   landmarks: FrontTerritoryLandmark[]
   teams: FrontTeamState[]
   garrisons: FrontGarrison[]
+  railSegments: FrontRailSegment[]
   tradeRoutes: FrontTradeRoute[]
   selectedTarget: TerritoryTarget | null
   onSelectTarget: (target: TerritoryTarget) => void
@@ -133,6 +137,7 @@ export function TerritoryGridMap({
   landmarks,
   teams,
   garrisons,
+  railSegments,
   tradeRoutes,
   selectedTarget,
   onSelectTarget,
@@ -651,49 +656,85 @@ export function TerritoryGridMap({
                   className="pointer-events-none absolute inset-0 z-10 size-full overflow-visible"
                   aria-hidden
                 >
+                  {railSegments.map((segment) => (
+                    <g key={segment.id} opacity={0.9}>
+                      <line
+                        x1={segment.sourceX + 0.5}
+                        y1={segment.sourceY + 0.5}
+                        x2={segment.targetX + 0.5}
+                        y2={segment.targetY + 0.5}
+                        stroke="var(--card)"
+                        strokeWidth={1.35}
+                        strokeLinecap="round"
+                      />
+                      <line
+                        x1={segment.sourceX + 0.5}
+                        y1={segment.sourceY + 0.5}
+                        x2={segment.targetX + 0.5}
+                        y2={segment.targetY + 0.5}
+                        stroke="var(--muted-foreground)"
+                        strokeWidth={0.72}
+                        strokeLinecap="round"
+                      />
+                      <line
+                        x1={segment.sourceX + 0.5}
+                        y1={segment.sourceY + 0.5}
+                        x2={segment.targetX + 0.5}
+                        y2={segment.targetY + 0.5}
+                        stroke="var(--card)"
+                        strokeWidth={0.24}
+                        strokeDasharray="0.45 0.5"
+                        strokeLinecap="butt"
+                      />
+                    </g>
+                  ))}
                   {tradeRoutes
                     .filter((route) => route.status === "active")
                     .map((route) => {
                       const color =
                         teams.find((team) => team.teamId === route.sourceTeamId)
                           ?.color ?? "var(--power)"
-                      const timing = tradeRouteAnimationTiming(route)
+                      const animation = tradeRouteAnimation(route)
+                      if (!animation) return null
                       return (
                         <g key={route.id}>
-                          <line
-                            x1={route.sourceX + 0.5}
-                            y1={route.sourceY + 0.5}
-                            x2={route.targetX + 0.5}
-                            y2={route.targetY + 0.5}
+                          <path
+                            d={animation.path}
+                            fill="none"
                             stroke={color}
-                            strokeWidth={0.55}
-                            strokeDasharray="1.25 0.8"
-                            strokeLinecap="round"
-                            opacity={0.9}
-                          />
-                          <circle
-                            r={0.75}
-                            fill={color}
-                            stroke="var(--card)"
                             strokeWidth={0.35}
-                          >
-                            <animate
-                              attributeName="cx"
-                              from={route.sourceX + 0.5}
-                              to={route.targetX + 0.5}
-                              dur={timing.duration}
-                              begin={timing.begin}
+                            strokeDasharray="0.8 0.65"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            opacity={0.75}
+                          />
+                          <g>
+                            <animateMotion
+                              path={animation.path}
+                              dur={animation.duration}
+                              begin={animation.begin}
+                              keyPoints={animation.keyPoints}
+                              keyTimes={animation.keyTimes}
+                              calcMode="linear"
                               fill="freeze"
                             />
-                            <animate
-                              attributeName="cy"
-                              from={route.sourceY + 0.5}
-                              to={route.targetY + 0.5}
-                              dur={timing.duration}
-                              begin={timing.begin}
-                              fill="freeze"
-                            />
-                          </circle>
+                            <foreignObject
+                              x={-1.35}
+                              y={-1.35}
+                              width={2.7}
+                              height={2.7}
+                            >
+                              <div
+                                className="bg-card border-foreground/40 flex size-full items-center justify-center rounded-sm border"
+                                style={{ color }}
+                              >
+                                <TrainFront
+                                  className="size-full p-0.5"
+                                  aria-hidden
+                                />
+                              </div>
+                            </foreignObject>
+                          </g>
                         </g>
                       )
                     })}
@@ -834,15 +875,57 @@ export function TerritoryGridMap({
   )
 }
 
-function tradeRouteAnimationTiming(route: FrontTradeRoute) {
+function tradeRouteAnimation(route: FrontTradeRoute) {
+  const waypoints = tradeRouteWaypoints(route)
+  if (waypoints.length < 2) return null
   const startedAt = new Date(route.startedAt).getTime()
   const arrivesAt = new Date(route.arrivesAt).getTime()
   const durationMs = Math.max(1_000, arrivesAt - startedAt)
   const elapsedMs = Math.max(0, Math.min(durationMs, Date.now() - startedAt))
+  const distances = [0]
+  for (let index = 1; index < waypoints.length; index += 1) {
+    const previous = waypoints[index - 1]
+    const current = waypoints[index]
+    distances.push(
+      distances[index - 1] +
+        Math.hypot(current.x - previous.x, current.y - previous.y),
+    )
+  }
+  const totalDistance = Math.max(1, distances.at(-1) ?? 1)
   return {
+    path: waypoints
+      .map(
+        (waypoint, index) =>
+          `${index === 0 ? "M" : "L"} ${waypoint.x + 0.5} ${waypoint.y + 0.5}`,
+      )
+      .join(" "),
     duration: `${durationMs / 1_000}s`,
     begin: `-${elapsedMs / 1_000}s`,
+    keyPoints: distances
+      .map((distance) => (distance / totalDistance).toFixed(6))
+      .join(";"),
+    keyTimes: waypoints
+      .map((waypoint, index) => {
+        if (index === 0) return "0"
+        if (index === waypoints.length - 1) return "1"
+        const waypointTime = new Date(waypoint.arrivesAt).getTime()
+        return Math.max(
+          0,
+          Math.min(1, (waypointTime - startedAt) / durationMs),
+        ).toFixed(6)
+      })
+      .join(";"),
   }
+}
+
+function tradeRouteWaypoints(
+  route: FrontTradeRoute,
+): Pick<FrontTradeWaypoint, "x" | "y" | "arrivesAt">[] {
+  if (route.waypoints.length >= 2) return route.waypoints
+  return [
+    { x: route.sourceX, y: route.sourceY, arrivesAt: route.startedAt },
+    { x: route.targetX, y: route.targetY, arrivesAt: route.arrivesAt },
+  ]
 }
 
 function MapControlButton({

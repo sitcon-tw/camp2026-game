@@ -273,6 +273,7 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
           landmarks={currentSnapshot.landmarks}
           teams={currentSnapshot.teams}
           garrisons={currentSnapshot.garrisons}
+          railSegments={currentSnapshot.railSegments}
           tradeRoutes={currentSnapshot.tradeRoutes}
           selectedTarget={selectedTarget}
           onSelectTarget={setSelectedTarget}
@@ -406,7 +407,10 @@ function FrontSummaryCard({
               (route) =>
                 route.status === "active" &&
                 (route.sourceTeamId === myTeam.teamId ||
-                  route.targetTeamId === myTeam.teamId),
+                  route.targetTeamId === myTeam.teamId ||
+                  route.waypoints.some(
+                    (waypoint) => waypoint.teamId === myTeam.teamId,
+                  )),
             ).length
           }
         </div>

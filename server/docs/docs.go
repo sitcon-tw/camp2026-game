@@ -1839,7 +1839,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Streams personalized front snapshots when territory, garrisons, trade routes, or rankings change.",
+                "description": "Streams personalized front snapshots when territory, garrisons, rails, trains, or rankings change.",
                 "produces": [
                     "text/event-stream"
                 ],
@@ -6594,6 +6594,12 @@ const docTemplate = `{
                 "myTeamRank": {
                     "type": "integer"
                 },
+                "railSegments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontRailSegmentResponse"
+                    }
+                },
                 "selectedSitones": {
                     "type": "array",
                     "items": {
@@ -6938,6 +6944,35 @@ const docTemplate = `{
                 }
             }
         },
+        "fronts.FrontRailSegmentResponse": {
+            "type": "object",
+            "properties": {
+                "distance": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "sourceGarrisonId": {
+                    "type": "string"
+                },
+                "sourceX": {
+                    "type": "integer"
+                },
+                "sourceY": {
+                    "type": "integer"
+                },
+                "targetGarrisonId": {
+                    "type": "string"
+                },
+                "targetX": {
+                    "type": "integer"
+                },
+                "targetY": {
+                    "type": "integer"
+                }
+            }
+        },
         "fronts.FrontSessionSummaryResponse": {
             "type": "object",
             "properties": {
@@ -7231,6 +7266,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "nextStopIndex": {
+                    "type": "integer"
+                },
                 "potentialReward": {
                     "type": "integer"
                 },
@@ -7271,6 +7309,44 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "targetY": {
+                    "type": "integer"
+                },
+                "waypoints": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fronts.FrontTradeWaypointResponse"
+                    }
+                }
+            }
+        },
+        "fronts.FrontTradeWaypointResponse": {
+            "type": "object",
+            "properties": {
+                "arrivesAt": {
+                    "type": "string"
+                },
+                "garrisonId": {
+                    "type": "string"
+                },
+                "potentialReward": {
+                    "type": "integer"
+                },
+                "settledAt": {
+                    "type": "string"
+                },
+                "sourceReward": {
+                    "type": "integer"
+                },
+                "targetReward": {
+                    "type": "integer"
+                },
+                "teamId": {
+                    "type": "string"
+                },
+                "x": {
+                    "type": "integer"
+                },
+                "y": {
                     "type": "integer"
                 }
             }

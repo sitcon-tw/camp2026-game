@@ -495,6 +495,29 @@ const FrontGarrisonSchema = z.object({
   stationedAt: z.string(),
 })
 
+const FrontRailSegmentSchema = z.object({
+  id: z.string(),
+  sourceGarrisonId: z.string(),
+  targetGarrisonId: z.string(),
+  sourceX: z.number().int().nonnegative(),
+  sourceY: z.number().int().nonnegative(),
+  targetX: z.number().int().nonnegative(),
+  targetY: z.number().int().nonnegative(),
+  distance: z.number().int().nonnegative(),
+})
+
+const FrontTradeWaypointSchema = z.object({
+  garrisonId: z.string(),
+  teamId: z.string(),
+  x: z.number().int().nonnegative(),
+  y: z.number().int().nonnegative(),
+  arrivesAt: z.string(),
+  potentialReward: z.number().int().nonnegative().default(0),
+  sourceReward: z.number().int().nonnegative().default(0),
+  targetReward: z.number().int().nonnegative().default(0),
+  settledAt: z.string().optional(),
+})
+
 const FrontTradeRouteSchema = z.object({
   id: z.string(),
   sourceGarrisonId: z.string(),
@@ -509,6 +532,8 @@ const FrontTradeRouteSchema = z.object({
   potentialReward: z.number().int().nonnegative(),
   sourceReward: z.number().int().nonnegative().default(0),
   targetReward: z.number().int().nonnegative().default(0),
+  waypoints: nullableArray(FrontTradeWaypointSchema),
+  nextStopIndex: z.number().int().nonnegative().default(0),
   status: z.enum(["active", "completed", "cancelled"]),
   startedAt: z.string(),
   arrivesAt: z.string(),
@@ -534,6 +559,7 @@ const FrontSnapshotFieldsSchema = z.object({
   currentPlayerOpenPower: z.number().default(0),
   availableCommands: nullableArray(FrontCommandOptionSchema),
   garrisons: nullableArray(FrontGarrisonSchema),
+  railSegments: nullableArray(FrontRailSegmentSchema),
   tradeRoutes: nullableArray(FrontTradeRouteSchema),
 })
 
@@ -1286,6 +1312,8 @@ export type FrontTerritoryGrid = z.infer<typeof FrontTerritoryGridSchema>
 export type FrontTerritoryRun = z.infer<typeof FrontTerritoryRunSchema>
 export type FrontTerritoryRow = z.infer<typeof FrontTerritoryRowSchema>
 export type FrontGarrison = z.infer<typeof FrontGarrisonSchema>
+export type FrontRailSegment = z.infer<typeof FrontRailSegmentSchema>
+export type FrontTradeWaypoint = z.infer<typeof FrontTradeWaypointSchema>
 export type FrontTradeRoute = z.infer<typeof FrontTradeRouteSchema>
 export type FrontSnapshot = z.infer<typeof FrontSnapshotSchema>
 export type FrontCommandInput = z.input<typeof FrontCommandInputSchema>

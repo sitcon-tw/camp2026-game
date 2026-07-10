@@ -5,6 +5,7 @@ import (
 	"errors"
 	"hash/fnv"
 	"sort"
+	"strconv"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -14,19 +15,30 @@ import (
 )
 
 const (
-	frontTradeLoopInterval = time.Second
-	frontTradeMinDuration  = 10 * time.Second
-	frontTradeMaxDuration  = 60 * time.Second
-	frontTradeHistoryLimit = 64
+	frontTradeLoopInterval       = time.Second
+	frontTradeMinDuration        = 10 * time.Second
+	frontTradeMaxDuration        = 60 * time.Second
+	frontTradeHistoryLimit       = 64
+	frontTrainCooldown           = 30 * time.Second
+	frontTrainSpawnChanceDivisor = 10
 )
 
 type frontTradeSettlement struct {
 	RouteID      string
+	StopIndex    int
 	SourcePlayer string
 	TargetPlayer string
 	SourceReward int
 	TargetReward int
 	SettledAt    time.Time
+}
+
+type frontTradeAdvance struct {
+	Changed     bool
+	RailChanged bool
+	Started     int
+	Arrived     int
+	Cancelled   int
 }
 
 func (h *Handler) runFrontTradeLoop(ctx context.Context) {
@@ -106,16 +118,12 @@ func (h *Handler) advanceFrontTradesOnce(ctx context.Context, frontID string, no
 		}
 		front = h.withFrontDefaults(front)
 		previousRevision := front.Revision
-		next, settlements, started, advanced := advanceFrontTradeState(front, now)
-		if !advanced {
+		next, settlements, advanced := advanceFrontTradeState(front, now)
+		if !advanced.Changed {
 			return nil, nil
 		}
 		changed = true
-		if len(settlements) > 0 {
-			eventName = "trade_completed"
-		} else if started > 0 {
-			eventName = "trade_started"
-		}
+		eventName = frontTradeEventName(advanced)
 		for _, settlement := range settlements {
 			if err := h.recordFrontTradeRewards(ctx, frontID, settlement); err != nil {
 				return nil, err
@@ -126,6 +134,7 @@ func (h *Handler) advanceFrontTradesOnce(ctx context.Context, frontID string, no
 			frontRevisionFilter(frontID, previousRevision),
 			bson.M{"$set": bson.M{
 				"teams": next.Teams, "leaderboard": next.Leaderboard,
+				"garrisons": next.Garrisons, "rail_segments": next.RailSegments,
 				"trade_routes": next.TradeRoutes, "revision": next.Revision,
 				"tick": next.Tick, "updated_at": next.UpdatedAt,
 			}},
@@ -145,39 +154,64 @@ func (h *Handler) advanceFrontTradesOnce(ctx context.Context, frontID string, no
 	return eventName, changed, conflict, err
 }
 
-func advanceFrontTradeState(front mongomodel.Front, now time.Time) (mongomodel.Front, []frontTradeSettlement, int, bool) {
+func advanceFrontTradeState(front mongomodel.Front, now time.Time) (mongomodel.Front, []frontTradeSettlement, frontTradeAdvance) {
 	front = cloneFront(front)
-	changed := resetFrontTradeWindows(&front, now)
+	advance := frontTradeAdvance{}
+	advance.Changed = resetFrontTradeWindows(&front, now)
+	advance.RailChanged, advance.Cancelled = reconcileFrontRailNetwork(&front, now, "rail network changed")
+	advance.Changed = advance.Changed || advance.RailChanged || advance.Cancelled > 0
+
 	garrisons := make(map[string]mongomodel.FrontGarrison, len(front.Garrisons))
 	for _, garrison := range front.Garrisons {
 		garrisons[garrison.ID] = garrison
 	}
 	settlements := make([]frontTradeSettlement, 0)
-	for i := range front.TradeRoutes {
-		route := &front.TradeRoutes[i]
-		if route.Status != frontTradeRouteActive || route.ArrivesAt.After(now) {
+	for routeIndex := range front.TradeRoutes {
+		route := &front.TradeRoutes[routeIndex]
+		if route.Status != frontTradeRouteActive {
 			continue
 		}
-		source, sourceOK := garrisons[route.SourceGarrisonID]
-		target, targetOK := garrisons[route.TargetGarrisonID]
-		if !sourceOK || !targetOK || source.TeamID == target.TeamID {
-			route.Status = frontTradeRouteCancelled
-			route.CancellationReason = "trade endpoint unavailable"
-			route.SettledAt = timePtr(now)
-			changed = true
-			continue
+		if route.NextStopIndex < 1 {
+			route.NextStopIndex = 1
 		}
-		sourceReward := applyFrontTradeReward(&front, source.TeamID, route.PotentialReward)
-		targetReward := applyFrontTradeReward(&front, target.TeamID, route.PotentialReward)
-		route.Status = frontTradeRouteCompleted
-		route.SourceReward = sourceReward
-		route.TargetReward = targetReward
-		route.SettledAt = timePtr(now)
-		settlements = append(settlements, frontTradeSettlement{
-			RouteID: route.ID, SourcePlayer: source.PlayerID, TargetPlayer: target.PlayerID,
-			SourceReward: sourceReward, TargetReward: targetReward, SettledAt: now,
-		})
-		changed = true
+		for route.NextStopIndex < len(route.Waypoints) {
+			stopIndex := route.NextStopIndex
+			waypoint := &route.Waypoints[stopIndex]
+			if waypoint.ArrivesAt.After(now) {
+				break
+			}
+			source, sourceOK := garrisons[route.SourceGarrisonID]
+			target, targetOK := garrisons[waypoint.GarrisonID]
+			if !sourceOK || !targetOK {
+				route.Status = frontTradeRouteCancelled
+				route.CancellationReason = "train station unavailable"
+				route.SettledAt = timePtr(now)
+				advance.Cancelled++
+				advance.Changed = true
+				break
+			}
+			settledAt := waypoint.ArrivesAt
+			waypoint.SettledAt = timePtr(settledAt)
+			if source.TeamID != target.TeamID {
+				waypoint.SourceReward = applyFrontTradeReward(&front, source.TeamID, waypoint.PotentialReward)
+				waypoint.TargetReward = applyFrontTradeReward(&front, target.TeamID, waypoint.PotentialReward)
+				route.SourceReward += waypoint.SourceReward
+				route.TargetReward += waypoint.TargetReward
+				settlements = append(settlements, frontTradeSettlement{
+					RouteID: route.ID, StopIndex: stopIndex,
+					SourcePlayer: source.PlayerID, TargetPlayer: target.PlayerID,
+					SourceReward: waypoint.SourceReward, TargetReward: waypoint.TargetReward,
+					SettledAt: settledAt,
+				})
+			}
+			route.NextStopIndex++
+			advance.Arrived++
+			advance.Changed = true
+		}
+		if route.Status == frontTradeRouteActive && route.NextStopIndex >= len(route.Waypoints) {
+			route.Status = frontTradeRouteCompleted
+			route.SettledAt = timePtr(route.ArrivesAt)
+		}
 	}
 
 	activeSource := make(map[string]struct{})
@@ -186,32 +220,31 @@ func advanceFrontTradeState(front mongomodel.Front, now time.Time) (mongomodel.F
 			activeSource[route.SourceGarrisonID] = struct{}{}
 		}
 	}
-	started := 0
-	for _, source := range front.Garrisons {
-		if _, active := activeSource[source.ID]; active || frontTradeRemaining(front, source.TeamID) <= 0 {
+	for garrisonIndex := range front.Garrisons {
+		source := &front.Garrisons[garrisonIndex]
+		if _, active := activeSource[source.ID]; active || !frontTrainReady(*source, now) || !frontTrainShouldDepart(front.ID, source.ID, now) {
 			continue
 		}
-		candidates := eligibleFrontTradeTargets(front, source)
+		candidates := eligibleFrontTrainDestinations(front, *source)
 		if len(candidates) == 0 {
 			continue
 		}
-		target := candidates[stableTradeTargetIndex(source.ID, front.Revision, len(candidates))]
-		distance := absFrontInt(source.X-target.X) + absFrontInt(source.Y-target.Y)
-		reward := frontTradeReward(distance, source.TradeBonusPercent)
-		front.TradeRoutes = append(front.TradeRoutes, mongomodel.FrontTradeRoute{
-			ID:               "front_trade_" + bson.NewObjectID().Hex(),
-			SourceGarrisonID: source.ID, TargetGarrisonID: target.ID,
-			SourcePlayerID: source.PlayerID, TargetPlayerID: target.PlayerID,
-			SourceTeamID: source.TeamID, TargetTeamID: target.TeamID,
-			SourceX: source.X, SourceY: source.Y, TargetX: target.X, TargetY: target.Y,
-			Distance: distance, PotentialReward: reward, Status: frontTradeRouteActive,
-			StartedAt: now, ArrivesAt: now.Add(frontTradeDuration(front, distance)),
-		})
-		started++
-		changed = true
+		target := candidates[stableFrontTradeIndex(source.ID, now, len(candidates))]
+		path := frontRailShortestPath(front.RailSegments, source.ID, target.ID)
+		if len(path) < 2 {
+			continue
+		}
+		route, ok := newFrontTrainRoute(front, *source, target, path, now)
+		if !ok {
+			continue
+		}
+		front.TradeRoutes = append(front.TradeRoutes, route)
+		source.LastTrainAt = now
+		advance.Started++
+		advance.Changed = true
 	}
-	if !changed {
-		return front, nil, 0, false
+	if !advance.Changed {
+		return front, nil, advance
 	}
 	front.TradeRoutes = pruneFrontTradeRoutes(front.TradeRoutes)
 	front.Revision++
@@ -219,7 +252,107 @@ func advanceFrontTradeState(front mongomodel.Front, now time.Time) (mongomodel.F
 	front.UpdatedAt = now
 	syncTerritoryTeamRanks(front.Teams, front.Territory)
 	front.Leaderboard = deriveLeaderboard(front)
-	return front, settlements, started, true
+	return front, settlements, advance
+}
+
+func newFrontTrainRoute(front mongomodel.Front, source mongomodel.FrontGarrison, target mongomodel.FrontGarrison, path []string, now time.Time) (mongomodel.FrontTradeRoute, bool) {
+	garrisons := make(map[string]mongomodel.FrontGarrison, len(front.Garrisons))
+	for _, garrison := range front.Garrisons {
+		garrisons[garrison.ID] = garrison
+	}
+	waypoints := make([]mongomodel.FrontTradeWaypoint, 0, len(path))
+	waypoints = append(waypoints, mongomodel.FrontTradeWaypoint{
+		GarrisonID: source.ID, TeamID: source.TeamID, X: source.X, Y: source.Y, ArrivesAt: now,
+	})
+	totalDistance := 0
+	totalReward := 0
+	arrivesAt := now
+	for index := 1; index < len(path); index++ {
+		previous, previousOK := garrisons[path[index-1]]
+		current, currentOK := garrisons[path[index]]
+		if !previousOK || !currentOK {
+			return mongomodel.FrontTradeRoute{}, false
+		}
+		distance := frontGarrisonDistance(previous, current)
+		totalDistance += distance
+		arrivesAt = arrivesAt.Add(frontTradeDuration(front, distance))
+		reward := 0
+		if source.TeamID != current.TeamID {
+			reward = frontTradeReward(distance, source.TradeBonusPercent)
+			totalReward += reward
+		}
+		waypoints = append(waypoints, mongomodel.FrontTradeWaypoint{
+			GarrisonID: current.ID, TeamID: current.TeamID, X: current.X, Y: current.Y,
+			ArrivesAt: arrivesAt, PotentialReward: reward,
+		})
+	}
+	return mongomodel.FrontTradeRoute{
+		ID:               "front_train_" + bson.NewObjectID().Hex(),
+		SourceGarrisonID: source.ID, TargetGarrisonID: target.ID,
+		SourcePlayerID: source.PlayerID, TargetPlayerID: target.PlayerID,
+		SourceTeamID: source.TeamID, TargetTeamID: target.TeamID,
+		SourceX: source.X, SourceY: source.Y, TargetX: target.X, TargetY: target.Y,
+		Distance: totalDistance, PotentialReward: totalReward,
+		Waypoints: waypoints, NextStopIndex: 1,
+		Status: frontTradeRouteActive, StartedAt: now, ArrivesAt: arrivesAt,
+	}, true
+}
+
+func eligibleFrontTrainDestinations(front mongomodel.Front, source mongomodel.FrontGarrison) []mongomodel.FrontGarrison {
+	out := make([]mongomodel.FrontGarrison, 0, len(front.Garrisons))
+	for _, target := range front.Garrisons {
+		if target.ID == source.ID || target.TeamID == source.TeamID {
+			continue
+		}
+		if len(frontRailShortestPath(front.RailSegments, source.ID, target.ID)) >= 2 {
+			out = append(out, target)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
+func frontTrainReady(garrison mongomodel.FrontGarrison, now time.Time) bool {
+	reference := garrison.LastTrainAt
+	if reference.IsZero() {
+		reference = garrison.StationedAt
+	}
+	return !now.Before(reference.Add(frontTrainCooldown))
+}
+
+func frontTrainShouldDepart(frontID string, garrisonID string, now time.Time) bool {
+	hash := fnv.New32a()
+	_, _ = hash.Write([]byte(frontID))
+	_, _ = hash.Write([]byte{0})
+	_, _ = hash.Write([]byte(garrisonID))
+	_, _ = hash.Write([]byte{0})
+	_, _ = hash.Write([]byte(strconv.FormatInt(now.Unix(), 10)))
+	return hash.Sum32()%frontTrainSpawnChanceDivisor == 0
+}
+
+func stableFrontTradeIndex(sourceID string, now time.Time, length int) int {
+	if length <= 1 {
+		return 0
+	}
+	hash := fnv.New32a()
+	_, _ = hash.Write([]byte(sourceID))
+	_, _ = hash.Write([]byte(strconv.FormatInt(now.Unix(), 10)))
+	return int(hash.Sum32() % uint32(length))
+}
+
+func frontTradeEventName(advance frontTradeAdvance) string {
+	switch {
+	case advance.Cancelled > 0:
+		return "train_cancelled"
+	case advance.Arrived > 0:
+		return "train_arrived"
+	case advance.Started > 0:
+		return "train_started"
+	case advance.RailChanged:
+		return "rail_updated"
+	default:
+		return "front_updated"
+	}
 }
 
 func resetFrontTradeWindows(front *mongomodel.Front, now time.Time) bool {
@@ -238,18 +371,6 @@ func resetFrontTradeWindows(front *mongomodel.Front, now time.Time) bool {
 		}
 	}
 	return changed
-}
-
-func eligibleFrontTradeTargets(front mongomodel.Front, source mongomodel.FrontGarrison) []mongomodel.FrontGarrison {
-	out := make([]mongomodel.FrontGarrison, 0, len(front.Garrisons))
-	for _, target := range front.Garrisons {
-		if target.ID == source.ID || target.TeamID == source.TeamID || frontTradeRemaining(front, target.TeamID) <= 0 {
-			continue
-		}
-		out = append(out, target)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	return out
 }
 
 func frontTradeRemaining(front mongomodel.Front, teamID string) int {
@@ -290,20 +411,6 @@ func frontTradeReward(distance int, bonusPercent int) int {
 	return base + scaledFrontSitoneBonus(base, bonusPercent)
 }
 
-func stableTradeTargetIndex(sourceID string, revision int64, length int) int {
-	if length <= 1 {
-		return 0
-	}
-	hash := fnv.New32a()
-	_, _ = hash.Write([]byte(sourceID))
-	var revisionBytes [8]byte
-	for i := range revisionBytes {
-		revisionBytes[i] = byte(revision >> (8 * i))
-	}
-	_, _ = hash.Write(revisionBytes[:])
-	return int(hash.Sum32() % uint32(length))
-}
-
 func pruneFrontTradeRoutes(routes []mongomodel.FrontTradeRoute) []mongomodel.FrontTradeRoute {
 	active := make([]mongomodel.FrontTradeRoute, 0, len(routes))
 	history := make([]mongomodel.FrontTradeRoute, 0, len(routes))
@@ -324,9 +431,10 @@ func pruneFrontTradeRoutes(routes []mongomodel.FrontTradeRoute) []mongomodel.Fro
 }
 
 func (h *Handler) recordFrontTradeRewards(ctx context.Context, frontID string, settlement frontTradeSettlement) error {
+	stopID := settlement.RouteID + "_stop_" + strconv.Itoa(settlement.StopIndex)
 	records := []mongomodel.OpenPowerRecord{
-		{ID: settlement.RouteID + "_source", PlayerID: settlement.SourcePlayer, Amount: settlement.SourceReward, Reason: "front_trade", Source: frontID + ":" + settlement.RouteID, CreatedAt: settlement.SettledAt},
-		{ID: settlement.RouteID + "_target", PlayerID: settlement.TargetPlayer, Amount: settlement.TargetReward, Reason: "front_trade", Source: frontID + ":" + settlement.RouteID, CreatedAt: settlement.SettledAt},
+		{ID: stopID + "_source", PlayerID: settlement.SourcePlayer, Amount: settlement.SourceReward, Reason: "front_trade", Source: frontID + ":" + stopID, CreatedAt: settlement.SettledAt},
+		{ID: stopID + "_target", PlayerID: settlement.TargetPlayer, Amount: settlement.TargetReward, Reason: "front_trade", Source: frontID + ":" + stopID, CreatedAt: settlement.SettledAt},
 	}
 	for _, record := range records {
 		if record.PlayerID == "" || record.Amount <= 0 {

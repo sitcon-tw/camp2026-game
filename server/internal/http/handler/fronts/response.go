@@ -26,6 +26,7 @@ type DetailResponse struct {
 	FrontPowerSource       string                          `json:"frontPowerSource,omitempty"`
 	AvailableCommands      []FrontCommandOptionResponse    `json:"availableCommands"`
 	Garrisons              []FrontGarrisonResponse         `json:"garrisons"`
+	RailSegments           []FrontRailSegmentResponse      `json:"railSegments"`
 	TradeRoutes            []FrontTradeRouteResponse       `json:"tradeRoutes"`
 }
 
@@ -174,24 +175,49 @@ type FrontGarrisonResponse struct {
 }
 
 type FrontTradeRouteResponse struct {
-	ID                 string     `json:"id"`
-	SourceGarrisonID   string     `json:"sourceGarrisonId"`
-	TargetGarrisonID   string     `json:"targetGarrisonId"`
-	SourceTeamID       string     `json:"sourceTeamId"`
-	TargetTeamID       string     `json:"targetTeamId"`
-	SourceX            int        `json:"sourceX"`
-	SourceY            int        `json:"sourceY"`
-	TargetX            int        `json:"targetX"`
-	TargetY            int        `json:"targetY"`
-	Distance           int        `json:"distance"`
-	PotentialReward    int        `json:"potentialReward"`
-	SourceReward       int        `json:"sourceReward"`
-	TargetReward       int        `json:"targetReward"`
-	Status             string     `json:"status"`
-	StartedAt          time.Time  `json:"startedAt"`
-	ArrivesAt          time.Time  `json:"arrivesAt"`
-	SettledAt          *time.Time `json:"settledAt,omitempty"`
-	CancellationReason string     `json:"cancellationReason,omitempty"`
+	ID                 string                       `json:"id"`
+	SourceGarrisonID   string                       `json:"sourceGarrisonId"`
+	TargetGarrisonID   string                       `json:"targetGarrisonId"`
+	SourceTeamID       string                       `json:"sourceTeamId"`
+	TargetTeamID       string                       `json:"targetTeamId"`
+	SourceX            int                          `json:"sourceX"`
+	SourceY            int                          `json:"sourceY"`
+	TargetX            int                          `json:"targetX"`
+	TargetY            int                          `json:"targetY"`
+	Distance           int                          `json:"distance"`
+	PotentialReward    int                          `json:"potentialReward"`
+	SourceReward       int                          `json:"sourceReward"`
+	TargetReward       int                          `json:"targetReward"`
+	Waypoints          []FrontTradeWaypointResponse `json:"waypoints"`
+	NextStopIndex      int                          `json:"nextStopIndex"`
+	Status             string                       `json:"status"`
+	StartedAt          time.Time                    `json:"startedAt"`
+	ArrivesAt          time.Time                    `json:"arrivesAt"`
+	SettledAt          *time.Time                   `json:"settledAt,omitempty"`
+	CancellationReason string                       `json:"cancellationReason,omitempty"`
+}
+
+type FrontRailSegmentResponse struct {
+	ID               string `json:"id"`
+	SourceGarrisonID string `json:"sourceGarrisonId"`
+	TargetGarrisonID string `json:"targetGarrisonId"`
+	SourceX          int    `json:"sourceX"`
+	SourceY          int    `json:"sourceY"`
+	TargetX          int    `json:"targetX"`
+	TargetY          int    `json:"targetY"`
+	Distance         int    `json:"distance"`
+}
+
+type FrontTradeWaypointResponse struct {
+	GarrisonID      string     `json:"garrisonId"`
+	TeamID          string     `json:"teamId"`
+	X               int        `json:"x"`
+	Y               int        `json:"y"`
+	ArrivesAt       time.Time  `json:"arrivesAt"`
+	PotentialReward int        `json:"potentialReward"`
+	SourceReward    int        `json:"sourceReward"`
+	TargetReward    int        `json:"targetReward"`
+	SettledAt       *time.Time `json:"settledAt,omitempty"`
 }
 
 type FrontSitoneResponse struct {

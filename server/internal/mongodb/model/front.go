@@ -27,6 +27,7 @@ type Front struct {
 	LastCommand  *FrontCommandSummary    `bson:"last_command,omitempty"`
 	Territory    *FrontTerritory         `bson:"territory,omitempty"`
 	Garrisons    []FrontGarrison         `bson:"garrisons,omitempty"`
+	RailSegments []FrontRailSegment      `bson:"rail_segments,omitempty"`
 	TradeRoutes  []FrontTradeRoute       `bson:"trade_routes,omitempty"`
 	CreatedAt    time.Time               `bson:"created_at,omitempty"`
 	UpdatedAt    time.Time               `bson:"updated_at,omitempty"`
@@ -122,29 +123,55 @@ type FrontGarrison struct {
 	DefenseBonus      int       `bson:"defense_bonus,omitempty"`
 	TradeBonusPercent int       `bson:"trade_bonus_percent,omitempty"`
 	StationedAt       time.Time `bson:"stationed_at"`
+	LastTrainAt       time.Time `bson:"last_train_at,omitempty"`
+}
+
+type FrontRailSegment struct {
+	ID               string `bson:"id"`
+	SourceGarrisonID string `bson:"source_garrison_id"`
+	TargetGarrisonID string `bson:"target_garrison_id"`
+	SourceX          int    `bson:"source_x"`
+	SourceY          int    `bson:"source_y"`
+	TargetX          int    `bson:"target_x"`
+	TargetY          int    `bson:"target_y"`
+	Distance         int    `bson:"distance"`
+}
+
+type FrontTradeWaypoint struct {
+	GarrisonID      string     `bson:"garrison_id"`
+	TeamID          string     `bson:"team_id"`
+	X               int        `bson:"x"`
+	Y               int        `bson:"y"`
+	ArrivesAt       time.Time  `bson:"arrives_at"`
+	PotentialReward int        `bson:"potential_reward,omitempty"`
+	SourceReward    int        `bson:"source_reward,omitempty"`
+	TargetReward    int        `bson:"target_reward,omitempty"`
+	SettledAt       *time.Time `bson:"settled_at,omitempty"`
 }
 
 type FrontTradeRoute struct {
-	ID                 string     `bson:"id"`
-	SourceGarrisonID   string     `bson:"source_garrison_id"`
-	TargetGarrisonID   string     `bson:"target_garrison_id"`
-	SourcePlayerID     string     `bson:"source_player_id"`
-	TargetPlayerID     string     `bson:"target_player_id"`
-	SourceTeamID       string     `bson:"source_team_id"`
-	TargetTeamID       string     `bson:"target_team_id"`
-	SourceX            int        `bson:"source_x"`
-	SourceY            int        `bson:"source_y"`
-	TargetX            int        `bson:"target_x"`
-	TargetY            int        `bson:"target_y"`
-	Distance           int        `bson:"distance"`
-	PotentialReward    int        `bson:"potential_reward"`
-	SourceReward       int        `bson:"source_reward,omitempty"`
-	TargetReward       int        `bson:"target_reward,omitempty"`
-	Status             string     `bson:"status"`
-	StartedAt          time.Time  `bson:"started_at"`
-	ArrivesAt          time.Time  `bson:"arrives_at"`
-	SettledAt          *time.Time `bson:"settled_at,omitempty"`
-	CancellationReason string     `bson:"cancellation_reason,omitempty"`
+	ID                 string               `bson:"id"`
+	SourceGarrisonID   string               `bson:"source_garrison_id"`
+	TargetGarrisonID   string               `bson:"target_garrison_id"`
+	SourcePlayerID     string               `bson:"source_player_id"`
+	TargetPlayerID     string               `bson:"target_player_id"`
+	SourceTeamID       string               `bson:"source_team_id"`
+	TargetTeamID       string               `bson:"target_team_id"`
+	SourceX            int                  `bson:"source_x"`
+	SourceY            int                  `bson:"source_y"`
+	TargetX            int                  `bson:"target_x"`
+	TargetY            int                  `bson:"target_y"`
+	Distance           int                  `bson:"distance"`
+	PotentialReward    int                  `bson:"potential_reward"`
+	SourceReward       int                  `bson:"source_reward,omitempty"`
+	TargetReward       int                  `bson:"target_reward,omitempty"`
+	Waypoints          []FrontTradeWaypoint `bson:"waypoints,omitempty"`
+	NextStopIndex      int                  `bson:"next_stop_index,omitempty"`
+	Status             string               `bson:"status"`
+	StartedAt          time.Time            `bson:"started_at"`
+	ArrivesAt          time.Time            `bson:"arrives_at"`
+	SettledAt          *time.Time           `bson:"settled_at,omitempty"`
+	CancellationReason string               `bson:"cancellation_reason,omitempty"`
 }
 
 type FrontCapturedGarrison struct {

@@ -43,6 +43,7 @@ func detailResponse(front mongomodel.Front, currentPlayerID string, currentTeamI
 		FrontPowerSource:       "player_ledger",
 		AvailableCommands:      commandOptionResponses(front, currentPlayerID, currentTeamID, playerOpenPower),
 		Garrisons:              garrisonResponses(front.Garrisons, currentPlayerID),
+		RailSegments:           railSegmentResponses(front.RailSegments),
 		TradeRoutes:            tradeRouteResponses(front.TradeRoutes),
 	}
 	if front.Territory != nil {
@@ -207,8 +208,33 @@ func tradeRouteResponses(routes []mongomodel.FrontTradeRoute) []FrontTradeRouteR
 			SourceX: route.SourceX, SourceY: route.SourceY, TargetX: route.TargetX, TargetY: route.TargetY,
 			Distance: route.Distance, PotentialReward: route.PotentialReward,
 			SourceReward: route.SourceReward, TargetReward: route.TargetReward,
+			Waypoints: tradeWaypointResponses(route.Waypoints), NextStopIndex: route.NextStopIndex,
 			Status: route.Status, StartedAt: route.StartedAt, ArrivesAt: route.ArrivesAt,
 			SettledAt: route.SettledAt, CancellationReason: route.CancellationReason,
+		})
+	}
+	return out
+}
+
+func railSegmentResponses(segments []mongomodel.FrontRailSegment) []FrontRailSegmentResponse {
+	out := make([]FrontRailSegmentResponse, 0, len(segments))
+	for _, segment := range segments {
+		out = append(out, FrontRailSegmentResponse{
+			ID: segment.ID, SourceGarrisonID: segment.SourceGarrisonID, TargetGarrisonID: segment.TargetGarrisonID,
+			SourceX: segment.SourceX, SourceY: segment.SourceY, TargetX: segment.TargetX, TargetY: segment.TargetY,
+			Distance: segment.Distance,
+		})
+	}
+	return out
+}
+
+func tradeWaypointResponses(waypoints []mongomodel.FrontTradeWaypoint) []FrontTradeWaypointResponse {
+	out := make([]FrontTradeWaypointResponse, 0, len(waypoints))
+	for _, waypoint := range waypoints {
+		out = append(out, FrontTradeWaypointResponse{
+			GarrisonID: waypoint.GarrisonID, TeamID: waypoint.TeamID, X: waypoint.X, Y: waypoint.Y,
+			ArrivesAt: waypoint.ArrivesAt, PotentialReward: waypoint.PotentialReward,
+			SourceReward: waypoint.SourceReward, TargetReward: waypoint.TargetReward, SettledAt: waypoint.SettledAt,
 		})
 	}
 	return out
