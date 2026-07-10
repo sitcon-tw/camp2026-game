@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { Lock, QrCode, ScanQrCode, UsersRound } from "lucide-react"
 import { type ReactNode, useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -456,6 +456,20 @@ export function BattleLobbyPage() {
           : battleOpeningLocked
             ? "目前禁止開局，電腦對戰也會暫停建立新房。"
             : "沒有真人對手時，也可以完成對戰並取得結算獎勵。"}
+      </LobbyActionCard>
+      <LobbyActionCard
+        title="開源戰線"
+        description="和小隊一起爭奪地圖領土"
+        action={
+          <Button asChild className={actionButtonClassName} variant="secondary">
+            <Link to="/front">
+              <GameFeatureIcon name="front" className="size-5" />
+              前往開源戰線
+            </Link>
+          </Button>
+        }
+      >
+        使用開源力部署行動，和隊友一起推進戰線、爭奪領土。
       </LobbyActionCard>
       {scannerOpen ? (
         <MatchCodeScannerDialog

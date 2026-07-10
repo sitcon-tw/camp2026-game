@@ -146,6 +146,7 @@ export function HomeBasePage() {
   )
   const battleEnabled = actionEnabledByID.get("battle") ?? true
   const battleLocked = !battleEnabled
+  const frontEnabled = actionEnabledByID.get("front") ?? true
   const baseActions =
     player?.role === "staff" ? [...STAFF_ACTIONS, ...ACTIONS] : ACTIONS
   const actions = baseActions.map((action) => ({
@@ -252,6 +253,55 @@ export function HomeBasePage() {
             </Link>
           )}
         </section>
+
+        <aside
+          className="bg-surface-raised border-ink relative overflow-hidden rounded-[22px] border-2 p-4"
+          style={{ boxShadow: "4px 4px 0 rgba(23,35,58,.14)" }}
+          aria-label="開源戰線提示"
+        >
+          <div
+            className="bg-primary/15 pointer-events-none absolute inset-y-0 left-0 w-2"
+            aria-hidden
+          />
+          <div className="grid grid-cols-[58px_1fr_auto] items-center gap-3">
+            <div
+              className="grid size-[58px] -rotate-[4deg] place-items-center"
+              aria-hidden
+            >
+              <GameFeatureIcon name="front" className="size-[58px]" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-primary mb-0.5 text-[11px] font-black tracking-[0.08em] uppercase">
+                Team Mission
+              </p>
+              <h2 className="text-[20px] leading-tight font-black tracking-normal">
+                開源戰線
+              </h2>
+              <p className="text-muted-foreground mt-1 text-[13px] leading-[1.45] font-bold">
+                使用開源力，和小隊爭奪領土
+              </p>
+            </div>
+            {frontEnabled ? (
+              <Link
+                to="/front"
+                className="bg-card border-ink focus-visible:outline-power flex min-h-[44px] min-w-[84px] items-center justify-center gap-1 rounded-[14px] border-2 px-3 text-sm font-black no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
+                style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
+              >
+                出發
+                <ChevronRight className="size-4" aria-hidden />
+              </Link>
+            ) : (
+              <span
+                aria-disabled
+                className="bg-card border-ink text-muted-foreground flex min-h-[44px] min-w-[84px] cursor-not-allowed items-center justify-center gap-1 rounded-[14px] border-2 px-3 text-sm font-black opacity-80"
+                style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
+              >
+                <Lock className="size-4" aria-hidden />
+                禁止
+              </span>
+            )}
+          </div>
+        </aside>
 
         <section className="grid grid-cols-3 gap-[9px]" aria-label="戰力摘要">
           {(
