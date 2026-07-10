@@ -38,6 +38,7 @@ import { cn } from "@/shared/utils"
 
 import { getTeamName, getTerritoryTeamColor } from "./front-map-style"
 import type { TerritoryCellState, TerritoryTarget } from "./territory-grid-map"
+import { calculateFrontSitonePreview } from "../lib/front-sitone-effect"
 
 type FrontTerritoryDrawerProps = {
   front: FrontSnapshot
@@ -50,7 +51,7 @@ type FrontTerritoryDrawerProps = {
   canAttackSelectedOwner: boolean
   teams: FrontTeamState[]
   availableCommands: FrontCommandOption[]
-  selectedSitone: FrontSitone | null
+  selectedSitones: FrontSitone[]
   selectedCommand: FrontCommandKind | null
   onOpenChange: (target: TerritoryTarget | null) => void
   onSelectCommand: (kind: FrontCommandKind) => void
@@ -99,7 +100,7 @@ export function FrontTerritoryDrawer({
   canAttackSelectedOwner,
   teams,
   availableCommands,
-  selectedSitone,
+  selectedSitones,
   selectedCommand,
   onOpenChange,
   onSelectCommand,
@@ -128,7 +129,7 @@ export function FrontTerritoryDrawer({
             canAttackSelectedOwner={canAttackSelectedOwner}
             teams={teams}
             availableCommands={availableCommands}
-            selectedSitone={selectedSitone}
+            selectedSitones={selectedSitones}
             selectedCommand={selectedCommand}
             onSelectCommand={onSelectCommand}
             commandPending={commandPending}
@@ -150,7 +151,7 @@ function TerritoryDrawerContent({
   canAttackSelectedOwner,
   teams,
   availableCommands,
-  selectedSitone,
+  selectedSitones,
   selectedCommand,
   onSelectCommand,
   commandPending,
@@ -272,9 +273,9 @@ function TerritoryDrawerContent({
                   <Zap className="size-3" aria-hidden />
                   開源力 {formatNumber(front.currentPlayerOpenPower)}
                 </Badge>
-                {selectedSitone ? (
+                {selectedSitones.length > 0 ? (
                   <Badge variant="secondary" className="max-w-[9rem] truncate">
-                    {selectedSitone.name}
+                    {selectedSitones.length} 顆小石
                   </Badge>
                 ) : null}
               </div>
@@ -302,7 +303,7 @@ function TerritoryDrawerContent({
                       : undefined
                 const enabled = Boolean(
                   playable &&
-                  selectedSitone &&
+                  selectedSitones.length > 0 &&
                   (!hasCommandOptions || option?.enabled) &&
                   !localReason,
                 )
@@ -337,6 +338,19 @@ function TerritoryDrawerContent({
               })}
             </div>
 
+            {selectedSitones.length > 0 ? (
+              <div className="bg-muted border-border grid gap-1.5 rounded-md border px-3 py-2">
+                {commandList.map(({ item }) => (
+                  <div
+                    key={item.kind}
+                    className="text-muted-foreground text-xs font-bold"
+                  >
+                    {sitonePreviewLabel(item.kind, selectedSitones)}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
             {disabledCommandReasons.map(({ item, reason }) => (
               <div
                 key={item.kind}
@@ -347,9 +361,9 @@ function TerritoryDrawerContent({
               </div>
             ))}
 
-            {!selectedSitone ? (
+            {selectedSitones.length === 0 ? (
               <div className="text-muted-foreground text-xs font-bold">
-                請先選擇一顆前線小石
+                請先選擇至少一顆前線小石
               </div>
             ) : null}
 
@@ -363,6 +377,20 @@ function TerritoryDrawerContent({
       </div>
     </>
   )
+}
+
+function sitonePreviewLabel(
+  kind: FrontCommandKind,
+  selectedSitones: FrontSitone[],
+) {
+  const preview = calculateFrontSitonePreview(selectedSitones, kind)
+  const result = preview.affectedCells
+    ? `最多 ${preview.affectedCells} 格（+${preview.affectedCellBonus}）`
+    : preview.defense
+      ? `修復 ${preview.defense}、${preview.score} 分`
+      : `${preview.score ?? 0} 分（+${preview.scoreBonus}）`
+  const label = commandItems.find((item) => item.kind === kind)?.label ?? kind
+  return `${label}：編隊 +${preview.squadBonusPercent}% · 專長 +${preview.affinityBonusPercent}% · ${result}`
 }
 
 function CommandIcon({

@@ -1,5 +1,28 @@
 basePath: /api
 definitions:
+  admin.AddRoomTeamMemberRequest:
+    properties:
+      playerId:
+        example: 7H9K2Q
+        maxLength: 128
+        minLength: 1
+        type: string
+      qrcodeToken:
+        example: qr_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok
+        maxLength: 512
+        minLength: 4
+        type: string
+    type: object
+  admin.AddRoomTeamMemberResponse:
+    properties:
+      added:
+        example: true
+        type: boolean
+      member:
+        $ref: '#/definitions/admin.RoomTeamMemberResponse'
+      room:
+        $ref: '#/definitions/admin.RoomTeamResponse'
+    type: object
   admin.ClassTimeBattleLockSessionRequest:
     properties:
       end:
@@ -640,6 +663,73 @@ definitions:
         example: true
         type: boolean
     type: object
+  admin.RoomTeamMemberResponse:
+    properties:
+      avatarUrl:
+        type: string
+      joinedAt:
+        type: string
+      joinedBy:
+        example: scan
+        type: string
+      nickname:
+        example: Alice
+        type: string
+      playerId:
+        example: 7H9K2Q
+        type: string
+      team:
+        $ref: '#/definitions/admin.RoomTeamMemberTeamResponse'
+    type: object
+  admin.RoomTeamMemberTeamResponse:
+    properties:
+      name:
+        example: Team 001
+        type: string
+      teamId:
+        example: team-001
+        type: string
+    type: object
+  admin.RoomTeamMembersResponse:
+    properties:
+      members:
+        items:
+          $ref: '#/definitions/admin.RoomTeamMemberResponse'
+        type: array
+      room:
+        $ref: '#/definitions/admin.RoomTeamResponse'
+    type: object
+  admin.RoomTeamResponse:
+    properties:
+      memberCount:
+        example: 6
+        type: integer
+      qrTokenExpiresAt:
+        type: string
+      roomId:
+        example: room-208
+        type: string
+      roomNumber:
+        example: "208"
+        type: string
+    type: object
+  admin.RoomTeamTokenResponse:
+    properties:
+      qrToken:
+        example: rmt_6H_x7lM20CK8BBnPfwEG1E
+        type: string
+      qrTokenExpiresAt:
+        type: string
+      room:
+        $ref: '#/definitions/admin.RoomTeamResponse'
+    type: object
+  admin.RoomTeamsResponse:
+    properties:
+      rooms:
+        items:
+          $ref: '#/definitions/admin.RoomTeamResponse'
+        type: array
+    type: object
   admin.SettingsRequest:
     properties:
       battleOpeningOverride:
@@ -676,6 +766,8 @@ definitions:
         type: string
       maintenanceMode:
         type: string
+      multiplayerComputerFillEnabled:
+        type: boolean
       qrCodeScanCooldownEnabled:
         type: boolean
       qrCodeScanCooldownMinutes:
@@ -691,6 +783,7 @@ definitions:
     - computerEasyAccuracy
     - computerHardAccuracy
     - computerNormalAccuracy
+    - multiplayerComputerFillEnabled
     - qrCodeScanCooldownEnabled
     - qrCodeScanCooldownMinutes
     - sameTeamBattlesEnabled
@@ -725,6 +818,8 @@ definitions:
         type: string
       maintenanceMode:
         type: string
+      multiplayerComputerFillEnabled:
+        type: boolean
       qrCodeScanCooldownEnabled:
         type: boolean
       qrCodeScanCooldownMinutes:
@@ -1044,30 +1139,32 @@ definitions:
       expectedRevision:
         example: 4
         type: integer
-      fromCellId:
-        example: base_team_001
-        type: string
       kind:
         example: expand
         type: string
       payload:
         additionalProperties: {}
         type: object
-      sitoneId:
-        example: stone_engineering_base
-        type: string
+      sitoneIds:
+        example:
+        - stone_engineering_base
+        - stone_explorer_base
+        items:
+          type: string
+        maxItems: 5
+        minItems: 1
+        type: array
       targetX:
         example: 24
         type: integer
       targetY:
         example: 18
         type: integer
-      toCellId:
-        example: system_a
-        type: string
       type:
         example: expand
         type: string
+    required:
+    - sitoneIds
     type: object
   fronts.CreateCommandResponse:
     properties:
@@ -1104,15 +1201,6 @@ definitions:
         type: array
       canPlay:
         type: boolean
-      cells:
-        items:
-          $ref: '#/definitions/fronts.FrontCellResponse'
-        type: array
-      cooldowns:
-        additionalProperties:
-          format: int64
-          type: integer
-        type: object
       currentPlayerOpenPower:
         type: integer
       front:
@@ -1141,8 +1229,6 @@ definitions:
         type: array
       serverTime:
         type: string
-      supportTokens:
-        type: integer
       teams:
         items:
           $ref: '#/definitions/fronts.FrontTeamResponse'
@@ -1152,52 +1238,6 @@ definitions:
           $ref: '#/definitions/fronts.FrontTerritoryRowResponse'
         type: array
     type: object
-  fronts.FrontCellResponse:
-    properties:
-      control:
-        example: 100
-        type: integer
-      defense:
-        example: 6
-        type: integer
-      eventId:
-        example: evt_config_bug
-        type: string
-      id:
-        example: base_team_001
-        type: string
-      lockedUntil:
-        type: string
-      name:
-        example: Base Team 001
-        type: string
-      neighborIds:
-        items:
-          type: string
-        type: array
-      ownerTeamId:
-        example: team-blue
-        type: string
-      pressureByTeam:
-        additionalProperties:
-          type: integer
-        type: object
-      resource:
-        example: 40
-        type: integer
-      terrain:
-        example: base
-        type: string
-      x:
-        example: 0
-        type: integer
-      "y":
-        example: 0
-        type: integer
-      zone:
-        example: base
-        type: string
-    type: object
   fronts.FrontCommandOptionResponse:
     properties:
       cost:
@@ -1206,8 +1246,6 @@ definitions:
       enabled:
         example: true
         type: boolean
-      fromCellId:
-        type: string
       kind:
         example: expand
         type: string
@@ -1216,14 +1254,10 @@ definitions:
         type: string
       reason:
         type: string
-      sitoneId:
-        type: string
       targetX:
         type: integer
       targetY:
         type: integer
-      toCellId:
-        type: string
     type: object
   fronts.FrontCommandResponse:
     properties:
@@ -1251,9 +1285,6 @@ definitions:
         type: integer
       expectedRevision:
         type: integer
-      fromCellId:
-        example: base_team_001
-        type: string
       kind:
         example: expand
         type: string
@@ -1271,18 +1302,18 @@ definitions:
         type: integer
       scoreDelta:
         type: integer
-      sitoneId:
-        example: stone_engineering_base
-        type: string
+      sitoneEffect:
+        $ref: '#/definitions/fronts.FrontSitoneEffectResponse'
+      sitoneIds:
+        items:
+          type: string
+        type: array
       targetX:
         type: integer
       targetY:
         type: integer
       teamId:
         example: team-blue
-        type: string
-      toCellId:
-        example: system_a
         type: string
       type:
         example: expand
@@ -1401,21 +1432,43 @@ definitions:
         example: 0
         type: integer
     type: object
+  fronts.FrontSitoneEffectResponse:
+    properties:
+      affectedCellBonus:
+        type: integer
+      affinityBonusPercent:
+        type: integer
+      defenseBonus:
+        type: integer
+      scoreBonus:
+        type: integer
+      selectedCount:
+        type: integer
+      squadBonusPercent:
+        type: integer
+      totalBonusPercent:
+        type: integer
+    type: object
   fronts.FrontSitoneResponse:
     properties:
-      assignedCellId:
+      abilityName:
         type: string
+      abilityValue:
+        type: integer
       available:
         example: true
         type: boolean
-      cooldownUntilTick:
-        type: integer
+      frontAffinityCommands:
+        items:
+          type: string
+        type: array
       iconPath:
         type: string
       name:
         example: Engineering Stone
         type: string
-      remainingCooldownTicks:
+      ownedQuantity:
+        example: 1
         type: integer
       sitoneId:
         example: stone_engineering_base
@@ -2004,6 +2057,57 @@ definitions:
         example: 8M4RXP
         type: string
     type: object
+  matches.AddComputerPlayerResponse:
+    properties:
+      code:
+        example: ABC123
+        type: string
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      currentQuestion:
+        $ref: '#/definitions/matches.MatchQuestionResponse'
+      currentQuestionIndex:
+        example: 0
+        type: integer
+      currentQuestionResult:
+        $ref: '#/definitions/matches.MatchQuestionResult'
+      hostPlayerId:
+        example: 7H9K2Q
+        type: string
+      matchId:
+        example: match_7H9K2Q
+        type: string
+      mode:
+        example: pvp
+        type: string
+      phase:
+        example: answering
+        type: string
+      players:
+        items:
+          $ref: '#/definitions/matches.MatchPlayerResponse'
+        type: array
+      questionCount:
+        example: 10
+        type: integer
+      results:
+        items:
+          $ref: '#/definitions/matches.MatchQuestionResult'
+        type: array
+      revealEndsAt:
+        type: string
+      roundEndsAt:
+        type: string
+      roundStartedAt:
+        type: string
+      startedAt:
+        type: string
+      status:
+        example: active
+        type: string
+    type: object
   matches.AnswerAcceptedResponse:
     properties:
       accepted:
@@ -2033,6 +2137,9 @@ definitions:
         example: false
         type: boolean
       enabled:
+        example: true
+        type: boolean
+      multiplayerComputerFillEnabled:
         example: true
         type: boolean
     type: object
@@ -2895,6 +3002,84 @@ definitions:
         example: 8M4RXP
         type: string
     type: object
+  roomteams.AddStaffRoomTeamMemberRequest:
+    properties:
+      playerId:
+        example: 7H9K2Q
+        maxLength: 128
+        minLength: 1
+        type: string
+      qrcodeToken:
+        example: qr_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok
+        maxLength: 512
+        minLength: 4
+        type: string
+    type: object
+  roomteams.AddStaffRoomTeamMemberResponse:
+    properties:
+      added:
+        example: true
+        type: boolean
+      player:
+        $ref: '#/definitions/roomteams.StaffRoomTeamPlayer'
+      room:
+        $ref: '#/definitions/roomteams.StaffRoomTeamResponse'
+    type: object
+  roomteams.JoinRoomTeamResponse:
+    properties:
+      joined:
+        example: true
+        type: boolean
+      room:
+        $ref: '#/definitions/roomteams.RoomTeamResponse'
+    type: object
+  roomteams.RoomTeamResponse:
+    properties:
+      roomId:
+        example: room-208
+        type: string
+      roomNumber:
+        example: "208"
+        type: string
+    type: object
+  roomteams.StaffRoomTeamPlayer:
+    properties:
+      avatarUrl:
+        example: https://example.test/avatar/alice.png
+        type: string
+      nickname:
+        example: Alice
+        type: string
+      playerId:
+        example: 7H9K2Q
+        type: string
+    type: object
+  roomteams.StaffRoomTeamResponse:
+    properties:
+      roomId:
+        example: room-208
+        type: string
+      roomNumber:
+        example: "208"
+        type: string
+    type: object
+  roomteams.StaffRoomTeamTokenResponse:
+    properties:
+      qrToken:
+        example: rmt_6H_x7lM20CK8BBnPfwEG1E
+        type: string
+      qrTokenExpiresAt:
+        type: string
+      room:
+        $ref: '#/definitions/roomteams.StaffRoomTeamResponse'
+    type: object
+  roomteams.StaffRoomTeamsResponse:
+    properties:
+      rooms:
+        items:
+          $ref: '#/definitions/roomteams.StaffRoomTeamResponse'
+        type: array
+    type: object
   shop.ItemDetailResponse:
     properties:
       item:
@@ -3021,6 +3206,11 @@ definitions:
         maxLength: 128
         minLength: 1
         type: string
+      roomNumber:
+        example: "208"
+        maxLength: 32
+        minLength: 1
+        type: string
       teamId:
         example: 8M4RXP
         maxLength: 128
@@ -3045,6 +3235,8 @@ definitions:
         items:
           type: string
         type: array
+      room:
+        $ref: '#/definitions/staff.RewardRoomResponse'
       team:
         $ref: '#/definitions/staff.RewardTeamResponse'
     type: object
@@ -3131,6 +3323,12 @@ definitions:
       quantity:
         example: 1
         type: integer
+    type: object
+  staff.RewardRoomResponse:
+    properties:
+      roomNumber:
+        example: "208"
+        type: string
     type: object
   staff.RewardStaffResponse:
     properties:
@@ -3621,6 +3819,197 @@ paths:
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
       summary: Update one player's balance totals
+      tags:
+      - admin
+  /admin/room-teams:
+    get:
+      description: Admin-only endpoint. Returns the configured dorm rooms and membership
+        counters for hidden reward groups.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.RoomTeamsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: List dorm room teams as admin
+      tags:
+      - admin
+  /admin/room-teams/{roomNumber}/members:
+    get:
+      description: Admin-only endpoint. Lists hidden room-team members for manual
+        correction.
+      parameters:
+      - description: Dorm room number
+        in: path
+        name: roomNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.RoomTeamMembersResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: List dorm room members as admin
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Admin-only endpoint. Adds a non-staff player to a hidden dorm room
+        team by player ID or player QR code token.
+      parameters:
+      - description: Dorm room number
+        in: path
+        name: roomNumber
+        required: true
+        type: string
+      - description: Room team member request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/admin.AddRoomTeamMemberRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.AddRoomTeamMemberResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/admin.AddRoomTeamMemberResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Add a dorm room member as admin
+      tags:
+      - admin
+  /admin/room-teams/{roomNumber}/members/{playerID}:
+    delete:
+      description: Admin-only endpoint. Removes a player from a hidden dorm room team.
+      parameters:
+      - description: Dorm room number
+        in: path
+        name: roomNumber
+        required: true
+        type: string
+      - description: Player ID
+        in: path
+        name: playerID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Remove a dorm room member as admin
+      tags:
+      - admin
+  /admin/room-teams/{roomNumber}/token:
+    post:
+      description: Admin-only endpoint. Rotates a short-lived QR token for a configured
+        dorm room. The token expires after 10 minutes.
+      parameters:
+      - description: Dorm room number
+        in: path
+        name: roomNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/admin.RoomTeamTokenResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Create a dorm room QR token as admin
       tags:
       - admin
   /admin/settings:
@@ -4520,7 +4909,7 @@ paths:
       consumes:
       - application/json
       description: Accepts the authenticated player's answer for the current question.
-        Correctness is revealed to both players when the round enters the reveal phase.
+        Correctness is revealed when the round enters the reveal phase.
       parameters:
       - description: Answer request
         in: body
@@ -4566,6 +4955,46 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Submit match answer
+      tags:
+      - matches
+  /matches/{matchID}/computer-players:
+    post:
+      description: Allows the host to fill one empty multiplayer slot with a computer
+        player.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/matches.AddComputerPlayerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Add a computer player to a multiplayer waiting room
       tags:
       - matches
   /matches/{matchID}/events:
@@ -4732,7 +5161,7 @@ paths:
   /matches/{matchID}/ready:
     post:
       description: Marks the authenticated player ready. The match starts automatically
-        when both players are ready.
+        when all required players are ready.
       produces:
       - application/json
       responses:
@@ -4828,6 +5257,42 @@ paths:
       summary: Get computer battle availability
       tags:
       - matches
+  /matches/multiplayer/pairings:
+    post:
+      description: Creates a four-player quiz match and returns a short-lived QR pairing
+        token for the authenticated host.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/matches.MatchPairingResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/matches.MatchPairingResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Create multiplayer match pairing
+      tags:
+      - matches
   /matches/open:
     get:
       description: Returns the current waiting or active match for the authenticated
@@ -4900,8 +5365,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Joins a waiting two-player quiz match by scanning a short-lived
-        QR pairing token.
+      description: Joins a waiting quiz match by scanning a short-lived QR pairing
+        token.
       parameters:
       - description: Scan pairing request
         in: body
@@ -5455,6 +5920,52 @@ paths:
       summary: Resolve player QR code
       tags:
       - qr
+  /room-teams/scans/{qrToken}/join:
+    post:
+      description: Joins the authenticated non-staff player to the dorm room represented
+        by a short-lived QR token. The player's official game team is not changed.
+      parameters:
+      - description: Opaque room team QR token
+        in: path
+        name: qrToken
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/roomteams.JoinRoomTeamResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/roomteams.JoinRoomTeamResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Join dorm room team by QR token
+      tags:
+      - room-teams
   /shop/items:
     get:
       description: Lists purchasable and enabled item definitions.
@@ -5710,7 +6221,7 @@ paths:
       - application/json
       description: Staff-only endpoint. Grants one sitone, item, or open power reward
         to a player selected by player ID or QR code identifier, every player in a
-        team, or all players, and records the staff grant.
+        team or dorm room, or all players, and records the staff grant.
       parameters:
       - description: Staff reward request
         in: body
@@ -5756,6 +6267,124 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Grant sitone, item, or open power as staff
+      tags:
+      - staff
+  /staff/room-teams:
+    get:
+      description: Staff-only endpoint. Returns the configured dorm rooms that staff
+        may generate a join QR code for.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/roomteams.StaffRoomTeamsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: List available dorm rooms for staff QR codes
+      tags:
+      - staff
+  /staff/room-teams/{roomNumber}/members:
+    post:
+      consumes:
+      - application/json
+      description: Staff-only endpoint. Moves a non-staff player selected by player
+        ID or QR code identifier into a configured dorm room.
+      parameters:
+      - description: Dorm room number
+        in: path
+        name: roomNumber
+        required: true
+        type: string
+      - description: Dorm room member request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/roomteams.AddStaffRoomTeamMemberRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/roomteams.AddStaffRoomTeamMemberResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/roomteams.AddStaffRoomTeamMemberResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Assign a player to a dorm room as staff
+      tags:
+      - staff
+  /staff/room-teams/{roomNumber}/token:
+    post:
+      description: Staff-only endpoint. Rotates a short-lived join QR code for a configured
+        dorm room. The token expires after 10 minutes.
+      parameters:
+      - description: Dorm room number
+        in: path
+        name: roomNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/roomteams.StaffRoomTeamTokenResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Create a dorm room QR token as staff
       tags:
       - staff
   /staff/teams:

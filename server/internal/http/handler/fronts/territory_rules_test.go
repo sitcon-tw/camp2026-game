@@ -29,7 +29,7 @@ func TestTerritoryAttackClosesAndCapturesEnclosure(t *testing.T) {
 	if command.CapturedCellCount != 2 || command.EnclosedCellCount != 1 || len(command.AffectedCells) != 2 {
 		t.Fatalf("unexpected capture counts: %#v", command)
 	}
-	if command.ScoreDelta != 20 || command.FrontOpenPowerCost != 15 || command.FrontOpenPowerDelta != -15 || command.EmergencyResupplyAmount != 0 {
+	if command.ScoreDelta != 20 || command.FrontOpenPowerCost != 15 || command.FrontOpenPowerDelta != -15 {
 		t.Fatalf("unexpected command accounting: %#v", command)
 	}
 	nextMatrix, err := decodeTerritoryRows(next.Territory)
@@ -150,7 +150,7 @@ func TestTerritoryResourceLandmarkRequiresExplicitOneShotSupport(t *testing.T) {
 	if capturedMatrix[y][x].Owner != "team-001" {
 		t.Fatalf("resource landmark was not captured: %#v", capturedMatrix[y][x])
 	}
-	if captureCommand.FrontOpenPowerCost != 10 || captureCommand.FrontOpenPowerDelta != -10 || captureCommand.EmergencyResupplyAmount != 0 {
+	if captureCommand.FrontOpenPowerCost != 10 || captureCommand.FrontOpenPowerDelta != -10 {
 		t.Fatalf("capturing resource landmark must not grant front power: %#v", captureCommand)
 	}
 	if activeEventKindAtFrontCell(capturedFront, landmark.ID) != "resource" {
@@ -167,9 +167,6 @@ func TestTerritoryResourceLandmarkRequiresExplicitOneShotSupport(t *testing.T) {
 	if supportCommand.FrontOpenPowerCost != 0 || supportCommand.FrontOpenPowerDelta != 0 || supportCommand.RewardSitoneQuantity != 1 {
 		t.Fatalf("support must grant exactly one sitone without open power: %#v", supportCommand)
 	}
-	if supportedFront.Teams[0].FrontOpenPower != 0 {
-		t.Fatalf("resource support must not create a team balance: %#v", supportedFront.Teams[0])
-	}
 	if activeEventKindAtFrontCell(supportedFront, landmark.ID) != "" {
 		t.Fatal("support should consume the resource event")
 	}
@@ -181,7 +178,7 @@ func TestTerritoryResourceLandmarkRequiresExplicitOneShotSupport(t *testing.T) {
 	if err == nil {
 		t.Fatal("resolved resource landmark should reject a second support command")
 	}
-	if rejected.Teams[0].FrontOpenPower != 0 || rejected.Revision != supportedFront.Revision {
+	if rejected.Revision != supportedFront.Revision {
 		t.Fatalf("rejected second support mutated the front: %#v", rejected.Teams[0])
 	}
 }
@@ -379,7 +376,7 @@ func TestResetFrontCommandDerivedFieldsClearsRetryRewards(t *testing.T) {
 		ID: "same-command", Kind: "attack", Accepted: true, Applied: true, RejectReason: "stale",
 		AffectedCells: []mongomodel.FrontCoordinate{{X: 1, Y: 2}}, CapturedCellCount: 3,
 		EnclosedCellCount: 2, ScoreDelta: 30, FrontOpenPowerDelta: 15, FrontOpenPowerCost: 15,
-		EmergencyResupplyAmount: 30, RewardSitoneID: "stone_engineering_base", RewardSitoneQuantity: 2,
+		RewardSitoneID: "stone_engineering_base", RewardSitoneQuantity: 2,
 	}
 	resetFrontCommandDerivedFields(&command)
 	if command.ID != "same-command" || command.Kind != "attack" {
@@ -387,7 +384,7 @@ func TestResetFrontCommandDerivedFieldsClearsRetryRewards(t *testing.T) {
 	}
 	if command.Accepted || command.Applied || command.RejectReason != "" || len(command.AffectedCells) != 0 ||
 		command.CapturedCellCount != 0 || command.EnclosedCellCount != 0 || command.ScoreDelta != 0 ||
-		command.FrontOpenPowerDelta != 0 || command.FrontOpenPowerCost != 0 || command.EmergencyResupplyAmount != 0 ||
+		command.FrontOpenPowerDelta != 0 || command.FrontOpenPowerCost != 0 ||
 		command.RewardSitoneID != "" || command.RewardSitoneQuantity != 0 {
 		t.Fatalf("retry reset retained derived state: %#v", command)
 	}
@@ -403,7 +400,7 @@ func TestFrontSitoneInventoryPrioritizesOwnedDefaultsWithoutFiveItemCap(t *testi
 	if available[0] != "default-b" || available[1] != "default-a" {
 		t.Fatalf("owned defaults were not prioritized: %#v", available)
 	}
-	selected := selectedOwnedSitoneIDs(defaults, owned)
+	selected := selectedOwnedSitoneIDs(defaults, sitoneCounts(owned))
 	if len(selected) != 2 || selected[0] != "default-b" || selected[1] != "default-a" {
 		t.Fatalf("unowned defaults must not be selected: %#v", selected)
 	}
@@ -413,9 +410,9 @@ func TestTerritoryCommandRequiresSitoneAndRejectsUnknownCatalogID(t *testing.T) 
 	x, y := 1, 1
 	err := validateCommandRequest(CreateCommandRequest{
 		ClientCommandID: "missing-sitone", Kind: "expand", TargetX: &x, TargetY: &y,
-	}, contentFrontMapModeTerritoryGrid)
+	})
 	if err == nil {
-		t.Fatal("territory command without sitoneId should fail validation")
+		t.Fatal("territory command without sitoneIds should fail validation")
 	}
 
 	handler := New(Dependencies{Content: testcontent.Load(t)})

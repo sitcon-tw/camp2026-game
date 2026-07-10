@@ -1,32 +1,22 @@
 import { ArrowDown, ArrowRight, ArrowUp, Trophy } from "lucide-react"
 
-import type {
-  FrontLeaderboardEntry,
-  FrontMapMode,
-  FrontTeamState,
-} from "@/shared/api/game"
+import type { FrontLeaderboardEntry, FrontTeamState } from "@/shared/api/game"
 import { Badge } from "@/shared/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { cn } from "@/shared/utils"
 
-import {
-  getTeamName,
-  getTeamTone,
-  getTerritoryTeamColor,
-} from "./front-map-style"
+import { getTeamName, getTerritoryTeamColor } from "./front-map-style"
 
 type FrontLeaderboardProps = {
   entries: FrontLeaderboardEntry[]
   teams: FrontTeamState[]
   myTeamId?: string
-  mapMode?: FrontMapMode
 }
 
 export function FrontLeaderboard({
   entries,
   teams,
   myTeamId,
-  mapMode = "node",
 }: FrontLeaderboardProps) {
   const topEntries = [...entries]
     .sort((first, second) => first.rank - second.rank)
@@ -48,7 +38,6 @@ export function FrontLeaderboard({
               entry={entry}
               teams={teams}
               current={entry.current || entry.teamId === myTeamId}
-              mapMode={mapMode}
             />
           ))
         ) : (
@@ -65,14 +54,11 @@ function LeaderboardRow({
   entry,
   teams,
   current,
-  mapMode,
 }: {
   entry: FrontLeaderboardEntry
   teams: FrontTeamState[]
   current: boolean
-  mapMode: FrontMapMode
 }) {
-  const tone = getTeamTone(entry.teamId, teams)
   const territoryColor = getTerritoryTeamColor(entry.teamId, teams)
   const teamColor = teams.find((team) => team.teamId === entry.teamId)?.color
   const rankDelta = getRankDelta(entry.rank, entry.previousRank)
@@ -90,15 +76,9 @@ function LeaderboardRow({
           <span
             className={cn(
               "size-2.5 shrink-0 rounded-full",
-              mapMode === "territory_grid"
-                ? (territoryColor?.dot ?? "bg-muted-foreground")
-                : tone.dot,
+              territoryColor?.dot ?? "bg-muted-foreground",
             )}
-            style={
-              mapMode === "territory_grid" && teamColor
-                ? { backgroundColor: teamColor }
-                : undefined
-            }
+            style={teamColor ? { backgroundColor: teamColor } : undefined}
             aria-hidden
           />
           <span className="truncate text-sm font-black">
@@ -107,10 +87,7 @@ function LeaderboardRow({
           {current ? <Badge variant="secondary">你的隊伍</Badge> : null}
         </div>
         <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold">
-          <span>
-            {entry.controlledCells}{" "}
-            {mapMode === "territory_grid" ? "格領土" : "節點"}
-          </span>
+          <span>{entry.controlledCells} 格領土</span>
           <span>{entry.repairedEvents} 修復</span>
           <span>{entry.rescuedSitones} 救援</span>
         </div>

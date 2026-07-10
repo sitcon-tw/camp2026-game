@@ -258,100 +258,6 @@ func TestLoadQuizQuestionsSkipsDuplicateIDs(t *testing.T) {
 	}
 }
 
-func TestLoadFrontMaps(t *testing.T) {
-	dir := writeContent(t, validSitonesTOML(), validItemsTOML(), validQuizQuestionsCSV(), validFusionRecipesTOML(), `
-[[front_maps]]
-id = " camp_day1_training "
-name = " 開源戰線暖身 "
-enabled = true
-tick_seconds = 1
-initial_front_open_power = 100
-command_cooldown_ticks = 2
-command_resolve_ticks = 1
-resource_decay_per_tick = 1
-
-[[front_maps.cells]]
-id = "base_team_1"
-x = 0
-y = 0
-terrain = "base"
-zone = "base"
-neighbors = ["system_a"]
-
-[[front_maps.cells]]
-id = "system_a"
-x = 1
-y = 0
-terrain = "system"
-zone = "system"
-neighbors = ["base_team_1", "center_a"]
-initial_defense = 5
-
-[[front_maps.cells]]
-id = "center_a"
-x = 2
-y = 0
-terrain = "center"
-zone = "frontier"
-neighbors = ["system_a"]
-initial_resource = 25
-
-[[front_maps.events]]
-id = "evt_config_bug"
-cell_id = "system_a"
-kind = "repair"
-title = "設定檔讀不到"
-starts_at_tick = 30
-expires_after_ticks = 300
-severity = 1
-`)
-
-	store, err := Load(dir)
-	if err != nil {
-		t.Fatalf("load content: %v", err)
-	}
-
-	frontMaps := store.ListFrontMaps()
-	if len(frontMaps) != 1 {
-		t.Fatalf("expected 1 front map, got %d", len(frontMaps))
-	}
-	if frontMaps[0].ID != "camp_day1_training" || frontMaps[0].Name != "開源戰線暖身" {
-		t.Fatalf("unexpected front map metadata: %#v", frontMaps[0])
-	}
-	if !frontMaps[0].Enabled || frontMaps[0].TickSeconds != 1 || frontMaps[0].InitialFrontOpenPower != 100 {
-		t.Fatalf("unexpected front map settings: %#v", frontMaps[0])
-	}
-	if len(frontMaps[0].Cells) != 3 || frontMaps[0].Cells[0].ID != "base_team_1" {
-		t.Fatalf("expected sorted front cells, got %#v", frontMaps[0].Cells)
-	}
-	if len(frontMaps[0].Events) != 1 || frontMaps[0].Events[0].Kind != FrontEventRepair {
-		t.Fatalf("unexpected front map events: %#v", frontMaps[0].Events)
-	}
-
-	frontMap, ok := store.GetFrontMap("camp_day1_training")
-	if !ok {
-		t.Fatal("expected camp_day1_training to exist")
-	}
-	systemCell := frontMapCellByID(t, frontMap, "system_a")
-	if len(systemCell.Neighbors) != 2 || systemCell.Neighbors[1] != "center_a" {
-		t.Fatalf("unexpected system_a neighbors: %#v", systemCell.Neighbors)
-	}
-	if _, ok := store.GetFrontMap("missing"); ok {
-		t.Fatal("expected missing front map not to exist")
-	}
-
-	systemCellIndex := frontMapCellIndex(t, frontMaps[0], "system_a")
-	frontMaps[0].Cells[systemCellIndex].Neighbors[0] = "mutated"
-	frontMap, ok = store.GetFrontMap("camp_day1_training")
-	if !ok {
-		t.Fatal("expected camp_day1_training to exist")
-	}
-	systemCell = frontMapCellByID(t, frontMap, "system_a")
-	if systemCell.Neighbors[0] != "base_team_1" {
-		t.Fatalf("expected front map cells to be copied, got %#v", systemCell.Neighbors)
-	}
-}
-
 func TestLoadFusionRecipes(t *testing.T) {
 	dir := writeContent(t, validSitonesTOML(), validItemsTOML(), validQuizQuestionsCSV(), `
 [[fusion_recipes]]
@@ -717,32 +623,6 @@ func TestLoadRejectsInvalidQuizChoice(t *testing.T) {
 	}
 }
 
-func TestLoadRejectsInvalidFrontMap(t *testing.T) {
-	dir := writeContent(t, validSitonesTOML(), validItemsTOML(), validQuizQuestionsCSV(), validFusionRecipesTOML(), `
-[[front_maps]]
-id = "broken"
-name = "Broken"
-enabled = true
-tick_seconds = 1
-
-[[front_maps.cells]]
-id = "base_team_1"
-x = 0
-y = 0
-terrain = "base"
-zone = "base"
-neighbors = ["missing"]
-`)
-
-	_, err := Load(dir)
-	if err == nil {
-		t.Fatal("expected invalid front map error")
-	}
-	if !strings.Contains(err.Error(), `neighbors references unknown cell "missing"`) {
-		t.Fatalf("expected unknown neighbor error, got %v", err)
-	}
-}
-
 func TestLoadRejectsTooFewQuizQuestions(t *testing.T) {
 	dir := writeContent(t, validSitonesTOML(), validItemsTOML(), strings.TrimSpace(`
 id,prompt,choice_a,choice_b,choice_c,choice_d,correct_choice,explanation
@@ -777,9 +657,6 @@ func TestLoadResolvesServerContentFallback(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(contentDir, quizQuestionsFile), []byte(validQuizQuestionsCSV()), 0o644); err != nil {
 		t.Fatalf("write quiz questions: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(contentDir, frontMapsFile), []byte(validFrontMapsTOML()), 0o644); err != nil {
-		t.Fatalf("write front maps: %v", err)
-	}
 
 	oldCWD, err := os.Getwd()
 	if err != nil {
@@ -806,9 +683,6 @@ func TestLoadResolvesServerContentFallback(t *testing.T) {
 	}
 	if len(store.ListQuizQuestions()) != minQuizQuestionCount {
 		t.Fatalf("expected %d quiz questions, got %d", minQuizQuestionCount, len(store.ListQuizQuestions()))
-	}
-	if len(store.ListFrontMaps()) != 1 {
-		t.Fatalf("expected 1 front map, got %d", len(store.ListFrontMaps()))
 	}
 }
 
@@ -844,13 +718,6 @@ func writeContent(t *testing.T, sitones string, values ...string) string {
 		t.Fatalf("write quiz questions: %v", err)
 	}
 
-	frontMapsContent := validFrontMapsTOML()
-	if len(values) > 3 {
-		frontMapsContent = values[3]
-	}
-	if err := os.WriteFile(filepath.Join(dir, frontMapsFile), []byte(strings.TrimSpace(frontMapsContent)), 0o644); err != nil {
-		t.Fatalf("write front maps: %v", err)
-	}
 	return dir
 }
 
@@ -918,72 +785,4 @@ quiz-008,Question 8,A,B,C,D,D,Explanation 8
 quiz-009,Question 9,A,B,C,D,A,Explanation 9
 quiz-010,Question 10,A,B,C,D,B,Explanation 10
 `)
-}
-
-func validFrontMapsTOML() string {
-	return strings.TrimSpace(`
-[[front_maps]]
-id = "camp_day1_training"
-name = "開源戰線暖身"
-enabled = true
-tick_seconds = 1
-initial_front_open_power = 100
-command_cooldown_ticks = 2
-command_resolve_ticks = 1
-resource_decay_per_tick = 1
-
-[[front_maps.cells]]
-id = "base_team_1"
-x = 0
-y = 0
-terrain = "base"
-zone = "base"
-neighbors = ["system_a"]
-
-[[front_maps.cells]]
-id = "system_a"
-x = 1
-y = 0
-terrain = "system"
-zone = "system"
-neighbors = ["base_team_1", "center_a"]
-initial_defense = 5
-
-[[front_maps.cells]]
-id = "center_a"
-x = 2
-y = 0
-terrain = "center"
-zone = "frontier"
-neighbors = ["system_a"]
-initial_resource = 25
-
-[[front_maps.events]]
-id = "evt_config_bug"
-cell_id = "system_a"
-kind = "repair"
-title = "設定檔讀不到"
-starts_at_tick = 30
-expires_after_ticks = 300
-severity = 1
-`)
-}
-
-func frontMapCellByID(t *testing.T, template FrontMapTemplate, id string) FrontMapCell {
-	t.Helper()
-
-	index := frontMapCellIndex(t, template, id)
-	return template.Cells[index]
-}
-
-func frontMapCellIndex(t *testing.T, template FrontMapTemplate, id string) int {
-	t.Helper()
-
-	for i, cell := range template.Cells {
-		if cell.ID == id {
-			return i
-		}
-	}
-	t.Fatalf("front map cell %q not found in %#v", id, template.Cells)
-	return -1
 }

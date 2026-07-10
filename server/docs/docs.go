@@ -647,6 +647,288 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/room-teams": {
+            "get": {
+                "description": "Admin-only endpoint. Returns the configured dorm rooms and membership counters for hidden reward groups.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List dorm room teams as admin",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.RoomTeamsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/room-teams/{roomNumber}/members": {
+            "get": {
+                "description": "Admin-only endpoint. Lists hidden room-team members for manual correction.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List dorm room members as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Dorm room number",
+                        "name": "roomNumber",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.RoomTeamMembersResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Admin-only endpoint. Adds a non-staff player to a hidden dorm room team by player ID or player QR code token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Add a dorm room member as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Dorm room number",
+                        "name": "roomNumber",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Room team member request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.AddRoomTeamMemberRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.AddRoomTeamMemberResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/admin.AddRoomTeamMemberResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/room-teams/{roomNumber}/members/{playerID}": {
+            "delete": {
+                "description": "Admin-only endpoint. Removes a player from a hidden dorm room team.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Remove a dorm room member as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Dorm room number",
+                        "name": "roomNumber",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Player ID",
+                        "name": "playerID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/room-teams/{roomNumber}/token": {
+            "post": {
+                "description": "Admin-only endpoint. Rotates a short-lived QR token for a configured dorm room. The token expires after 10 minutes.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Create a dorm room QR token as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Dorm room number",
+                        "name": "roomNumber",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/admin.RoomTeamTokenResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/settings": {
             "get": {
                 "produces": [
@@ -2045,6 +2327,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/matches/multiplayer/pairings": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Creates a four-player quiz match and returns a short-lived QR pairing token for the authenticated host.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "matches"
+                ],
+                "summary": "Create multiplayer match pairing",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/matches.MatchPairingResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/matches.MatchPairingResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/matches/open": {
             "get": {
                 "security": [
@@ -2156,7 +2493,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Joins a waiting two-player quiz match by scanning a short-lived QR pairing token.",
+                "description": "Joins a waiting quiz match by scanning a short-lived QR pairing token.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2292,7 +2629,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Accepts the authenticated player's answer for the current question. Correctness is revealed to both players when the round enters the reveal phase.",
+                "description": "Accepts the authenticated player's answer for the current question. Correctness is revealed when the round enters the reveal phase.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2347,6 +2684,67 @@ const docTemplate = `{
                     },
                     "422": {
                         "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/matches/{matchID}/computer-players": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Allows the host to fill one empty multiplayer slot with a computer player.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "matches"
+                ],
+                "summary": "Add a computer player to a multiplayer waiting room",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/matches.AddComputerPlayerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
@@ -2619,7 +3017,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Marks the authenticated player ready. The match starts automatically when both players are ready.",
+                "description": "Marks the authenticated player ready. The match starts automatically when all required players are ready.",
                 "produces": [
                     "application/json"
                 ],
@@ -3448,6 +3846,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/room-teams/scans/{qrToken}/join": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Joins the authenticated non-staff player to the dorm room represented by a short-lived QR token. The player's official game team is not changed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "room-teams"
+                ],
+                "summary": "Join dorm room team by QR token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Opaque room team QR token",
+                        "name": "qrToken",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/roomteams.JoinRoomTeamResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/roomteams.JoinRoomTeamResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/shop/items": {
             "get": {
                 "security": [
@@ -3839,7 +4307,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Staff-only endpoint. Grants one sitone, item, or open power reward to a player selected by player ID or QR code identifier, every player in a team, or all players, and records the staff grant.",
+                "description": "Staff-only endpoint. Grants one sitone, item, or open power reward to a player selected by player ID or QR code identifier, every player in a team or dorm room, or all players, and records the staff grant.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3888,6 +4356,180 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/staff/room-teams": {
+            "get": {
+                "description": "Staff-only endpoint. Returns the configured dorm rooms that staff may generate a join QR code for.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "staff"
+                ],
+                "summary": "List available dorm rooms for staff QR codes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/roomteams.StaffRoomTeamsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/staff/room-teams/{roomNumber}/members": {
+            "post": {
+                "description": "Staff-only endpoint. Moves a non-staff player selected by player ID or QR code identifier into a configured dorm room.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "staff"
+                ],
+                "summary": "Assign a player to a dorm room as staff",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Dorm room number",
+                        "name": "roomNumber",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Dorm room member request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/roomteams.AddStaffRoomTeamMemberRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/roomteams.AddStaffRoomTeamMemberResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/roomteams.AddStaffRoomTeamMemberResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
+        "/staff/room-teams/{roomNumber}/token": {
+            "post": {
+                "description": "Staff-only endpoint. Rotates a short-lived join QR code for a configured dorm room. The token expires after 10 minutes.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "staff"
+                ],
+                "summary": "Create a dorm room QR token as staff",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Dorm room number",
+                        "name": "roomNumber",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/roomteams.StaffRoomTeamTokenResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
@@ -3978,6 +4620,38 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "admin.AddRoomTeamMemberRequest": {
+            "type": "object",
+            "properties": {
+                "playerId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "example": "7H9K2Q"
+                },
+                "qrcodeToken": {
+                    "type": "string",
+                    "maxLength": 512,
+                    "minLength": 4,
+                    "example": "qr_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok"
+                }
+            }
+        },
+        "admin.AddRoomTeamMemberResponse": {
+            "type": "object",
+            "properties": {
+                "added": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "member": {
+                    "$ref": "#/definitions/admin.RoomTeamMemberResponse"
+                },
+                "room": {
+                    "$ref": "#/definitions/admin.RoomTeamResponse"
+                }
+            }
+        },
         "admin.ClassTimeBattleLockSessionRequest": {
             "type": "object",
             "properties": {
@@ -4877,6 +5551,105 @@ const docTemplate = `{
                 }
             }
         },
+        "admin.RoomTeamMemberResponse": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "joinedAt": {
+                    "type": "string"
+                },
+                "joinedBy": {
+                    "type": "string",
+                    "example": "scan"
+                },
+                "nickname": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "playerId": {
+                    "type": "string",
+                    "example": "7H9K2Q"
+                },
+                "team": {
+                    "$ref": "#/definitions/admin.RoomTeamMemberTeamResponse"
+                }
+            }
+        },
+        "admin.RoomTeamMemberTeamResponse": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Team 001"
+                },
+                "teamId": {
+                    "type": "string",
+                    "example": "team-001"
+                }
+            }
+        },
+        "admin.RoomTeamMembersResponse": {
+            "type": "object",
+            "properties": {
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.RoomTeamMemberResponse"
+                    }
+                },
+                "room": {
+                    "$ref": "#/definitions/admin.RoomTeamResponse"
+                }
+            }
+        },
+        "admin.RoomTeamResponse": {
+            "type": "object",
+            "properties": {
+                "memberCount": {
+                    "type": "integer",
+                    "example": 6
+                },
+                "qrTokenExpiresAt": {
+                    "type": "string"
+                },
+                "roomId": {
+                    "type": "string",
+                    "example": "room-208"
+                },
+                "roomNumber": {
+                    "type": "string",
+                    "example": "208"
+                }
+            }
+        },
+        "admin.RoomTeamTokenResponse": {
+            "type": "object",
+            "properties": {
+                "qrToken": {
+                    "type": "string",
+                    "example": "rmt_6H_x7lM20CK8BBnPfwEG1E"
+                },
+                "qrTokenExpiresAt": {
+                    "type": "string"
+                },
+                "room": {
+                    "$ref": "#/definitions/admin.RoomTeamResponse"
+                }
+            }
+        },
+        "admin.RoomTeamsResponse": {
+            "type": "object",
+            "properties": {
+                "rooms": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.RoomTeamResponse"
+                    }
+                }
+            }
+        },
         "admin.SettingsRequest": {
             "type": "object",
             "required": [
@@ -4886,6 +5659,7 @@ const docTemplate = `{
                 "computerEasyAccuracy",
                 "computerHardAccuracy",
                 "computerNormalAccuracy",
+                "multiplayerComputerFillEnabled",
                 "qrCodeScanCooldownEnabled",
                 "qrCodeScanCooldownMinutes",
                 "sameTeamBattlesEnabled"
@@ -4937,6 +5711,9 @@ const docTemplate = `{
                 },
                 "maintenanceMode": {
                     "type": "string"
+                },
+                "multiplayerComputerFillEnabled": {
+                    "type": "boolean"
                 },
                 "qrCodeScanCooldownEnabled": {
                     "type": "boolean"
@@ -4995,6 +5772,9 @@ const docTemplate = `{
                 },
                 "maintenanceMode": {
                     "type": "string"
+                },
+                "multiplayerComputerFillEnabled": {
+                    "type": "boolean"
                 },
                 "qrCodeScanCooldownEnabled": {
                     "type": "boolean"
@@ -5438,6 +6218,9 @@ const docTemplate = `{
         },
         "fronts.CreateCommandRequest": {
             "type": "object",
+            "required": [
+                "sitoneIds"
+            ],
             "properties": {
                 "clientCommandId": {
                     "type": "string",
@@ -5447,10 +6230,6 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 4
                 },
-                "fromCellId": {
-                    "type": "string",
-                    "example": "base_team_001"
-                },
                 "kind": {
                     "type": "string",
                     "example": "expand"
@@ -5459,9 +6238,17 @@ const docTemplate = `{
                     "type": "object",
                     "additionalProperties": {}
                 },
-                "sitoneId": {
-                    "type": "string",
-                    "example": "stone_engineering_base"
+                "sitoneIds": {
+                    "type": "array",
+                    "maxItems": 5,
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "stone_engineering_base",
+                        "stone_explorer_base"
+                    ]
                 },
                 "targetX": {
                     "type": "integer",
@@ -5470,10 +6257,6 @@ const docTemplate = `{
                 "targetY": {
                     "type": "integer",
                     "example": 18
-                },
-                "toCellId": {
-                    "type": "string",
-                    "example": "system_a"
                 },
                 "type": {
                     "type": "string",
@@ -5534,19 +6317,6 @@ const docTemplate = `{
                 "canPlay": {
                     "type": "boolean"
                 },
-                "cells": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/fronts.FrontCellResponse"
-                    }
-                },
-                "cooldowns": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                },
                 "currentPlayerOpenPower": {
                     "type": "integer"
                 },
@@ -5589,9 +6359,6 @@ const docTemplate = `{
                 "serverTime": {
                     "type": "string"
                 },
-                "supportTokens": {
-                    "type": "integer"
-                },
                 "teams": {
                     "type": "array",
                     "items": {
@@ -5606,70 +6373,6 @@ const docTemplate = `{
                 }
             }
         },
-        "fronts.FrontCellResponse": {
-            "type": "object",
-            "properties": {
-                "control": {
-                    "type": "integer",
-                    "example": 100
-                },
-                "defense": {
-                    "type": "integer",
-                    "example": 6
-                },
-                "eventId": {
-                    "type": "string",
-                    "example": "evt_config_bug"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "base_team_001"
-                },
-                "lockedUntil": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Base Team 001"
-                },
-                "neighborIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "ownerTeamId": {
-                    "type": "string",
-                    "example": "team-blue"
-                },
-                "pressureByTeam": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "integer"
-                    }
-                },
-                "resource": {
-                    "type": "integer",
-                    "example": 40
-                },
-                "terrain": {
-                    "type": "string",
-                    "example": "base"
-                },
-                "x": {
-                    "type": "integer",
-                    "example": 0
-                },
-                "y": {
-                    "type": "integer",
-                    "example": 0
-                },
-                "zone": {
-                    "type": "string",
-                    "example": "base"
-                }
-            }
-        },
         "fronts.FrontCommandOptionResponse": {
             "type": "object",
             "properties": {
@@ -5680,9 +6383,6 @@ const docTemplate = `{
                 "enabled": {
                     "type": "boolean",
                     "example": true
-                },
-                "fromCellId": {
-                    "type": "string"
                 },
                 "kind": {
                     "type": "string",
@@ -5695,17 +6395,11 @@ const docTemplate = `{
                 "reason": {
                     "type": "string"
                 },
-                "sitoneId": {
-                    "type": "string"
-                },
                 "targetX": {
                     "type": "integer"
                 },
                 "targetY": {
                     "type": "integer"
-                },
-                "toCellId": {
-                    "type": "string"
                 }
             }
         },
@@ -5746,10 +6440,6 @@ const docTemplate = `{
                 "expectedRevision": {
                     "type": "integer"
                 },
-                "fromCellId": {
-                    "type": "string",
-                    "example": "base_team_001"
-                },
                 "kind": {
                     "type": "string",
                     "example": "expand"
@@ -5774,9 +6464,14 @@ const docTemplate = `{
                 "scoreDelta": {
                     "type": "integer"
                 },
-                "sitoneId": {
-                    "type": "string",
-                    "example": "stone_engineering_base"
+                "sitoneEffect": {
+                    "$ref": "#/definitions/fronts.FrontSitoneEffectResponse"
+                },
+                "sitoneIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "targetX": {
                     "type": "integer"
@@ -5787,10 +6482,6 @@ const docTemplate = `{
                 "teamId": {
                     "type": "string",
                     "example": "team-blue"
-                },
-                "toCellId": {
-                    "type": "string",
-                    "example": "system_a"
                 },
                 "type": {
                     "type": "string",
@@ -5958,18 +6649,50 @@ const docTemplate = `{
                 }
             }
         },
+        "fronts.FrontSitoneEffectResponse": {
+            "type": "object",
+            "properties": {
+                "affectedCellBonus": {
+                    "type": "integer"
+                },
+                "affinityBonusPercent": {
+                    "type": "integer"
+                },
+                "defenseBonus": {
+                    "type": "integer"
+                },
+                "scoreBonus": {
+                    "type": "integer"
+                },
+                "selectedCount": {
+                    "type": "integer"
+                },
+                "squadBonusPercent": {
+                    "type": "integer"
+                },
+                "totalBonusPercent": {
+                    "type": "integer"
+                }
+            }
+        },
         "fronts.FrontSitoneResponse": {
             "type": "object",
             "properties": {
-                "assignedCellId": {
+                "abilityName": {
                     "type": "string"
+                },
+                "abilityValue": {
+                    "type": "integer"
                 },
                 "available": {
                     "type": "boolean",
                     "example": true
                 },
-                "cooldownUntilTick": {
-                    "type": "integer"
+                "frontAffinityCommands": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "iconPath": {
                     "type": "string"
@@ -5978,8 +6701,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Engineering Stone"
                 },
-                "remainingCooldownTicks": {
-                    "type": "integer"
+                "ownedQuantity": {
+                    "type": "integer",
+                    "example": 1
                 },
                 "sitoneId": {
                     "type": "string",
@@ -6821,6 +7545,79 @@ const docTemplate = `{
                 }
             }
         },
+        "matches.AddComputerPlayerResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "ABC123"
+                },
+                "completedAt": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currentQuestion": {
+                    "$ref": "#/definitions/matches.MatchQuestionResponse"
+                },
+                "currentQuestionIndex": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "currentQuestionResult": {
+                    "$ref": "#/definitions/matches.MatchQuestionResult"
+                },
+                "hostPlayerId": {
+                    "type": "string",
+                    "example": "7H9K2Q"
+                },
+                "matchId": {
+                    "type": "string",
+                    "example": "match_7H9K2Q"
+                },
+                "mode": {
+                    "type": "string",
+                    "example": "pvp"
+                },
+                "phase": {
+                    "type": "string",
+                    "example": "answering"
+                },
+                "players": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/matches.MatchPlayerResponse"
+                    }
+                },
+                "questionCount": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/matches.MatchQuestionResult"
+                    }
+                },
+                "revealEndsAt": {
+                    "type": "string"
+                },
+                "roundEndsAt": {
+                    "type": "string"
+                },
+                "roundStartedAt": {
+                    "type": "string"
+                },
+                "startedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "active"
+                }
+            }
+        },
         "matches.AnswerAcceptedResponse": {
             "type": "object",
             "properties": {
@@ -6861,6 +7658,10 @@ const docTemplate = `{
                     "example": false
                 },
                 "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "multiplayerComputerFillEnabled": {
                     "type": "boolean",
                     "example": true
                 }
@@ -8089,6 +8890,119 @@ const docTemplate = `{
                 }
             }
         },
+        "roomteams.AddStaffRoomTeamMemberRequest": {
+            "type": "object",
+            "properties": {
+                "playerId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "example": "7H9K2Q"
+                },
+                "qrcodeToken": {
+                    "type": "string",
+                    "maxLength": 512,
+                    "minLength": 4,
+                    "example": "qr_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok"
+                }
+            }
+        },
+        "roomteams.AddStaffRoomTeamMemberResponse": {
+            "type": "object",
+            "properties": {
+                "added": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "player": {
+                    "$ref": "#/definitions/roomteams.StaffRoomTeamPlayer"
+                },
+                "room": {
+                    "$ref": "#/definitions/roomteams.StaffRoomTeamResponse"
+                }
+            }
+        },
+        "roomteams.JoinRoomTeamResponse": {
+            "type": "object",
+            "properties": {
+                "joined": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "room": {
+                    "$ref": "#/definitions/roomteams.RoomTeamResponse"
+                }
+            }
+        },
+        "roomteams.RoomTeamResponse": {
+            "type": "object",
+            "properties": {
+                "roomId": {
+                    "type": "string",
+                    "example": "room-208"
+                },
+                "roomNumber": {
+                    "type": "string",
+                    "example": "208"
+                }
+            }
+        },
+        "roomteams.StaffRoomTeamPlayer": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string",
+                    "example": "https://example.test/avatar/alice.png"
+                },
+                "nickname": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "playerId": {
+                    "type": "string",
+                    "example": "7H9K2Q"
+                }
+            }
+        },
+        "roomteams.StaffRoomTeamResponse": {
+            "type": "object",
+            "properties": {
+                "roomId": {
+                    "type": "string",
+                    "example": "room-208"
+                },
+                "roomNumber": {
+                    "type": "string",
+                    "example": "208"
+                }
+            }
+        },
+        "roomteams.StaffRoomTeamTokenResponse": {
+            "type": "object",
+            "properties": {
+                "qrToken": {
+                    "type": "string",
+                    "example": "rmt_6H_x7lM20CK8BBnPfwEG1E"
+                },
+                "qrTokenExpiresAt": {
+                    "type": "string"
+                },
+                "room": {
+                    "$ref": "#/definitions/roomteams.StaffRoomTeamResponse"
+                }
+            }
+        },
+        "roomteams.StaffRoomTeamsResponse": {
+            "type": "object",
+            "properties": {
+                "rooms": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/roomteams.StaffRoomTeamResponse"
+                    }
+                }
+            }
+        },
         "shop.ItemDetailResponse": {
             "type": "object",
             "properties": {
@@ -8265,6 +9179,12 @@ const docTemplate = `{
                     "minLength": 1,
                     "example": "stone_engineering_base"
                 },
+                "roomNumber": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "minLength": 1,
+                    "example": "208"
+                },
                 "teamId": {
                     "type": "string",
                     "maxLength": 128,
@@ -8295,6 +9215,9 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "room": {
+                    "$ref": "#/definitions/staff.RewardRoomResponse"
                 },
                 "team": {
                     "$ref": "#/definitions/staff.RewardTeamResponse"
@@ -8416,6 +9339,15 @@ const docTemplate = `{
                 "quantity": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "staff.RewardRoomResponse": {
+            "type": "object",
+            "properties": {
+                "roomNumber": {
+                    "type": "string",
+                    "example": "208"
                 }
             }
         },

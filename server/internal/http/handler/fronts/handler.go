@@ -9,7 +9,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
@@ -169,47 +168,36 @@ func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) currentFront(ctx context.Context) (mongomodel.Front, error) {
-	if h.content != nil {
-		if territoryTemplate, ok := h.content.TerritoryMap(); ok {
-			var territoryFront mongomodel.Front
-			err := h.db.Collection(mongomodel.FrontsCollection).
-				FindOne(ctx, bson.M{"_id": territoryTemplate.ID}).
-				Decode(&territoryFront)
-			if errors.Is(err, mongo.ErrNoDocuments) {
-				return frontFromTerritoryTemplate(territoryTemplate), nil
-			}
-			if err != nil {
-				return mongomodel.Front{}, err
-			}
-			territoryFront = h.withFrontDefaults(territoryFront)
-			territoryFront.Current = true
-			return territoryFront, nil
-		}
+	if h.content == nil {
+		return mongomodel.Front{}, errFrontNotFound
 	}
-
+	template, ok := h.content.TerritoryMap()
+	if !ok {
+		return mongomodel.Front{}, errFrontNotFound
+	}
 	var front mongomodel.Front
-	err := h.db.Collection(mongomodel.FrontsCollection).
-		FindOne(
-			ctx,
-			bson.M{"current": true},
-			options.FindOne().SetSort(bson.D{
-				{Key: "updated_at", Value: -1},
-				{Key: "_id", Value: 1},
-			}),
-		).
-		Decode(&front)
+	err := h.db.Collection(mongomodel.FrontsCollection).FindOne(ctx, bson.M{"_id": template.ID}).Decode(&front)
 	if errors.Is(err, mongo.ErrNoDocuments) {
-		return h.fallbackCurrentFront(), nil
+		return frontFromTerritoryTemplate(template), nil
 	}
 	if err != nil {
 		return mongomodel.Front{}, err
 	}
-	return h.withFrontDefaults(front), nil
+	front = h.withFrontDefaults(front)
+	front.Current = true
+	return front, nil
 }
 
 func (h *Handler) frontByID(ctx context.Context, frontID string) (mongomodel.Front, error) {
 	frontID = strings.TrimSpace(frontID)
 	if frontID == "" {
+		return mongomodel.Front{}, errFrontNotFound
+	}
+	if h.content == nil {
+		return mongomodel.Front{}, errFrontNotFound
+	}
+	template, ok := h.content.GetTerritoryMap(frontID)
+	if !ok {
 		return mongomodel.Front{}, errFrontNotFound
 	}
 
@@ -218,11 +206,7 @@ func (h *Handler) frontByID(ctx context.Context, frontID string) (mongomodel.Fro
 		FindOne(ctx, bson.M{"_id": frontID}).
 		Decode(&front)
 	if errors.Is(err, mongo.ErrNoDocuments) {
-		fallback, ok := h.fallbackFrontByID(frontID)
-		if !ok {
-			return mongomodel.Front{}, errFrontNotFound
-		}
-		return fallback, nil
+		return frontFromTerritoryTemplate(template), nil
 	}
 	if err != nil {
 		return mongomodel.Front{}, err
@@ -246,12 +230,8 @@ func (h *Handler) withFrontDefaults(front mongomodel.Front) mongomodel.Front {
 	if front.Revision <= 0 {
 		front.Revision = 1
 	}
-	if front.MapMode == "" && h.content != nil {
-		if _, ok := h.content.GetTerritoryMap(front.MapID); ok {
-			front.MapMode = content.FrontMapModeTerritoryGrid
-		}
-	}
-	if front.MapMode == content.FrontMapModeTerritoryGrid && front.Territory == nil && h.content != nil {
+	front.MapMode = content.FrontMapModeTerritoryGrid
+	if front.Territory == nil && h.content != nil {
 		template, ok := h.content.GetTerritoryMap(front.MapID)
 		if ok {
 			fallback := frontFromTerritoryTemplate(template)
@@ -261,26 +241,13 @@ func (h *Handler) withFrontDefaults(front mongomodel.Front) mongomodel.Front {
 			front.ActiveEvents = fallback.ActiveEvents
 			front.Leaderboard = fallback.Leaderboard
 		}
-	} else if len(front.Cells) == 0 && h.content != nil {
-		template, ok := h.content.GetFrontMap(front.MapID)
-		if ok && template.Enabled {
-			fallback := frontFromTemplate(template)
-			front.Name = fallback.Name
-			front.Cells = fallback.Cells
-			front.Teams = fallback.Teams
-			front.ActiveEvents = fallback.ActiveEvents
-		}
 	}
-	for i := range front.Cells {
-		front.Cells[i].Control = clampFrontInt(front.Cells[i].Control, 0, 100)
-		front.Cells[i].Defense = clampFrontInt(front.Cells[i].Defense, 0, territoryMaxDefense)
-	}
-	if front.MapMode == content.FrontMapModeTerritoryGrid && h.content != nil {
+	if h.content != nil {
 		if template, ok := h.content.GetTerritoryMap(front.MapID); ok && template.ID == front.ID {
 			front.Current = true
 		}
 	}
-	if front.MapMode == content.FrontMapModeTerritoryGrid && front.Territory != nil {
+	if front.Territory != nil {
 		syncTerritoryTeamRanks(front.Teams, front.Territory)
 		front.Leaderboard = deriveLeaderboard(front)
 	}

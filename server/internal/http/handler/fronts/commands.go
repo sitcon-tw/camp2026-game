@@ -23,7 +23,6 @@ var frontCommandCosts = map[string]int{
 	"attack":           15,
 	"reinforce":        8,
 	"repair":           12,
-	"scout":            4,
 	"rescue":           10,
 	"support":          0,
 	"answer_challenge": 0,
@@ -72,7 +71,7 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	front = withCurrentPlayerTeam(front, player)
-	if front.MapMode == contentFrontMapModeTerritoryGrid && !isParticipatingTerritoryTeam(player.TeamID) {
+	if !isParticipatingTerritoryTeam(player.TeamID) {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusForbidden, "this team can only observe the territory front"))
 		return
 	}
@@ -83,7 +82,7 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body = normalizeCommandRequest(body)
-	if err := validateCommandRequest(body, front.MapMode); err != nil {
+	if err := validateCommandRequest(body); err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
@@ -99,16 +98,13 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if body.SitoneID != "" {
-		owned, ownershipErr := h.playerOwnsFrontSitone(r.Context(), player.ID, body.SitoneID)
-		if ownershipErr != nil {
-			httpx.WriteProblem(w, r, httpx.InternalServerError("front command failed", "front_sitone_lookup_failed", ownershipErr))
+	if err := h.validateOwnedFrontSitones(r.Context(), player.ID, body.SitoneIDs); err != nil {
+		if errors.Is(err, errFrontSitoneNotOwned) {
+			httpx.WriteProblem(w, r, httpx.UnprocessableEntity("sitone loadout exceeds owned quantity"))
 			return
 		}
-		if !owned {
-			httpx.WriteProblem(w, r, httpx.UnprocessableEntity("sitone is not owned"))
-			return
-		}
+		httpx.WriteProblem(w, r, httpx.InternalServerError("front command failed", "front_sitone_lookup_failed", err))
+		return
 	}
 	if body.ExpectedRevision != nil && *body.ExpectedRevision != front.Revision {
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "front revision is stale"))
@@ -146,12 +142,11 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 		TeamID:           player.TeamID,
 		Kind:             body.Kind,
 		Type:             body.Kind,
-		FromCellID:       body.FromCellID,
-		ToCellID:         body.ToCellID,
 		TargetX:          body.TargetX,
 		TargetY:          body.TargetY,
 		ExpectedRevision: body.ExpectedRevision,
-		SitoneID:         body.SitoneID,
+		SitoneIDs:        append([]string(nil), body.SitoneIDs...),
+		SitoneEffect:     frontSitoneEffect(h.content, body.Kind, body.SitoneIDs),
 		Payload:          clonePayload(body.Payload),
 		CreatedAt:        time.Now().UTC(),
 	}
@@ -232,9 +227,11 @@ func resetFrontCommandDerivedFields(command *mongomodel.FrontCommand) {
 	command.ScoreDelta = 0
 	command.FrontOpenPowerDelta = 0
 	command.FrontOpenPowerCost = 0
-	command.EmergencyResupplyAmount = 0
 	command.RewardSitoneID = ""
 	command.RewardSitoneQuantity = 0
+	command.SitoneEffect.AffectedCellBonus = 0
+	command.SitoneEffect.DefenseBonus = 0
+	command.SitoneEffect.ScoreBonus = 0
 }
 
 func (h *Handler) writeCommandResponse(w http.ResponseWriter, r *http.Request, status int, front mongomodel.Front, player mongomodel.Player, command mongomodel.FrontCommand) {
@@ -275,14 +272,8 @@ func (h *Handler) recordCommand(ctx context.Context, previousRevision int64, fro
 	defer session.EndSession(ctx)
 
 	_, err = session.WithTransaction(ctx, func(ctx context.Context) (any, error) {
-		if command.SitoneID != "" {
-			owned, ownershipErr := h.playerOwnsFrontSitone(ctx, command.PlayerID, command.SitoneID)
-			if ownershipErr != nil {
-				return nil, ownershipErr
-			}
-			if !owned {
-				return nil, errFrontSitoneNotOwned
-			}
+		if err := h.validateOwnedFrontSitones(ctx, command.PlayerID, command.SitoneIDs); err != nil {
+			return nil, err
 		}
 		if _, err := h.db.Collection(mongomodel.FrontCommandsCollection).InsertOne(ctx, command); err != nil {
 			if mongo.IsDuplicateKeyError(err) {
@@ -296,14 +287,12 @@ func (h *Handler) recordCommand(ctx context.Context, previousRevision int64, fro
 		if err := h.grantFrontCommandSitone(ctx, command); err != nil {
 			return nil, err
 		}
-		if front.MapMode == contentFrontMapModeTerritoryGrid {
-			if _, err := h.db.Collection(mongomodel.FrontsCollection).UpdateMany(
-				ctx,
-				bson.M{"_id": bson.M{"$ne": front.ID}, "current": true},
-				bson.M{"$set": bson.M{"current": false, "updated_at": front.UpdatedAt}},
-			); err != nil {
-				return nil, err
-			}
+		if _, err := h.db.Collection(mongomodel.FrontsCollection).UpdateMany(
+			ctx,
+			bson.M{"_id": bson.M{"$ne": front.ID}, "current": true},
+			bson.M{"$set": bson.M{"current": false, "updated_at": front.UpdatedAt}},
+		); err != nil {
+			return nil, err
 		}
 		if err := h.updateFrontAfterCommand(ctx, previousRevision, front, command); err != nil {
 			return nil, err
@@ -352,6 +341,30 @@ func (h *Handler) playerOwnsFrontSitone(ctx context.Context, playerID string, si
 	return err == nil, err
 }
 
+func (h *Handler) validateOwnedFrontSitones(ctx context.Context, playerID string, sitoneIDs []string) error {
+	required := sitoneCounts(sitoneIDs)
+	if len(required) == 0 {
+		return errFrontSitoneNotOwned
+	}
+	if h.content != nil {
+		for sitoneID := range required {
+			if _, ok := h.content.GetSitone(sitoneID); !ok {
+				return errFrontSitoneNotOwned
+			}
+		}
+	}
+	owned, err := h.playerOwnedSitoneCounts(ctx, playerID)
+	if err != nil {
+		return err
+	}
+	for sitoneID, quantity := range required {
+		if owned[sitoneID] < quantity {
+			return errFrontSitoneNotOwned
+		}
+	}
+	return nil
+}
+
 func (h *Handler) updateFrontAfterCommand(ctx context.Context, previousRevision int64, front mongomodel.Front, command mongomodel.FrontCommand) error {
 	summary := commandSummary(command)
 	result, err := h.db.Collection(mongomodel.FrontsCollection).UpdateOne(
@@ -366,9 +379,7 @@ func (h *Handler) updateFrontAfterCommand(ctx context.Context, previousRevision 
 				"current":       front.Current,
 				"tick":          front.Tick,
 				"revision":      front.Revision,
-				"cells":         front.Cells,
 				"teams":         front.Teams,
-				"zones":         front.Zones,
 				"active_events": front.ActiveEvents,
 				"leaderboard":   front.Leaderboard,
 				"last_command":  summary,
@@ -415,19 +426,8 @@ func normalizeCommandRequest(body CreateCommandRequest) CreateCommandRequest {
 	if body.Kind == "" {
 		body.Kind = body.Type
 	}
-	body.FromCellID = strings.TrimSpace(body.FromCellID)
-	body.ToCellID = strings.TrimSpace(body.ToCellID)
-	body.SitoneID = strings.TrimSpace(body.SitoneID)
+	body.SitoneIDs = normalizedSitoneLoadout(body.SitoneIDs)
 	if body.Payload != nil {
-		if body.FromCellID == "" {
-			body.FromCellID = payloadString(body.Payload, "fromCellId", "from_cell_id", "from")
-		}
-		if body.ToCellID == "" {
-			body.ToCellID = payloadString(body.Payload, "toCellId", "to_cell_id", "targetCellId", "cellId", "to")
-		}
-		if body.SitoneID == "" {
-			body.SitoneID = payloadString(body.Payload, "sitoneId", "sitone_id")
-		}
 		if body.TargetX == nil {
 			body.TargetX = payloadInt(body.Payload, "targetX", "target_x", "x")
 		}
@@ -478,55 +478,30 @@ func payloadInt64(payload map[string]any, keys ...string) *int64 {
 	return nil
 }
 
-func payloadString(payload map[string]any, keys ...string) string {
-	for _, key := range keys {
-		value, ok := payload[key]
-		if !ok {
-			continue
-		}
-		if text, ok := value.(string); ok {
-			return strings.TrimSpace(text)
-		}
-	}
-	return ""
-}
-
-func validateCommandRequest(body CreateCommandRequest, mapMode string) error {
+func validateCommandRequest(body CreateCommandRequest) error {
 	var details []httpx.ErrorDetail
 	if body.Kind == "" {
 		details = append(details, httpx.ErrorDetail{Location: "body.kind", Message: "kind is required"})
 	} else if _, ok := frontCommandCosts[body.Kind]; !ok {
 		details = append(details, httpx.ErrorDetail{Location: "body.kind", Message: "kind is unsupported"})
 	}
-	if mapMode == contentFrontMapModeTerritoryGrid {
-		if !territoryCommandIsSupported(body.Kind) {
-			details = append(details, httpx.ErrorDetail{Location: "body.kind", Message: "kind is unsupported on a territory map"})
-		}
-		if body.ClientCommandID == "" {
-			details = append(details, httpx.ErrorDetail{Location: "body.clientCommandId", Message: "clientCommandId is required"})
-		}
-		if body.SitoneID == "" {
-			details = append(details, httpx.ErrorDetail{Location: "body.sitoneId", Message: "sitoneId is required"})
-		}
-		if body.TargetX == nil || *body.TargetX < 0 || *body.TargetX >= 64 {
-			details = append(details, httpx.ErrorDetail{Location: "body.targetX", Message: "targetX must be between 0 and 63"})
-		}
-		if body.TargetY == nil || *body.TargetY < 0 || *body.TargetY >= 57 {
-			details = append(details, httpx.ErrorDetail{Location: "body.targetY", Message: "targetY must be between 0 and 56"})
-		}
-		if body.ExpectedRevision != nil && *body.ExpectedRevision < 0 {
-			details = append(details, httpx.ErrorDetail{Location: "body.expectedRevision", Message: "expectedRevision must be non-negative"})
-		}
-	} else {
-		if body.FromCellID == "" {
-			details = append(details, httpx.ErrorDetail{Location: "body.fromCellId", Message: "fromCellId is required"})
-		}
-		if body.ToCellID == "" {
-			details = append(details, httpx.ErrorDetail{Location: "body.toCellId", Message: "toCellId is required"})
-		}
-		if body.SitoneID == "" {
-			details = append(details, httpx.ErrorDetail{Location: "body.sitoneId", Message: "sitoneId is required"})
-		}
+	if !territoryCommandIsSupported(body.Kind) {
+		details = append(details, httpx.ErrorDetail{Location: "body.kind", Message: "kind is unsupported on the territory front"})
+	}
+	if body.ClientCommandID == "" {
+		details = append(details, httpx.ErrorDetail{Location: "body.clientCommandId", Message: "clientCommandId is required"})
+	}
+	if len(body.SitoneIDs) < 1 || len(body.SitoneIDs) > maxFrontSitoneLoadout {
+		details = append(details, httpx.ErrorDetail{Location: "body.sitoneIds", Message: "sitoneIds must contain between 1 and 5 sitones"})
+	}
+	if body.TargetX == nil || *body.TargetX < 0 || *body.TargetX >= 64 {
+		details = append(details, httpx.ErrorDetail{Location: "body.targetX", Message: "targetX must be between 0 and 63"})
+	}
+	if body.TargetY == nil || *body.TargetY < 0 || *body.TargetY >= 57 {
+		details = append(details, httpx.ErrorDetail{Location: "body.targetY", Message: "targetY must be between 0 and 56"})
+	}
+	if body.ExpectedRevision != nil && *body.ExpectedRevision < 0 {
+		details = append(details, httpx.ErrorDetail{Location: "body.expectedRevision", Message: "expectedRevision must be non-negative"})
 	}
 	if len(details) > 0 {
 		return httpx.UnprocessableEntity("invalid front command", details...)
@@ -535,191 +510,11 @@ func validateCommandRequest(body CreateCommandRequest, mapMode string) error {
 }
 
 func applyCommandToFront(front mongomodel.Front, command mongomodel.FrontCommand, playerOpenPower int) (mongomodel.Front, mongomodel.FrontCommand, error) {
-	if front.MapMode == contentFrontMapModeTerritoryGrid {
-		return applyTerritoryCommand(front, command, playerOpenPower)
-	}
-	if !isPlayableFrontStatus(front.Status) {
-		return front, command, errors.New("front is not accepting commands")
-	}
-	teamIndex := frontTeamIndex(front.Teams, command.TeamID)
-	if teamIndex < 0 {
-		return front, command, errors.New("team is not part of this front")
-	}
-	fromIndex := frontCellIndex(front.Cells, command.FromCellID)
-	if fromIndex < 0 {
-		return front, command, errors.New("from cell does not exist")
-	}
-	toIndex := frontCellIndex(front.Cells, command.ToCellID)
-	if toIndex < 0 {
-		return front, command, errors.New("target cell does not exist")
-	}
-	fromCell := front.Cells[fromIndex]
-	if fromCell.OwnerTeamID != command.TeamID {
-		return front, command, errors.New("from cell is not controlled by your team")
-	}
-	if !frontCellsAreNeighbors(fromCell, command.ToCellID) {
-		return front, command, errors.New("target cell is not adjacent to from cell")
-	}
-
-	if err := validateCommandTarget(front, command, front.Cells[toIndex]); err != nil {
-		return front, command, err
-	}
-	cost := frontCommandCost(command.Kind, front.Cells[toIndex])
-	if playerOpenPower < cost {
-		return front, command, fmt.Errorf("%w: 無法執行前線命令", errFrontInsufficientOpenPower)
-	}
-
-	previousOwner := front.Cells[toIndex].OwnerTeamID
-	front.Teams[teamIndex].LastCommandAt = command.CreatedAt
-	scoreDelta, sitoneReward := applyCommandEffect(&front, teamIndex, toIndex, command)
-	front.Teams[teamIndex].Score += scoreDelta
-	if previousOwner != command.TeamID && front.Cells[toIndex].OwnerTeamID == command.TeamID {
-		command.CapturedCellCount = 1
-	}
-	command.ScoreDelta = scoreDelta
-	command.FrontOpenPowerDelta = -cost
-	command.FrontOpenPowerCost = cost
-	command.RewardSitoneQuantity += sitoneReward
-	front.Revision++
-	front.Tick++
-	front.UpdatedAt = command.CreatedAt
-	command.Accepted = true
-	command.Applied = true
-	summary := commandSummary(command)
-	front.LastCommand = &summary
-	syncTeamRanks(front.Teams, front.Cells)
-	front.Leaderboard = deriveLeaderboard(front)
-	return front, command, nil
-}
-
-func frontCommandCost(kind string, target mongomodel.FrontCell) int {
-	cost := frontCommandCosts[kind]
-	if kind != "reinforce" {
-		return cost
-	}
-	controlApplied := minFrontInt(25, maxFrontInt(0, 100-target.Control))
-	defenseApplied := minFrontInt(12, maxFrontInt(0, territoryMaxDefense-target.Defense))
-	applied := controlApplied + defenseApplied
-	if applied <= 0 {
-		return 0
-	}
-	return maxFrontInt(1, (cost*applied+37-1)/37)
-}
-
-func validateCommandTarget(front mongomodel.Front, command mongomodel.FrontCommand, target mongomodel.FrontCell) error {
-	switch command.Kind {
-	case "expand":
-		if target.OwnerTeamID != "" {
-			return errors.New("expand target must be neutral")
-		}
-	case "attack":
-		if target.OwnerTeamID == "" || target.OwnerTeamID == command.TeamID {
-			return errors.New("attack target must be controlled by another team")
-		}
-	case "reinforce":
-		if target.OwnerTeamID != command.TeamID {
-			return errors.New("reinforce target must be controlled by your team")
-		}
-		if target.Control >= 100 && target.Defense >= territoryMaxDefense {
-			return errors.New("reinforce target is already at maximum defense")
-		}
-	case "repair":
-		if activeEventKindAtFrontCell(front, target.ID) != "repair" {
-			return errors.New("target has no active repair event")
-		}
-	case "rescue":
-		if activeEventKindAtFrontCell(front, target.ID) != "rescue" {
-			return errors.New("target has no active rescue event")
-		}
-	case "support":
-		if activeEventKindAtFrontCell(front, target.ID) != "resource" {
-			return errors.New("target has no active resource event")
-		}
-	}
-	return nil
-}
-
-func applyCommandEffect(front *mongomodel.Front, teamIndex int, cellIndex int, command mongomodel.FrontCommand) (int, int) {
-	cell := &front.Cells[cellIndex]
-	switch command.Kind {
-	case "expand":
-		addFrontPressure(cell, command.TeamID, 55)
-		if frontPressureFor(cell, command.TeamID) >= 50 {
-			captureFrontCell(cell, command.TeamID, 55, 8)
-			return 20, sitoneRewardForCollectedResource(collectFrontCellResource(cell))
-		}
-		return 4, 0
-	case "attack":
-		addFrontPressure(cell, command.TeamID, 45)
-		cell.Control = clampFrontInt(cell.Control-35, 0, 100)
-		cell.Defense = maxFrontInt(0, cell.Defense-10)
-		if cell.Control == 0 || frontPressureFor(cell, command.TeamID) >= 60 {
-			captureFrontCell(cell, command.TeamID, 45, 6)
-			return 25, sitoneRewardForCollectedResource(collectFrontCellResource(cell))
-		}
-		return 8, 0
-	case "reinforce":
-		cell.Control = clampFrontInt(cell.Control+25, 0, 100)
-		cell.Defense = clampFrontInt(cell.Defense+12, 0, territoryMaxDefense)
-		return 5, 0
-	case "repair":
-		removeActiveFrontEventAtCell(front, cell.ID)
-		cell.EventID = ""
-		cell.Control = clampFrontInt(cell.Control+20, 0, 100)
-		cell.Defense = clampFrontInt(cell.Defense+10, 0, territoryMaxDefense)
-		front.Teams[teamIndex].RepairedEvents++
-		return 30, 0
-	case "rescue":
-		removeActiveFrontEventAtCell(front, cell.ID)
-		cell.EventID = ""
-		front.Teams[teamIndex].RescuedSitones++
-		return 30, 0
-	case "scout":
-		addFrontPressure(cell, command.TeamID, 8)
-		front.Teams[teamIndex].CollaborationScore++
-		return 3, 0
-	case "support":
-		removeActiveFrontEventAtCell(front, cell.ID)
-		cell.EventID = ""
-		addFrontPressure(cell, command.TeamID, 15)
-		front.Teams[teamIndex].CollaborationScore += 3
-		return 3, 1
-	case "answer_challenge":
-		addFrontPressure(cell, command.TeamID, 15)
-		front.Teams[teamIndex].CollaborationScore += 3
-		return 3, 0
-	default:
-		return 0, 0
-	}
-}
-
-func sitoneRewardForCollectedResource(resource int) int {
-	if resource > 0 {
-		return 1
-	}
-	return 0
+	return applyTerritoryCommand(front, command, playerOpenPower)
 }
 
 func isPlayableFrontStatus(status string) bool {
 	return status == "" || status == mongomodel.FrontStatusOpenPlay || status == "surge" || status == "booth_window"
-}
-
-func frontCellIndex(cells []mongomodel.FrontCell, cellID string) int {
-	for i, cell := range cells {
-		if cell.ID == cellID {
-			return i
-		}
-	}
-	return -1
-}
-
-func frontCellsAreNeighbors(cell mongomodel.FrontCell, targetCellID string) bool {
-	for _, neighborID := range cell.NeighborIDs {
-		if neighborID == targetCellID {
-			return true
-		}
-	}
-	return false
 }
 
 func activeEventKindAtFrontCell(front mongomodel.Front, cellID string) string {
@@ -742,33 +537,6 @@ func removeActiveFrontEventAtCell(front *mongomodel.Front, cellID string) {
 	front.ActiveEvents = active
 }
 
-func addFrontPressure(cell *mongomodel.FrontCell, teamID string, amount int) {
-	if cell.PressureByTeam == nil {
-		cell.PressureByTeam = make(map[string]int)
-	}
-	cell.PressureByTeam[teamID] += amount
-}
-
-func frontPressureFor(cell *mongomodel.FrontCell, teamID string) int {
-	if cell.PressureByTeam == nil {
-		return 0
-	}
-	return cell.PressureByTeam[teamID]
-}
-
-func captureFrontCell(cell *mongomodel.FrontCell, teamID string, control int, defense int) {
-	cell.OwnerTeamID = teamID
-	cell.Control = clampFrontInt(control, 1, 100)
-	cell.Defense = defense
-	cell.PressureByTeam = map[string]int{}
-}
-
-func collectFrontCellResource(cell *mongomodel.FrontCell) int {
-	resource := cell.Resource
-	cell.Resource = 0
-	return resource
-}
-
 func clampFrontInt(value int, minValue int, maxValue int) int {
 	if value < minValue {
 		return minValue
@@ -788,32 +556,30 @@ func maxFrontInt(a int, b int) int {
 
 func commandSummary(command mongomodel.FrontCommand) mongomodel.FrontCommandSummary {
 	return mongomodel.FrontCommandSummary{
-		ID:                      command.ID,
-		ClientCommandID:         command.ClientCommandID,
-		Kind:                    command.Kind,
-		Type:                    command.Type,
-		PlayerID:                command.PlayerID,
-		TeamID:                  command.TeamID,
-		FromCellID:              command.FromCellID,
-		ToCellID:                command.ToCellID,
-		TargetX:                 command.TargetX,
-		TargetY:                 command.TargetY,
-		ExpectedRevision:        command.ExpectedRevision,
-		AffectedCells:           append([]mongomodel.FrontCoordinate(nil), command.AffectedCells...),
-		CapturedCellCount:       command.CapturedCellCount,
-		EnclosedCellCount:       command.EnclosedCellCount,
-		ScoreDelta:              command.ScoreDelta,
-		FrontOpenPowerDelta:     command.FrontOpenPowerDelta,
-		FrontOpenPowerCost:      command.FrontOpenPowerCost,
-		EmergencyResupplyAmount: command.EmergencyResupplyAmount,
-		RewardSitoneID:          command.RewardSitoneID,
-		RewardSitoneQuantity:    command.RewardSitoneQuantity,
-		SitoneID:                command.SitoneID,
-		Payload:                 clonePayload(command.Payload),
-		Accepted:                command.Accepted,
-		Applied:                 command.Applied,
-		RejectReason:            command.RejectReason,
-		CreatedAt:               command.CreatedAt,
+		ID:                   command.ID,
+		ClientCommandID:      command.ClientCommandID,
+		Kind:                 command.Kind,
+		Type:                 command.Type,
+		PlayerID:             command.PlayerID,
+		TeamID:               command.TeamID,
+		TargetX:              command.TargetX,
+		TargetY:              command.TargetY,
+		ExpectedRevision:     command.ExpectedRevision,
+		AffectedCells:        append([]mongomodel.FrontCoordinate(nil), command.AffectedCells...),
+		CapturedCellCount:    command.CapturedCellCount,
+		EnclosedCellCount:    command.EnclosedCellCount,
+		ScoreDelta:           command.ScoreDelta,
+		FrontOpenPowerDelta:  command.FrontOpenPowerDelta,
+		FrontOpenPowerCost:   command.FrontOpenPowerCost,
+		RewardSitoneID:       command.RewardSitoneID,
+		RewardSitoneQuantity: command.RewardSitoneQuantity,
+		SitoneIDs:            append([]string(nil), command.SitoneIDs...),
+		SitoneEffect:         command.SitoneEffect,
+		Payload:              clonePayload(command.Payload),
+		Accepted:             command.Accepted,
+		Applied:              command.Applied,
+		RejectReason:         command.RejectReason,
+		CreatedAt:            command.CreatedAt,
 	}
 }
 

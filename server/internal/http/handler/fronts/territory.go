@@ -284,8 +284,9 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	if !supported || !territoryCommandIsSupported(command.Kind) {
 		return front, command, errors.New("command is unsupported on a territory map")
 	}
+	actionLimit := territoryCommandLimit(command.Kind, command.SitoneEffect.TotalBonusPercent)
 	if command.Kind == "reinforce" {
-		cost = territoryReinforceCost(matrix, command.TeamID, x, y, territoryReinforceLimit)
+		cost = territoryReinforceCost(matrix, command.TeamID, x, y, actionLimit)
 	}
 	controlledBefore := territoryControlledCellCount(matrix, command.TeamID)
 	if playerOpenPower < cost {
@@ -298,18 +299,21 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	landmarkSitoneReward := 0
 	switch command.Kind {
 	case "expand":
-		affected = expandTerritory(matrix, command.TeamID, x, y, territoryExpandLimit)
+		affected = expandTerritory(matrix, command.TeamID, x, y, actionLimit)
 		captured = append(captured, affected...)
 	case "attack":
-		affected, captured = attackTerritory(matrix, command.TeamID, target.Owner, x, y, territoryAttackLimit, bases)
+		affected, captured = attackTerritory(matrix, command.TeamID, target.Owner, x, y, actionLimit, bases)
 	case "reinforce":
-		affected = reinforceTerritory(matrix, command.TeamID, x, y, territoryReinforceLimit)
+		affected = reinforceTerritory(matrix, command.TeamID, x, y, actionLimit)
 	case "repair", "rescue", "support", "answer_challenge":
 		var landmarkErr error
-		affected, scoreDelta, landmarkSitoneReward, landmarkErr = applyTerritoryLandmarkCommand(&front, matrix, teamIndex, command)
+		affected, scoreDelta, landmarkSitoneReward, landmarkErr = applyTerritoryLandmarkCommand(&front, matrix, teamIndex, command, &command.SitoneEffect)
 		if landmarkErr != nil {
 			return front, command, landmarkErr
 		}
+	}
+	if command.Kind == "expand" || command.Kind == "attack" || command.Kind == "reinforce" {
+		command.SitoneEffect.AffectedCellBonus = maxFrontInt(0, len(affected)-territoryBaseCommandLimit(command.Kind))
 	}
 	enclosed := []mongomodel.FrontCoordinate(nil)
 	if (command.Kind == "expand" || command.Kind == "attack") && len(captured) > 0 {
@@ -353,6 +357,24 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	return front, command, nil
 }
 
+func territoryBaseCommandLimit(kind string) int {
+	switch kind {
+	case "expand":
+		return territoryExpandLimit
+	case "attack":
+		return territoryAttackLimit
+	case "reinforce":
+		return territoryReinforceLimit
+	default:
+		return 0
+	}
+}
+
+func territoryCommandLimit(kind string, bonusPercent int) int {
+	base := territoryBaseCommandLimit(kind)
+	return base + scaledFrontSitoneBonus(base, bonusPercent)
+}
+
 func territoryControlledCellCount(matrix [][]territoryCell, teamID string) int {
 	count := 0
 	for y := range matrix {
@@ -389,7 +411,7 @@ func territoryCommandIsSupported(kind string) bool {
 	}
 }
 
-func applyTerritoryLandmarkCommand(front *mongomodel.Front, matrix [][]territoryCell, teamIndex int, command mongomodel.FrontCommand) ([]mongomodel.FrontCoordinate, int, int, error) {
+func applyTerritoryLandmarkCommand(front *mongomodel.Front, matrix [][]territoryCell, teamIndex int, command mongomodel.FrontCommand, effect *mongomodel.FrontSitoneEffect) ([]mongomodel.FrontCoordinate, int, int, error) {
 	x, y := *command.TargetX, *command.TargetY
 	landmark, ok := territoryLandmarkAt(front.Territory.Landmarks, x, y)
 	if !ok {
@@ -408,7 +430,11 @@ func applyTerritoryLandmarkCommand(front *mongomodel.Front, matrix [][]territory
 	scoreDelta, sitoneReward := 0, 0
 	switch command.Kind {
 	case "repair":
-		matrix[y][x].Defense = clampFrontInt(matrix[y][x].Defense+25, 0, territoryMaxDefense)
+		baseApplied := minFrontInt(25, territoryMaxDefense-matrix[y][x].Defense)
+		defenseGain := 25 + scaledFrontSitoneBonus(25, effect.TotalBonusPercent)
+		actualApplied := minFrontInt(defenseGain, territoryMaxDefense-matrix[y][x].Defense)
+		matrix[y][x].Defense += actualApplied
+		effect.DefenseBonus = maxFrontInt(0, actualApplied-baseApplied)
 		front.Teams[teamIndex].RepairedEvents++
 		scoreDelta = 30
 	case "rescue":
@@ -421,6 +447,8 @@ func applyTerritoryLandmarkCommand(front *mongomodel.Front, matrix [][]territory
 		front.Teams[teamIndex].CollaborationScore += 3
 		scoreDelta = 20
 	}
+	effect.ScoreBonus = scaledFrontSitoneBonus(scoreDelta, effect.TotalBonusPercent)
+	scoreDelta += effect.ScoreBonus
 	removeActiveFrontEventAtCell(front, landmark.ID)
 	return []mongomodel.FrontCoordinate{{X: x, Y: y}}, scoreDelta, sitoneReward, nil
 }
