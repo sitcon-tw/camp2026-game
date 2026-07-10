@@ -561,7 +561,10 @@ export function StaffRewardsPanel() {
   )
   const playerOptions = playersQuery.data ?? []
   const teamOptions = teamsQuery.data ?? []
-  const roomTeamOptions = roomTeamsQuery.data ?? []
+  const roomTeamOptions = useMemo(
+    () => roomTeamsQuery.data ?? [],
+    [roomTeamsQuery.data],
+  )
   const groupedRoomTeamOptions = useMemo(
     () => groupDormRooms(roomTeamOptions),
     [roomTeamOptions],
@@ -1093,16 +1096,16 @@ export function StaffRewardsPanel() {
                         ? "所有玩家"
                         : selectedRoomGroupLabel
                           ? selectedRoomGroupLabel
-                        : selectedTeam
-                          ? `${selectedTeam.memberCount} 人`
-                          : "尚未選擇組別"}
+                          : selectedTeam
+                            ? `${selectedTeam.memberCount} 人`
+                            : "尚未選擇組別"}
                     </p>
                     <strong className="mt-1 block text-[22px] leading-tight font-black break-words">
                       {allPlayersSelected
                         ? "所有人"
                         : selectedRoomLabel
                           ? selectedRoomLabel
-                        : (selectedTeamName ?? "等待選擇")}
+                          : (selectedTeamName ?? "等待選擇")}
                     </strong>
                   </div>
                 </div>

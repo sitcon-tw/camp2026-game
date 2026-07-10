@@ -61,6 +61,24 @@ type QRCodeResponse struct {
 	QRCodeToken string `json:"qrcodeToken" example:"qr_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok"`
 }
 
+type OpenPowerTransferRequest struct {
+	RecipientPlayerID string `json:"recipientPlayerId" validate:"required,min=1,max=128" example:"2QK9H7"`
+	Amount            int    `json:"amount" validate:"required,min=1,max=999999" example:"100"`
+}
+
+type OpenPowerTransferResponse struct {
+	TransferID              string    `json:"transferId" example:"open_power_transfer_01HZY"`
+	SenderPlayerID          string    `json:"senderPlayerId" example:"7H9K2Q"`
+	SenderNickname          string    `json:"senderNickname" example:"Alice"`
+	RecipientPlayerID       string    `json:"recipientPlayerId" example:"2QK9H7"`
+	RecipientNickname       string    `json:"recipientNickname" example:"Bob"`
+	TeamID                  string    `json:"teamId" example:"8M4RXP"`
+	Amount                  int       `json:"amount" example:"100"`
+	SenderOpenPowerAfter    int       `json:"senderOpenPowerAfter" example:"1180"`
+	RecipientOpenPowerAfter int       `json:"recipientOpenPowerAfter" example:"520"`
+	CreatedAt               time.Time `json:"createdAt"`
+}
+
 type SitoneLoadoutRequest struct {
 	SitoneIDs []string `json:"sitoneIds" validate:"required,min=1,max=5" example:"stone_engineering_base,stone_explorer_base"`
 }

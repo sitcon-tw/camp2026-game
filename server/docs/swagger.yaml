@@ -663,6 +663,42 @@ definitions:
         example: true
         type: boolean
     type: object
+  admin.OpenPowerTransferEntryResponse:
+    properties:
+      amount:
+        example: 100
+        type: integer
+      createdAt:
+        type: string
+      recipientNickname:
+        example: Bob
+        type: string
+      recipientPlayerId:
+        example: 2QK9H7
+        type: string
+      senderNickname:
+        example: Alice
+        type: string
+      senderPlayerId:
+        example: 7H9K2Q
+        type: string
+      teamId:
+        example: 8M4RXP
+        type: string
+      teamName:
+        example: Blue Team
+        type: string
+      transferId:
+        example: open_power_transfer_507f1f77bcf86cd799439011
+        type: string
+    type: object
+  admin.OpenPowerTransfersResponse:
+    properties:
+      transfers:
+        items:
+          $ref: '#/definitions/admin.OpenPowerTransferEntryResponse'
+        type: array
+    type: object
   admin.RoomTeamMemberResponse:
     properties:
       avatarUrl:
@@ -2846,6 +2882,54 @@ definitions:
         example: material
         type: string
     type: object
+  me.OpenPowerTransferRequest:
+    properties:
+      amount:
+        example: 100
+        maximum: 999999
+        minimum: 1
+        type: integer
+      recipientPlayerId:
+        example: 2QK9H7
+        maxLength: 128
+        minLength: 1
+        type: string
+    required:
+    - amount
+    - recipientPlayerId
+    type: object
+  me.OpenPowerTransferResponse:
+    properties:
+      amount:
+        example: 100
+        type: integer
+      createdAt:
+        type: string
+      recipientNickname:
+        example: Bob
+        type: string
+      recipientOpenPowerAfter:
+        example: 520
+        type: integer
+      recipientPlayerId:
+        example: 2QK9H7
+        type: string
+      senderNickname:
+        example: Alice
+        type: string
+      senderOpenPowerAfter:
+        example: 1180
+        type: integer
+      senderPlayerId:
+        example: 7H9K2Q
+        type: string
+      teamId:
+        example: 8M4RXP
+        type: string
+      transferId:
+        example: open_power_transfer_01HZY
+        type: string
+    type: object
   me.PlayerItemResponse:
     properties:
       id:
@@ -3875,6 +3959,37 @@ paths:
         "204":
           description: No Content
       summary: Logout admin session
+      tags:
+      - admin
+  /admin/open-power-transfers:
+    get:
+      description: Admin-only endpoint. Returns recent same-team open power transfers
+        with sender, recipient, and team metadata.
+      parameters:
+      - description: Maximum number of transfer records to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.OpenPowerTransfersResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: List open power transfers as admin
       tags:
       - admin
   /admin/players/{playerID}/balance:
@@ -5787,6 +5902,63 @@ paths:
       security:
       - AuthCookieAuth: []
       summary: Update current player nickname
+      tags:
+      - me
+  /me/open-power-transfers:
+    post:
+      consumes:
+      - application/json
+      description: Transfers open power from the authenticated player to another player
+        in the same team and records the transfer.
+      parameters:
+      - description: Open power transfer request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/me.OpenPowerTransferRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/me.OpenPowerTransferResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: Transfer open power to a teammate
       tags:
       - me
   /me/qrcode:

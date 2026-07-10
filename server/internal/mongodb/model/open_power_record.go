@@ -3,8 +3,9 @@ package model
 import "time"
 
 const (
-	OpenPowerRecordsCollection = "open_power_records"
-	OpenPowerLocksCollection   = "open_power_locks"
+	OpenPowerRecordsCollection   = "open_power_records"
+	OpenPowerLocksCollection     = "open_power_locks"
+	OpenPowerTransfersCollection = "open_power_transfers"
 )
 
 type OpenPowerRecord struct {
@@ -14,4 +15,15 @@ type OpenPowerRecord struct {
 	Reason    string    `bson:"reason"`
 	Source    string    `bson:"source"`
 	CreatedAt time.Time `bson:"created_at"`
+}
+
+type OpenPowerTransfer struct {
+	ID                string    `bson:"_id"`
+	SenderPlayerID    string    `bson:"sender_player_id"`
+	RecipientPlayerID string    `bson:"recipient_player_id"`
+	TeamID            string    `bson:"team_id"`
+	Amount            int       `bson:"amount"`
+	SenderRecordID    string    `bson:"sender_record_id"`
+	RecipientRecordID string    `bson:"recipient_record_id"`
+	CreatedAt         time.Time `bson:"created_at"`
 }

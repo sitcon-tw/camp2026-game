@@ -3,6 +3,7 @@ package openpower
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 
@@ -48,6 +49,40 @@ func AcquirePlayerLock(ctx context.Context, db *mongo.Database, playerID string)
 			return nil, err
 		}
 	}
+}
+
+func AcquirePlayerLocks(ctx context.Context, db *mongo.Database, playerIDs ...string) (func(), error) {
+	ids := make([]string, 0, len(playerIDs))
+	seen := make(map[string]struct{}, len(playerIDs))
+	for _, playerID := range playerIDs {
+		if playerID == "" {
+			continue
+		}
+		if _, ok := seen[playerID]; ok {
+			continue
+		}
+		seen[playerID] = struct{}{}
+		ids = append(ids, playerID)
+	}
+	slices.Sort(ids)
+
+	releases := make([]func(), 0, len(ids))
+	for _, playerID := range ids {
+		release, err := AcquirePlayerLock(ctx, db, playerID)
+		if err != nil {
+			for index := len(releases) - 1; index >= 0; index-- {
+				releases[index]()
+			}
+			return nil, err
+		}
+		releases = append(releases, release)
+	}
+
+	return func() {
+		for index := len(releases) - 1; index >= 0; index-- {
+			releases[index]()
+		}
+	}, nil
 }
 
 func playerLockRelease(db *mongo.Database, lockID string, ownerID string) func() {

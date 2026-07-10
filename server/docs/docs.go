@@ -570,6 +570,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/open-power-transfers": {
+            "get": {
+                "description": "Admin-only endpoint. Returns recent same-team open power transfers with sender, recipient, and team metadata.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List open power transfers as admin",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of transfer records to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.OpenPowerTransfersResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/players/{playerID}/balance": {
             "put": {
                 "description": "Admin-only endpoint. Sets one player's total sitone count and open power to target values, then notifies the player.",
@@ -3478,6 +3524,93 @@ const docTemplate = `{
                 }
             }
         },
+        "/me/open-power-transfers": {
+            "post": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Transfers open power from the authenticated player to another player in the same team and records the transfer.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "me"
+                ],
+                "summary": "Transfer open power to a teammate",
+                "parameters": [
+                    {
+                        "description": "Open power transfer request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/me.OpenPowerTransferRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/me.OpenPowerTransferResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/me/qrcode": {
             "get": {
                 "security": [
@@ -5606,6 +5739,57 @@ const docTemplate = `{
                 "authenticated": {
                     "type": "boolean",
                     "example": true
+                }
+            }
+        },
+        "admin.OpenPowerTransferEntryResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "recipientNickname": {
+                    "type": "string",
+                    "example": "Bob"
+                },
+                "recipientPlayerId": {
+                    "type": "string",
+                    "example": "2QK9H7"
+                },
+                "senderNickname": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "senderPlayerId": {
+                    "type": "string",
+                    "example": "7H9K2Q"
+                },
+                "teamId": {
+                    "type": "string",
+                    "example": "8M4RXP"
+                },
+                "teamName": {
+                    "type": "string",
+                    "example": "Blue Team"
+                },
+                "transferId": {
+                    "type": "string",
+                    "example": "open_power_transfer_507f1f77bcf86cd799439011"
+                }
+            }
+        },
+        "admin.OpenPowerTransfersResponse": {
+            "type": "object",
+            "properties": {
+                "transfers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.OpenPowerTransferEntryResponse"
+                    }
                 }
             }
         },
@@ -8730,6 +8914,71 @@ const docTemplate = `{
                 "type": {
                     "type": "string",
                     "example": "material"
+                }
+            }
+        },
+        "me.OpenPowerTransferRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "recipientPlayerId"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "integer",
+                    "maximum": 999999,
+                    "minimum": 1,
+                    "example": 100
+                },
+                "recipientPlayerId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "example": "2QK9H7"
+                }
+            }
+        },
+        "me.OpenPowerTransferResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "recipientNickname": {
+                    "type": "string",
+                    "example": "Bob"
+                },
+                "recipientOpenPowerAfter": {
+                    "type": "integer",
+                    "example": 520
+                },
+                "recipientPlayerId": {
+                    "type": "string",
+                    "example": "2QK9H7"
+                },
+                "senderNickname": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "senderOpenPowerAfter": {
+                    "type": "integer",
+                    "example": 1180
+                },
+                "senderPlayerId": {
+                    "type": "string",
+                    "example": "7H9K2Q"
+                },
+                "teamId": {
+                    "type": "string",
+                    "example": "8M4RXP"
+                },
+                "transferId": {
+                    "type": "string",
+                    "example": "open_power_transfer_01HZY"
                 }
             }
         },

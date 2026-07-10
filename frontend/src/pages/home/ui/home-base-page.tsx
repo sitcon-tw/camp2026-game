@@ -1,13 +1,23 @@
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { useEffect } from "react"
-import { ChevronRight, Lock, LogOut } from "lucide-react"
+import { type FormEvent, useEffect, useMemo, useState } from "react"
+import { ArrowRightLeft, ChevronRight, Lock, LogOut } from "lucide-react"
+import { toast } from "sonner"
 import { AppError } from "@/shared/api/error"
 import { gameApi } from "@/shared/api/game"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { Button } from "@/shared/ui/button"
 import { apiClient } from "@/shared/api/client"
 import { PlayerAvatar } from "@/shared/ui/player-avatar"
+import { Input } from "@/shared/ui/input"
+import { Label } from "@/shared/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select"
 import {
   GameFeatureIcon,
   type GameFeatureIconName,
@@ -115,19 +125,36 @@ const COLLECTIONS: {
 
 export function HomeBasePage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [transferRecipientID, setTransferRecipientID] = useState("")
+  const [transferAmount, setTransferAmount] = useState("")
   const { data, isPending, error } = useQuery({
     queryKey: ["me", "home"],
     queryFn: gameApi.home,
   })
   const unauthorized = error instanceof AppError && error.status === 401
 
+  const transferMutation = useMutation({
+    mutationFn: gameApi.createOpenPowerTransfer,
+    onSuccess: (result) => {
+      setTransferAmount("")
+      setTransferRecipientID("")
+      void queryClient.invalidateQueries({ queryKey: ["me", "home"] })
+      void queryClient.invalidateQueries({ queryKey: ["me", "status"] })
+      toast.success(
+        `已轉帳 ${result.amount} OP 給 ${result.recipientNickname || result.recipientPlayerId}`,
+      )
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "開源力轉帳失敗")
+    },
+  })
+
   useEffect(() => {
     if (unauthorized) {
       navigate({ to: "/login", replace: true })
     }
   }, [navigate, unauthorized])
-
-  if (unauthorized) return null
 
   const player = data?.player
   const summary = data?.summary
@@ -140,7 +167,22 @@ export function HomeBasePage() {
   const sitoneCount = summary?.sitoneCount ?? 0
   const itemCount = summary?.itemCount ?? 0
   const rank = teamRank?.rank
-  const teamMembers = player?.teamMembers ?? []
+  const teamMembers = useMemo(
+    () => player?.teamMembers ?? [],
+    [player?.teamMembers],
+  )
+  const transferRecipients = useMemo(
+    () => teamMembers.filter((member) => member.playerId !== player?.playerId),
+    [player?.playerId, teamMembers],
+  )
+  const selectedTransferRecipientID =
+    transferRecipientID || transferRecipients[0]?.playerId || ""
+  const transferAmountValue = Number(transferAmount)
+  const transferAmountValid =
+    Number.isInteger(transferAmountValue) && transferAmountValue >= 1
+
+  if (unauthorized) return null
+
   const actionEnabledByID = new Map(
     (data?.actions ?? []).map((action) => [action.id, action.enabled]),
   )
@@ -156,6 +198,26 @@ export function HomeBasePage() {
   const logoutAction = async () => {
     await apiClient.post("/api/auth/logout")
     navigate({ to: "/login", replace: true })
+  }
+
+  function submitTransfer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedTransferRecipientID) {
+      toast.error("請選擇收款隊友")
+      return
+    }
+    if (!transferAmountValid) {
+      toast.error("請輸入至少 1 OP")
+      return
+    }
+    if (transferAmountValue > openPower) {
+      toast.error("開源力不足，無法轉帳")
+      return
+    }
+    transferMutation.mutate({
+      recipientPlayerId: selectedTransferRecipientID,
+      amount: transferAmountValue,
+    })
   }
 
   return (
@@ -339,6 +401,86 @@ export function HomeBasePage() {
               <strong className="text-[24px] font-black">{value}</strong>
             </Link>
           ))}
+        </section>
+
+        <section
+          className="bg-card border-ink rounded-[22px] border-2 p-[15px]"
+          aria-label="開源力轉帳"
+        >
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-muted-foreground mb-1 text-xs font-black tracking-[0.08em] uppercase">
+                Transfer
+              </p>
+              <h2 className="text-[22px] font-black tracking-normal">
+                開源力轉帳
+              </h2>
+            </div>
+            <span className="bg-surface-raised border-border rounded-full border-2 px-2.5 py-1 text-xs font-black whitespace-nowrap">
+              可用 {openPower} OP
+            </span>
+          </div>
+
+          {transferRecipients.length > 0 ? (
+            <form className="grid gap-3" onSubmit={submitTransfer}>
+              <div className="grid gap-2">
+                <Label htmlFor="open-power-transfer-recipient">收款隊友</Label>
+                <Select
+                  value={selectedTransferRecipientID}
+                  onValueChange={setTransferRecipientID}
+                  disabled={transferMutation.isPending}
+                >
+                  <SelectTrigger
+                    id="open-power-transfer-recipient"
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="選擇同組成員" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {transferRecipients.map((member) => (
+                      <SelectItem key={member.playerId} value={member.playerId}>
+                        {member.nickname}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_132px] sm:items-end">
+                <div className="grid gap-2">
+                  <Label htmlFor="open-power-transfer-amount">轉帳 OP</Label>
+                  <Input
+                    id="open-power-transfer-amount"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={openPower}
+                    value={transferAmount}
+                    disabled={transferMutation.isPending}
+                    placeholder="輸入數量"
+                    onChange={(event) => setTransferAmount(event.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={
+                    transferMutation.isPending ||
+                    !selectedTransferRecipientID ||
+                    !transferAmountValid ||
+                    transferAmountValue > openPower
+                  }
+                  className="min-h-10"
+                >
+                  <ArrowRightLeft className="size-4" aria-hidden />
+                  {transferMutation.isPending ? "轉帳中" : "轉帳"}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <p className="text-muted-foreground bg-surface-raised border-border rounded-[17px] border-2 px-3 py-3 text-sm font-bold">
+              目前沒有可轉帳的同組成員
+            </p>
+          )}
         </section>
 
         <section

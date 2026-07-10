@@ -402,6 +402,10 @@ func studentChangeOpenPowerSourceLabel(reason string) string {
 	switch reason {
 	case "quiz_match_completed":
 		return "對戰開源力"
+	case "open_power_transfer_out":
+		return "轉帳轉出"
+	case "open_power_transfer_in":
+		return "轉帳收款"
 	default:
 		if strings.TrimSpace(reason) == "" {
 			return "開源力變動"

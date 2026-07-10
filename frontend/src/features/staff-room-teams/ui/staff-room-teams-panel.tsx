@@ -73,9 +73,7 @@ function RoomTeamTokenCard({ token }: { token: StaffRoomTeamTokenResponse }) {
         />
       </div>
       <div>
-        <h2 className="text-[24px] leading-tight font-black">
-          {roomLabel}
-        </h2>
+        <h2 className="text-[24px] leading-tight font-black">{roomLabel}</h2>
         <p className="text-muted-foreground mt-1 text-sm font-bold">
           有效至 {expiresLabel}
         </p>
@@ -390,8 +388,7 @@ export function StaffRoomTeamsPanel() {
                               {player.team?.name
                                 ? formatTeamName(player.team.name)
                                 : "未分組"}{" "}
-                              ·{" "}
-                              {player.playerId}
+                              · {player.playerId}
                             </span>
                           </span>
                         </span>

@@ -21,13 +21,7 @@ import {
   X,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
-import {
-  type FormEvent,
-  type ReactNode,
-  useEffect,
-  useMemo,
-  useState,
-} from "react"
+import { type FormEvent, type ReactNode, useMemo, useState } from "react"
 import {
   CartesianGrid,
   Cell,
@@ -53,6 +47,7 @@ import {
   type AdminDashboardPlayer,
   type AdminDashboardPlayerRank,
   type AdminDashboardTeam,
+  type AdminOpenPowerTransferEntry,
   type AdminRoomTeam,
   type AdminRoomTeamAddMemberInput,
   type AdminRoomTeamMember,
@@ -360,6 +355,13 @@ export function AdminPanelPage() {
     retry: false,
     refetchInterval: 30_000,
   })
+  const openPowerTransfersQuery = useQuery({
+    queryKey: ["admin", "open-power-transfers"],
+    queryFn: () => gameApi.adminOpenPowerTransfers(200),
+    enabled: Boolean(settingsQuery.data),
+    retry: false,
+    refetchInterval: 30_000,
+  })
   const studentChangesQuery = useQuery({
     queryKey: ["admin", "student-changes"],
     queryFn: () => gameApi.adminStudentChanges(500),
@@ -610,6 +612,7 @@ export function AdminPanelPage() {
     dashboardQuery.isFetching ||
     historyQuery.isFetching ||
     giftHistoryQuery.isFetching ||
+    openPowerTransfersQuery.isFetching ||
     studentChangesQuery.isFetching ||
     communityStandsQuery.isFetching ||
     roomTeamsQuery.isFetching ||
@@ -710,6 +713,7 @@ export function AdminPanelPage() {
                 void dashboardQuery.refetch()
                 void historyQuery.refetch()
                 void giftHistoryQuery.refetch()
+                void openPowerTransfersQuery.refetch()
                 void studentChangesQuery.refetch()
                 void communityStandsQuery.refetch()
                 void roomTeamsQuery.refetch()
@@ -766,15 +770,19 @@ export function AdminPanelPage() {
             dashboard={dashboardQuery.data}
             history={historyQuery.data}
             giftHistory={giftHistoryQuery.data}
+            openPowerTransfers={openPowerTransfersQuery.data}
             studentChanges={studentChangesQuery.data}
             giftHistoryError={giftHistoryQuery.error}
             giftHistoryPending={giftHistoryQuery.isPending}
+            openPowerTransfersError={openPowerTransfersQuery.error}
+            openPowerTransfersPending={openPowerTransfersQuery.isPending}
             studentChangesError={studentChangesQuery.error}
             studentChangesPending={studentChangesQuery.isPending}
             historyError={historyQuery.error}
             historyPending={historyQuery.isPending}
             onRetryHistory={() => historyQuery.refetch()}
             onRetryGiftHistory={() => giftHistoryQuery.refetch()}
+            onRetryOpenPowerTransfers={() => openPowerTransfersQuery.refetch()}
             onRetryStudentChanges={() => studentChangesQuery.refetch()}
           />
         ) : null}
@@ -928,12 +936,6 @@ function AdminCollapsibleSection({
   const controlled = open != null
   const isOpen = controlled ? open : uncontrolledOpen
 
-  useEffect(() => {
-    if (!controlled && defaultOpen) {
-      setUncontrolledOpen(true)
-    }
-  }, [controlled, defaultOpen])
-
   function handleOpenChange(nextOpen: boolean) {
     if (!controlled) {
       setUncontrolledOpen(nextOpen)
@@ -988,29 +990,37 @@ function AdminDashboardView({
   dashboard,
   history,
   giftHistory,
+  openPowerTransfers,
   studentChanges,
   giftHistoryError,
   giftHistoryPending,
+  openPowerTransfersError,
+  openPowerTransfersPending,
   studentChangesError,
   studentChangesPending,
   historyError,
   historyPending,
   onRetryHistory,
   onRetryGiftHistory,
+  onRetryOpenPowerTransfers,
   onRetryStudentChanges,
 }: {
   dashboard: AdminDashboard
   history?: AdminDashboardHistory
   giftHistory?: GiftHistoryEntry[]
+  openPowerTransfers?: AdminOpenPowerTransferEntry[]
   studentChanges?: AdminStudentChangeEntry[]
   giftHistoryError: unknown
   giftHistoryPending: boolean
+  openPowerTransfersError: unknown
+  openPowerTransfersPending: boolean
   studentChangesError: unknown
   studentChangesPending: boolean
   historyError: unknown
   historyPending: boolean
   onRetryHistory: () => void
   onRetryGiftHistory: () => void
+  onRetryOpenPowerTransfers: () => void
   onRetryStudentChanges: () => void
 }) {
   const { summary, matches } = dashboard
@@ -1142,13 +1152,20 @@ function AdminDashboardView({
       <AdminCollapsibleSection
         title="紀錄與曲線"
         description="資源曲線、staff 發獎與學員資源變動。"
-        badge={`${formatNumber((giftHistory?.length ?? 0) + (studentChanges?.length ?? 0))} records`}
+        badge={`${formatNumber((giftHistory?.length ?? 0) + (openPowerTransfers?.length ?? 0) + (studentChanges?.length ?? 0))} records`}
       >
         <ResourceHistoryPanel
           history={history}
           isPending={historyPending}
           error={historyError}
           onRetry={onRetryHistory}
+        />
+
+        <OpenPowerTransfersPanel
+          transfers={openPowerTransfers}
+          isPending={openPowerTransfersPending}
+          error={openPowerTransfersError}
+          onRetry={onRetryOpenPowerTransfers}
         />
 
         <AdminGiftHistoryPanel
@@ -1221,6 +1238,151 @@ function AdminDashboardView({
           </TabsContent>
         </Tabs>
       </AdminCollapsibleSection>
+    </div>
+  )
+}
+
+function OpenPowerTransfersPanel({
+  transfers,
+  isPending,
+  error,
+  onRetry,
+}: {
+  transfers?: AdminOpenPowerTransferEntry[]
+  isPending: boolean
+  error: unknown
+  onRetry: () => void
+}) {
+  if (isPending) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardContent className="flex items-center gap-3 px-5">
+          <Spinner className="size-5" />
+          <span className="font-black">正在載入開源力轉帳紀錄</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <ArrowUpDown className="size-5" />
+            開源力轉帳紀錄
+          </CardTitle>
+          <CardDescription>
+            {errorMessage(error, "轉帳紀錄暫時無法讀取。")}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="px-5">
+          <Button type="button" variant="outline" onClick={onRetry}>
+            重新整理
+          </Button>
+        </CardFooter>
+      </Card>
+    )
+  }
+
+  if (!transfers || transfers.length === 0) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <ArrowUpDown className="size-5" />
+            開源力轉帳紀錄
+          </CardTitle>
+          <CardDescription>目前還沒有同組開源力轉帳。</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="rounded-[18px] py-5">
+      <CardHeader className="gap-3 px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg font-black">
+              <ArrowUpDown className="size-5" />
+              開源力轉帳紀錄
+            </CardTitle>
+            <CardDescription>
+              顯示最近 {transfers.length} 筆同組開源力轉帳。
+            </CardDescription>
+          </div>
+          <Badge variant="secondary">{transfers.length} 筆</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="px-5">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>時間</TableHead>
+              <TableHead>隊伍</TableHead>
+              <TableHead>轉出玩家</TableHead>
+              <TableHead>收款玩家</TableHead>
+              <TableHead className="text-right">金額</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {transfers.slice(0, 30).map((transfer) => (
+              <TableRow key={transfer.transferId}>
+                <TableCell className="font-semibold">
+                  {formatDateTime(transfer.createdAt)}
+                </TableCell>
+                <TableCell className="min-w-[140px] whitespace-normal">
+                  <div className="grid min-w-0 gap-1">
+                    <Badge variant="outline" className="w-fit max-w-[12rem]">
+                      <span className="truncate">
+                        {transfer.teamName || transfer.teamId}
+                      </span>
+                    </Badge>
+                    <span className="text-muted-foreground text-xs break-all">
+                      {transfer.teamId}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="min-w-[180px] whitespace-normal">
+                  <AdminTransferPlayerCell
+                    playerId={transfer.senderPlayerId}
+                    nickname={transfer.senderNickname}
+                  />
+                </TableCell>
+                <TableCell className="min-w-[180px] whitespace-normal">
+                  <AdminTransferPlayerCell
+                    playerId={transfer.recipientPlayerId}
+                    nickname={transfer.recipientNickname}
+                  />
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge variant="secondary">
+                    {formatNumber(transfer.amount)} OP
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+function AdminTransferPlayerCell({
+  playerId,
+  nickname,
+}: {
+  playerId: string
+  nickname?: string
+}) {
+  return (
+    <div className="grid min-w-0 gap-1">
+      <span className="font-semibold break-words">{nickname || playerId}</span>
+      <span className="text-muted-foreground text-xs break-all">
+        {playerId}
+      </span>
     </div>
   )
 }

@@ -130,9 +130,10 @@ func registerRoutes(api chi.Router, dep Dependencies) {
 	)
 
 	mehandler.New(mehandler.Dependencies{
-		Content: dep.Content,
-		MongoDB: dep.MongoDB,
-		Broker:  playerEventsBroker,
+		Content:     dep.Content,
+		MongoClient: dep.MongoClient,
+		MongoDB:     dep.MongoDB,
+		Broker:      playerEventsBroker,
 	}).RegisterRoutes(maintenanceGuardedPlayerAPI)
 	leaderboardshandler.New(leaderboardshandler.Dependencies{
 		Content: dep.Content,
