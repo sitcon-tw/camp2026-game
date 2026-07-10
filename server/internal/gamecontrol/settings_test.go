@@ -142,6 +142,37 @@ func TestNormalizeMaintenanceMode(t *testing.T) {
 	}
 }
 
+func TestQRCodeScanCooldownDuration(t *testing.T) {
+	settings := DefaultSettings()
+	settings.QRCodeScanCooldownEnabled = true
+	settings.QRCodeScanCooldownMinutes = 7
+
+	if got := settings.QRCodeScanCooldownDuration(); got != 7*time.Minute {
+		t.Fatalf("expected 7 minute cooldown, got %s", got)
+	}
+
+	settings.QRCodeScanCooldownEnabled = false
+	if got := settings.QRCodeScanCooldownDuration(); got != 0 {
+		t.Fatalf("expected disabled cooldown to be zero, got %s", got)
+	}
+}
+
+func TestNormalizeQRCodeScanCooldownMinutes(t *testing.T) {
+	settings := DefaultSettings()
+	settings.QRCodeScanCooldownMinutes = 0
+	settings.Normalize()
+
+	if settings.QRCodeScanCooldownMinutes != DefaultQRCodeScanCooldownMinutes {
+		t.Fatalf("expected default QR code scan cooldown minutes, got %d", settings.QRCodeScanCooldownMinutes)
+	}
+
+	settings.QRCodeScanCooldownMinutes = MaxQRCodeScanCooldownMinutes + 1
+	settings.Normalize()
+	if settings.QRCodeScanCooldownMinutes != DefaultQRCodeScanCooldownMinutes {
+		t.Fatalf("expected oversized QR code scan cooldown to reset, got %d", settings.QRCodeScanCooldownMinutes)
+	}
+}
+
 func clockAt(hour int, minute int) time.Time {
 	return time.Date(2026, 7, 8, hour, minute, 0, 0, classTimeLocation)
 }

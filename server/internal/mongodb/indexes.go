@@ -47,6 +47,7 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.StaffRewardsCollection, models: staffRewardIndexModels()},
 		{collection: mongomodel.StaffRewardTokensCollection, models: staffRewardTokenIndexModels()},
 		{collection: mongomodel.StaffRewardTokenClaimsCollection, models: staffRewardTokenClaimIndexModels()},
+		{collection: mongomodel.QRScanCooldownsCollection, models: qrScanCooldownIndexModels()},
 		{collection: mongomodel.CommunityStandsCollection, models: communityStandIndexModels()},
 		{collection: mongomodel.CommunityStandVisitsCollection, models: communityStandVisitIndexModels()},
 		{collection: mongomodel.CommunityStandClaimsCollection, models: communityStandClaimIndexModels()},
@@ -292,6 +293,15 @@ func staffRewardTokenClaimIndexModels() []mongo.IndexModel {
 				{Key: "claimed_at", Value: -1},
 			},
 			Options: options.Index().SetName("staff_reward_token_claims_player_claimed"),
+		},
+	}
+}
+
+func qrScanCooldownIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys:    bson.D{{Key: "expires_at", Value: 1}},
+			Options: options.Index().SetName("qr_scan_cooldowns_expires_at_ttl").SetExpireAfterSeconds(0),
 		},
 	}
 }

@@ -61,6 +61,7 @@ const detailMessageMap: Record<string, string> = {
   "player pair match limit reached":
     "你和這位玩家的對戰次數已達上限，請找其他玩家對戰。",
   "qrcode is unavailable": "玩家 QR Code 暫時無法產生，請稍後再試。",
+  "qr code scan cooldown active": "QRCode 掃描冷卻中，請稍後再試。",
   "qr code not found": "找不到這個 QR Code，請確認是否掃描正確。",
   "qr resolve failed": "確認 QR Code 失敗，請稍後再試。",
   "question already answered": "這題已經作答過了。",

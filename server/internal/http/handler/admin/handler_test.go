@@ -203,6 +203,43 @@ func TestSettingsResponseIncludesClassTimeBattleLockSessions(t *testing.T) {
 	}
 }
 
+func TestSettingsResponseIncludesQRCodeScanCooldown(t *testing.T) {
+	got := settingsResponse(gamecontrol.Settings{
+		QRCodeScanCooldownEnabled: true,
+		QRCodeScanCooldownMinutes: 9,
+	})
+
+	if !got.QRCodeScanCooldownEnabled || got.QRCodeScanCooldownMinutes != 9 {
+		t.Fatalf("expected QR code scan cooldown response, got %#v", got)
+	}
+}
+
+func TestValidateSettingsRequestRejectsInvalidQRCodeScanCooldownMinutes(t *testing.T) {
+	enabled := true
+	easy := 35
+	normal := 55
+	hard := 75
+	minutes := gamecontrol.MaxQRCodeScanCooldownMinutes + 1
+	body := SettingsRequest{
+		ComputerBattlesEnabled:     &enabled,
+		SameTeamBattlesEnabled:     &enabled,
+		ComputerEasyAccuracy:       &easy,
+		ComputerNormalAccuracy:     &normal,
+		ComputerHardAccuracy:       &hard,
+		ClassTimeBattleLockEnabled: &enabled,
+		ClassTimeBattleLockStart:   "09:00",
+		ClassTimeBattleLockEnd:     "17:00",
+		BattleOpeningOverride:      gamecontrol.BattleOpeningOverrideSchedule,
+		QRCodeScanCooldownEnabled:  &enabled,
+		QRCodeScanCooldownMinutes:  &minutes,
+		MaintenanceMode:            gamecontrol.MaintenanceModeOff,
+	}
+
+	if err := validateSettingsRequest(body); err == nil {
+		t.Fatal("expected invalid QR code scan cooldown minutes to be rejected")
+	}
+}
+
 func TestDashboardRequiresAdminCookie(t *testing.T) {
 	handler := New(Dependencies{AdminPassword: "secret"})
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/dashboard", nil)

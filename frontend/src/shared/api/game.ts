@@ -555,6 +555,8 @@ const AdminSettingsSchema = z.object({
     .enum(["schedule", "force_open", "force_closed"])
     .default("schedule"),
   battleOpeningLocked: z.boolean().default(false),
+  qrCodeScanCooldownEnabled: z.boolean().default(false),
+  qrCodeScanCooldownMinutes: z.number().default(5),
   maintenanceMode: z.enum(["off", "draining", "active"]).default("off"),
   maintenanceMessage: z.string().default(""),
   maintenanceActive: z.boolean().default(false),

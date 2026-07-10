@@ -676,6 +676,12 @@ definitions:
         type: string
       maintenanceMode:
         type: string
+      qrCodeScanCooldownEnabled:
+        type: boolean
+      qrCodeScanCooldownMinutes:
+        maximum: 1440
+        minimum: 1
+        type: integer
       sameTeamBattlesEnabled:
         type: boolean
     required:
@@ -685,6 +691,8 @@ definitions:
     - computerEasyAccuracy
     - computerHardAccuracy
     - computerNormalAccuracy
+    - qrCodeScanCooldownEnabled
+    - qrCodeScanCooldownMinutes
     - sameTeamBattlesEnabled
     type: object
   admin.SettingsResponse:
@@ -717,6 +725,10 @@ definitions:
         type: string
       maintenanceMode:
         type: string
+      qrCodeScanCooldownEnabled:
+        type: boolean
+      qrCodeScanCooldownMinutes:
+        type: integer
       sameTeamBattlesEnabled:
         type: boolean
     type: object
@@ -3521,6 +3533,10 @@ paths:
           description: Conflict
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
         "500":
           description: Internal Server Error
           schema:
@@ -4991,6 +5007,10 @@ paths:
             $ref: '#/definitions/httpx.ProblemDetails'
         "409":
           description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "429":
+          description: Too Many Requests
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
         "500":

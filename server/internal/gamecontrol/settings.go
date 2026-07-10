@@ -25,6 +25,9 @@ const (
 	defaultClassTimeBattleLockStart = "09:00"
 	defaultClassTimeBattleLockEnd   = "17:00"
 
+	DefaultQRCodeScanCooldownMinutes = 5
+	MaxQRCodeScanCooldownMinutes     = 24 * 60
+
 	maxClassTimeBattleLockSessions = 12
 )
 
@@ -42,6 +45,8 @@ type Settings struct {
 	ClassTimeBattleLockEnd      string           `bson:"class_time_battle_lock_end"`
 	ClassTimeBattleLockSessions []ClockTimeRange `bson:"class_time_battle_lock_sessions,omitempty"`
 	BattleOpeningOverride       string           `bson:"battle_opening_override"`
+	QRCodeScanCooldownEnabled   bool             `bson:"qr_code_scan_cooldown_enabled"`
+	QRCodeScanCooldownMinutes   int              `bson:"qr_code_scan_cooldown_minutes"`
 	MaintenanceMode             string           `bson:"maintenance_mode"`
 	MaintenanceMessage          string           `bson:"maintenance_message,omitempty"`
 	MaintenanceStartedAt        time.Time        `bson:"maintenance_started_at,omitempty"`
@@ -63,6 +68,7 @@ func DefaultSettings() Settings {
 		ClassTimeBattleLockEnd:      defaultClassTimeBattleLockEnd,
 		ClassTimeBattleLockSessions: defaultClassTimeBattleLockSessions(),
 		BattleOpeningOverride:       BattleOpeningOverrideSchedule,
+		QRCodeScanCooldownMinutes:   DefaultQRCodeScanCooldownMinutes,
 		MaintenanceMode:             MaintenanceModeOff,
 	}
 }
@@ -130,6 +136,12 @@ func (settings *Settings) Normalize() {
 	if !ValidBattleOpeningOverride(settings.BattleOpeningOverride) {
 		settings.BattleOpeningOverride = BattleOpeningOverrideSchedule
 	}
+	settings.QRCodeScanCooldownMinutes = clampInt(
+		settings.QRCodeScanCooldownMinutes,
+		1,
+		MaxQRCodeScanCooldownMinutes,
+		DefaultQRCodeScanCooldownMinutes,
+	)
 	if !ValidMaintenanceMode(settings.MaintenanceMode) {
 		settings.MaintenanceMode = MaintenanceModeOff
 	}
@@ -177,6 +189,14 @@ func (settings Settings) MaintenanceBlocksWrites() bool {
 	return settings.MaintenanceActive()
 }
 
+func (settings Settings) QRCodeScanCooldownDuration() time.Duration {
+	settings.Normalize()
+	if !settings.QRCodeScanCooldownEnabled {
+		return 0
+	}
+	return time.Duration(settings.QRCodeScanCooldownMinutes) * time.Minute
+}
+
 func ValidBattleOpeningOverride(value string) bool {
 	switch value {
 	case BattleOpeningOverrideSchedule, BattleOpeningOverrideForceOpen, BattleOpeningOverrideForceClosed:
@@ -212,6 +232,13 @@ func clampPercent(value int) int {
 	}
 	if value > 100 {
 		return 100
+	}
+	return value
+}
+
+func clampInt(value int, min int, max int, fallback int) int {
+	if value < min || value > max {
+		return fallback
 	}
 	return value
 }
