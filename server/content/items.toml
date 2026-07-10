@@ -78,10 +78,11 @@ type = "material"
 rarity = "common"
 description = "整潔規格書，可用於小石合成。"
 icon_path = "/game-icons/items/item_clean_spec.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+repeatable = true
+price_open_power = 1500
 
 [[items]]
 id = "item_cluster_core"
@@ -90,10 +91,11 @@ type = "material"
 rarity = "common"
 description = "叢集核心，可用於小石合成。"
 icon_path = "/game-icons/items/item_cluster_core.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+repeatable = true
+price_open_power = 1500
 
 [[items]]
 id = "item_container_sticker"
@@ -102,9 +104,11 @@ type = "material"
 rarity = "common"
 description = "容器貼紙，可用於小石合成。"
 icon_path = "/game-icons/items/item_container_sticker.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-price_open_power = 150
+repeatable = true
+price_open_power = 500
 
 [[items]]
 id = "item_contribution_sticker"
@@ -297,9 +301,11 @@ type = "material"
 rarity = "common"
 description = "公鑰吊牌，可用於小石合成。"
 icon_path = "/game-icons/items/item_public_key_tag.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-price_open_power = 150
+repeatable = true
+price_open_power = 500
 
 [[items]]
 id = "item_ribbon"
@@ -332,10 +338,11 @@ type = "material"
 rarity = "common"
 description = "簽章印泥，可用於小石合成。"
 icon_path = "/game-icons/items/item_signature_inkpad.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+repeatable = true
+price_open_power = 1500
 
 [[items]]
 id = "item_star_village_badge"
@@ -394,10 +401,11 @@ type = "material"
 rarity = "common"
 description = "系統文件，可用於小石合成。"
 icon_path = "/game-icons/items/item_system_docs.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+repeatable = true
+price_open_power = 1500
 
 [[items]]
 id = "item_terminal_cursor"
@@ -406,9 +414,11 @@ type = "material"
 rarity = "common"
 description = "終端機游標，可用於小石合成。"
 icon_path = "/game-icons/items/item_terminal_cursor.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-price_open_power = 150
+repeatable = true
+price_open_power = 500
 
 [[items]]
 id = "item_test_sticker"
@@ -417,9 +427,11 @@ type = "material"
 rarity = "common"
 description = "測試貼紙，可用於小石合成。"
 icon_path = "/game-icons/items/item_test_sticker.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-price_open_power = 150
+repeatable = true
+price_open_power = 500
 
 [[items]]
 id = "item_toolbox_key"

@@ -323,6 +323,7 @@ func (h *Handler) insertPurchase(ctx context.Context, purchaseID string, playerI
 		ItemID:         item.ID,
 		Quantity:       purchaseQuantity,
 		PriceOpenPower: item.PriceOpenPower,
+		Repeatable:     item.Repeatable,
 		CreatedAt:      createdAt,
 	})
 	return err

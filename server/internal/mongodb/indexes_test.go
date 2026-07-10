@@ -161,7 +161,8 @@ func TestIndexModelsByCollection(t *testing.T) {
 				{Key: "player_id", Value: 1},
 				{Key: "item_id", Value: 1},
 			},
-			unique: true,
+			unique:  true,
+			partial: bson.M{"repeatable": bson.M{"$ne": true}},
 		},
 		{
 			collection:         shopPurchaseLocksCollection,

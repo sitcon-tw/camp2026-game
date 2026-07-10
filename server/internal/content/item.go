@@ -35,6 +35,7 @@ type Item struct {
 	Enabled        bool   `toml:"enabled"`
 	Locked         bool   `toml:"locked"`
 	PriceOpenPower int    `toml:"price_open_power"`
+	Repeatable     bool   `toml:"repeatable"`
 }
 
 type itemsDocument struct {

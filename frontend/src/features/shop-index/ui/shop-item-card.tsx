@@ -102,7 +102,7 @@ export function ShopItemCard({ item, currentOpenPower }: ShopItemCardType) {
                   <LockKeyhole />
                   鎖定
                 </Button>
-              ) : item.redeemed ? (
+              ) : item.redeemed && !item.repeatable ? (
                 <Button variant="outline" className="px-2" disabled>
                   <Check />
                   已擁有

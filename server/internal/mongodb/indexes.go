@@ -226,7 +226,10 @@ func shopPurchaseIndexModels() []mongo.IndexModel {
 				{Key: "player_id", Value: 1},
 				{Key: "item_id", Value: 1},
 			},
-			Options: options.Index().SetName("shop_purchases_player_item").SetUnique(true),
+			Options: options.Index().
+				SetName("shop_purchases_player_item").
+				SetUnique(true).
+				SetPartialFilterExpression(bson.M{"repeatable": bson.M{"$ne": true}}),
 		},
 	}
 }

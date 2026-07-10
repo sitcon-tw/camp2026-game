@@ -7200,6 +7200,10 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": false
                 },
+                "repeatable": {
+                    "type": "boolean",
+                    "example": false
+                },
                 "source": {
                     "type": "string",
                     "example": "shop"

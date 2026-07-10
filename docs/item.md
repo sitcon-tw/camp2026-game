@@ -69,6 +69,21 @@
 | `item_system_docs` | 系統文件 | 系統實習小石 |
 | `item_toolbox_key` | 工具箱鑰匙 | 2019 開箱演算法小石 |
 
+### 工程型進化道具（可重複購買）
+
+工程型小石的進化道具開放商店重複購買，價格依階段調整：一階 500 開源力、二階 1500 開源力。
+
+| ID | 名稱 | 階段 | 價格 | 對應合成 |
+|----|------|------|------|----------|
+| `item_container_sticker` | 容器貼紙 | 一階 | 500 | Docker 小石 |
+| `item_public_key_tag` | 公鑰吊牌 | 一階 | 500 | GPG 小石 |
+| `item_test_sticker` | 測試貼紙 | 一階 | 500 | 測試小石 |
+| `item_terminal_cursor` | 終端機游標 | 一階 | 500 | 終端機小石 |
+| `item_cluster_core` | 叢集核心 | 二階 | 1500 | Kubernetes 小石 |
+| `item_signature_inkpad` | 簽章印泥 | 二階 | 1500 | 加密守門員小石 |
+| `item_clean_spec` | 整潔規格書 | 二階 | 1500 | Clean Code 小石 |
+| `item_system_docs` | 系統文件 | 二階 | 1500 | 系統實習小石 |
+
 ### 原雙來源素材（4 個）
 
 這些素材現在僅從商店購買取得。
@@ -126,6 +141,7 @@
 | `purchasable` | bool | 是否可在商店購買 |
 | `enabled` | bool | 是否啟用 |
 | `price_open_power` | int | 商店價格（開源力） |
+| `repeatable` | bool | 是否可重複購買（預設 false，一次性購買） |
 
 ### 類型說明
 

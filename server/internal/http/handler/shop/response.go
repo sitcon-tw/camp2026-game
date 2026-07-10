@@ -19,6 +19,7 @@ type ShopItemResponse struct {
 	PriceOpenPower int    `json:"priceOpenPower" example:"50"`
 	Locked         bool   `json:"locked" example:"false"`
 	Redeemed       bool   `json:"redeemed" example:"false"`
+	Repeatable     bool   `json:"repeatable" example:"false"`
 }
 
 type PurchaseRequest struct {

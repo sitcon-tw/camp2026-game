@@ -159,6 +159,7 @@ const ShopItemSchema = z.object({
   priceOpenPower: z.number(),
   locked: z.boolean().default(false),
   redeemed: z.boolean(),
+  repeatable: z.boolean().default(false),
 })
 
 const ShopItemsResponseSchema = z.object({

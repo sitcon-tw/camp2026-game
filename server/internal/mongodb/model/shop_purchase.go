@@ -10,5 +10,6 @@ type ShopPurchase struct {
 	ItemID         string    `bson:"item_id"`
 	Quantity       int       `bson:"quantity"`
 	PriceOpenPower int       `bson:"price_open_power"`
+	Repeatable     bool      `bson:"repeatable"`
 	CreatedAt      time.Time `bson:"created_at"`
 }

@@ -2454,6 +2454,9 @@ definitions:
       redeemed:
         example: false
         type: boolean
+      repeatable:
+        example: false
+        type: boolean
       source:
         example: shop
         type: string

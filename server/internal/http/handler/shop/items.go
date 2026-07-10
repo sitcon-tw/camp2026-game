@@ -125,7 +125,8 @@ func shopItemResponse(item content.Item, redeemed bool) ShopItemResponse {
 		Source:         item.Source,
 		PriceOpenPower: item.PriceOpenPower,
 		Locked:         item.Locked,
-		Redeemed:       redeemed,
+		Redeemed:       redeemed && !item.Repeatable,
+		Repeatable:     item.Repeatable,
 	}
 }
 
