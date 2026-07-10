@@ -668,9 +668,9 @@ description = "牠戴上眼罩後等待隊友把混亂變成一套清楚的指�
 icon_path = "/game-icons/stones/stone_command_blind_trip.png"
 ability_name = "指令校準"
 ability_kind = "open_power_bonus"
-ability_value = 50
+ability_value = 15
 ability_count = 0
-ability_description = "對戰勝利時獲得開源力提高 50%。"
+ability_description = "對戰勝利時獲得開源力提高 15%。"
 
 [[sitones]]
 id = "stone_human_llm"
@@ -696,9 +696,9 @@ description = "牠把輸入、記憶、計算和輸出分成不同位置，再�
 icon_path = "/game-icons/stones/stone_von_neumann.png"
 ability_name = "架構運轉"
 ability_kind = "material_drop_rate"
-ability_value = 25
+ability_value = 15
 ability_count = 0
-ability_description = "對戰結束時小石掉落率提高 25%。"
+ability_description = "對戰結束時小石掉落率提高 15%。"
 
 
 [[sitones]]
