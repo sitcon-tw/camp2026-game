@@ -1307,11 +1307,11 @@ export function StaffRewardsPanel() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
               variant="secondary"
-              className="h-12 w-full text-base"
+              className="h-12 min-w-0 px-2 text-sm"
               disabled={!canGenerateToken}
               onClick={handleRewardTokenCreate}
             >
@@ -1320,7 +1320,7 @@ export function StaffRewardsPanel() {
             </Button>
             <Button
               type="submit"
-              className="h-12 w-full text-base"
+              className="h-12 min-w-0 px-2 text-sm"
               disabled={!canSend}
             >
               <SendIcon className="size-4" aria-hidden />

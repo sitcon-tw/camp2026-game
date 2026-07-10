@@ -13,6 +13,20 @@ const TokenTTL = 10 * time.Minute
 const tokenPrefix = "rmt_"
 
 var defaultRoomNumbers = []string{
+	"103",
+	"118",
+	"119",
+	"123",
+	"124",
+	"125",
+	"128",
+	"201",
+	"202",
+	"203",
+	"204",
+	"205",
+	"206",
+	"207",
 	"208",
 	"209",
 	"210",
@@ -23,9 +37,6 @@ var defaultRoomNumbers = []string{
 	"216",
 	"217",
 	"218",
-	"103",
-	"124",
-	"123",
 }
 
 func DefaultRoomNumbers() []string {
