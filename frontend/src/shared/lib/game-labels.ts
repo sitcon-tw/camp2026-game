@@ -75,6 +75,54 @@ const itemSourceLabels: Record<string, string> = {
   event: "活動",
 }
 
+const workerDormRoomNumbers = new Set([
+  "118",
+  "119",
+  "125",
+  "128",
+  "201",
+  "202",
+  "203",
+  "204",
+  "205",
+  "206",
+  "207",
+  "219",
+])
+
+const chineseDigits = [
+  "零",
+  "一",
+  "二",
+  "三",
+  "四",
+  "五",
+  "六",
+  "七",
+  "八",
+  "九",
+]
+
+export type DormRoomGroupKey =
+  | "student-male"
+  | "student-female"
+  | "worker-male"
+  | "worker-female"
+
+export const dormRoomGroupOrder: DormRoomGroupKey[] = [
+  "student-male",
+  "student-female",
+  "worker-male",
+  "worker-female",
+]
+
+const dormRoomGroupLabels: Record<DormRoomGroupKey, string> = {
+  "student-male": "學員宿舍 - 男宿",
+  "student-female": "學員宿舍 - 女宿",
+  "worker-male": "工人宿舍 - 男宿",
+  "worker-female": "工人宿舍 - 女宿",
+}
+
 export function sitoneMeta(type: string): SitoneMeta {
   return sitoneTypeMap[type] ?? fallbackSitoneMeta
 }
@@ -107,4 +155,71 @@ export function rarityToneClass(rarity: string) {
     default:
       return "bg-pebble-engineer-muted"
   }
+}
+
+export function formatTeamName(name: string) {
+  const normalized = name.trim()
+  const match = normalized.match(/^Team\s+0*(\d+)$/i)
+  if (!match) return name
+
+  const number = Number(match[1])
+  if (!Number.isInteger(number) || number <= 0 || number >= 100) return name
+  return `第${formatChineseNumber(number)}小隊`
+}
+
+export function roomDisplayName(roomNumber: string) {
+  const normalized = roomNumber.trim()
+  if (normalized.startsWith("2")) return `男宿 ${normalized} 房`
+  if (normalized.startsWith("1")) return `女宿 ${normalized} 房`
+  return `${normalized} 房`
+}
+
+export function dormRoomGroupKey(roomNumber: string): DormRoomGroupKey {
+  const normalized = roomNumber.trim()
+  const worker = workerDormRoomNumbers.has(normalized)
+  const male = normalized.startsWith("2")
+
+  if (worker && male) return "worker-male"
+  if (worker) return "worker-female"
+  if (male) return "student-male"
+  return "student-female"
+}
+
+export function dormRoomGroupLabel(roomNumber: string) {
+  return dormRoomGroupLabels[dormRoomGroupKey(roomNumber)]
+}
+
+export function groupDormRooms<T extends { roomNumber: string }>(
+  rooms: readonly T[],
+) {
+  return dormRoomGroupOrder
+    .map((key) => ({
+      key,
+      label: dormRoomGroupLabels[key],
+      rooms: rooms
+        .filter((room) => dormRoomGroupKey(room.roomNumber) === key)
+        .slice()
+        .sort(compareRoomNumbers),
+    }))
+    .filter((group) => group.rooms.length > 0)
+}
+
+function compareRoomNumbers(
+  left: { roomNumber: string },
+  right: { roomNumber: string },
+) {
+  return (
+    Number(left.roomNumber) - Number(right.roomNumber) ||
+    left.roomNumber.localeCompare(right.roomNumber)
+  )
+}
+
+function formatChineseNumber(number: number) {
+  if (number < 10) return chineseDigits[number]
+  if (number === 10) return "十"
+  if (number < 20) return `十${chineseDigits[number % 10]}`
+
+  const tens = Math.floor(number / 10)
+  const ones = number % 10
+  return `${chineseDigits[tens]}十${ones === 0 ? "" : chineseDigits[ones]}`
 }

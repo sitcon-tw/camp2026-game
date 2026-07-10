@@ -24,9 +24,13 @@ import {
   type StaffRewardKind,
 } from "@/shared/api/game"
 import {
+  dormRoomGroupLabel,
+  formatTeamName,
+  groupDormRooms,
   itemTypeClass,
   itemTypeLabel,
   rarityLabel,
+  roomDisplayName,
   sitoneMeta,
 } from "@/shared/lib/game-labels"
 import { staffRewardTokenQrValue } from "@/shared/lib/staff-reward-token"
@@ -558,6 +562,10 @@ export function StaffRewardsPanel() {
   const playerOptions = playersQuery.data ?? []
   const teamOptions = teamsQuery.data ?? []
   const roomTeamOptions = roomTeamsQuery.data ?? []
+  const groupedRoomTeamOptions = useMemo(
+    () => groupDormRooms(roomTeamOptions),
+    [roomTeamOptions],
+  )
   const selectedRefID = rewardOptions.some(
     (option) => option.id === selectedRefIDs[rewardKind],
   )
@@ -593,6 +601,15 @@ export function StaffRewardsPanel() {
     teamOptions.find((team) => team.teamId === selectedTeamID) ?? null
   const allPlayersSelected = selectedTeamID === ALL_PLAYERS_TEAM_ID
   const selectedRoomNumber = roomNumberFromOptionValue(selectedTeamID)
+  const selectedTeamName = selectedTeam
+    ? formatTeamName(selectedTeam.name)
+    : null
+  const selectedRoomLabel = selectedRoomNumber
+    ? roomDisplayName(selectedRoomNumber)
+    : null
+  const selectedRoomGroupLabel = selectedRoomNumber
+    ? dormRoomGroupLabel(selectedRoomNumber)
+    : null
   const groupedVisibleSitoneOptions = useMemo(
     () =>
       [
@@ -644,16 +661,18 @@ export function StaffRewardsPanel() {
             : `已發送 ${result.reward.name} x${result.reward.quantity} 給所有人 (${result.grantedCount} 人)`,
         )
       } else if (result.team) {
+        const teamName = formatTeamName(result.team.name)
         toast.success(
           result.reward.kind === "open_power"
-            ? `已發送 ${result.reward.amount} 開源力給 ${result.team.name} 全組 (${result.grantedCount} 人)`
-            : `已發送 ${result.reward.name} x${result.reward.quantity} 給 ${result.team.name} 全組 (${result.grantedCount} 人)`,
+            ? `已發送 ${result.reward.amount} 開源力給 ${teamName} 全組 (${result.grantedCount} 人)`
+            : `已發送 ${result.reward.name} x${result.reward.quantity} 給 ${teamName} 全組 (${result.grantedCount} 人)`,
         )
       } else if (result.room) {
+        const roomName = roomDisplayName(result.room.roomNumber)
         toast.success(
           result.reward.kind === "open_power"
-            ? `已發送 ${result.reward.amount} 開源力給宿舍 ${result.room.roomNumber} (${result.grantedCount} 人)`
-            : `已發送 ${result.reward.name} x${result.reward.quantity} 給宿舍 ${result.room.roomNumber} (${result.grantedCount} 人)`,
+            ? `已發送 ${result.reward.amount} 開源力給 ${roomName} (${result.grantedCount} 人)`
+            : `已發送 ${result.reward.name} x${result.reward.quantity} 給 ${roomName} (${result.grantedCount} 人)`,
         )
       } else if (result.player) {
         toast.success(
@@ -928,7 +947,9 @@ export function StaffRewardsPanel() {
                                     </span>
                                     <span className="text-muted-foreground mt-1 block text-xs leading-snug font-bold break-all whitespace-normal">
                                       <span className="break-words">
-                                        {player.team?.name ?? "未分組"}
+                                        {player.team?.name
+                                          ? formatTeamName(player.team.name)
+                                          : "未分組"}
                                       </span>{" "}
                                       · {player.playerId}
                                     </span>
@@ -965,7 +986,9 @@ export function StaffRewardsPanel() {
                       {resolveMutation.isPending
                         ? "確認 QR Code 中"
                         : targetPlayer
-                          ? (targetPlayer.team?.name ?? "未分組")
+                          ? targetPlayer.team?.name
+                            ? formatTeamName(targetPlayer.team.name)
+                            : "未分組"
                           : "尚未選擇學員"}
                     </p>
                     <strong className="mt-1 block text-[22px] leading-tight font-black break-words">
@@ -1011,28 +1034,52 @@ export function StaffRewardsPanel() {
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ALL_PLAYERS_TEAM_ID}>所有人</SelectItem>
-                    {teamOptions.length > 0 ? <SelectSeparator /> : null}
-                    {teamOptions.map((team) => (
-                      <SelectItem key={team.teamId} value={team.teamId}>
-                        {team.name} ({team.memberCount} 人)
+                    <SelectGroup>
+                      <SelectLabel className="px-2 py-2 text-[11px] font-black normal-case opacity-70">
+                        所有人
+                      </SelectLabel>
+                      <SelectItem value={ALL_PLAYERS_TEAM_ID}>
+                        所有人
                       </SelectItem>
-                    ))}
-                    {roomTeamOptions.length > 0 ? <SelectSeparator /> : null}
-                    {roomTeamOptions.map((room) => (
-                      <SelectItem
-                        key={room.roomId}
-                        value={roomTeamOptionValue(room.roomNumber)}
-                      >
-                        {room.roomNumber}
-                      </SelectItem>
+                    </SelectGroup>
+                    {teamOptions.length > 0 ? (
+                      <SelectGroup>
+                        <SelectSeparator />
+                        <SelectLabel className="px-2 py-2 text-[11px] font-black normal-case opacity-70">
+                          小隊
+                        </SelectLabel>
+                        {teamOptions.map((team) => (
+                          <SelectItem key={team.teamId} value={team.teamId}>
+                            {formatTeamName(team.name)} ({team.memberCount} 人)
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ) : null}
+                    {groupedRoomTeamOptions.map((group) => (
+                      <SelectGroup key={group.key}>
+                        <SelectSeparator />
+                        <SelectLabel className="px-2 py-2 text-[11px] font-black normal-case opacity-70">
+                          {group.label}
+                        </SelectLabel>
+                        {group.rooms.map((room) => (
+                          <SelectItem
+                            key={room.roomId}
+                            value={roomTeamOptionValue(room.roomNumber)}
+                          >
+                            {roomDisplayName(room.roomNumber)}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
                   </SelectContent>
                 </Select>
 
                 {teamsQuery.isError || roomTeamsQuery.isError ? (
                   <p className="text-destructive px-1 text-sm font-bold">
-                    {errorMessage(teamsQuery.error ?? roomTeamsQuery.error, "讀取組別失敗")}
+                    {errorMessage(
+                      teamsQuery.error ?? roomTeamsQuery.error,
+                      "讀取組別失敗",
+                    )}
                   </p>
                 ) : null}
 
@@ -1044,8 +1091,8 @@ export function StaffRewardsPanel() {
                     <p className="text-muted-foreground text-xs font-black">
                       {allPlayersSelected
                         ? "所有玩家"
-                        : selectedRoomNumber
-                          ? `宿舍 ${selectedRoomNumber}`
+                        : selectedRoomGroupLabel
+                          ? selectedRoomGroupLabel
                         : selectedTeam
                           ? `${selectedTeam.memberCount} 人`
                           : "尚未選擇組別"}
@@ -1053,9 +1100,9 @@ export function StaffRewardsPanel() {
                     <strong className="mt-1 block text-[22px] leading-tight font-black break-words">
                       {allPlayersSelected
                         ? "所有人"
-                        : selectedRoomNumber
-                          ? selectedRoomNumber
-                        : (selectedTeam?.name ?? "等待選擇")}
+                        : selectedRoomLabel
+                          ? selectedRoomLabel
+                        : (selectedTeamName ?? "等待選擇")}
                     </strong>
                   </div>
                 </div>
@@ -1347,12 +1394,12 @@ export function StaffRewardsPanel() {
               <p className="text-muted-foreground text-sm font-bold">
                 {rewardMutation.data.team ? (
                   <>
-                    {rewardMutation.data.team.name} ·{" "}
+                    {formatTeamName(rewardMutation.data.team.name)} ·{" "}
                     {rewardMutation.data.grantedCount} 人
                   </>
                 ) : rewardMutation.data.room ? (
                   <>
-                    {rewardMutation.data.room.roomNumber} ·{" "}
+                    {roomDisplayName(rewardMutation.data.room.roomNumber)} ·{" "}
                     {rewardMutation.data.grantedCount} 人
                   </>
                 ) : rewardMutation.data.player ? (
@@ -1367,7 +1414,7 @@ export function StaffRewardsPanel() {
                       {rewardMutation.data.player.nickname}
                     </span>{" "}
                     {rewardMutation.data.player.team?.name
-                      ? `· ${rewardMutation.data.player.team.name}`
+                      ? `· ${formatTeamName(rewardMutation.data.player.team.name)}`
                       : ""}
                   </>
                 ) : null}
