@@ -6,7 +6,7 @@ import {
   SearchIcon,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
-import { type FormEvent, useState } from "react"
+import { type FormEvent, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { AppError } from "@/shared/api/error"
@@ -16,6 +16,11 @@ import {
   type StaffRoomTeamTokenResponse,
 } from "@/shared/api/game"
 import { PlayerQrScannerDialog } from "@/features/staff-rewards"
+import {
+  formatTeamName,
+  groupDormRooms,
+  roomDisplayName,
+} from "@/shared/lib/game-labels"
 import { roomTeamQrValue } from "@/shared/lib/room-team-qr"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
@@ -25,7 +30,10 @@ import { PlayerAvatar } from "@/shared/ui/player-avatar"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select"
@@ -42,6 +50,7 @@ type TargetPlayer = {
 }
 
 function RoomTeamTokenCard({ token }: { token: StaffRoomTeamTokenResponse }) {
+  const roomLabel = roomDisplayName(token.room.roomNumber)
   const expiresLabel = new Intl.DateTimeFormat("zh-TW", {
     hour: "2-digit",
     minute: "2-digit",
@@ -51,7 +60,7 @@ function RoomTeamTokenCard({ token }: { token: StaffRoomTeamTokenResponse }) {
     <div className="border-border grid justify-items-center gap-4 border-t pt-5 text-center">
       <div className="bg-paper border-ink grid aspect-square w-full max-w-[272px] place-items-center rounded-[18px] border-4 p-4">
         <QRCodeSVG
-          aria-label={`${token.room.roomNumber} 室宿舍 QR Code`}
+          aria-label={`${roomLabel} 宿舍 QR Code`}
           bgColor="var(--paper)"
           className="h-full w-full"
           fgColor="var(--ink)"
@@ -59,13 +68,13 @@ function RoomTeamTokenCard({ token }: { token: StaffRoomTeamTokenResponse }) {
           marginSize={4}
           role="img"
           size={240}
-          title={`${token.room.roomNumber} 室宿舍 QR Code`}
+          title={`${roomLabel} 宿舍 QR Code`}
           value={roomTeamQrValue(token.qrToken)}
         />
       </div>
       <div>
         <h2 className="text-[24px] leading-tight font-black">
-          {token.room.roomNumber} 室
+          {roomLabel}
         </h2>
         <p className="text-muted-foreground mt-1 text-sm font-bold">
           有效至 {expiresLabel}
@@ -93,6 +102,13 @@ export function StaffRoomTeamsPanel() {
     queryFn: gameApi.staffRoomTeams,
     enabled: isStaff,
   })
+  const groupedRoomTeams = useMemo(
+    () => groupDormRooms(roomTeamsQuery.data ?? []),
+    [roomTeamsQuery.data],
+  )
+  const assignmentRoomLabel = assignmentRoomNumber
+    ? roomDisplayName(assignmentRoomNumber)
+    : "宿舍"
   const playersQuery = useQuery({
     queryKey: ["staff", "players", playerSearchKeyword],
     queryFn: () => gameApi.staffPlayers(playerSearchKeyword),
@@ -101,7 +117,8 @@ export function StaffRoomTeamsPanel() {
   const roomTokenMutation = useMutation({
     mutationFn: gameApi.createStaffRoomTeamToken,
     onSuccess: (result) => {
-      toast.success(`已產生 ${result.room.roomNumber} 室宿舍 QR Code`)
+      const roomName = roomDisplayName(result.room.roomNumber)
+      toast.success(`已產生 ${roomName} 宿舍 QR Code`)
     },
     onError: (error) => {
       toast.error(errorMessage(error, "宿舍 QR Code 產生失敗"))
@@ -127,6 +144,7 @@ export function StaffRoomTeamsPanel() {
       playerId: string
     }) => gameApi.assignStaffRoomTeamMember(targetRoomNumber, { playerId }),
     onSuccess: (result) => {
+      const roomName = roomDisplayName(result.room.roomNumber)
       setManualToken("")
       setTargetPlayer({
         playerId: result.player.playerId,
@@ -135,8 +153,8 @@ export function StaffRoomTeamsPanel() {
       })
       toast.success(
         result.added
-          ? `已將 ${result.player.nickname} 分配至 ${result.room.roomNumber} 室`
-          : `${result.player.nickname} 已在 ${result.room.roomNumber} 室`,
+          ? `已將 ${result.player.nickname} 分配至 ${roomName}`
+          : `${result.player.nickname} 已在 ${roomName}`,
       )
     },
     onError: (error) => {
@@ -207,10 +225,18 @@ export function StaffRoomTeamsPanel() {
                 />
               </SelectTrigger>
               <SelectContent>
-                {(roomTeamsQuery.data ?? []).map((room) => (
-                  <SelectItem key={room.roomId} value={room.roomNumber}>
-                    {room.roomNumber} 室
-                  </SelectItem>
+                {groupedRoomTeams.map((group, index) => (
+                  <SelectGroup key={group.key}>
+                    {index > 0 ? <SelectSeparator /> : null}
+                    <SelectLabel className="px-2 py-2 text-[11px] font-black normal-case opacity-70">
+                      {group.label}
+                    </SelectLabel>
+                    {group.rooms.map((room) => (
+                      <SelectItem key={room.roomId} value={room.roomNumber}>
+                        {roomDisplayName(room.roomNumber)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 ))}
               </SelectContent>
             </Select>
@@ -264,10 +290,18 @@ export function StaffRoomTeamsPanel() {
               />
             </SelectTrigger>
             <SelectContent>
-              {(roomTeamsQuery.data ?? []).map((room) => (
-                <SelectItem key={room.roomId} value={room.roomNumber}>
-                  {room.roomNumber} 室
-                </SelectItem>
+              {groupedRoomTeams.map((group, index) => (
+                <SelectGroup key={group.key}>
+                  {index > 0 ? <SelectSeparator /> : null}
+                  <SelectLabel className="px-2 py-2 text-[11px] font-black normal-case opacity-70">
+                    {group.label}
+                  </SelectLabel>
+                  {group.rooms.map((room) => (
+                    <SelectItem key={room.roomId} value={room.roomNumber}>
+                      {roomDisplayName(room.roomNumber)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               ))}
             </SelectContent>
           </Select>
@@ -353,7 +387,10 @@ export function StaffRoomTeamsPanel() {
                               {player.nickname}
                             </span>
                             <span className="text-muted-foreground mt-1 block text-xs leading-snug font-bold break-all whitespace-normal">
-                              {player.team?.name ?? "未分組"} ·{" "}
+                              {player.team?.name
+                                ? formatTeamName(player.team.name)
+                                : "未分組"}{" "}
+                              ·{" "}
                               {player.playerId}
                             </span>
                           </span>
@@ -384,7 +421,9 @@ export function StaffRoomTeamsPanel() {
               <p className="text-muted-foreground text-xs font-black">
                 {resolveMutation.isPending
                   ? "確認 QR Code 中"
-                  : (targetPlayer?.team?.name ?? "尚未選擇學員")}
+                  : targetPlayer?.team?.name
+                    ? formatTeamName(targetPlayer.team.name)
+                    : "尚未選擇學員"}
               </p>
               <strong className="mt-1 block text-[22px] leading-tight font-black break-words">
                 {targetPlayer?.nickname ?? "等待選擇"}
@@ -409,7 +448,7 @@ export function StaffRoomTeamsPanel() {
             >
               {roomAssignmentMutation.isPending
                 ? "分配中"
-                : `分配至 ${assignmentRoomNumber || "宿舍"} 室`}
+                : `分配至 ${assignmentRoomLabel}`}
             </Button>
           </form>
         </CardContent>

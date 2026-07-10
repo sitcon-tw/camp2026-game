@@ -37,6 +37,7 @@ var defaultRoomNumbers = []string{
 	"216",
 	"217",
 	"218",
+	"219",
 }
 
 func DefaultRoomNumbers() []string {

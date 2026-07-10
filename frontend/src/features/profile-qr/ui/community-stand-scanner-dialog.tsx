@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import { AppError } from "@/shared/api/error"
 import { gameApi, type CommunityStandReward } from "@/shared/api/game"
 import { parseCommunityStandQRToken } from "@/shared/lib/community-stand-qr"
+import { roomDisplayName } from "@/shared/lib/game-labels"
 import { parseRoomTeamQRToken } from "@/shared/lib/room-team-qr"
 import { parseStaffRewardToken } from "@/shared/lib/staff-reward-token"
 import {
@@ -133,8 +134,8 @@ export function CommunityStandScannerDialog({
     onSuccess: (result) => {
       toast.success(
         result.joined
-          ? `已加入 ${result.room.roomNumber} 宿舍群組`
-          : `已在 ${result.room.roomNumber} 宿舍群組`,
+          ? `已加入 ${roomDisplayName(result.room.roomNumber)}`
+          : `已在 ${roomDisplayName(result.room.roomNumber)}`,
       )
     },
     onError: (error) => {
