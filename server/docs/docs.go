@@ -1119,6 +1119,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
                     },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3552,6 +3558,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/httpx.ProblemDetails"
                         }
                     },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4621,6 +4633,8 @@ const docTemplate = `{
                 "computerEasyAccuracy",
                 "computerHardAccuracy",
                 "computerNormalAccuracy",
+                "qrCodeScanCooldownEnabled",
+                "qrCodeScanCooldownMinutes",
                 "sameTeamBattlesEnabled"
             ],
             "properties": {
@@ -4671,6 +4685,14 @@ const docTemplate = `{
                 "maintenanceMode": {
                     "type": "string"
                 },
+                "qrCodeScanCooldownEnabled": {
+                    "type": "boolean"
+                },
+                "qrCodeScanCooldownMinutes": {
+                    "type": "integer",
+                    "maximum": 1440,
+                    "minimum": 1
+                },
                 "sameTeamBattlesEnabled": {
                     "type": "boolean"
                 }
@@ -4720,6 +4742,12 @@ const docTemplate = `{
                 },
                 "maintenanceMode": {
                     "type": "string"
+                },
+                "qrCodeScanCooldownEnabled": {
+                    "type": "boolean"
+                },
+                "qrCodeScanCooldownMinutes": {
+                    "type": "integer"
                 },
                 "sameTeamBattlesEnabled": {
                     "type": "boolean"

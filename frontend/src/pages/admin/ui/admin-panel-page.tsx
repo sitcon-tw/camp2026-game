@@ -13,6 +13,7 @@ import {
   Plus,
   RefreshCw,
   Save,
+  ScanLine,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
@@ -129,6 +130,7 @@ const compactNumberFormatter = new Intl.NumberFormat("zh-TW", {
   maximumFractionDigits: 1,
 })
 const maxClassTimeBattleLockSessions = 12
+const maxQRCodeScanCooldownMinutes = 24 * 60
 const dateTimeFormatter = new Intl.DateTimeFormat("zh-TW", {
   month: "2-digit",
   day: "2-digit",
@@ -487,7 +489,16 @@ export function AdminPanelPage() {
   function handleUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!settings) return
-    updateMutation.mutate(settings)
+    if (!validQRCodeScanCooldownMinutes(settings.qrCodeScanCooldownMinutes)) {
+      toast.error(
+        `QRCode 掃描冷卻需為 1 到 ${maxQRCodeScanCooldownMinutes} 的整數分鐘`,
+      )
+      return
+    }
+    updateMutation.mutate({
+      ...settings,
+      qrCodeScanCooldownMinutes: Number(settings.qrCodeScanCooldownMinutes),
+    })
   }
 
   function updateDraft(patch: Partial<AdminSettings>) {
@@ -681,7 +692,7 @@ export function AdminPanelPage() {
 
       <AdminCollapsibleSection
         title="管理設定"
-        description="電腦對戰、同隊對戰與電腦答對率。"
+        description="電腦對戰、同隊對戰、QRCode 掃描冷卻與公告。"
         badge="Admin only"
       >
         <AdminSettingsPanel
@@ -3609,6 +3620,15 @@ function integerOrZero(value: unknown) {
   return Math.floor(number)
 }
 
+function validQRCodeScanCooldownMinutes(value: unknown) {
+  const number = Number(value)
+  return (
+    Number.isInteger(number) &&
+    number >= 1 &&
+    number <= maxQRCodeScanCooldownMinutes
+  )
+}
+
 function battleOpeningOverrideLabel(
   value: AdminSettings["battleOpeningOverride"],
 ) {
@@ -3892,6 +3912,9 @@ function AdminSettingsPanel({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onUpdate: (patch: Partial<AdminSettings>) => void
 }) {
+  const qrCodeScanCooldownMinutesValid = validQRCodeScanCooldownMinutes(
+    settings.qrCodeScanCooldownMinutes,
+  )
   const maintenanceOptions: Array<{
     value: AdminSettings["maintenanceMode"]
     label: string
@@ -3926,7 +3949,9 @@ function AdminSettingsPanel({
             <Settings className="size-5" />
             管理設定
           </CardTitle>
-          <CardDescription>控制知識王房間與電腦對戰開關。</CardDescription>
+          <CardDescription>
+            控制知識王房間、電腦對戰、QRCode 掃描冷卻與公告。
+          </CardDescription>
           <CardAction>
             <Badge variant="outline">Admin only</Badge>
           </CardAction>
@@ -4010,6 +4035,55 @@ function AdminSettingsPanel({
             </Field>
           </div>
           <div className="bg-surface-raised border-border grid gap-3 rounded-[18px] border-2 p-3 xl:col-span-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="grid gap-1">
+                <Label htmlFor="qr-code-scan-cooldown-enabled">
+                  <ScanLine className="size-4" aria-hidden />
+                  啟用 QRCode 掃描冷卻
+                </Label>
+                <span className="text-muted-foreground text-xs font-semibold">
+                  成功領取 QRCode 獎勵後，暫停下一次 QRCode 掃描領獎。
+                </span>
+              </div>
+              <Switch
+                id="qr-code-scan-cooldown-enabled"
+                checked={settings.qrCodeScanCooldownEnabled}
+                onCheckedChange={(checked) =>
+                  onUpdate({ qrCodeScanCooldownEnabled: checked })
+                }
+              />
+            </div>
+            <Field data-invalid={!qrCodeScanCooldownMinutesValid}>
+              <Label htmlFor="qr-code-scan-cooldown-minutes">
+                冷卻時長（分鐘）
+              </Label>
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)] sm:items-center">
+                <Input
+                  id="qr-code-scan-cooldown-minutes"
+                  type="number"
+                  min={1}
+                  max={maxQRCodeScanCooldownMinutes}
+                  step={1}
+                  value={settings.qrCodeScanCooldownMinutes}
+                  aria-invalid={!qrCodeScanCooldownMinutesValid}
+                  onChange={(event) =>
+                    onUpdate({
+                      qrCodeScanCooldownMinutes:
+                        event.target.value === ""
+                          ? 0
+                          : Number(event.target.value),
+                    })
+                  }
+                />
+                <span className="text-muted-foreground text-xs font-semibold">
+                  {qrCodeScanCooldownMinutesValid
+                    ? `目前設定 ${settings.qrCodeScanCooldownMinutes} 分鐘`
+                    : `請輸入 1 到 ${maxQRCodeScanCooldownMinutes} 的整數`}
+                </span>
+              </div>
+            </Field>
+          </div>
+          <div className="bg-surface-raised border-border grid gap-3 rounded-[18px] border-2 p-3 xl:col-span-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="font-black">維護公告</h3>
@@ -4063,7 +4137,10 @@ function AdminSettingsPanel({
           </div>
         </CardContent>
         <CardFooter className="justify-end px-5">
-          <Button type="submit" disabled={isPending}>
+          <Button
+            type="submit"
+            disabled={isPending || !qrCodeScanCooldownMinutesValid}
+          >
             <Save />
             {isPending ? "儲存中" : "儲存設定"}
           </Button>

@@ -12,8 +12,10 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	standtokens "github.com/sitcon-tw/camp2026-game/internal/communitystand"
+	"github.com/sitcon-tw/camp2026-game/internal/gamecontrol"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
+	"github.com/sitcon-tw/camp2026-game/internal/qrcooldown"
 )
 
 // ScanGet godoc
@@ -58,6 +60,7 @@ func (h *Handler) ScanGet(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} httpx.ProblemDetails
 // @Failure 404 {object} httpx.ProblemDetails
 // @Failure 409 {object} httpx.ProblemDetails
+// @Failure 429 {object} httpx.ProblemDetails
 // @Failure 500 {object} httpx.ProblemDetails
 // @Failure 503 {object} httpx.ProblemDetails
 // @Router /community/scans/{qrToken}/claim [post]
@@ -107,17 +110,43 @@ func (h *Handler) writeStandClaim(w http.ResponseWriter, r *http.Request, player
 		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand reward unavailable", "community_stand_reward_missing", errors.New("reward content missing")))
 		return
 	}
+	settings, err := gamecontrol.ReadSettings(r.Context(), h.db)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("qr code scan cooldown unavailable", "qrcode_scan_cooldown_settings_failed", err))
+		return
+	}
+	reservation, reserved, err := h.reserveQRCodeScanCooldown(r.Context(), playerID, stand.ID, settings, time.Now().UTC())
+	if errors.Is(err, qrcooldown.ErrActive) {
+		httpx.WriteProblem(w, r, httpx.NewError(http.StatusTooManyRequests, "qr code scan cooldown active"))
+		return
+	}
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("qr code scan cooldown unavailable", "qrcode_scan_cooldown_reserve_failed", err))
+		return
+	}
+	releaseCooldown := func() {
+		if !reserved {
+			return
+		}
+		releaseCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = qrcooldown.Release(releaseCtx, h.db, reservation)
+	}
+
 	if err := h.recordStandVisit(r.Context(), stand.ID, playerID); err != nil {
+		releaseCooldown()
 		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand visit failed", "community_stand_visit_failed", err))
 		return
 	}
 
 	claimID, err := h.claimStandReward(r.Context(), playerID, stand)
 	if errors.Is(err, errCommunityStandAlreadyClaimed) {
+		releaseCooldown()
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "community stand reward already claimed"))
 		return
 	}
 	if err != nil {
+		releaseCooldown()
 		httpx.WriteProblem(w, r, httpx.InternalServerError("community stand claim failed", "community_stand_claim_failed", err))
 		return
 	}
@@ -129,6 +158,18 @@ func (h *Handler) writeStandClaim(w http.ResponseWriter, r *http.Request, player
 		Reward:  reward,
 		Claimed: true,
 	})
+}
+
+func (h *Handler) reserveQRCodeScanCooldown(ctx context.Context, playerID string, sourceID string, settings gamecontrol.Settings, now time.Time) (qrcooldown.Reservation, bool, error) {
+	duration := settings.QRCodeScanCooldownDuration()
+	if duration <= 0 {
+		return qrcooldown.Reservation{}, false, nil
+	}
+	reservation, err := qrcooldown.Reserve(ctx, h.db, playerID, "community_stand:"+sourceID, duration, now)
+	if err != nil {
+		return qrcooldown.Reservation{}, false, err
+	}
+	return reservation, true, nil
 }
 
 func (h *Handler) findEnabledStandByQRToken(ctx context.Context, qrToken string, now time.Time) (mongomodel.CommunityStand, error) {

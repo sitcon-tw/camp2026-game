@@ -255,6 +255,12 @@ func TestIndexModelsByCollection(t *testing.T) {
 			},
 		},
 		{
+			collection:         mongomodel.QRScanCooldownsCollection,
+			name:               "qr_scan_cooldowns_expires_at_ttl",
+			keys:               bson.D{{Key: "expires_at", Value: 1}},
+			expireAfterSeconds: int32Pointer(0),
+		},
+		{
 			collection: mongomodel.CommunityStandVisitsCollection,
 			name:       "community_stand_visits_stand_player",
 			keys: bson.D{

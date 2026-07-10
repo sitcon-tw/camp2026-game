@@ -89,6 +89,8 @@ type SettingsRequest struct {
 	ClassTimeBattleLockEnd      string                              `json:"classTimeBattleLockEnd"`
 	ClassTimeBattleLockSessions []ClassTimeBattleLockSessionRequest `json:"classTimeBattleLockSessions"`
 	BattleOpeningOverride       string                              `json:"battleOpeningOverride" validate:"required,oneof=schedule force_open force_closed"`
+	QRCodeScanCooldownEnabled   *bool                               `json:"qrCodeScanCooldownEnabled" validate:"required"`
+	QRCodeScanCooldownMinutes   *int                                `json:"qrCodeScanCooldownMinutes" validate:"required,min=1,max=1440"`
 	MaintenanceMode             string                              `json:"maintenanceMode"`
 	MaintenanceMessage          string                              `json:"maintenanceMessage"`
 }
@@ -110,6 +112,8 @@ type SettingsResponse struct {
 	ClassTimeBattleLockSessions []ClassTimeBattleLockSessionResponse `json:"classTimeBattleLockSessions"`
 	BattleOpeningOverride       string                               `json:"battleOpeningOverride"`
 	BattleOpeningLocked         bool                                 `json:"battleOpeningLocked"`
+	QRCodeScanCooldownEnabled   bool                                 `json:"qrCodeScanCooldownEnabled"`
+	QRCodeScanCooldownMinutes   int                                  `json:"qrCodeScanCooldownMinutes"`
 	MaintenanceMode             string                               `json:"maintenanceMode"`
 	MaintenanceMessage          string                               `json:"maintenanceMessage"`
 	MaintenanceActive           bool                                 `json:"maintenanceActive"`
@@ -234,6 +238,8 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		ClassTimeBattleLockEnabled:  *body.ClassTimeBattleLockEnabled,
 		ClassTimeBattleLockSessions: classTimeBattleLockSessionsFromRequest(body),
 		BattleOpeningOverride:       body.BattleOpeningOverride,
+		QRCodeScanCooldownEnabled:   *body.QRCodeScanCooldownEnabled,
+		QRCodeScanCooldownMinutes:   *body.QRCodeScanCooldownMinutes,
 		MaintenanceMode:             maintenanceMode,
 		MaintenanceMessage:          strings.TrimSpace(body.MaintenanceMessage),
 		MaintenanceStartedAt:        maintenanceStartedAt(maintenanceMode),
@@ -302,6 +308,12 @@ func validateSettingsRequest(body SettingsRequest) error {
 			Message:  "maintenanceMode must be one of: off draining active",
 		})
 	}
+	if body.QRCodeScanCooldownMinutes != nil && (*body.QRCodeScanCooldownMinutes < 1 || *body.QRCodeScanCooldownMinutes > gamecontrol.MaxQRCodeScanCooldownMinutes) {
+		details = append(details, httpx.ErrorDetail{
+			Location: "body.qrCodeScanCooldownMinutes",
+			Message:  fmt.Sprintf("qrCodeScanCooldownMinutes must be an integer from 1 to %d", gamecontrol.MaxQRCodeScanCooldownMinutes),
+		})
+	}
 	if len(details) > 0 {
 		return httpx.UnprocessableEntity("invalid request body", details...)
 	}
@@ -348,6 +360,8 @@ func settingsResponse(settings gamecontrol.Settings) SettingsResponse {
 		ClassTimeBattleLockSessions: classTimeBattleLockSessionsResponse(settings.ClassTimeBattleLockSessions),
 		BattleOpeningOverride:       settings.BattleOpeningOverride,
 		BattleOpeningLocked:         settings.BattleOpeningLocked(time.Now()),
+		QRCodeScanCooldownEnabled:   settings.QRCodeScanCooldownEnabled,
+		QRCodeScanCooldownMinutes:   settings.QRCodeScanCooldownMinutes,
 		MaintenanceMode:             settings.MaintenanceMode,
 		MaintenanceMessage:          settings.MaintenanceMessage,
 		MaintenanceActive:           settings.MaintenanceActive(),

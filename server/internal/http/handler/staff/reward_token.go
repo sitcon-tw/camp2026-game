@@ -13,9 +13,11 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
+	"github.com/sitcon-tw/camp2026-game/internal/gamecontrol"
 	"github.com/sitcon-tw/camp2026-game/internal/http/authctx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
+	"github.com/sitcon-tw/camp2026-game/internal/qrcooldown"
 )
 
 const staffRewardTokenTTL = 10 * time.Minute
@@ -122,6 +124,7 @@ func (h *Handler) CreateRewardToken(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} httpx.ProblemDetails
 // @Failure 404 {object} httpx.ProblemDetails
 // @Failure 409 {object} httpx.ProblemDetails
+// @Failure 429 {object} httpx.ProblemDetails
 // @Failure 500 {object} httpx.ProblemDetails
 // @Failure 503 {object} httpx.ProblemDetails
 // @Router /staff/reward-tokens/{token}/claim [post]
@@ -158,16 +161,41 @@ func (h *Handler) ClaimRewardToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	settings, err := gamecontrol.ReadSettings(r.Context(), h.db)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("qr code scan cooldown unavailable", "qrcode_scan_cooldown_settings_failed", err))
+		return
+	}
+	reservation, reserved, err := h.reserveQRCodeScanCooldown(r.Context(), player.ID, record.ID, settings, time.Now().UTC())
+	if errors.Is(err, qrcooldown.ErrActive) {
+		httpx.WriteProblem(w, r, httpx.NewError(http.StatusTooManyRequests, "qr code scan cooldown active"))
+		return
+	}
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("qr code scan cooldown unavailable", "qrcode_scan_cooldown_reserve_failed", err))
+		return
+	}
+	releaseCooldown := func() {
+		if !reserved {
+			return
+		}
+		releaseCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = qrcooldown.Release(releaseCtx, h.db, reservation)
+	}
+
 	rewardValue := record.Quantity
 	if record.Kind == rewardKindOpenPower {
 		rewardValue = record.Amount
 	}
 	rewardRecord, err := h.claimRewardToken(r.Context(), player.ID, staffPlayer.ID, record.ID, reward, rewardValue)
 	if errors.Is(err, errRewardTokenAlreadyClaimed) {
+		releaseCooldown()
 		httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "reward token already claimed"))
 		return
 	}
 	if err != nil {
+		releaseCooldown()
 		httpx.WriteProblem(w, r, httpx.InternalServerError("reward token claim failed", "reward_token_claim_failed", err))
 		return
 	}
@@ -187,6 +215,18 @@ func (h *Handler) ClaimRewardToken(w http.ResponseWriter, r *http.Request) {
 			Nickname: staffPlayer.Nickname,
 		},
 	})
+}
+
+func (h *Handler) reserveQRCodeScanCooldown(ctx context.Context, playerID string, sourceID string, settings gamecontrol.Settings, now time.Time) (qrcooldown.Reservation, bool, error) {
+	duration := settings.QRCodeScanCooldownDuration()
+	if duration <= 0 {
+		return qrcooldown.Reservation{}, false, nil
+	}
+	reservation, err := qrcooldown.Reserve(ctx, h.db, playerID, "staff_reward:"+sourceID, duration, now)
+	if err != nil {
+		return qrcooldown.Reservation{}, false, err
+	}
+	return reservation, true, nil
 }
 
 func validateRewardTokenBody(body CreateRewardTokenRequest) error {
