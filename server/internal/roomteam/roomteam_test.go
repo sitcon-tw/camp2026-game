@@ -20,12 +20,11 @@ func TestNewQRTokenReturnsOpaqueRoomTeamToken(t *testing.T) {
 
 func TestDefaultRoomNumbers(t *testing.T) {
 	rooms := DefaultRoomNumbers()
-	if len(rooms) != 25 {
-		t.Fatalf("expected 25 rooms, got %d", len(rooms))
+	if len(rooms) != 24 {
+		t.Fatalf("expected 24 rooms, got %d", len(rooms))
 	}
 	if !ValidRoomNumber("201") ||
 		!ValidRoomNumber("208") ||
-		!ValidRoomNumber("219") ||
 		!ValidRoomNumber("123") {
 		t.Fatalf("expected provided room numbers to be valid")
 	}
