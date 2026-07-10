@@ -202,7 +202,8 @@ func (h *Handler) ClaimRewardToken(w http.ResponseWriter, r *http.Request) {
 	h.publishRewardGranted(r.Context(), player.ID, staffPlayer, rewardRecord)
 
 	httpx.WriteJSON(w, http.StatusCreated, ClaimRewardTokenResponse{
-		RewardID: rewardRecord.ID,
+		RewardID:                rewardRecord.ID,
+		QRCodeScanCooldownUntil: qrCodeScanCooldownUntil(reservation),
 		Reward: RewardResponse{
 			Kind:     reward.kind,
 			ID:       reward.id,
@@ -215,6 +216,13 @@ func (h *Handler) ClaimRewardToken(w http.ResponseWriter, r *http.Request) {
 			Nickname: staffPlayer.Nickname,
 		},
 	})
+}
+
+func qrCodeScanCooldownUntil(reservation qrcooldown.Reservation) string {
+	if reservation.ExpiresAt.IsZero() {
+		return ""
+	}
+	return reservation.ExpiresAt.Format(time.RFC3339)
 }
 
 func (h *Handler) reserveQRCodeScanCooldown(ctx context.Context, playerID string, sourceID string, settings gamecontrol.Settings, now time.Time) (qrcooldown.Reservation, bool, error) {

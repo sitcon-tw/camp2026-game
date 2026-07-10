@@ -15,8 +15,9 @@ import (
 var ErrActive = errors.New("qr code scan cooldown active")
 
 type Reservation struct {
-	PlayerID string
-	OwnerID  string
+	PlayerID  string
+	OwnerID   string
+	ExpiresAt time.Time
 }
 
 func Reserve(ctx context.Context, db *mongo.Database, playerID string, ownerID string, duration time.Duration, now time.Time) (Reservation, error) {
@@ -24,14 +25,15 @@ func Reserve(ctx context.Context, db *mongo.Database, playerID string, ownerID s
 		return Reservation{}, nil
 	}
 
-	reservation := Reservation{PlayerID: playerID, OwnerID: ownerID}
+	expiresAt := now.Add(duration)
+	reservation := Reservation{PlayerID: playerID, OwnerID: ownerID, ExpiresAt: expiresAt}
 	collection := db.Collection(mongomodel.QRScanCooldownsCollection)
 	lockID := CooldownID(playerID)
 
 	updateResult, err := collection.UpdateOne(
 		ctx,
 		ReserveFilter(lockID, ownerID, now),
-		ReserveUpdate(lockID, playerID, ownerID, now, duration),
+		ReserveUpdate(lockID, playerID, ownerID, now, expiresAt),
 	)
 	if err != nil {
 		return Reservation{}, err
@@ -40,7 +42,7 @@ func Reserve(ctx context.Context, db *mongo.Database, playerID string, ownerID s
 		return reservation, nil
 	}
 
-	_, err = collection.InsertOne(ctx, ReserveInsert(lockID, playerID, ownerID, now, duration))
+	_, err = collection.InsertOne(ctx, ReserveInsert(lockID, playerID, ownerID, now, expiresAt))
 	if err == nil {
 		return reservation, nil
 	}
@@ -72,11 +74,11 @@ func ReserveFilter(lockID string, ownerID string, now time.Time) bson.M {
 	}
 }
 
-func ReserveUpdate(lockID string, playerID string, ownerID string, now time.Time, duration time.Duration) bson.M {
+func ReserveUpdate(lockID string, playerID string, ownerID string, now time.Time, expiresAt time.Time) bson.M {
 	return bson.M{
 		"$set": bson.M{
 			"owner_id":   ownerID,
-			"expires_at": now.Add(duration),
+			"expires_at": expiresAt,
 			"updated_at": now,
 		},
 		"$setOnInsert": bson.M{
@@ -87,12 +89,12 @@ func ReserveUpdate(lockID string, playerID string, ownerID string, now time.Time
 	}
 }
 
-func ReserveInsert(lockID string, playerID string, ownerID string, now time.Time, duration time.Duration) bson.M {
+func ReserveInsert(lockID string, playerID string, ownerID string, now time.Time, expiresAt time.Time) bson.M {
 	return bson.M{
 		"_id":        lockID,
 		"player_id":  playerID,
 		"owner_id":   ownerID,
-		"expires_at": now.Add(duration),
+		"expires_at": expiresAt,
 		"created_at": now,
 		"updated_at": now,
 	}

@@ -479,6 +479,7 @@ const StaffRewardTokenResponseSchema = z.object({
 
 const StaffRewardTokenClaimResponseSchema = z.object({
   rewardId: z.string(),
+  qrCodeScanCooldownUntil: z.string().optional(),
   reward: z.object({
     kind: StaffRewardKindSchema,
     id: z.string().optional(),
@@ -528,6 +529,7 @@ const CommunityStandClaimResponseSchema = z.object({
   stand: CommunityStandSchema,
   reward: CommunityStandRewardSchema,
   claimed: z.boolean(),
+  qrCodeScanCooldownUntil: z.string().optional(),
 })
 
 const AdminLoginResponseSchema = z.object({

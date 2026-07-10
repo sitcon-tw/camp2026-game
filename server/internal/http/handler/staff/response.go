@@ -56,9 +56,10 @@ type CreateRewardTokenResponse struct {
 }
 
 type ClaimRewardTokenResponse struct {
-	RewardID string              `json:"rewardId" example:"staff_reward_507f1f77bcf86cd799439011"`
-	Reward   RewardResponse      `json:"reward"`
-	Staff    RewardStaffResponse `json:"staff"`
+	RewardID                string              `json:"rewardId" example:"staff_reward_507f1f77bcf86cd799439011"`
+	Reward                  RewardResponse      `json:"reward"`
+	Staff                   RewardStaffResponse `json:"staff"`
+	QRCodeScanCooldownUntil string              `json:"qrCodeScanCooldownUntil,omitempty" example:"2026-07-08T08:15:00Z"`
 }
 
 type RewardPlayerResponse struct {
