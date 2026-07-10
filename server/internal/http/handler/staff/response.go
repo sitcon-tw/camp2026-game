@@ -4,6 +4,7 @@ type CreateRewardRequest struct {
 	QRCodeToken string `json:"qrcodeToken,omitempty" validate:"omitempty,min=4,max=512" example:"qr_6H_x7lM20CK8BBnPfwEG1Ei97-PM9ZGr8Dy9yW-BYok"`
 	PlayerID    string `json:"playerId,omitempty" validate:"omitempty,min=1,max=128" example:"7H9K2Q"`
 	TeamID      string `json:"teamId,omitempty" validate:"omitempty,min=1,max=128" example:"8M4RXP"`
+	RoomNumber  string `json:"roomNumber,omitempty" validate:"omitempty,min=1,max=32" example:"208"`
 	AllPlayers  bool   `json:"allPlayers,omitempty" example:"false"`
 	Kind        string `json:"kind" validate:"required,oneof=item sitone open_power" example:"sitone"`
 	RefID       string `json:"refId,omitempty" validate:"omitempty,min=1,max=128" example:"stone_engineering_base"`
@@ -46,6 +47,7 @@ type CreateRewardResponse struct {
 	AllPlayers   bool                  `json:"allPlayers,omitempty" example:"false"`
 	Player       *RewardPlayerResponse `json:"player,omitempty"`
 	Team         *RewardTeamResponse   `json:"team,omitempty"`
+	Room         *RewardRoomResponse   `json:"room,omitempty"`
 	Reward       RewardResponse        `json:"reward"`
 }
 
@@ -72,6 +74,10 @@ type RewardPlayerResponse struct {
 type RewardTeamResponse struct {
 	TeamID string `json:"teamId" example:"8M4RXP"`
 	Name   string `json:"name" example:"Blue Team"`
+}
+
+type RewardRoomResponse struct {
+	RoomNumber string `json:"roomNumber" example:"208"`
 }
 
 type RewardStaffResponse struct {

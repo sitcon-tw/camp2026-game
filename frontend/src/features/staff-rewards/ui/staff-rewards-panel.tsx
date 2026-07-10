@@ -91,6 +91,17 @@ type ItemFunctionMeta = {
 }
 
 const ALL_PLAYERS_TEAM_ID = "__all_players__"
+const ROOM_TEAM_OPTION_PREFIX = "__room_team__:"
+
+function roomTeamOptionValue(roomNumber: string) {
+  return `${ROOM_TEAM_OPTION_PREFIX}${roomNumber}`
+}
+
+function roomNumberFromOptionValue(value: string) {
+  return value.startsWith(ROOM_TEAM_OPTION_PREFIX)
+    ? value.slice(ROOM_TEAM_OPTION_PREFIX.length)
+    : null
+}
 
 const BASE_STONE_IDS = new Set([
   "stone_engineering_base",
@@ -499,6 +510,11 @@ export function StaffRewardsPanel() {
     queryFn: () => gameApi.staffTeams(teamSearchKeyword || undefined),
     enabled: isStaff,
   })
+  const roomTeamsQuery = useQuery({
+    queryKey: ["staff", "room-teams"],
+    queryFn: gameApi.staffRoomTeams,
+    enabled: isStaff,
+  })
   const sitonesQuery = useQuery({
     queryKey: ["catalog", "sitones"],
     queryFn: gameApi.catalogSitones,
@@ -541,6 +557,7 @@ export function StaffRewardsPanel() {
   )
   const playerOptions = playersQuery.data ?? []
   const teamOptions = teamsQuery.data ?? []
+  const roomTeamOptions = roomTeamsQuery.data ?? []
   const selectedRefID = rewardOptions.some(
     (option) => option.id === selectedRefIDs[rewardKind],
   )
@@ -575,6 +592,7 @@ export function StaffRewardsPanel() {
   const selectedTeam =
     teamOptions.find((team) => team.teamId === selectedTeamID) ?? null
   const allPlayersSelected = selectedTeamID === ALL_PLAYERS_TEAM_ID
+  const selectedRoomNumber = roomNumberFromOptionValue(selectedTeamID)
   const groupedVisibleSitoneOptions = useMemo(
     () =>
       [
@@ -631,6 +649,12 @@ export function StaffRewardsPanel() {
             ? `已發送 ${result.reward.amount} 開源力給 ${result.team.name} 全組 (${result.grantedCount} 人)`
             : `已發送 ${result.reward.name} x${result.reward.quantity} 給 ${result.team.name} 全組 (${result.grantedCount} 人)`,
         )
+      } else if (result.room) {
+        toast.success(
+          result.reward.kind === "open_power"
+            ? `已發送 ${result.reward.amount} 開源力給宿舍 ${result.room.roomNumber} (${result.grantedCount} 人)`
+            : `已發送 ${result.reward.name} x${result.reward.quantity} 給宿舍 ${result.room.roomNumber} (${result.grantedCount} 人)`,
+        )
       } else if (result.player) {
         toast.success(
           result.reward.kind === "open_power"
@@ -664,7 +688,7 @@ export function StaffRewardsPanel() {
     isStaff &&
     (targetMode === "player"
       ? !!targetPlayer?.playerId
-      : allPlayersSelected || !!selectedTeam?.teamId) &&
+      : allPlayersSelected || !!selectedTeam?.teamId || !!selectedRoomNumber) &&
     (rewardKind === "open_power" ? openPowerAmount >= 1 : !!selectedOption) &&
     (rewardKind === "open_power" || quantity >= 1) &&
     !rewardMutation.isPending
@@ -721,6 +745,24 @@ export function StaffRewardsPanel() {
       if (!selectedOption) return
       rewardMutation.mutate({
         allPlayers: true,
+        kind: rewardKind,
+        refId: selectedOption.id,
+        quantity,
+      })
+      return
+    }
+    if (selectedRoomNumber) {
+      if (rewardKind === "open_power") {
+        rewardMutation.mutate({
+          roomNumber: selectedRoomNumber,
+          kind: rewardKind,
+          amount: openPowerAmount,
+        })
+        return
+      }
+      if (!selectedOption) return
+      rewardMutation.mutate({
+        roomNumber: selectedRoomNumber,
         kind: rewardKind,
         refId: selectedOption.id,
         quantity,
@@ -957,12 +999,14 @@ export function StaffRewardsPanel() {
                 <Select
                   value={selectedTeamID}
                   onValueChange={setSelectedTeamID}
-                  disabled={teamsQuery.isPending}
+                  disabled={teamsQuery.isPending || roomTeamsQuery.isPending}
                 >
                   <SelectTrigger className="h-12 w-full">
                     <SelectValue
                       placeholder={
-                        teamsQuery.isPending ? "同步組別中" : "選擇組別"
+                        teamsQuery.isPending || roomTeamsQuery.isPending
+                          ? "同步組別中"
+                          : "選擇組別"
                       }
                     />
                   </SelectTrigger>
@@ -974,12 +1018,21 @@ export function StaffRewardsPanel() {
                         {team.name} ({team.memberCount} 人)
                       </SelectItem>
                     ))}
+                    {roomTeamOptions.length > 0 ? <SelectSeparator /> : null}
+                    {roomTeamOptions.map((room) => (
+                      <SelectItem
+                        key={room.roomId}
+                        value={roomTeamOptionValue(room.roomNumber)}
+                      >
+                        {room.roomNumber}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
-                {teamsQuery.isError ? (
+                {teamsQuery.isError || roomTeamsQuery.isError ? (
                   <p className="text-destructive px-1 text-sm font-bold">
-                    {errorMessage(teamsQuery.error, "讀取組別失敗")}
+                    {errorMessage(teamsQuery.error ?? roomTeamsQuery.error, "讀取組別失敗")}
                   </p>
                 ) : null}
 
@@ -991,6 +1044,8 @@ export function StaffRewardsPanel() {
                     <p className="text-muted-foreground text-xs font-black">
                       {allPlayersSelected
                         ? "所有玩家"
+                        : selectedRoomNumber
+                          ? `宿舍 ${selectedRoomNumber}`
                         : selectedTeam
                           ? `${selectedTeam.memberCount} 人`
                           : "尚未選擇組別"}
@@ -998,6 +1053,8 @@ export function StaffRewardsPanel() {
                     <strong className="mt-1 block text-[22px] leading-tight font-black break-words">
                       {allPlayersSelected
                         ? "所有人"
+                        : selectedRoomNumber
+                          ? selectedRoomNumber
                         : (selectedTeam?.name ?? "等待選擇")}
                     </strong>
                   </div>
@@ -1291,6 +1348,11 @@ export function StaffRewardsPanel() {
                 {rewardMutation.data.team ? (
                   <>
                     {rewardMutation.data.team.name} ·{" "}
+                    {rewardMutation.data.grantedCount} 人
+                  </>
+                ) : rewardMutation.data.room ? (
+                  <>
+                    {rewardMutation.data.room.roomNumber} ·{" "}
                     {rewardMutation.data.grantedCount} 人
                   </>
                 ) : rewardMutation.data.player ? (

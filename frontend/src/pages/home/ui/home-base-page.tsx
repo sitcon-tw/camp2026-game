@@ -45,13 +45,22 @@ const ACTIONS: {
   },
 ]
 
-const STAFF_ACTION: (typeof ACTIONS)[number] = {
-  id: "staff",
-  label: "關主發放台",
-  desc: "掃描通行證發放小石與戰利品",
-  icon: "pass",
-  to: "/staff",
-}
+const STAFF_ACTIONS: (typeof ACTIONS)[number][] = [
+  {
+    id: "staff",
+    label: "關主發放台",
+    desc: "掃描通行證發放小石與戰利品",
+    icon: "pass",
+    to: "/rewards",
+  },
+  {
+    id: "dorms",
+    label: "宿舍管理員",
+    desc: "選擇房號，產生宿舍加入 QR Code",
+    icon: "dorm",
+    to: "/dorms",
+  },
+]
 
 const COLLECTIONS: {
   label: string
@@ -131,7 +140,7 @@ export function HomeBasePage() {
   const battleEnabled = actionEnabledByID.get("battle") ?? true
   const battleLocked = !battleEnabled
   const baseActions =
-    player?.role === "staff" ? [STAFF_ACTION, ...ACTIONS] : ACTIONS
+    player?.role === "staff" ? [...STAFF_ACTIONS, ...ACTIONS] : ACTIONS
   const actions = baseActions.map((action) => ({
     ...action,
     enabled: actionEnabledByID.get(action.id) ?? true,

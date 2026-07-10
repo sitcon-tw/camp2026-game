@@ -458,6 +458,11 @@ const StaffRewardResponseSchema = z.object({
     })
     .optional(),
   team: TeamSchema.optional(),
+  room: z
+    .object({
+      roomNumber: z.string(),
+    })
+    .optional(),
   reward: z.object({
     kind: StaffRewardKindSchema,
     id: z.string().optional(),
@@ -603,6 +608,81 @@ const AdminCommunityStandClaimSchema = z.object({
 
 const AdminCommunityStandClaimsResponseSchema = z.object({
   claims: nullableArray(AdminCommunityStandClaimSchema),
+})
+
+const AdminRoomTeamSchema = z.object({
+  roomId: z.string(),
+  roomNumber: z.string(),
+  memberCount: z.number(),
+  qrTokenExpiresAt: z.string().optional(),
+})
+
+const AdminRoomTeamsResponseSchema = z.object({
+  rooms: nullableArray(AdminRoomTeamSchema),
+})
+
+const AdminRoomTeamTokenResponseSchema = z.object({
+  room: AdminRoomTeamSchema,
+  qrToken: z.string(),
+  qrTokenExpiresAt: z.string(),
+})
+
+const AdminRoomTeamMemberSchema = z.object({
+  playerId: z.string(),
+  nickname: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  team: TeamSchema.optional(),
+  joinedAt: z.string(),
+  joinedBy: z.string().optional(),
+})
+
+const AdminRoomTeamMembersResponseSchema = z.object({
+  room: AdminRoomTeamSchema,
+  members: nullableArray(AdminRoomTeamMemberSchema),
+})
+
+const AdminRoomTeamAddMemberInputSchema = z.object({
+  playerId: z.string().optional(),
+  qrcodeToken: z.string().optional(),
+})
+
+const AdminRoomTeamAddMemberResponseSchema = z.object({
+  room: AdminRoomTeamSchema,
+  member: AdminRoomTeamMemberSchema,
+  added: z.boolean(),
+})
+
+const RoomTeamJoinResponseSchema = z.object({
+  room: z.object({
+    roomId: z.string(),
+    roomNumber: z.string(),
+  }),
+  joined: z.boolean(),
+})
+
+const StaffRoomTeamSchema = z.object({
+  roomId: z.string(),
+  roomNumber: z.string(),
+})
+
+const StaffRoomTeamsResponseSchema = z.object({
+  rooms: nullableArray(StaffRoomTeamSchema),
+})
+
+const StaffRoomTeamTokenResponseSchema = z.object({
+  room: StaffRoomTeamSchema,
+  qrToken: z.string(),
+  qrTokenExpiresAt: z.string(),
+})
+
+const StaffRoomTeamAssignmentResponseSchema = z.object({
+  room: StaffRoomTeamSchema,
+  player: z.object({
+    playerId: z.string(),
+    nickname: z.string(),
+    avatarUrl: z.string().optional(),
+  }),
+  added: z.boolean(),
 })
 
 const AdminCommunityStandRewardInputSchema = z.object({
@@ -879,6 +959,25 @@ export type MaintenanceStatus = z.infer<typeof MaintenanceStatusSchema>
 export type AdminCommunityStand = z.infer<typeof AdminCommunityStandSchema>
 export type AdminCommunityStandClaim = z.infer<
   typeof AdminCommunityStandClaimSchema
+>
+export type AdminRoomTeam = z.infer<typeof AdminRoomTeamSchema>
+export type AdminRoomTeamTokenResponse = z.infer<
+  typeof AdminRoomTeamTokenResponseSchema
+>
+export type AdminRoomTeamMember = z.infer<typeof AdminRoomTeamMemberSchema>
+export type AdminRoomTeamAddMemberInput = z.input<
+  typeof AdminRoomTeamAddMemberInputSchema
+>
+export type AdminRoomTeamAddMemberResponse = z.infer<
+  typeof AdminRoomTeamAddMemberResponseSchema
+>
+export type RoomTeamJoinResponse = z.infer<typeof RoomTeamJoinResponseSchema>
+export type StaffRoomTeam = z.infer<typeof StaffRoomTeamSchema>
+export type StaffRoomTeamTokenResponse = z.infer<
+  typeof StaffRoomTeamTokenResponseSchema
+>
+export type StaffRoomTeamAssignmentResponse = z.infer<
+  typeof StaffRoomTeamAssignmentResponseSchema
 >
 export type AdminCommunityStandUpdateInput = z.input<
   typeof AdminCommunityStandUpdateInputSchema
@@ -1178,6 +1277,7 @@ export const gameApi = {
     playerId?: string
     qrcodeToken?: string
     teamId?: string
+    roomNumber?: string
     allPlayers?: boolean
     kind: StaffRewardKind
     refId?: string
@@ -1221,6 +1321,29 @@ export const gameApi = {
       searchParams: query ? { query } : undefined,
     })
     return StaffTeamsResponseSchema.parse(json).teams
+  },
+
+  async staffRoomTeams() {
+    const json = await apiClient.get("/api/staff/room-teams")
+    return StaffRoomTeamsResponseSchema.parse(json).rooms
+  },
+
+  async createStaffRoomTeamToken(roomNumber: string) {
+    const json = await apiClient.post(
+      `/api/staff/room-teams/${encodeURIComponent(roomNumber)}/token`,
+    )
+    return StaffRoomTeamTokenResponseSchema.parse(json)
+  },
+
+  async assignStaffRoomTeamMember(
+    roomNumber: string,
+    input: { playerId?: string; qrcodeToken?: string },
+  ) {
+    const json = await apiClient.post(
+      `/api/staff/room-teams/${encodeURIComponent(roomNumber)}/members`,
+      { json: input },
+    )
+    return StaffRoomTeamAssignmentResponseSchema.parse(json)
   },
 
   async adminLogin(password: string) {
@@ -1285,6 +1408,44 @@ export const gameApi = {
     return AdminCommunityStandClaimsResponseSchema.parse(json).claims
   },
 
+  async adminRoomTeams() {
+    const json = await apiClient.get("/api/admin/room-teams")
+    return AdminRoomTeamsResponseSchema.parse(json).rooms
+  },
+
+  async createAdminRoomTeamToken(roomNumber: string) {
+    const json = await apiClient.post(
+      `/api/admin/room-teams/${encodeURIComponent(roomNumber)}/token`,
+    )
+    return AdminRoomTeamTokenResponseSchema.parse(json)
+  },
+
+  async adminRoomTeamMembers(roomNumber: string) {
+    const json = await apiClient.get(
+      `/api/admin/room-teams/${encodeURIComponent(roomNumber)}/members`,
+    )
+    return AdminRoomTeamMembersResponseSchema.parse(json)
+  },
+
+  async addAdminRoomTeamMember(
+    roomNumber: string,
+    input: AdminRoomTeamAddMemberInput,
+  ) {
+    const json = await apiClient.post(
+      `/api/admin/room-teams/${encodeURIComponent(roomNumber)}/members`,
+      {
+        json: AdminRoomTeamAddMemberInputSchema.parse(input),
+      },
+    )
+    return AdminRoomTeamAddMemberResponseSchema.parse(json)
+  },
+
+  async removeAdminRoomTeamMember(roomNumber: string, playerID: string) {
+    await apiClient.delete(
+      `/api/admin/room-teams/${encodeURIComponent(roomNumber)}/members/${encodeURIComponent(playerID)}`,
+    )
+  },
+
   async updateAdminSettings(settings: AdminSettings) {
     const { battleOpeningLocked, maintenanceActive, ...input } = settings
     void battleOpeningLocked
@@ -1319,6 +1480,13 @@ export const gameApi = {
     await apiClient.delete(
       `/api/admin/community-stands/${encodeURIComponent(standID)}`,
     )
+  },
+
+  async joinRoomTeamByQRToken(qrToken: string) {
+    const json = await apiClient.post(
+      `/api/room-teams/scans/${encodeURIComponent(qrToken)}/join`,
+    )
+    return RoomTeamJoinResponseSchema.parse(json)
   },
 
   async updateAdminTeam(

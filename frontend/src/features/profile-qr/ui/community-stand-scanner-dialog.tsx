@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import { AppError } from "@/shared/api/error"
 import { gameApi, type CommunityStandReward } from "@/shared/api/game"
 import { parseCommunityStandQRToken } from "@/shared/lib/community-stand-qr"
+import { parseRoomTeamQRToken } from "@/shared/lib/room-team-qr"
 import { parseStaffRewardToken } from "@/shared/lib/staff-reward-token"
 import {
   useQrCodeScanner,
@@ -62,8 +63,10 @@ export function CommunityStandScannerDialog({
     string | null
   >(null)
   const [qrClaimCooldownActive, setQRClaimCooldownActive] = useState(false)
+  const [roomTeamToken, setRoomTeamToken] = useState<string | null>(null)
   const activeQRToken = qrToken ?? ""
   const activeStaffRewardToken = staffRewardToken ?? ""
+  const activeRoomTeamToken = roomTeamToken ?? ""
 
   useEffect(() => {
     if (!qrClaimCooldownUntil) return
@@ -97,6 +100,7 @@ export function CommunityStandScannerDialog({
   const resetScanner = useCallback(() => {
     setQRToken(null)
     setStaffRewardToken(null)
+    setRoomTeamToken(null)
     setManualValue("")
     setManualMessage(null)
   }, [])
@@ -109,29 +113,6 @@ export function CommunityStandScannerDialog({
     [onOpenChange, resetScanner],
   )
 
-  const openScannedValue = useCallback((value: string) => {
-    const parsedRewardToken = parseStaffRewardToken(value)
-    if (parsedRewardToken) {
-      setManualMessage(null)
-      setStaffRewardToken(parsedRewardToken)
-      return
-    }
-
-    const parsedQRToken = parseCommunityStandQRToken(value)
-    if (!parsedQRToken) {
-      setManualMessage("找不到 QR Code 內容，請確認後再手動輸入。")
-      return
-    }
-    setManualMessage(null)
-    setQRToken(parsedQRToken)
-  }, [])
-
-  const scannerStatus = useQrCodeScanner({
-    open: open && !qrToken && !staffRewardToken,
-    videoRef,
-    canvasRef,
-    onResult: openScannedValue,
-  })
   const staffRewardClaimMutation = useMutation({
     mutationFn: () => gameApi.claimStaffRewardToken(activeStaffRewardToken),
     onSuccess: (result) => {
@@ -146,6 +127,61 @@ export function CommunityStandScannerDialog({
       }
       toast.error(error instanceof AppError ? error.message : "領取失敗")
     },
+  })
+  const roomTeamJoinMutation = useMutation({
+    mutationFn: (token: string) => gameApi.joinRoomTeamByQRToken(token),
+    onSuccess: (result) => {
+      toast.success(
+        result.joined
+          ? `已加入 ${result.room.roomNumber} 宿舍群組`
+          : `已在 ${result.room.roomNumber} 宿舍群組`,
+      )
+    },
+    onError: (error) => {
+      toast.error(error instanceof AppError ? error.message : "加入宿舍失敗")
+    },
+  })
+  const activeRoomTeamJoinPending =
+    roomTeamJoinMutation.isPending &&
+    roomTeamJoinMutation.variables === activeRoomTeamToken
+  const activeRoomTeamJoined =
+    roomTeamJoinMutation.isSuccess &&
+    roomTeamJoinMutation.variables === activeRoomTeamToken
+  const activeRoomTeamJoinError =
+    roomTeamJoinMutation.isError &&
+    roomTeamJoinMutation.variables === activeRoomTeamToken
+  const openScannedValue = useCallback(
+    (value: string) => {
+      const parsedRewardToken = parseStaffRewardToken(value)
+      if (parsedRewardToken) {
+        setManualMessage(null)
+        setStaffRewardToken(parsedRewardToken)
+        return
+      }
+
+      const parsedRoomTeamToken = parseRoomTeamQRToken(value)
+      if (parsedRoomTeamToken) {
+        setManualMessage(null)
+        setRoomTeamToken(parsedRoomTeamToken)
+        roomTeamJoinMutation.mutate(parsedRoomTeamToken)
+        return
+      }
+
+      const parsedQRToken = parseCommunityStandQRToken(value)
+      if (!parsedQRToken) {
+        setManualMessage("找不到 QR Code 內容，請確認後再手動輸入。")
+        return
+      }
+      setManualMessage(null)
+      setQRToken(parsedQRToken)
+    },
+    [roomTeamJoinMutation],
+  )
+  const scannerStatus = useQrCodeScanner({
+    open: open && !qrToken && !staffRewardToken && !roomTeamToken,
+    videoRef,
+    canvasRef,
+    onResult: openScannedValue,
   })
   const standQuery = useQuery({
     queryKey: ["community", "stand", "scan", activeQRToken],
@@ -187,7 +223,7 @@ export function CommunityStandScannerDialog({
   return (
     <Dialog open={open} onOpenChange={updateOpen}>
       <DialogContent className="gap-4">
-        {!qrToken && !staffRewardToken ? (
+        {!qrToken && !staffRewardToken && !roomTeamToken ? (
           <>
             <DialogHeader>
               <DialogTitle>QRCode 掃描器</DialogTitle>
@@ -275,6 +311,62 @@ export function CommunityStandScannerDialog({
                   </>
                 )}
               </Button>
+            </DialogFooter>
+          </>
+        ) : roomTeamToken ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>宿舍房號</DialogTitle>
+              <DialogDescription>
+                {activeRoomTeamJoinPending
+                  ? "正在加入宿舍群組"
+                  : activeRoomTeamJoined
+                    ? "已加入宿舍群組"
+                    : activeRoomTeamJoinError
+                      ? "宿舍群組加入失敗"
+                      : "掃描成功"}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="bg-surface-raised border-ink rounded-[18px] border-2 p-4">
+              <p className="text-muted-foreground mb-1 text-xs font-black tracking-[0.08em] uppercase">
+                ROOM TOKEN
+              </p>
+              <code className="block text-sm break-all">{roomTeamToken}</code>
+            </div>
+
+            <DialogFooter className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr]">
+              <Button type="button" variant="secondary" onClick={resetScanner}>
+                <RotateCcw className="size-4" aria-hidden />
+                重掃
+              </Button>
+              {activeRoomTeamJoinError ? (
+                <Button
+                  type="button"
+                  onClick={() =>
+                    roomTeamJoinMutation.mutate(activeRoomTeamToken)
+                  }
+                >
+                  <RotateCcw className="size-4" aria-hidden />
+                  重試加入
+                </Button>
+              ) : (
+                <Button type="button" disabled>
+                  {activeRoomTeamJoined ? (
+                    <>
+                      <CheckCircle2 className="size-4" aria-hidden />
+                      已加入
+                    </>
+                  ) : activeRoomTeamJoinPending ? (
+                    "加入中"
+                  ) : (
+                    <>
+                      <CheckCircle2 className="size-4" aria-hidden />
+                      準備加入
+                    </>
+                  )}
+                </Button>
+              )}
             </DialogFooter>
           </>
         ) : (

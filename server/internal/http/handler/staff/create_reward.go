@@ -15,6 +15,7 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/http/httpx"
 	"github.com/sitcon-tw/camp2026-game/internal/http/playerevents"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
+	"github.com/sitcon-tw/camp2026-game/internal/roomteam"
 )
 
 const (
@@ -31,7 +32,7 @@ type rewardDefinition struct {
 
 // CreateReward godoc
 // @Summary Grant sitone, item, or open power as staff
-// @Description Staff-only endpoint. Grants one sitone, item, or open power reward to a player selected by player ID or QR code identifier, every player in a team, or all players, and records the staff grant.
+// @Description Staff-only endpoint. Grants one sitone, item, or open power reward to a player selected by player ID or QR code identifier, every player in a team or dorm room, or all players, and records the staff grant.
 // @Tags staff
 // @Accept json
 // @Produce json
@@ -60,6 +61,7 @@ func (h *Handler) CreateReward(w http.ResponseWriter, r *http.Request) {
 	body.QRCodeToken = strings.TrimSpace(body.QRCodeToken)
 	body.PlayerID = strings.TrimSpace(body.PlayerID)
 	body.TeamID = strings.TrimSpace(body.TeamID)
+	body.RoomNumber = roomteam.NormalizeRoomNumber(body.RoomNumber)
 	body.Kind = strings.TrimSpace(body.Kind)
 	body.RefID = strings.TrimSpace(body.RefID)
 	if err := httpx.ValidateStruct(body); err != nil {
@@ -163,6 +165,57 @@ func (h *Handler) findPlayersByTeamID(ctx context.Context, teamID string) ([]mon
 	defer func() {
 		_ = cursor.Close(ctx)
 	}()
+
+	var players []mongomodel.Player
+	if err := cursor.All(ctx, &players); err != nil {
+		return nil, err
+	}
+	if players == nil {
+		return []mongomodel.Player{}, nil
+	}
+	return players, nil
+}
+
+func (h *Handler) findPlayersByRoomNumber(ctx context.Context, roomNumber string) ([]mongomodel.Player, error) {
+	cursor, err := h.db.Collection(mongomodel.RoomTeamMembershipsCollection).Find(
+		ctx,
+		bson.M{"room_team_id": roomteam.RoomID(roomNumber)},
+		options.Find().SetProjection(bson.D{{Key: "player_id", Value: 1}}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = cursor.Close(ctx) }()
+
+	var memberships []mongomodel.RoomTeamMembership
+	if err := cursor.All(ctx, &memberships); err != nil {
+		return nil, err
+	}
+	playerIDs := make([]string, 0, len(memberships))
+	for _, membership := range memberships {
+		if membership.PlayerID != "" {
+			playerIDs = append(playerIDs, membership.PlayerID)
+		}
+	}
+	if len(playerIDs) == 0 {
+		return []mongomodel.Player{}, nil
+	}
+
+	cursor, err = h.db.Collection(mongomodel.PlayersCollection).Find(
+		ctx,
+		bson.M{"_id": bson.M{"$in": playerIDs}},
+		options.Find().
+			SetProjection(bson.D{
+				{Key: "auth_token", Value: 0},
+				{Key: "qrcode_token", Value: 0},
+				{Key: "default_sitone_ids", Value: 0},
+			}).
+			SetSort(bson.D{{Key: "nickname", Value: 1}, {Key: "_id", Value: 1}}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = cursor.Close(ctx) }()
 
 	var players []mongomodel.Player
 	if err := cursor.All(ctx, &players); err != nil {
@@ -295,20 +348,30 @@ func newID(prefix string) string {
 
 func validateRewardTarget(body CreateRewardRequest) []httpx.ErrorDetail {
 	switch {
-	case body.AllPlayers && (body.TeamID != "" || body.PlayerID != "" || body.QRCodeToken != ""):
+	case body.AllPlayers && (body.TeamID != "" || body.RoomNumber != "" || body.PlayerID != "" || body.QRCodeToken != ""):
 		return []httpx.ErrorDetail{{
 			Location: "body.allPlayers",
-			Message:  "allPlayers cannot be combined with playerId, qrcodeToken, or teamId",
+			Message:  "allPlayers cannot be combined with playerId, qrcodeToken, teamId, or roomNumber",
 		}}
-	case body.TeamID != "" && (body.PlayerID != "" || body.QRCodeToken != ""):
+	case body.TeamID != "" && (body.RoomNumber != "" || body.PlayerID != "" || body.QRCodeToken != ""):
 		return []httpx.ErrorDetail{{
 			Location: "body.teamId",
-			Message:  "teamId cannot be combined with playerId or qrcodeToken",
+			Message:  "teamId cannot be combined with playerId, qrcodeToken, or roomNumber",
 		}}
-	case !body.AllPlayers && body.TeamID == "" && body.PlayerID == "" && body.QRCodeToken == "":
+	case body.RoomNumber != "" && (body.PlayerID != "" || body.QRCodeToken != ""):
+		return []httpx.ErrorDetail{{
+			Location: "body.roomNumber",
+			Message:  "roomNumber cannot be combined with playerId or qrcodeToken",
+		}}
+	case body.RoomNumber != "" && !roomteam.ValidRoomNumber(body.RoomNumber):
+		return []httpx.ErrorDetail{{
+			Location: "body.roomNumber",
+			Message:  "roomNumber must be one of the configured dorm rooms",
+		}}
+	case !body.AllPlayers && body.TeamID == "" && body.RoomNumber == "" && body.PlayerID == "" && body.QRCodeToken == "":
 		return []httpx.ErrorDetail{{
 			Location: "body.playerId",
-			Message:  "playerId, qrcodeToken, teamId, or allPlayers is required",
+			Message:  "playerId, qrcodeToken, teamId, roomNumber, or allPlayers is required",
 		}}
 	default:
 		return nil
@@ -356,7 +419,32 @@ func (h *Handler) createRewardResponse(
 	if body.TeamID != "" {
 		return h.createTeamRewardResponse(ctx, staffPlayer, reward, body)
 	}
+	if body.RoomNumber != "" {
+		return h.createRoomRewardResponse(ctx, staffPlayer, reward, body)
+	}
 	return h.createPlayerRewardResponse(ctx, staffPlayer, reward, body)
+}
+
+func (h *Handler) createRoomRewardResponse(
+	ctx context.Context,
+	staffPlayer mongomodel.Player,
+	reward rewardDefinition,
+	body CreateRewardRequest,
+) (CreateRewardResponse, int, error) {
+	recipients, err := h.findPlayersByRoomNumber(ctx, body.RoomNumber)
+	if err != nil {
+		return CreateRewardResponse{}, 0, httpx.InternalServerError("reward failed", "reward_room_player_lookup_failed", err)
+	}
+	if len(recipients) == 0 {
+		return CreateRewardResponse{}, 0, httpx.UnprocessableEntity(
+			"invalid request body",
+			httpx.ErrorDetail{Location: "body.roomNumber", Message: "dorm room has no players"},
+		)
+	}
+
+	return h.createMultiPlayerRewardResponse(ctx, staffPlayer, reward, body, recipients, CreateRewardResponse{
+		Room: &RewardRoomResponse{RoomNumber: body.RoomNumber},
+	}, "body.roomNumber", "dorm room has no players")
 }
 
 func (h *Handler) createAllPlayersRewardResponse(

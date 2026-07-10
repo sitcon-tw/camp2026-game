@@ -74,6 +74,8 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.CommunityStandsCollection, models: communityStandIndexModels()},
 		{collection: mongomodel.CommunityStandVisitsCollection, models: communityStandVisitIndexModels()},
 		{collection: mongomodel.CommunityStandClaimsCollection, models: communityStandClaimIndexModels()},
+		{collection: mongomodel.RoomTeamsCollection, models: roomTeamIndexModels()},
+		{collection: mongomodel.RoomTeamMembershipsCollection, models: roomTeamMembershipIndexModels()},
 	}
 }
 
@@ -367,6 +369,40 @@ func communityStandClaimIndexModels() []mongo.IndexModel {
 				{Key: "created_at", Value: -1},
 			},
 			Options: options.Index().SetName("community_stand_claims_player_created"),
+		},
+	}
+}
+
+func roomTeamIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "room_number", Value: 1}},
+			Options: options.Index().
+				SetName("room_teams_room_number").
+				SetUnique(true),
+		},
+		{
+			Keys: bson.D{{Key: "qr_token", Value: 1}},
+			Options: options.Index().
+				SetName("room_teams_qr_token").
+				SetUnique(true).
+				SetPartialFilterExpression(bson.M{"qr_token": bson.M{"$gt": ""}}),
+		},
+	}
+}
+
+func roomTeamMembershipIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "room_team_id", Value: 1},
+				{Key: "player_id", Value: 1},
+			},
+			Options: options.Index().SetName("room_team_memberships_room_player").SetUnique(true),
+		},
+		{
+			Keys:    bson.D{{Key: "player_id", Value: 1}},
+			Options: options.Index().SetName("room_team_memberships_player").SetUnique(true),
 		},
 	}
 }

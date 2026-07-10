@@ -20,6 +20,7 @@ import {
   Trash2,
   X,
 } from "lucide-react"
+import { QRCodeSVG } from "qrcode.react"
 import { type FormEvent, type ReactNode, useMemo, useState } from "react"
 import {
   CartesianGrid,
@@ -46,11 +47,16 @@ import {
   type AdminDashboardPlayer,
   type AdminDashboardPlayerRank,
   type AdminDashboardTeam,
+  type AdminRoomTeam,
+  type AdminRoomTeamAddMemberInput,
+  type AdminRoomTeamMember,
+  type AdminRoomTeamTokenResponse,
   type AdminStudentChangeEntry,
   type AdminSettings,
   type GiftHistoryEntry,
   type StaffRewardKind,
 } from "@/shared/api/game"
+import { roomTeamQrValue } from "@/shared/lib/room-team-qr"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Badge } from "@/shared/ui/badge"
 import {
@@ -313,6 +319,9 @@ export function AdminPanelPage() {
   const [password, setPassword] = useState("")
   const [draft, setDraft] = useState<AdminSettings | null>(null)
   const [creatingCommunityStand, setCreatingCommunityStand] = useState(false)
+  const [selectedRoomNumber, setSelectedRoomNumber] = useState("")
+  const [activeRoomToken, setActiveRoomToken] =
+    useState<AdminRoomTeamTokenResponse | null>(null)
 
   const settingsQuery = useQuery({
     queryKey: ["admin", "settings"],
@@ -363,6 +372,20 @@ export function AdminPanelPage() {
     queryKey: ["admin", "community-stand-claims"],
     queryFn: () => gameApi.adminCommunityStandClaims(),
     enabled: Boolean(settingsQuery.data),
+    retry: false,
+    refetchInterval: 30_000,
+  })
+  const roomTeamsQuery = useQuery({
+    queryKey: ["admin", "room-teams"],
+    queryFn: gameApi.adminRoomTeams,
+    enabled: Boolean(settingsQuery.data),
+    retry: false,
+    refetchInterval: 30_000,
+  })
+  const roomTeamMembersQuery = useQuery({
+    queryKey: ["admin", "room-teams", selectedRoomNumber, "members"],
+    queryFn: () => gameApi.adminRoomTeamMembers(selectedRoomNumber),
+    enabled: Boolean(settingsQuery.data && selectedRoomNumber),
     retry: false,
     refetchInterval: 30_000,
   })
@@ -481,6 +504,75 @@ export function AdminPanelPage() {
     },
   })
 
+  const createRoomTeamTokenMutation = useMutation({
+    mutationFn: gameApi.createAdminRoomTeamToken,
+    onSuccess: (result) => {
+      setActiveRoomToken(result)
+      queryClient.setQueryData<AdminRoomTeam[]>(
+        ["admin", "room-teams"],
+        (current) =>
+          (current ?? []).map((room) =>
+            room.roomNumber === result.room.roomNumber ? result.room : room,
+          ),
+      )
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "room-teams"],
+      })
+      toast.success(`${result.room.roomNumber} token 已產生`)
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "宿舍 token 產生失敗"))
+    },
+  })
+
+  const addRoomTeamMemberMutation = useMutation({
+    mutationFn: ({
+      roomNumber,
+      input,
+    }: {
+      roomNumber: string
+      input: AdminRoomTeamAddMemberInput
+    }) => gameApi.addAdminRoomTeamMember(roomNumber, input),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "room-teams"],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "room-teams", result.room.roomNumber, "members"],
+      })
+      toast.success(
+        result.added
+          ? `${result.member.nickname ?? result.member.playerId} 已加入 ${result.room.roomNumber}`
+          : `${result.member.nickname ?? result.member.playerId} 已在 ${result.room.roomNumber}`,
+      )
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "宿舍成員加入失敗"))
+    },
+  })
+
+  const removeRoomTeamMemberMutation = useMutation({
+    mutationFn: ({
+      roomNumber,
+      playerId,
+    }: {
+      roomNumber: string
+      playerId: string
+    }) => gameApi.removeAdminRoomTeamMember(roomNumber, playerId),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "room-teams"],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "room-teams", variables.roomNumber, "members"],
+      })
+      toast.success("宿舍成員已移除")
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "宿舍成員移除失敗"))
+    },
+  })
+
   function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     loginMutation.mutate(password)
@@ -513,7 +605,9 @@ export function AdminPanelPage() {
     historyQuery.isFetching ||
     giftHistoryQuery.isFetching ||
     studentChangesQuery.isFetching ||
-    communityStandsQuery.isFetching
+    communityStandsQuery.isFetching ||
+    roomTeamsQuery.isFetching ||
+    roomTeamMembersQuery.isFetching
 
   if (settingsQuery.isPending) {
     return (
@@ -612,6 +706,10 @@ export function AdminPanelPage() {
                 void giftHistoryQuery.refetch()
                 void studentChangesQuery.refetch()
                 void communityStandsQuery.refetch()
+                void roomTeamsQuery.refetch()
+                if (selectedRoomNumber) {
+                  void roomTeamMembersQuery.refetch()
+                }
               }}
             >
               <RefreshCw
@@ -700,6 +798,55 @@ export function AdminPanelPage() {
           isPending={updateMutation.isPending}
           onSubmit={handleUpdate}
           onUpdate={updateDraft}
+        />
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="宿舍管理"
+        description="房號 QR Code、宿舍群組成員與手動修正。"
+        badge={`${formatNumber(roomTeamsQuery.data?.reduce((sum, room) => sum + room.memberCount, 0) ?? 0)} members`}
+      >
+        <AdminRoomTeamsPanel
+          rooms={roomTeamsQuery.data ?? []}
+          selectedRoomNumber={selectedRoomNumber}
+          token={
+            activeRoomToken?.room.roomNumber === selectedRoomNumber
+              ? activeRoomToken
+              : null
+          }
+          members={roomTeamMembersQuery.data?.members ?? []}
+          error={roomTeamsQuery.error}
+          membersError={roomTeamMembersQuery.error}
+          isPending={roomTeamsQuery.isPending}
+          membersPending={roomTeamMembersQuery.isPending}
+          tokenPending={createRoomTeamTokenMutation.isPending}
+          addingMember={addRoomTeamMemberMutation.isPending}
+          removingPlayerID={
+            removeRoomTeamMemberMutation.isPending
+              ? removeRoomTeamMemberMutation.variables?.playerId
+              : undefined
+          }
+          onRetry={() => roomTeamsQuery.refetch()}
+          onRetryMembers={() => roomTeamMembersQuery.refetch()}
+          onSelectRoom={(roomNumber) => {
+            setSelectedRoomNumber(roomNumber)
+            setActiveRoomToken(null)
+            createRoomTeamTokenMutation.mutate(roomNumber)
+          }}
+          onAddMember={(input) => {
+            if (!selectedRoomNumber) return
+            addRoomTeamMemberMutation.mutate({
+              roomNumber: selectedRoomNumber,
+              input,
+            })
+          }}
+          onRemoveMember={(playerId) => {
+            if (!selectedRoomNumber) return
+            removeRoomTeamMemberMutation.mutate({
+              roomNumber: selectedRoomNumber,
+              playerId,
+            })
+          }}
         />
       </AdminCollapsibleSection>
 
@@ -2749,6 +2896,347 @@ function PlayerName({
         <span className="text-muted-foreground text-xs">{player.playerId}</span>
       </div>
     </div>
+  )
+}
+
+function AdminRoomTeamsPanel({
+  rooms,
+  selectedRoomNumber,
+  token,
+  members,
+  error,
+  membersError,
+  isPending,
+  membersPending,
+  tokenPending,
+  addingMember,
+  removingPlayerID,
+  onRetry,
+  onRetryMembers,
+  onSelectRoom,
+  onAddMember,
+  onRemoveMember,
+}: {
+  rooms: AdminRoomTeam[]
+  selectedRoomNumber: string
+  token: AdminRoomTeamTokenResponse | null
+  members: AdminRoomTeamMember[]
+  error: unknown
+  membersError: unknown
+  isPending: boolean
+  membersPending: boolean
+  tokenPending: boolean
+  addingMember: boolean
+  removingPlayerID?: string
+  onRetry: () => void
+  onRetryMembers: () => void
+  onSelectRoom: (roomNumber: string) => void
+  onAddMember: (input: AdminRoomTeamAddMemberInput) => void
+  onRemoveMember: (playerId: string) => void
+}) {
+  const [manualMemberValue, setManualMemberValue] = useState("")
+  const selectedRoom = rooms.find(
+    (room) => room.roomNumber === selectedRoomNumber,
+  )
+  const selectedRoomMemberCount = selectedRoom?.memberCount ?? members.length
+
+  function submitManualMember(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const value = manualMemberValue.trim()
+    if (!value || addingMember || !selectedRoomNumber) return
+    onAddMember(
+      value.startsWith("qr_") ? { qrcodeToken: value } : { playerId: value },
+    )
+    setManualMemberValue("")
+  }
+
+  if (isPending) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardContent className="flex items-center gap-3 px-5">
+          <Spinner className="size-5" />
+          <span className="font-black">正在載入宿舍房號</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="px-5">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <GameFeatureIcon name="dorm" className="size-5" />
+            宿舍管理
+          </CardTitle>
+          <CardDescription>
+            {errorMessage(error, "宿舍房號暫時無法讀取。")}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="px-5">
+          <Button type="button" variant="outline" onClick={onRetry}>
+            重新整理
+          </Button>
+        </CardFooter>
+      </Card>
+    )
+  }
+
+  return (
+    <section className="grid min-w-0 gap-3 xl:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.15fr)]">
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="gap-3 px-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg font-black">
+                <GameFeatureIcon name="dorm" className="size-5" />
+                房號 QR Code
+              </CardTitle>
+              <CardDescription>
+                選擇房號後會立即產生 10 分鐘有效的 QR Code。
+              </CardDescription>
+            </div>
+            {selectedRoom ? (
+              <Badge variant="secondary">
+                {formatNumber(selectedRoomMemberCount)} 人
+              </Badge>
+            ) : null}
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4 px-5">
+          <Field>
+            <Label htmlFor="room-team-select">房號</Label>
+            <Select value={selectedRoomNumber} onValueChange={onSelectRoom}>
+              <SelectTrigger id="room-team-select">
+                <SelectValue placeholder="選擇房號" />
+              </SelectTrigger>
+              <SelectContent>
+                {rooms.map((room) => (
+                  <SelectItem key={room.roomNumber} value={room.roomNumber}>
+                    {room.roomNumber} · {formatNumber(room.memberCount)} 人
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <div className="bg-paper border-ink grid aspect-square w-full place-items-center rounded-[18px] border-4 p-4">
+            {!selectedRoomNumber ? (
+              <div className="bg-surface-raised border-border grid h-full w-full place-items-center rounded-[12px] border-2 p-5 text-center">
+                <span className="text-muted-foreground text-sm font-black">
+                  選擇房號後顯示 QR Code
+                </span>
+              </div>
+            ) : tokenPending ? (
+              <div className="grid justify-items-center gap-3">
+                <Spinner className="size-8" />
+                <span className="text-sm font-black">產生 token 中</span>
+              </div>
+            ) : token ? (
+              <QRCodeSVG
+                aria-label={`${token.room.roomNumber} 宿舍 QR Code`}
+                bgColor="var(--paper)"
+                className="h-full w-full"
+                fgColor="var(--ink)"
+                level="M"
+                marginSize={4}
+                role="img"
+                size={260}
+                title={`${token.room.roomNumber} 宿舍 QR Code`}
+                value={roomTeamQrValue(token.qrToken)}
+              />
+            ) : (
+              <div className="bg-surface-raised border-border grid h-full w-full place-items-center rounded-[12px] border-2 p-5 text-center">
+                <span className="text-muted-foreground text-sm font-black">
+                  token 尚未產生
+                </span>
+              </div>
+            )}
+          </div>
+
+          {token ? (
+            <div className="grid gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-muted-foreground text-xs font-black tracking-[0.08em] uppercase">
+                  TOKEN
+                </span>
+                <Badge variant="outline">
+                  有效至 {formatDateTime(token.qrTokenExpiresAt)}
+                </Badge>
+              </div>
+              <code className="bg-surface-raised border-border rounded-[14px] border px-3 py-2 text-xs break-all">
+                {token.qrToken}
+              </code>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-[18px] py-5">
+        <CardHeader className="gap-3 px-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg font-black">
+                <GameFeatureIcon name="team" className="size-5" />
+                成員管理
+              </CardTitle>
+              <CardDescription>
+                檢查掃描結果，必要時手動加入或移除學員。
+              </CardDescription>
+            </div>
+            {selectedRoomNumber ? (
+              <Badge variant="outline">房號 {selectedRoomNumber}</Badge>
+            ) : null}
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4 px-5">
+          {!selectedRoomNumber ? (
+            <EmptyBlock label="先選擇房號後才能管理成員" />
+          ) : (
+            <>
+              <form
+                className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
+                onSubmit={submitManualMember}
+              >
+                <Input
+                  value={manualMemberValue}
+                  onChange={(event) => setManualMemberValue(event.target.value)}
+                  placeholder="輸入 player ID 或個人 QR token"
+                  autoComplete="off"
+                />
+                <Button
+                  type="submit"
+                  disabled={!manualMemberValue.trim() || addingMember}
+                >
+                  {addingMember ? (
+                    <Spinner className="size-4" />
+                  ) : (
+                    <Plus className="size-4" />
+                  )}
+                  加入
+                </Button>
+              </form>
+
+              {membersPending ? (
+                <div className="flex items-center gap-3 py-4">
+                  <Spinner className="size-5" />
+                  <span className="font-black">正在載入宿舍成員</span>
+                </div>
+              ) : membersError ? (
+                <div className="grid gap-3">
+                  <EmptyBlock
+                    label={errorMessage(membersError, "宿舍成員暫時無法讀取")}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onRetryMembers}
+                  >
+                    重新整理成員
+                  </Button>
+                </div>
+              ) : members.length === 0 ? (
+                <EmptyBlock label="目前沒有成員" />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>學員</TableHead>
+                      <TableHead>正式隊伍</TableHead>
+                      <TableHead>加入來源</TableHead>
+                      <TableHead>加入時間</TableHead>
+                      <TableHead className="w-[96px] text-right">
+                        操作
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {members.map((member) => {
+                      const removing = removingPlayerID === member.playerId
+                      return (
+                        <TableRow key={member.playerId}>
+                          <TableCell className="min-w-[180px] whitespace-normal">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <PlayerAvatar
+                                playerId={member.playerId}
+                                nickname={member.nickname ?? member.playerId}
+                                avatarUrl={member.avatarUrl}
+                                className="border-ink size-9 rounded-full border"
+                              />
+                              <div className="grid min-w-0">
+                                <strong className="break-words">
+                                  {member.nickname ?? member.playerId}
+                                </strong>
+                                <span className="text-muted-foreground text-xs break-all">
+                                  {member.playerId}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {member.team
+                              ? `${member.team.name} / ${member.team.teamId}`
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {member.joinedBy === "admin" ? "手動" : "掃描"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {formatDateTime(member.joinedAt)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={Boolean(removingPlayerID)}
+                                >
+                                  {removing ? (
+                                    <Spinner className="size-4" />
+                                  ) : (
+                                    <Trash2 className="size-4" />
+                                  )}
+                                  移除
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    移除宿舍成員
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    將 {member.nickname ?? member.playerId} 從{" "}
+                                    {selectedRoomNumber} 宿舍群組移除。
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>取消</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() =>
+                                      onRemoveMember(member.playerId)
+                                    }
+                                  >
+                                    移除
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </section>
   )
 }
 

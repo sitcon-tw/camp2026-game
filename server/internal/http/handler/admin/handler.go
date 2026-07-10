@@ -67,6 +67,11 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Post("/admin/community-stands", h.CreateCommunityStand)
 	api.Put("/admin/community-stands/{standID}", h.UpdateCommunityStand)
 	api.Delete("/admin/community-stands/{standID}", h.DeleteCommunityStand)
+	api.Get("/admin/room-teams", h.ListRoomTeams)
+	api.Post("/admin/room-teams/{roomNumber}/token", h.CreateRoomTeamToken)
+	api.Get("/admin/room-teams/{roomNumber}/members", h.ListRoomTeamMembers)
+	api.Post("/admin/room-teams/{roomNumber}/members", h.AddRoomTeamMember)
+	api.Delete("/admin/room-teams/{roomNumber}/members/{playerID}", h.RemoveRoomTeamMember)
 	api.Put("/admin/teams/{teamID}", h.UpdateTeam)
 }
 

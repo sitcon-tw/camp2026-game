@@ -223,6 +223,36 @@ func TestIndexModelsByCollection(t *testing.T) {
 			},
 		},
 		{
+			collection: mongomodel.RoomTeamsCollection,
+			name:       "room_teams_room_number",
+			keys:       bson.D{{Key: "room_number", Value: 1}},
+			unique:     true,
+		},
+		{
+			collection: mongomodel.RoomTeamsCollection,
+			name:       "room_teams_qr_token",
+			keys:       bson.D{{Key: "qr_token", Value: 1}},
+			unique:     true,
+			partial:    bson.M{"qr_token": bson.M{"$gt": ""}},
+		},
+		{
+			collection: mongomodel.RoomTeamMembershipsCollection,
+			name:       "room_team_memberships_room_player",
+			keys: bson.D{
+				{Key: "room_team_id", Value: 1},
+				{Key: "player_id", Value: 1},
+			},
+			unique: true,
+		},
+		{
+			collection: mongomodel.RoomTeamMembershipsCollection,
+			name:       "room_team_memberships_player",
+			keys: bson.D{
+				{Key: "player_id", Value: 1},
+			},
+			unique: true,
+		},
+		{
 			collection: mongomodel.StaffRewardTokensCollection,
 			name:       "staff_reward_tokens_token",
 			keys: bson.D{
