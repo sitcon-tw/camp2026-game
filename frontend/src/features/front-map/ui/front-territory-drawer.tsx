@@ -186,7 +186,7 @@ function TerritoryDrawerContent({
   const hasCommandOptions = availableCommands.length > 0
   const disabledCommandReasons = commandList
     .map(({ item, option }) => {
-      const cost = commandOpenPowerCost(item.kind, option?.cost, garrison)
+      const cost = commandOpenPowerCost(item.kind, option?.cost, garrison, cell)
       return {
         item,
         reason:
@@ -261,6 +261,23 @@ function TerritoryDrawerContent({
             value={landmark?.label ?? (base ? "基地核心" : "一般領土")}
           />
         </div>
+
+        {cell.ownerTeamId ? (
+          <div className="bg-muted border-border grid gap-2 rounded-md border px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-black">領地 Lv.{cell.level}</div>
+              <Badge variant="secondary">
+                每 30 分鐘 基準 +{cell.holdingRewardBase}
+              </Badge>
+            </div>
+            <div className="text-muted-foreground text-xs font-bold">
+              下次獎勵 {formatTerritoryTime(cell.nextHoldingRewardAt)}
+              {cell.nextLevelAt
+                ? ` · 下次升級 ${formatTerritoryTime(cell.nextLevelAt)}`
+                : " · 已達最高等級"}
+            </div>
+          </div>
+        ) : null}
 
         {garrison ? (
           <div className="bg-muted border-border grid gap-2 rounded-md border px-3 py-2">
@@ -345,6 +362,7 @@ function TerritoryDrawerContent({
                   item.kind,
                   option?.cost,
                   garrison,
+                  cell,
                 )
                 const localReason =
                   item.kind === "attack" && !canAttackSelectedOwner
@@ -439,11 +457,23 @@ function commandOpenPowerCost(
   kind: FrontCommandKind,
   baseCost: number | undefined,
   garrison: FrontGarrison | null,
+  cell: TerritoryCellState,
 ) {
   if (kind === "attack" && garrison && !garrison.mine) {
     return garrison.attackOpenPowerCost
   }
+  if (kind === "attack") return cell.attackOpenPowerCost
   return baseCost ?? 0
+}
+
+function formatTerritoryTime(value: string | undefined) {
+  if (!value) return "尚未開始"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "-"
+  return date.toLocaleTimeString("zh-TW", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 function sitonePreviewLabel(

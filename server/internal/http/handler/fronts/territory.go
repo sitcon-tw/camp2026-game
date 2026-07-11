@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sitcon-tw/camp2026-game/internal/content"
 	mongomodel "github.com/sitcon-tw/camp2026-game/internal/mongodb/model"
@@ -23,8 +24,12 @@ const (
 	frontTradeHourlyLimit            = 300
 	frontGarrisonDefensePerSitone    = 5
 	frontGarrisonAttackCostPercent   = 10
+	frontTerritoryLevelCostPercent   = 20
 	frontCaptureRewardChancePercent  = 30
 	frontCaptureRewardMaximum        = 4
+	frontTerritoryMaximumLevel       = 4
+	frontTerritoryLevelDuration      = 90 * time.Minute
+	frontTerritoryRewardInterval     = 30 * time.Minute
 )
 
 var territoryTeamColors = []string{
@@ -33,9 +38,11 @@ var territoryTeamColors = []string{
 }
 
 type territoryCell struct {
-	Playable bool
-	Owner    string
-	Defense  int
+	Playable             bool
+	Owner                string
+	Defense              int
+	OccupiedAt           time.Time
+	HoldingRewardPeriods int
 }
 
 type territoryCandidate struct {
@@ -327,7 +334,7 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	if command.Kind == "reinforce" {
 		cost = territoryReinforceCost(matrix, command.TeamID, x, y, actionLimit)
 	} else if command.Kind == "attack" {
-		cost = territoryAttackOpenPowerCost(front, x, y)
+		cost = territoryAttackOpenPowerCost(front, target, x, y, command.CreatedAt)
 	}
 	controlledBefore := territoryControlledCellCount(matrix, command.TeamID)
 	if playerOpenPower < cost {
@@ -361,6 +368,10 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 		enclosed = captureEnclosedTerritory(matrix, command.TeamID, bases)
 		captured = appendUniqueTerritoryCoordinates(captured, enclosed...)
 		affected = appendUniqueTerritoryCoordinates(affected, enclosed...)
+		for _, coordinate := range captured {
+			matrix[coordinate.Y][coordinate.X].OccupiedAt = command.CreatedAt
+			matrix[coordinate.Y][coordinate.X].HoldingRewardPeriods = 0
+		}
 		displaceFrontGarrisons(&front, &command, captured)
 	}
 	if len(affected) == 0 {
@@ -400,7 +411,7 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	return front, command, nil
 }
 
-func territoryAttackOpenPowerCost(front mongomodel.Front, x int, y int) int {
+func territoryAttackOpenPowerCost(front mongomodel.Front, target territoryCell, x int, y int, now time.Time) int {
 	sitoneCount := 0
 	for _, garrison := range front.Garrisons {
 		if garrison.X == x && garrison.Y == y {
@@ -408,16 +419,22 @@ func territoryAttackOpenPowerCost(front mongomodel.Front, x int, y int) int {
 			break
 		}
 	}
-	return frontAttackOpenPowerCost(sitoneCount)
+	return frontAttackOpenPowerCost(territoryHoldingLevel(target.OccupiedAt, now), sitoneCount)
 }
 
-func frontAttackOpenPowerCost(sitoneCount int) int {
+func frontAttackOpenPowerCost(level int, sitoneCount int) int {
 	base := frontCommandCosts["attack"]
-	if sitoneCount <= 0 {
-		return base
-	}
-	percent := 100 + sitoneCount*frontGarrisonAttackCostPercent
+	level = clampFrontInt(level, 1, frontTerritoryMaximumLevel)
+	sitoneCount = maxFrontInt(0, sitoneCount)
+	percent := 100 + (level-1)*frontTerritoryLevelCostPercent + sitoneCount*frontGarrisonAttackCostPercent
 	return (base*percent + 99) / 100
+}
+
+func territoryHoldingLevel(occupiedAt time.Time, now time.Time) int {
+	if occupiedAt.IsZero() || now.Before(occupiedAt) {
+		return 1
+	}
+	return clampFrontInt(int(now.Sub(occupiedAt)/frontTerritoryLevelDuration)+1, 1, frontTerritoryMaximumLevel)
 }
 
 func territoryCaptureOpenPowerReward(frontID string, commandID string, captured []mongomodel.FrontCoordinate) int {
@@ -918,7 +935,10 @@ func decodeTerritoryRows(territory *mongomodel.FrontTerritory) ([][]territoryCel
 				if matrix[row.Y][x].Playable {
 					return nil, errors.New("territory runs overlap")
 				}
-				matrix[row.Y][x] = territoryCell{Playable: true, Owner: run.OwnerTeamID, Defense: run.Defense}
+				matrix[row.Y][x] = territoryCell{
+					Playable: true, Owner: run.OwnerTeamID, Defense: run.Defense,
+					OccupiedAt: run.OccupiedAt, HoldingRewardPeriods: run.HoldingRewardPeriods,
+				}
 			}
 		}
 	}
@@ -936,11 +956,15 @@ func encodeTerritoryRows(matrix [][]territoryCell) []mongomodel.FrontTerritoryRo
 			}
 			start := x
 			owner, defense := cells[x].Owner, cells[x].Defense
+			occupiedAt, holdingPeriods := cells[x].OccupiedAt, cells[x].HoldingRewardPeriods
 			x++
-			for x < len(cells) && cells[x].Playable && cells[x].Owner == owner && cells[x].Defense == defense {
+			for x < len(cells) && cells[x].Playable && cells[x].Owner == owner && cells[x].Defense == defense && cells[x].OccupiedAt.Equal(occupiedAt) && cells[x].HoldingRewardPeriods == holdingPeriods {
 				x++
 			}
-			row.Runs = append(row.Runs, mongomodel.FrontTerritoryRun{X: start, Length: x - start, OwnerTeamID: owner, Defense: defense})
+			row.Runs = append(row.Runs, mongomodel.FrontTerritoryRun{
+				X: start, Length: x - start, OwnerTeamID: owner, Defense: defense,
+				OccupiedAt: occupiedAt, HoldingRewardPeriods: holdingPeriods,
+			})
 		}
 		if len(row.Runs) > 0 {
 			rows = append(rows, row)

@@ -7327,11 +7327,32 @@ const docTemplate = `{
         "fronts.FrontTerritoryRunResponse": {
             "type": "object",
             "properties": {
+                "attackOpenPowerCost": {
+                    "type": "integer"
+                },
                 "defense": {
+                    "type": "integer"
+                },
+                "holdingRewardBase": {
+                    "type": "integer"
+                },
+                "holdingRewardPeriods": {
                     "type": "integer"
                 },
                 "length": {
                     "type": "integer"
+                },
+                "level": {
+                    "type": "integer"
+                },
+                "nextHoldingRewardAt": {
+                    "type": "string"
+                },
+                "nextLevelAt": {
+                    "type": "string"
+                },
+                "occupiedAt": {
+                    "type": "string"
                 },
                 "ownerTeamId": {
                     "type": "string"

@@ -42,13 +42,13 @@ func detailResponse(front mongomodel.Front, currentPlayerID string, currentTeamI
 		CurrentPlayerOpenPower: playerOpenPower,
 		FrontPowerSource:       "player_ledger",
 		AvailableCommands:      commandOptionResponses(front, currentPlayerID, currentTeamID, playerOpenPower),
-		Garrisons:              garrisonResponses(front.Garrisons, currentPlayerID),
+		Garrisons:              garrisonResponses(front.Garrisons, currentPlayerID, front.Territory, front.UpdatedAt),
 		RailSegments:           railSegmentResponses(front.RailSegments),
 		TradeRoutes:            tradeRouteResponses(front.TradeRoutes),
 	}
 	if front.Territory != nil {
 		response.Grid = territoryGridResponse(front.Territory)
-		response.TerritoryRows = territoryRowResponses(front.Territory.Rows)
+		response.TerritoryRows = territoryRowResponses(front.Territory.Rows, front.UpdatedAt)
 		response.Bases = territoryBaseResponses(front.Territory.Bases)
 		response.Landmarks = territoryLandmarkResponses(front.Territory.Landmarks)
 	}
@@ -188,15 +188,20 @@ func commandSummaryResponse(command *mongomodel.FrontCommandSummary) *FrontComma
 	}
 }
 
-func garrisonResponses(garrisons []mongomodel.FrontGarrison, currentPlayerID string) []FrontGarrisonResponse {
+func garrisonResponses(garrisons []mongomodel.FrontGarrison, currentPlayerID string, territory *mongomodel.FrontTerritory, now time.Time) []FrontGarrisonResponse {
+	matrix, _ := decodeTerritoryRows(territory)
 	out := make([]FrontGarrisonResponse, 0, len(garrisons))
 	for _, garrison := range garrisons {
+		level := 1
+		if territoryInBounds(matrix, garrison.X, garrison.Y) {
+			level = territoryHoldingLevel(matrix[garrison.Y][garrison.X].OccupiedAt, now)
+		}
 		out = append(out, FrontGarrisonResponse{
 			ID: garrison.ID, PlayerID: garrison.PlayerID, TeamID: garrison.TeamID,
 			X: garrison.X, Y: garrison.Y, SitoneIDs: append([]string(nil), garrison.SitoneIDs...),
 			SitoneCount: len(garrison.SitoneIDs), DefenseBonus: garrison.DefenseBonus,
 			TradeBonusPercent:   garrison.TradeBonusPercent,
-			AttackOpenPowerCost: frontAttackOpenPowerCost(len(garrison.SitoneIDs)),
+			AttackOpenPowerCost: frontAttackOpenPowerCost(level, len(garrison.SitoneIDs)),
 			Mine:                garrison.PlayerID != "" && garrison.PlayerID == currentPlayerID,
 			StationedAt:         garrison.StationedAt,
 		})
@@ -270,12 +275,28 @@ func territoryGridResponse(territory *mongomodel.FrontTerritory) *FrontTerritory
 	}
 }
 
-func territoryRowResponses(rows []mongomodel.FrontTerritoryRow) []FrontTerritoryRowResponse {
+func territoryRowResponses(rows []mongomodel.FrontTerritoryRow, now time.Time) []FrontTerritoryRowResponse {
 	out := make([]FrontTerritoryRowResponse, 0, len(rows))
 	for _, row := range rows {
 		runs := make([]FrontTerritoryRunResponse, 0, len(row.Runs))
 		for _, run := range row.Runs {
-			runs = append(runs, FrontTerritoryRunResponse{X: run.X, Length: run.Length, OwnerTeamID: run.OwnerTeamID, Defense: run.Defense})
+			level := territoryHoldingLevel(run.OccupiedAt, now)
+			response := FrontTerritoryRunResponse{
+				X: run.X, Length: run.Length, OwnerTeamID: run.OwnerTeamID, Defense: run.Defense,
+				Level: level, HoldingRewardBase: frontHoldingRewardBases[level-1],
+				HoldingRewardPeriods: run.HoldingRewardPeriods,
+				AttackOpenPowerCost:  frontAttackOpenPowerCost(level, 0),
+			}
+			if !run.OccupiedAt.IsZero() {
+				response.OccupiedAt = timePtr(run.OccupiedAt)
+				nextReward := run.OccupiedAt.Add(time.Duration(run.HoldingRewardPeriods+1) * frontTerritoryRewardInterval)
+				response.NextHoldingRewardAt = timePtr(nextReward)
+				if level < frontTerritoryMaximumLevel {
+					nextLevel := run.OccupiedAt.Add(time.Duration(level) * frontTerritoryLevelDuration)
+					response.NextLevelAt = timePtr(nextLevel)
+				}
+			}
+			runs = append(runs, response)
 		}
 		out = append(out, FrontTerritoryRowResponse{Y: row.Y, Runs: runs})
 	}

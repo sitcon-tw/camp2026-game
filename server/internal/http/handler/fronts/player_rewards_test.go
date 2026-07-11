@@ -156,6 +156,26 @@ func TestDisplacedGarrisonSitonesReturnToOriginalPlayer(t *testing.T) {
 	}
 }
 
+func TestHoldingRewardWritesEveryTeamMemberLedger(t *testing.T) {
+	db := startFrontMockDatabase(t,
+		frontCursorResponse(
+			bson.D{{Key: "_id", Value: "player-a"}},
+			bson.D{{Key: "_id", Value: "player-b"}},
+		),
+		bson.D{{Key: "ok", Value: 1}, {Key: "n", Value: int32(1)}},
+		bson.D{{Key: "ok", Value: 1}, {Key: "n", Value: int32(1)}},
+	)
+	handler := New(Dependencies{MongoDB: db})
+	occupiedAt := time.Date(2026, time.July, 11, 4, 0, 0, 0, time.UTC)
+	err := handler.recordFrontHoldingRewards(t.Context(), "front-1", []frontHoldingRewardSettlement{{
+		TeamID: "team-001", X: 3, Y: 4, Period: 1, Amount: 3,
+		OccupiedAt: occupiedAt, SettledAt: occupiedAt.Add(frontTerritoryRewardInterval),
+	}})
+	if err != nil {
+		t.Fatalf("record team holding rewards: %v", err)
+	}
+}
+
 func startFrontMockDatabase(t *testing.T, responses ...bson.D) *mongo.Database {
 	t.Helper()
 	deployment := drivertest.NewMockDeployment(responses...)

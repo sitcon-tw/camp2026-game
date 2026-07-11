@@ -242,7 +242,9 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
     const commandCost =
       kind === "attack" && selectedGarrison
         ? selectedGarrison.attackOpenPowerCost
-        : (option?.cost ?? 0)
+        : kind === "attack"
+          ? selectedTerritoryCell.attackOpenPowerCost
+          : (option?.cost ?? 0)
     if (snapshot.currentPlayerOpenPower < commandCost) {
       toast.error("開源力不足")
       return

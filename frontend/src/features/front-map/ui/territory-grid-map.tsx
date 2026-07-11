@@ -59,6 +59,13 @@ export type TerritoryTarget = {
 export type TerritoryCellState = TerritoryTarget & {
   ownerTeamId?: string
   defense: number
+  level: number
+  holdingRewardBase: number
+  holdingRewardPeriods: number
+  attackOpenPowerCost: number
+  occupiedAt?: string
+  nextHoldingRewardAt?: string
+  nextLevelAt?: string
 }
 
 type TerritoryGridMapProps = {
@@ -982,6 +989,13 @@ export function decodeTerritoryRows(
           y: row.y,
           ownerTeamId: run.ownerTeamId,
           defense: clampPercent(run.defense),
+          level: run.level,
+          holdingRewardBase: run.holdingRewardBase,
+          holdingRewardPeriods: run.holdingRewardPeriods,
+          attackOpenPowerCost: run.attackOpenPowerCost,
+          occupiedAt: run.occupiedAt,
+          nextHoldingRewardAt: run.nextHoldingRewardAt,
+          nextLevelAt: run.nextLevelAt,
         })
       }
     }

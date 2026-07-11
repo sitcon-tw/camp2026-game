@@ -486,6 +486,13 @@ const FrontTerritoryRunSchema = z.object({
     .nullish()
     .transform((value) => value ?? undefined),
   defense: z.number().default(0),
+  level: z.number().int().min(1).max(4).default(1),
+  holdingRewardBase: z.number().int().nonnegative().default(3),
+  holdingRewardPeriods: z.number().int().nonnegative().default(0),
+  attackOpenPowerCost: z.number().int().nonnegative().default(15),
+  occupiedAt: z.string().optional(),
+  nextHoldingRewardAt: z.string().optional(),
+  nextLevelAt: z.string().optional(),
 })
 
 const FrontTerritoryRowSchema = z.object({
