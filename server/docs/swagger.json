@@ -1058,6 +1058,44 @@
                 }
             }
         },
+        "/admin/settlement": {
+            "get": {
+                "description": "Calculates the current T-shirt item count and final award recipients without modifying inventory.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Calculate admin final settlement",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.SettlementResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/student-changes": {
             "get": {
                 "description": "Admin-only endpoint. Returns recent resource changes across non-staff players, including staff rewards, community stand claims, drops, shop purchases, fusions, balance trims, and direct open power records.",
@@ -6151,6 +6189,81 @@
                 },
                 "sameTeamBattlesEnabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "admin.SettlementAwardResponse": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "metric": {
+                    "type": "string"
+                },
+                "players": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.SettlementPlayerResponse"
+                    }
+                },
+                "team": {
+                    "$ref": "#/definitions/admin.SettlementTeamResponse"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.SettlementPlayerResponse": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "playerId": {
+                    "type": "string"
+                },
+                "team": {
+                    "$ref": "#/definitions/admin.DashboardTeamSummaryResponse"
+                }
+            }
+        },
+        "admin.SettlementResponse": {
+            "type": "object",
+            "properties": {
+                "awards": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.SettlementAwardResponse"
+                    }
+                },
+                "generatedAt": {
+                    "type": "string"
+                },
+                "tshirtCount": {
+                    "type": "integer",
+                    "example": 12
+                }
+            }
+        },
+        "admin.SettlementTeamResponse": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "teamId": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "number"
                 }
             }
         },

@@ -1208,6 +1208,34 @@ const AdminDashboardSchema = z.object({
   }),
 })
 
+const AdminSettlementPlayerSchema = z.object({
+  playerId: z.string(),
+  nickname: z.string(),
+  avatarUrl: z.string().optional(),
+  team: AdminDashboardTeamSummarySchema.optional(),
+})
+
+const AdminSettlementSchema = z.object({
+  generatedAt: z.string(),
+  tshirtCount: z.number().int().nonnegative(),
+  awards: z.array(
+    z.object({
+      key: z.string(),
+      title: z.string(),
+      metric: z.string().optional(),
+      players: z.array(AdminSettlementPlayerSchema),
+      team: z
+        .object({
+          teamId: z.string(),
+          name: z.string(),
+          avatarUrl: z.string().optional(),
+          value: z.number(),
+        })
+        .optional(),
+    }),
+  ),
+})
+
 const AdminDashboardHistoryPointSchema = z.object({
   timestamp: z.string(),
   sitoneCount: z.number(),
@@ -1428,6 +1456,7 @@ export type AdminDashboardHistory = z.infer<typeof AdminDashboardHistorySchema>
 export type AdminDashboardHistoryPoint = z.infer<
   typeof AdminDashboardHistoryPointSchema
 >
+export type AdminSettlement = z.infer<typeof AdminSettlementSchema>
 export type GiftHistoryEntry = z.infer<typeof GiftHistoryEntrySchema>
 export type AdminOpenPowerTransferEntry = z.infer<
   typeof AdminOpenPowerTransferEntrySchema
@@ -1844,6 +1873,11 @@ export const gameApi = {
   async adminDashboard() {
     const json = await apiClient.get("/api/admin/dashboard")
     return AdminDashboardSchema.parse(json)
+  },
+
+  async adminSettlement() {
+    const json = await apiClient.get("/api/admin/settlement")
+    return AdminSettlementSchema.parse(json)
   },
 
   async adminHistory(bucket: "hour" | "day" = "hour") {
