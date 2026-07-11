@@ -56,8 +56,7 @@ icon_path = "/game-icons/items/item_cat_paw_print.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_charter_draft"
@@ -144,8 +143,7 @@ icon_path = "/game-icons/items/item_essence_timer.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_finite_label"
@@ -192,8 +190,7 @@ icon_path = "/game-icons/items/item_lightning_talk_script.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_maze_map"
@@ -229,8 +226,7 @@ icon_path = "/game-icons/items/item_mission_map.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_open_source_roadmap"
@@ -242,8 +238,7 @@ icon_path = "/game-icons/items/item_open_source_roadmap.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_pixel_paint"
@@ -255,8 +250,7 @@ icon_path = "/game-icons/items/item_pixel_paint.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_polaroid_film"
@@ -268,8 +262,7 @@ icon_path = "/game-icons/items/item_polaroid_film.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_predecessor_notes"
@@ -354,8 +347,7 @@ icon_path = "/game-icons/items/item_star_village_badge.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_star_village_signpost"
@@ -367,8 +359,7 @@ icon_path = "/game-icons/items/item_star_village_signpost.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_sticky_note"
@@ -443,8 +434,7 @@ icon_path = "/game-icons/items/item_toolbox_key.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_tour_flag"
@@ -468,8 +458,7 @@ icon_path = "/game-icons/items/item_transparent_proposal.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_venue_route"
@@ -481,8 +470,7 @@ icon_path = "/game-icons/items/item_venue_route.png"
 source = "shop"
 purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 650
 
 [[items]]
 id = "item_wooden_abacus"
@@ -577,8 +565,8 @@ description = "看起來好像有什麼功能..."
 icon_path = "/game-icons/items/item_postcard_sitcon2024.png"
 source = "shop"
 purchasable = true
-enabled = false
-price_open_power = 300
+enabled = true
+price_open_power = 800
 
 [[items]]
 id = "item_postcard_sitcon2026"
