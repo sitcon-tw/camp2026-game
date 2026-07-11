@@ -55,10 +55,12 @@ type FrontTerritoryRow struct {
 }
 
 type FrontTerritoryRun struct {
-	X           int    `bson:"x"`
-	Length      int    `bson:"length"`
-	OwnerTeamID string `bson:"owner_team_id,omitempty"`
-	Defense     int    `bson:"defense,omitempty"`
+	X                    int       `bson:"x"`
+	Length               int       `bson:"length"`
+	OwnerTeamID          string    `bson:"owner_team_id,omitempty"`
+	Defense              int       `bson:"defense,omitempty"`
+	OccupiedAt           time.Time `bson:"occupied_at,omitempty"`
+	HoldingRewardPeriods int       `bson:"holding_reward_periods,omitempty"`
 }
 
 type FrontTerritoryBase struct {

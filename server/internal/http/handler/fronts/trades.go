@@ -60,9 +60,8 @@ func (h *Handler) advanceCurrentFrontTrades(ctx context.Context, now time.Time) 
 	cursor, err := h.db.Collection(mongomodel.FrontsCollection).Find(
 		ctx,
 		bson.M{
-			"current":     true,
-			"status":      bson.M{"$in": bson.A{mongomodel.FrontStatusOpenPlay, "surge", "booth_window"}},
-			"garrisons.0": bson.M{"$exists": true},
+			"current": true,
+			"status":  bson.M{"$in": bson.A{mongomodel.FrontStatusOpenPlay, "surge", "booth_window"}},
 		},
 		options.Find().SetProjection(bson.M{"_id": 1}),
 	)
@@ -119,8 +118,14 @@ func (h *Handler) advanceFrontTradesOnce(ctx context.Context, frontID string, no
 		front = h.withFrontDefaults(front)
 		previousRevision := front.Revision
 		next, settlements, advanced := advanceFrontTradeState(front, now)
-		if !advanced.Changed {
+		next, holdingSettlements, holdingChanged := advanceFrontHoldingRewardState(next, now)
+		if !advanced.Changed && !holdingChanged {
 			return nil, nil
+		}
+		if holdingChanged && !advanced.Changed {
+			next.Revision++
+			next.Tick++
+			next.UpdatedAt = now
 		}
 		changed = true
 		eventName = frontTradeEventName(advanced)
@@ -129,11 +134,15 @@ func (h *Handler) advanceFrontTradesOnce(ctx context.Context, frontID string, no
 				return nil, err
 			}
 		}
+		if err := h.recordFrontHoldingRewards(ctx, frontID, holdingSettlements); err != nil {
+			return nil, err
+		}
 		result, err := h.db.Collection(mongomodel.FrontsCollection).UpdateOne(
 			ctx,
 			frontRevisionFilter(frontID, previousRevision),
 			bson.M{"$set": bson.M{
 				"teams": next.Teams, "leaderboard": next.Leaderboard,
+				"territory": next.Territory,
 				"garrisons": next.Garrisons, "rail_segments": next.RailSegments,
 				"trade_routes": next.TradeRoutes, "revision": next.Revision,
 				"tick": next.Tick, "updated_at": next.UpdatedAt,

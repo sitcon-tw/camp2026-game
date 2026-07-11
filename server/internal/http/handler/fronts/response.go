@@ -90,10 +90,17 @@ type FrontTerritoryRowResponse struct {
 }
 
 type FrontTerritoryRunResponse struct {
-	X           int    `json:"x"`
-	Length      int    `json:"length"`
-	OwnerTeamID string `json:"ownerTeamId,omitempty"`
-	Defense     int    `json:"defense"`
+	X                    int        `json:"x"`
+	Length               int        `json:"length"`
+	OwnerTeamID          string     `json:"ownerTeamId,omitempty"`
+	Defense              int        `json:"defense"`
+	Level                int        `json:"level"`
+	HoldingRewardBase    int        `json:"holdingRewardBase"`
+	HoldingRewardPeriods int        `json:"holdingRewardPeriods"`
+	AttackOpenPowerCost  int        `json:"attackOpenPowerCost"`
+	OccupiedAt           *time.Time `json:"occupiedAt,omitempty"`
+	NextHoldingRewardAt  *time.Time `json:"nextHoldingRewardAt,omitempty"`
+	NextLevelAt          *time.Time `json:"nextLevelAt,omitempty"`
 }
 
 type FrontTerritoryBaseResponse struct {

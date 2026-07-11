@@ -88,7 +88,7 @@ func TestGarrisonAttackOpenPowerCostScalesPerSitone(t *testing.T) {
 		{sitoneCount: 5, want: 23},
 	}
 	for _, test := range tests {
-		if got := frontAttackOpenPowerCost(test.sitoneCount); got != test.want {
+		if got := frontAttackOpenPowerCost(1, test.sitoneCount); got != test.want {
 			t.Fatalf("%d sitones: got cost %d, want %d", test.sitoneCount, got, test.want)
 		}
 	}
@@ -96,15 +96,30 @@ func TestGarrisonAttackOpenPowerCostScalesPerSitone(t *testing.T) {
 
 func TestTerritoryAttackCostUsesOnlyTargetGarrison(t *testing.T) {
 	front := newTerritoryTestFront(3, 1)
+	now := time.Now().UTC()
+	target := territoryCell{OccupiedAt: now}
 	front.Garrisons = []mongomodel.FrontGarrison{
 		{X: 1, Y: 0, SitoneIDs: []string{"stone-a", "stone-b"}},
 		{X: 2, Y: 0, SitoneIDs: []string{"stone-a", "stone-b", "stone-c", "stone-d", "stone-e"}},
 	}
-	if got := territoryAttackOpenPowerCost(front, 1, 0); got != 18 {
+	if got := territoryAttackOpenPowerCost(front, target, 1, 0, now); got != 18 {
 		t.Fatalf("target garrison cost = %d, want 18", got)
 	}
-	if got := territoryAttackOpenPowerCost(front, 0, 0); got != 15 {
+	if got := territoryAttackOpenPowerCost(front, target, 0, 0, now); got != 15 {
 		t.Fatalf("empty target cost = %d, want 15", got)
+	}
+}
+
+func TestTerritoryLevelIncreasesAttackOpenPowerCost(t *testing.T) {
+	wants := []int{15, 18, 21, 24}
+	for index, want := range wants {
+		level := index + 1
+		if got := frontAttackOpenPowerCost(level, 0); got != want {
+			t.Fatalf("level %d cost = %d, want %d", level, got, want)
+		}
+	}
+	if got := frontAttackOpenPowerCost(4, 5); got != 32 {
+		t.Fatalf("level 4 with five sitones cost = %d, want 32", got)
 	}
 }
 
