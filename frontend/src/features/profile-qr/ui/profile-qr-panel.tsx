@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
 import { PlayerAvatar } from "@/shared/ui/player-avatar"
 import { Skeleton } from "@/shared/ui/skeleton"
+import { ZoomableQRCode } from "@/shared/ui/zoomable-qr-code"
 import { toOptimizedImageSrc } from "@/shared/utils/image-src"
 
 import { CommunityStandScannerDialog } from "./community-stand-scanner-dialog"
@@ -374,11 +375,14 @@ function PersonalQRCode({
   }
 
   return (
-    <div className="bg-paper border-ink mx-auto grid aspect-square w-full max-w-[306px] place-items-center rounded-[18px] border-4 p-[18px]">
+    <ZoomableQRCode
+      label="個人 QR Code"
+      className="bg-paper border-ink hover:bg-paper grid aspect-square w-full max-w-[306px] place-items-center rounded-[18px] border-4 p-[18px]"
+    >
       <QRCodeSVG
         aria-label="個人 QR Code"
         bgColor="var(--paper)"
-        className="h-full w-full"
+        className="size-full"
         fgColor="var(--ink)"
         level="M"
         marginSize={4}
@@ -387,7 +391,7 @@ function PersonalQRCode({
         title="個人 QR Code"
         value={token}
       />
-    </div>
+    </ZoomableQRCode>
   )
 }
 

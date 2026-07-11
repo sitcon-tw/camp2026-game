@@ -51,6 +51,7 @@ import {
   SelectValue,
 } from "@/shared/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs"
+import { ZoomableQRCode } from "@/shared/ui/zoomable-qr-code"
 import { cn } from "@/shared/utils"
 
 type RewardOption = {
@@ -348,11 +349,14 @@ function RewardTokenCard({ token }: { token: StaffRewardTokenResponse }) {
   return (
     <Card className="border-ink rounded-[22px] border-2">
       <CardContent className="grid justify-items-center gap-4 p-5 text-center">
-        <div className="bg-paper border-ink grid aspect-square w-full max-w-[280px] place-items-center rounded-[18px] border-4 p-4">
+        <ZoomableQRCode
+          label="staff 獎勵 Token QR Code"
+          className="bg-paper border-ink hover:bg-paper grid aspect-square w-full max-w-[280px] place-items-center rounded-[18px] border-4 p-4"
+        >
           <QRCodeSVG
             aria-label="staff 獎勵 Token QR Code"
             bgColor="var(--paper)"
-            className="h-full w-full"
+            className="size-full"
             fgColor="var(--ink)"
             level="M"
             marginSize={4}
@@ -361,7 +365,7 @@ function RewardTokenCard({ token }: { token: StaffRewardTokenResponse }) {
             title="staff 獎勵 Token QR Code"
             value={staffRewardTokenQrValue(token.token)}
           />
-        </div>
+        </ZoomableQRCode>
         <div>
           <p className="text-muted-foreground mb-1 text-xs font-black tracking-[0.08em] uppercase">
             SCAN TOKEN

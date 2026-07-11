@@ -128,6 +128,7 @@ import {
 } from "@/shared/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
 import { Textarea } from "@/shared/ui/textarea"
+import { ZoomableQRCode } from "@/shared/ui/zoomable-qr-code"
 import { cn } from "@/shared/utils"
 import { imageSrcCandidates } from "@/shared/utils/image-src"
 
@@ -3214,18 +3215,23 @@ function AdminRoomTeamsPanel({
                 <span className="text-sm font-black">產生 token 中</span>
               </div>
             ) : token ? (
-              <QRCodeSVG
-                aria-label={`${token.room.roomNumber} 宿舍 QR Code`}
-                bgColor="var(--paper)"
-                className="h-full w-full"
-                fgColor="var(--ink)"
-                level="M"
-                marginSize={4}
-                role="img"
-                size={260}
-                title={`${token.room.roomNumber} 宿舍 QR Code`}
-                value={roomTeamQrValue(token.qrToken)}
-              />
+              <ZoomableQRCode
+                label={`${token.room.roomNumber} 宿舍 QR Code`}
+                className="h-full w-full border-0 bg-transparent p-0 shadow-none hover:bg-transparent"
+              >
+                <QRCodeSVG
+                  aria-label={`${token.room.roomNumber} 宿舍 QR Code`}
+                  bgColor="var(--paper)"
+                  className="size-full"
+                  fgColor="var(--ink)"
+                  level="M"
+                  marginSize={4}
+                  role="img"
+                  size={260}
+                  title={`${token.room.roomNumber} 宿舍 QR Code`}
+                  value={roomTeamQrValue(token.qrToken)}
+                />
+              </ZoomableQRCode>
             ) : (
               <div className="bg-surface-raised border-border grid h-full w-full place-items-center rounded-[12px] border-2 p-5 text-center">
                 <span className="text-muted-foreground text-sm font-black">

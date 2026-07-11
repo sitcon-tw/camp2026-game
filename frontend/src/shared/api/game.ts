@@ -1715,6 +1715,13 @@ export const gameApi = {
     await apiClient.post(`/api/matches/${matchID}/leave`)
   },
 
+  async rematch(matchID: string) {
+    const json = await apiClient.post(
+      `/api/matches/${encodeURIComponent(matchID)}/rematch`,
+    )
+    return MatchStateSchema.parse(json)
+  },
+
   async updateMatchLoadout(matchID: string, sitoneIds: string[]) {
     const json = await apiClient.put(`/api/matches/${matchID}/loadout`, {
       json: { sitoneIds },

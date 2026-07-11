@@ -64,6 +64,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Post("/matches/{matchID}/leave", h.Leave)
 	api.Put("/matches/{matchID}/loadout", h.UpdateLoadout)
 	api.Post("/matches/{matchID}/computer-players", h.AddComputerPlayer)
+	api.Post("/matches/{matchID}/rematch", h.Rematch)
 	api.Post("/matches/{matchID}/ready", h.Ready)
 	api.Post("/matches/{matchID}/answers", h.Answer)
 	api.Get("/matches/{matchID}/events", h.Events)
