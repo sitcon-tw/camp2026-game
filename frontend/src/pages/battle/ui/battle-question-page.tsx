@@ -229,8 +229,8 @@ function MultiplayerScoreboard({
   )
 
   return (
-    <Card>
-      <CardContent className="grid gap-2">
+    <Card className="py-3">
+      <CardContent className="grid gap-2 px-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-lg leading-none font-black">總分排名</span>
           <span className="text-muted-foreground text-xs font-black">
@@ -238,7 +238,7 @@ function MultiplayerScoreboard({
             {players.length} 已答
           </span>
         </div>
-        <div className="grid gap-2">
+        <div className="grid max-h-[min(34dvh,18rem)] gap-2 overflow-y-auto pr-1">
           {rankedPlayers.map((player, index) => {
             const score = player.score ?? 0
             const maxScore = player.maxScore ?? 0
@@ -505,14 +505,8 @@ export function BattleQuestionPage() {
   }
 
   return (
-    <GamePageShell contentClassName="grid min-h-dvh grid-rows-[auto_minmax(0,1fr)_auto] gap-y-2 px-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-      {multiplayerMatch ? (
-        <MultiplayerScoreboard
-          players={players}
-          currentPlayerID={statusQuery.data?.playerId}
-          phase={phase}
-        />
-      ) : (
+    <GamePageShell contentClassName="flex min-h-dvh flex-col gap-y-2 px-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      {!multiplayerMatch ? (
         <PlayerRail
           label="對手"
           player={opponentPlayer}
@@ -520,9 +514,9 @@ export function BattleQuestionPage() {
           side="opponent"
           phase={phase}
         />
-      )}
+      ) : null}
 
-      <div className="grid min-h-0 content-start gap-y-2">
+      <div className="grid content-start gap-y-2">
         <Card>
           <CardContent className="grid gap-3">
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
@@ -620,13 +614,23 @@ export function BattleQuestionPage() {
         </Card>
       </div>
 
-      <PlayerRail
-        label="自己"
-        player={currentPlayer}
-        sitones={currentPlayerSitones}
-        side="self"
-        phase={phase}
-      />
+      {multiplayerMatch ? (
+        <MultiplayerScoreboard
+          players={players}
+          currentPlayerID={statusQuery.data?.playerId}
+          phase={phase}
+        />
+      ) : null}
+
+      <div className="mt-auto">
+        <PlayerRail
+          label="自己"
+          player={currentPlayer}
+          sitones={currentPlayerSitones}
+          side="self"
+          phase={phase}
+        />
+      </div>
     </GamePageShell>
   )
 }
