@@ -104,10 +104,10 @@ export function AppBottomNav() {
       {battleMenuOpen ? (
         <div
           id="battle-menu"
-          className="border-ink bg-surface-raised animate-in fade-in-0 slide-in-from-bottom-3 fixed bottom-[calc(5.65rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[min(calc(100%-3rem),18rem)] -translate-x-1/2 rounded-lg border-2 p-2 shadow-[4px_4px_0_rgba(23,35,58,0.2)] duration-200 motion-reduce:animate-none"
+          className="border-ink bg-power animate-in fade-in-0 slide-in-from-bottom-3 fixed bottom-[calc(5.65rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[min(calc(100%-3rem),13rem)] -translate-x-1/2 rounded-lg border-2 p-3 shadow-[5px_5px_0_rgba(23,35,58,0.28)] duration-200 motion-reduce:animate-none"
           aria-label="選擇戰鬥模式"
         >
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             {battleItems.map((item) => {
               const active =
                 pathname === item.to || pathname.startsWith(`${item.to}/`)
@@ -118,7 +118,7 @@ export function AppBottomNav() {
                   to={item.to}
                   onClick={() => setBattleMenuPathname(null)}
                   className={[
-                    "border-ink bg-card focus-visible:outline-power flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg border-2 px-2 py-3 text-center no-underline shadow-[2px_2px_0_rgba(23,35,58,0.2)] transition-transform duration-150 hover:-translate-y-1 focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px motion-reduce:transition-none",
+                    "border-ink bg-card focus-visible:outline-power flex aspect-[4/5] flex-col items-center justify-center gap-2 rounded-md border-2 px-1.5 py-2 text-center no-underline shadow-[3px_3px_0_rgba(23,35,58,0.24)] transition-transform duration-150 hover:-translate-y-1 focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px motion-reduce:transition-none",
                     active ? "text-primary" : "text-ink",
                   ].join(" ")}
                 >
@@ -126,14 +126,14 @@ export function AppBottomNav() {
                     <img
                       src={toOptimizedImageSrc(item.iconSrc)}
                       alt=""
-                      className="size-11 object-contain"
+                      className="size-10 object-contain"
                       draggable={false}
                       decoding="async"
                       aria-hidden
                     />
                   ) : (
-                    <span className="bg-primary/15 grid size-11 place-items-center rounded-md">
-                      <Swords className="size-6" aria-hidden />
+                    <span className="bg-primary/15 grid size-10 place-items-center rounded-md">
+                      <Swords className="size-5" aria-hidden />
                     </span>
                   )}
                   <span className="grid gap-1">
