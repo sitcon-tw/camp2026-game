@@ -910,9 +910,24 @@ definitions:
         type: array
       generatedAt:
         type: string
-      tshirtCount:
-        example: 12
+      tshirts:
+        items:
+          $ref: '#/definitions/admin.SettlementTShirtResponse'
+        type: array
+    type: object
+  admin.SettlementTShirtResponse:
+    properties:
+      avatarUrl:
+        type: string
+      nickname:
+        type: string
+      playerId:
+        type: string
+      quantity:
+        example: 2
         type: integer
+      team:
+        $ref: '#/definitions/admin.DashboardTeamSummaryResponse'
     type: object
   admin.SettlementTeamResponse:
     properties:

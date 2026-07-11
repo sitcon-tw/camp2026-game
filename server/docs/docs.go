@@ -6247,9 +6247,32 @@ const docTemplate = `{
                 "generatedAt": {
                     "type": "string"
                 },
-                "tshirtCount": {
+                "tshirts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.SettlementTShirtResponse"
+                    }
+                }
+            }
+        },
+        "admin.SettlementTShirtResponse": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "playerId": {
+                    "type": "string"
+                },
+                "quantity": {
                     "type": "integer",
-                    "example": 12
+                    "example": 2
+                },
+                "team": {
+                    "$ref": "#/definitions/admin.DashboardTeamSummaryResponse"
                 }
             }
         },

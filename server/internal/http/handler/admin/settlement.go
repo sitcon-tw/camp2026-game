@@ -16,11 +16,17 @@ import (
 )
 
 const settlementTShirtItemID = "item_tshirt_2026"
+const settlementExcludedTeamID = "team-010"
 
 type SettlementResponse struct {
-	GeneratedAt time.Time                 `json:"generatedAt"`
-	TShirtCount int                       `json:"tshirtCount" example:"12"`
-	Awards      []SettlementAwardResponse `json:"awards"`
+	GeneratedAt time.Time                  `json:"generatedAt"`
+	TShirts     []SettlementTShirtResponse `json:"tshirts"`
+	Awards      []SettlementAwardResponse  `json:"awards"`
+}
+
+type SettlementTShirtResponse struct {
+	SettlementPlayerResponse
+	Quantity int `json:"quantity" example:"2"`
 }
 
 type SettlementAwardResponse struct {
@@ -47,9 +53,14 @@ type SettlementTeamResponse struct {
 
 type settlementData struct {
 	Dashboard DashboardResponse
-	Inventory []dashboardInventoryStat
+	TShirts   []settlementPlayerQuantityStat
 	Front     *mongomodel.Front
 	Matches   []mongomodel.Match
+}
+
+type settlementPlayerQuantityStat struct {
+	PlayerID string `bson:"_id"`
+	Quantity int    `bson:"quantity"`
 }
 
 // Settlement godoc
@@ -80,6 +91,19 @@ func (h *Handler) settlementData(ctx context.Context) (settlementData, error) {
 	if err != nil {
 		return settlementData{}, err
 	}
+	eligiblePlayerIDs := make([]string, 0, len(raw.Players))
+	for _, player := range raw.Players {
+		if player.Role != authctx.PlayerRoleStaff && player.TeamID != settlementExcludedTeamID {
+			eligiblePlayerIDs = append(eligiblePlayerIDs, player.ID)
+		}
+	}
+	tshirts, err := aggregateAllDashboard[settlementPlayerQuantityStat](ctx, h.db, mongomodel.PlayerItemsCollection, []bson.D{
+		{{Key: "$match", Value: bson.D{{Key: "player_id", Value: bson.D{{Key: "$in", Value: eligiblePlayerIDs}}}, {Key: "item_id", Value: settlementTShirtItemID}, {Key: "quantity", Value: bson.D{{Key: "$gt", Value: 0}}}}}},
+		{{Key: "$group", Value: bson.D{{Key: "_id", Value: "$player_id"}, {Key: "quantity", Value: bson.D{{Key: "$sum", Value: "$quantity"}}}}}},
+	})
+	if err != nil {
+		return settlementData{}, err
+	}
 	fronts, err := findAllDashboard[mongomodel.Front](ctx, h.db, mongomodel.FrontsCollection, bson.M{"current": true}, options.Find().SetSort(bson.D{{Key: "updated_at", Value: -1}}).SetLimit(1))
 	if err != nil {
 		return settlementData{}, err
@@ -92,13 +116,13 @@ func (h *Handler) settlementData(ctx context.Context) (settlementData, error) {
 	if len(fronts) > 0 {
 		front = &fronts[0]
 	}
-	return settlementData{Dashboard: buildDashboardResponse(time.Now().UTC(), h.content, raw), Inventory: raw.ItemInventory, Front: front, Matches: matches}, nil
+	return settlementData{Dashboard: buildDashboardResponse(time.Now().UTC(), h.content, raw), TShirts: tshirts, Front: front, Matches: matches}, nil
 }
 
 func buildSettlementResponse(now time.Time, data settlementData) SettlementResponse {
 	players := make([]DashboardPlayerResponse, 0, len(data.Dashboard.Players))
 	for _, player := range data.Dashboard.Players {
-		if player.Role != authctx.PlayerRoleStaff {
+		if player.Role != authctx.PlayerRoleStaff && (player.Team == nil || player.Team.TeamID != settlementExcludedTeamID) {
 			players = append(players, player)
 		}
 	}
@@ -107,13 +131,21 @@ func buildSettlementResponse(now time.Time, data settlementData) SettlementRespo
 		byID[player.PlayerID] = player
 	}
 
-	response := SettlementResponse{GeneratedAt: now, Awards: []SettlementAwardResponse{}}
-	for _, entry := range data.Inventory {
-		if entry.ID == settlementTShirtItemID {
-			response.TShirtCount = entry.Quantity
-			break
+	response := SettlementResponse{GeneratedAt: now, TShirts: []SettlementTShirtResponse{}, Awards: []SettlementAwardResponse{}}
+	for _, record := range data.TShirts {
+		if player, ok := byID[record.PlayerID]; ok && record.Quantity > 0 {
+			response.TShirts = append(response.TShirts, SettlementTShirtResponse{SettlementPlayerResponse: settlementPlayer(player), Quantity: record.Quantity})
 		}
 	}
+	sort.Slice(response.TShirts, func(i, j int) bool {
+		if response.TShirts[i].Quantity != response.TShirts[j].Quantity {
+			return response.TShirts[i].Quantity > response.TShirts[j].Quantity
+		}
+		if response.TShirts[i].Nickname != response.TShirts[j].Nickname {
+			return response.TShirts[i].Nickname < response.TShirts[j].Nickname
+		}
+		return response.TShirts[i].PlayerID < response.TShirts[j].PlayerID
+	})
 
 	response.Awards = append(response.Awards,
 		playerSettlementAward("most_sitones", "小隊最多小石的人", players, sortSettlementPlayers(func(p DashboardPlayerResponse) float64 { return float64(p.SitoneCount) }), func(p DashboardPlayerResponse) string { return settlementIntMetric(p.SitoneCount, " 顆") }),
@@ -185,6 +217,9 @@ func largestIslandAward(front *mongomodel.Front) SettlementAwardResponse {
 	}
 	var winner mongomodel.FrontTeam
 	for _, team := range front.Teams {
+		if team.TeamID == settlementExcludedTeamID {
+			continue
+		}
 		if team.ControlledCells > winner.ControlledCells || (team.ControlledCells == winner.ControlledCells && team.Name < winner.Name) {
 			winner = team
 		}
@@ -251,11 +286,16 @@ func lastBattleAward(matches []mongomodel.Match, byID map[string]DashboardPlayer
 		if len(humans) == 0 {
 			continue
 		}
+		players := make([]SettlementPlayerResponse, 0, len(humans))
 		for _, human := range humans {
 			if player, ok := byID[human.PlayerID]; ok {
-				award.Players = append(award.Players, settlementPlayer(player))
+				players = append(players, settlementPlayer(player))
 			}
 		}
+		if len(players) < 2 {
+			continue
+		}
+		award.Players = players
 		award.Metric = dashboardMatchSortTime(match).Format("2006-01-02 15:04")
 		return award
 	}

@@ -1217,7 +1217,11 @@ const AdminSettlementPlayerSchema = z.object({
 
 const AdminSettlementSchema = z.object({
   generatedAt: z.string(),
-  tshirtCount: z.number().int().nonnegative(),
+  tshirts: z.array(
+    AdminSettlementPlayerSchema.extend({
+      quantity: z.number().int().positive(),
+    }),
+  ),
   awards: z.array(
     z.object({
       key: z.string(),

@@ -1255,70 +1255,108 @@ function SettlementPanel() {
   const settlement = settlementMutation.data
 
   return (
-    <section className="border-border grid min-w-0 gap-4 border-t-2 pt-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <Card className="min-w-0 rounded-md py-5">
+      <CardHeader className="px-5">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-xl font-black">
+          <CardTitle className="flex items-center gap-2 text-xl font-black">
             <Shirt className="size-5" />
             衣服券清算
-          </h2>
-          <p className="text-muted-foreground text-sm font-semibold">
-            統計 2026 年會紀念 T 的現有數量，並依目前資料產生得獎名單。
-          </p>
+          </CardTitle>
+          <CardDescription>
+            統計紀念 T 與各項得獎名單，第 10 小隊不列入清算。
+          </CardDescription>
         </div>
-        <Button
-          type="button"
-          onClick={() => settlementMutation.mutate()}
-          disabled={settlementMutation.isPending}
-        >
-          {settlementMutation.isPending ? <Spinner /> : <Shirt />}
-          {settlement ? "重新清算" : "清算衣服券"}
-        </Button>
-      </div>
-
-      {settlementMutation.error ? (
-        <div className="border-destructive/40 bg-destructive/5 rounded-md border-2 p-4 text-sm font-semibold">
-          {errorMessage(settlementMutation.error, "清算資料讀取失敗")}
-        </div>
-      ) : settlement ? (
-        <SettlementResults settlement={settlement} />
-      ) : (
-        <div className="border-border text-muted-foreground rounded-md border-2 border-dashed p-6 text-center text-sm font-semibold">
-          尚未清算
-        </div>
-      )}
-    </section>
+        <CardAction>
+          <Button
+            type="button"
+            onClick={() => settlementMutation.mutate()}
+            disabled={settlementMutation.isPending}
+          >
+            {settlementMutation.isPending ? <Spinner /> : <Shirt />}
+            {settlement ? "重新清算" : "清算衣服券"}
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="px-5">
+        {settlementMutation.error ? (
+          <div className="border-destructive/40 bg-destructive/5 rounded-md border-2 p-4 text-sm font-semibold">
+            {errorMessage(settlementMutation.error, "清算資料讀取失敗")}
+          </div>
+        ) : settlement ? (
+          <SettlementResults settlement={settlement} />
+        ) : (
+          <div className="border-border text-muted-foreground rounded-md border-2 border-dashed p-6 text-center text-sm font-semibold">
+            尚未清算
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
 function SettlementResults({ settlement }: { settlement: AdminSettlement }) {
   return (
-    <div className="grid min-w-0 gap-4">
-      <div className="bg-primary text-primary-foreground flex min-h-24 items-center justify-between gap-4 rounded-md px-5 py-4">
-        <div>
-          <p className="text-sm font-bold">2026 年會紀念 T</p>
-          <p className="text-3xl font-black">
-            {formatNumber(settlement.tshirtCount)} 個
-          </p>
+    <div className="grid min-w-0 gap-3">
+      <div className="border-border grid gap-3 border-y py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-black">2026 年會紀念 T</p>
+            <p className="text-muted-foreground text-xs font-semibold">
+              每位學員目前持有數量
+            </p>
+          </div>
+          <Shirt className="text-primary size-7 shrink-0" />
         </div>
-        <Shirt className="size-10 shrink-0" />
+        {settlement.tshirts.length > 0 ? (
+          <div className="grid min-w-0 gap-x-5 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
+            {settlement.tshirts.map((holder) => (
+              <div
+                key={holder.playerId}
+                className="flex min-w-0 items-center gap-2"
+              >
+                <PlayerAvatar
+                  playerId={holder.playerId}
+                  nickname={holder.nickname}
+                  avatarUrl={holder.avatarUrl}
+                  className="size-8 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-black">
+                    {holder.nickname}
+                  </p>
+                  <p className="text-muted-foreground truncate text-xs font-semibold">
+                    {holder.team?.name ?? "未分隊"}
+                  </p>
+                </div>
+                <span className="shrink-0 text-lg font-black">
+                  {formatNumber(holder.quantity)} 個
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm font-semibold">
+            目前沒有學員持有
+          </p>
+        )}
       </div>
-      <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="border-border grid min-w-0 border-t sm:grid-cols-2 xl:grid-cols-3">
         {settlement.awards.map((award) => (
-          <Card key={award.key} className="min-w-0 rounded-md py-4">
-            <CardHeader className="gap-1 px-4">
-              <CardTitle className="text-base font-black">
-                {award.title}
-              </CardTitle>
+          <div
+            key={award.key}
+            className="border-border grid min-w-0 content-start gap-2 border-b px-3 py-4 sm:border-r xl:border-l"
+          >
+            <div>
+              <p className="text-sm font-black">{award.title}</p>
               {award.metric ? (
-                <CardDescription className="font-bold">
+                <p className="text-muted-foreground text-xs font-bold">
                   {award.metric}
-                </CardDescription>
+                </p>
               ) : null}
-            </CardHeader>
-            <CardContent className="grid gap-2 px-4">
+            </div>
+            <div className="grid gap-2">
               {award.team ? (
-                <div className="font-black">{award.team.name}</div>
+                <div className="text-sm font-black">{award.team.name}</div>
               ) : null}
               {award.players.length > 0 ? (
                 award.players.map((player) => (
@@ -1346,8 +1384,8 @@ function SettlementResults({ settlement }: { settlement: AdminSettlement }) {
                   沒有符合資料
                 </p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
       <p className="text-muted-foreground text-right text-xs font-semibold">
