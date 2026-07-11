@@ -144,6 +144,23 @@ const PlayerSitonesResponseSchema = z.object({
   sitones: nullableArray(PlayerSitoneSchema),
 })
 
+const AchievementSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  tier: z.number().optional(),
+  requiredSitoneCount: z.number(),
+  openPowerReward: z.number().optional(),
+  unlocked: z.boolean(),
+  unlockedAt: z.string().optional(),
+})
+
+const AchievementListResponseSchema = z.object({
+  achievements: nullableArray(AchievementSchema),
+  collectedSitoneCount: z.number(),
+  totalSitoneCount: z.number(),
+  unlockedCount: z.number(),
+})
+
 const PlayerItemsResponseSchema = z.object({
   items: nullableArray(PlayerItemSchema),
 })
@@ -1273,6 +1290,10 @@ export type SitoneLoadoutResponse = z.infer<typeof SitoneLoadoutResponseSchema>
 export type Sitone = z.infer<typeof SitoneSchema>
 export type Item = z.infer<typeof ItemSchema>
 export type PlayerSitone = z.infer<typeof PlayerSitoneSchema>
+export type Achievement = z.infer<typeof AchievementSchema>
+export type AchievementListResponse = z.infer<
+  typeof AchievementListResponseSchema
+>
 export type PlayerItem = z.infer<typeof PlayerItemSchema>
 export type ShopItem = z.infer<typeof ShopItemSchema>
 export type FusionRecipe = z.infer<typeof FusionRecipeSchema>
@@ -1521,6 +1542,11 @@ export const gameApi = {
   async playerSitones() {
     const json = await apiClient.get("/api/me/sitones")
     return PlayerSitonesResponseSchema.parse(json).sitones
+  },
+
+  async achievements() {
+    const json = await apiClient.get("/api/me/achievements")
+    return AchievementListResponseSchema.parse(json)
   },
 
   async teamSitones() {

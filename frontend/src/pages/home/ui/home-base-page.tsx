@@ -1,90 +1,58 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { type FormEvent, useEffect, useMemo, useState } from "react"
-import { ArrowRightLeft, ChevronRight, Lock, LogOut } from "lucide-react"
-import { toast } from "sonner"
+import { useEffect, useMemo } from "react"
+import { ChevronRight, Lock, LogOut } from "lucide-react"
 import { AppError } from "@/shared/api/error"
 import { gameApi } from "@/shared/api/game"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { Button } from "@/shared/ui/button"
 import { apiClient } from "@/shared/api/client"
 import { PlayerAvatar } from "@/shared/ui/player-avatar"
-import { Input } from "@/shared/ui/input"
-import { Label } from "@/shared/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select"
 import {
   GameFeatureIcon,
   type GameFeatureIconName,
 } from "@/shared/ui/game-feature-icon"
 
-const ACTIONS: {
-  id: string
+type CollectionEntry = {
   label: string
-  desc: string
+  count: (input: {
+    sitones: number
+    items: number
+    openPower: number
+    rank?: number
+  }) => string
   icon: GameFeatureIconName
   to: string
-  primary?: boolean
-}[] = [
-  {
-    id: "front",
-    label: "開源戰線",
-    desc: "使用開源力，和小隊爭奪領土",
-    icon: "front",
-    primary: true,
-    to: "/front",
-  },
-  {
-    id: "battle",
-    label: "知識王試煉",
-    desc: "召開戰局或掃描戰碼進場",
-    icon: "battle",
-    to: "/battle",
-  },
-  {
-    id: "qrcode",
-    label: "冒險者通行證",
-    desc: "出示身份，也能掃描社群攤位",
-    icon: "pass",
-    to: "/profile/qr",
-  },
-  {
-    id: "shop",
-    label: "補給商店",
-    desc: "消耗開源力兌換素材與外觀",
-    icon: "shop",
-    to: "/shop",
-  },
-]
+}
 
-const STAFF_ACTIONS: (typeof ACTIONS)[number][] = [
+const STAFF_COLLECTIONS: CollectionEntry[] = [
   {
-    id: "staff",
     label: "關主發放台",
-    desc: "掃描通行證發放小石與戰利品",
+    count: () => "掃描通行證發獎",
     icon: "pass",
     to: "/rewards",
   },
   {
-    id: "dorms",
     label: "宿舍管理員",
-    desc: "選擇房號，產生宿舍加入 QR Code",
+    count: () => "房號與成員管理",
     icon: "dorm",
     to: "/dorms",
   },
 ]
 
-const COLLECTIONS: {
-  label: string
-  count: (input: { sitones: number; items: number; rank?: number }) => string
-  icon: GameFeatureIconName
-  to: string
-}[] = [
+const COLLECTIONS: CollectionEntry[] = [
+  {
+    label: "開源力轉帳",
+    count: ({ openPower }) => `可用 ${openPower} OP`,
+    icon: "team",
+    to: "/open-power-transfer",
+  },
+  {
+    label: "成就圖鑑",
+    count: () => "收藏里程碑",
+    icon: "codex",
+    to: "/achievements",
+  },
   {
     label: "小石圖鑑",
     count: ({ sitones }) => `已收 ${sitones} 顆`,
@@ -125,30 +93,11 @@ const COLLECTIONS: {
 
 export function HomeBasePage() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [transferRecipientID, setTransferRecipientID] = useState("")
-  const [transferAmount, setTransferAmount] = useState("")
   const { data, isPending, error } = useQuery({
     queryKey: ["me", "home"],
     queryFn: gameApi.home,
   })
   const unauthorized = error instanceof AppError && error.status === 401
-
-  const transferMutation = useMutation({
-    mutationFn: gameApi.createOpenPowerTransfer,
-    onSuccess: (result) => {
-      setTransferAmount("")
-      setTransferRecipientID("")
-      void queryClient.invalidateQueries({ queryKey: ["me", "home"] })
-      void queryClient.invalidateQueries({ queryKey: ["me", "status"] })
-      toast.success(
-        `已轉帳 ${result.amount} OP 給 ${result.recipientNickname || result.recipientPlayerId}`,
-      )
-    },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "開源力轉帳失敗")
-    },
-  })
 
   useEffect(() => {
     if (unauthorized) {
@@ -171,16 +120,6 @@ export function HomeBasePage() {
     () => player?.teamMembers ?? [],
     [player?.teamMembers],
   )
-  const transferRecipients = useMemo(
-    () => teamMembers.filter((member) => member.playerId !== player?.playerId),
-    [player?.playerId, teamMembers],
-  )
-  const selectedTransferRecipientID =
-    transferRecipientID || transferRecipients[0]?.playerId || ""
-  const transferAmountValue = Number(transferAmount)
-  const transferAmountValid =
-    Number.isInteger(transferAmountValue) && transferAmountValue >= 1
-
   if (unauthorized) return null
 
   const actionEnabledByID = new Map(
@@ -189,35 +128,13 @@ export function HomeBasePage() {
   const battleEnabled = actionEnabledByID.get("battle") ?? true
   const battleLocked = !battleEnabled
   const frontEnabled = actionEnabledByID.get("front") ?? true
-  const baseActions =
-    player?.role === "staff" ? [...STAFF_ACTIONS, ...ACTIONS] : ACTIONS
-  const actions = baseActions.map((action) => ({
-    ...action,
-    enabled: actionEnabledByID.get(action.id) ?? true,
-  }))
+  const isStaff = player?.role === "staff"
+  const collections = isStaff
+    ? [...STAFF_COLLECTIONS, ...COLLECTIONS]
+    : COLLECTIONS
   const logoutAction = async () => {
     await apiClient.post("/api/auth/logout")
     navigate({ to: "/login", replace: true })
-  }
-
-  function submitTransfer(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!selectedTransferRecipientID) {
-      toast.error("請選擇收款隊友")
-      return
-    }
-    if (!transferAmountValid) {
-      toast.error("請輸入至少 1 OP")
-      return
-    }
-    if (transferAmountValue > openPower) {
-      toast.error("開源力不足，無法轉帳")
-      return
-    }
-    transferMutation.mutate({
-      recipientPlayerId: selectedTransferRecipientID,
-      amount: transferAmountValue,
-    })
   }
 
   return (
@@ -405,86 +322,6 @@ export function HomeBasePage() {
 
         <section
           className="bg-card border-ink rounded-[22px] border-2 p-[15px]"
-          aria-label="開源力轉帳"
-        >
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <p className="text-muted-foreground mb-1 text-xs font-black tracking-[0.08em] uppercase">
-                Transfer
-              </p>
-              <h2 className="text-[22px] font-black tracking-normal">
-                開源力轉帳
-              </h2>
-            </div>
-            <span className="bg-surface-raised border-border rounded-full border-2 px-2.5 py-1 text-xs font-black whitespace-nowrap">
-              可用 {openPower} OP
-            </span>
-          </div>
-
-          {transferRecipients.length > 0 ? (
-            <form className="grid gap-3" onSubmit={submitTransfer}>
-              <div className="grid gap-2">
-                <Label htmlFor="open-power-transfer-recipient">收款隊友</Label>
-                <Select
-                  value={selectedTransferRecipientID}
-                  onValueChange={setTransferRecipientID}
-                  disabled={transferMutation.isPending}
-                >
-                  <SelectTrigger
-                    id="open-power-transfer-recipient"
-                    className="w-full"
-                  >
-                    <SelectValue placeholder="選擇同組成員" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {transferRecipients.map((member) => (
-                      <SelectItem key={member.playerId} value={member.playerId}>
-                        {member.nickname}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_132px] sm:items-end">
-                <div className="grid gap-2">
-                  <Label htmlFor="open-power-transfer-amount">轉帳 OP</Label>
-                  <Input
-                    id="open-power-transfer-amount"
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={openPower}
-                    value={transferAmount}
-                    disabled={transferMutation.isPending}
-                    placeholder="輸入數量"
-                    onChange={(event) => setTransferAmount(event.target.value)}
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={
-                    transferMutation.isPending ||
-                    !selectedTransferRecipientID ||
-                    !transferAmountValid ||
-                    transferAmountValue > openPower
-                  }
-                  className="min-h-10"
-                >
-                  <ArrowRightLeft className="size-4" aria-hidden />
-                  {transferMutation.isPending ? "轉帳中" : "轉帳"}
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <p className="text-muted-foreground bg-surface-raised border-border rounded-[17px] border-2 px-3 py-3 text-sm font-bold">
-              目前沒有可轉帳的同組成員
-            </p>
-          )}
-        </section>
-
-        <section
-          className="bg-card border-ink rounded-[22px] border-2 p-[15px]"
           aria-label="小隊成員"
         >
           <div className="mb-3 flex items-start justify-between gap-3">
@@ -555,58 +392,6 @@ export function HomeBasePage() {
           )}
         </section>
 
-        <section className="grid gap-[10px]" aria-label="任務入口">
-          {actions.map((action) => {
-            const disabled = !action.enabled
-
-            return (
-              <article
-                key={action.label}
-                aria-disabled={disabled || undefined}
-                className={[
-                  "bg-card border-ink grid grid-cols-[52px_1fr_88px] items-center gap-[10px] rounded-[18px] border-2 p-[13px]",
-                  action.primary ? "bg-surface-raised" : "",
-                  disabled ? "opacity-70 grayscale" : "",
-                ].join(" ")}
-              >
-                <div
-                  className="grid size-[52px] -rotate-[4deg] place-items-center"
-                  aria-hidden
-                >
-                  <GameFeatureIcon name={action.icon} className="size-[52px]" />
-                </div>
-                <div>
-                  <h3 className="mb-[3px] text-[18px] font-black">
-                    {action.label}
-                  </h3>
-                  <p className="text-muted-foreground m-0 text-[13px] leading-[1.45]">
-                    {action.desc}
-                  </p>
-                </div>
-                {disabled ? (
-                  <span
-                    aria-disabled
-                    className="bg-card border-ink text-muted-foreground flex min-h-[40px] cursor-not-allowed items-center justify-center gap-1 rounded-[13px] border-2 text-sm font-black opacity-80"
-                    style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
-                  >
-                    <Lock className="size-4" aria-hidden />
-                    禁止
-                  </span>
-                ) : (
-                  <Link
-                    to={action.to}
-                    className="bg-card border-ink focus-visible:outline-power flex min-h-[40px] items-center justify-center gap-1 rounded-[13px] border-2 text-sm font-black no-underline transition-transform focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px"
-                    style={{ boxShadow: "2px 2px 0 rgba(23,35,58,.14)" }}
-                  >
-                    出發
-                    <ChevronRight className="size-4" aria-hidden />
-                  </Link>
-                )}
-              </article>
-            )
-          })}
-        </section>
-
         <section
           className="bg-card border-ink rounded-[22px] border-2 p-[15px]"
           aria-label="冒險手冊"
@@ -615,10 +400,10 @@ export function HomeBasePage() {
             Adventurer Log
           </p>
           <h2 className="mb-3 text-[22px] font-black tracking-normal">
-            圖鑑、背包、鍛造與戰績
+            {isStaff ? "管理、圖鑑與戰績" : "圖鑑、背包、鍛造與戰績"}
           </h2>
           <div className="grid grid-cols-2 gap-[9px]">
-            {COLLECTIONS.map((item) => {
+            {collections.map((item) => {
               return (
                 <Link
                   key={item.label}
@@ -636,6 +421,7 @@ export function HomeBasePage() {
                     {item.count({
                       sitones: sitoneCount,
                       items: itemCount,
+                      openPower,
                       rank,
                     })}
                   </small>

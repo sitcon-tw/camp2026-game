@@ -71,6 +71,7 @@ func indexModelsByCollection() []collectionIndexModels {
 		{collection: mongomodel.PlayerSitonesCollection, models: playerSitoneIndexModels()},
 		{collection: mongomodel.ShopPurchasesCollection, models: shopPurchaseIndexModels()},
 		{collection: mongomodel.OpenPowerLocksCollection, models: openPowerLockIndexModels()},
+		{collection: mongomodel.AchievementsCollection, models: achievementIndexModels()},
 		{collection: mongomodel.StaffRewardsCollection, models: staffRewardIndexModels()},
 		{collection: mongomodel.StaffRewardTokensCollection, models: staffRewardTokenIndexModels()},
 		{collection: mongomodel.StaffRewardTokenClaimsCollection, models: staffRewardTokenClaimIndexModels()},
@@ -318,6 +319,31 @@ func openPowerLockIndexModels() []mongo.IndexModel {
 		{
 			Keys:    bson.D{{Key: "expires_at", Value: 1}},
 			Options: options.Index().SetName("open_power_locks_expires_at_ttl").SetExpireAfterSeconds(0),
+		},
+	}
+}
+
+func achievementIndexModels() []mongo.IndexModel {
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "player_id", Value: 1},
+				{Key: "key", Value: 1},
+			},
+			Options: options.Index().
+				SetName("achievements_player_key").
+				SetUnique(true),
+		},
+		{
+			Keys: bson.D{
+				{Key: "player_id", Value: 1},
+				{Key: "created_at", Value: 1},
+				{Key: "sort_order", Value: 1},
+				{Key: "_id", Value: 1},
+			},
+			Options: options.Index().
+				SetName("achievements_unnotified_player_created").
+				SetPartialFilterExpression(bson.M{"notification_pending": true}),
 		},
 	}
 }

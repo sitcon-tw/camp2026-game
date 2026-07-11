@@ -3239,6 +3239,49 @@
                 }
             }
         },
+        "/me/achievements": {
+            "get": {
+                "security": [
+                    {
+                        "AuthCookieAuth": []
+                    }
+                ],
+                "description": "Returns all codex achievements with the authenticated player's unlock state.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "me"
+                ],
+                "summary": "List current player achievements",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/me.AchievementListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/me/avatar": {
             "put": {
                 "security": [
@@ -8939,6 +8982,58 @@
                 "status": {
                     "type": "string",
                     "example": "active"
+                }
+            }
+        },
+        "me.AchievementListResponse": {
+            "type": "object",
+            "properties": {
+                "achievements": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/me.AchievementResponse"
+                    }
+                },
+                "collectedSitoneCount": {
+                    "type": "integer"
+                },
+                "totalSitoneCount": {
+                    "type": "integer"
+                },
+                "unlockedCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "me.AchievementResponse": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string",
+                    "example": "codex_tier_01"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "石來運轉"
+                },
+                "openPowerReward": {
+                    "type": "integer",
+                    "example": 500
+                },
+                "requiredSitoneCount": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "tier": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "unlocked": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "unlockedAt": {
+                    "type": "string"
                 }
             }
         },

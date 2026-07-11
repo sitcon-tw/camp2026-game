@@ -2853,6 +2853,42 @@ definitions:
         example: active
         type: string
     type: object
+  me.AchievementListResponse:
+    properties:
+      achievements:
+        items:
+          $ref: '#/definitions/me.AchievementResponse'
+        type: array
+      collectedSitoneCount:
+        type: integer
+      totalSitoneCount:
+        type: integer
+      unlockedCount:
+        type: integer
+    type: object
+  me.AchievementResponse:
+    properties:
+      key:
+        example: codex_tier_01
+        type: string
+      name:
+        example: 石來運轉
+        type: string
+      openPowerReward:
+        example: 500
+        type: integer
+      requiredSitoneCount:
+        example: 5
+        type: integer
+      tier:
+        example: 1
+        type: integer
+      unlocked:
+        example: true
+        type: boolean
+      unlockedAt:
+        type: string
+    type: object
   me.CompletedMatchListResponse:
     properties:
       matches:
@@ -5824,6 +5860,34 @@ paths:
       summary: Join on-site match pairing
       tags:
       - matches
+  /me/achievements:
+    get:
+      description: Returns all codex achievements with the authenticated player's
+        unlock state.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/me.AchievementListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      security:
+      - AuthCookieAuth: []
+      summary: List current player achievements
+      tags:
+      - me
   /me/avatar:
     put:
       consumes:
