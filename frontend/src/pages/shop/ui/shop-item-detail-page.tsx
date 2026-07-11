@@ -100,9 +100,9 @@ export function ShopItemDetailPage({ itemID }: ShopItemDetailPageProps) {
                 <span>
                   {isLocked
                     ? "暫未開放兌換"
-                    : item.redeemed && !item.repeatable
-                      ? "已擁有"
-                      : "可使用開源力兌換"}
+                    : item.redeemed
+                      ? `已達購買上限（${item.purchaseCount}/${item.purchaseLimit}）`
+                      : `可使用開源力兌換（${item.purchaseCount}/${item.purchaseLimit}）`}
                 </span>
               </div>
             </CardContent>
@@ -133,10 +133,10 @@ export function ShopItemDetailPage({ itemID }: ShopItemDetailPageProps) {
                   <LockKeyhole />
                   鎖定
                 </Button>
-              ) : item.redeemed && !item.repeatable ? (
+              ) : item.redeemed ? (
                 <Button size="lg" disabled variant="outline">
                   <Check />
-                  已擁有
+                  已達上限
                 </Button>
               ) : (
                 <ShopPurchaseConfirmButton

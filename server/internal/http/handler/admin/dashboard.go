@@ -87,11 +87,11 @@ func (h *Handler) dashboardRawData(ctx context.Context) (dashboardRawData, error
 	}
 
 	playerIDs := dashboardPlayerIDs(players)
-	playerSitones, err := aggregateAllDashboard[dashboardPlayerQuantityStat](ctx, h.db, mongomodel.PlayerSitonesCollection, dashboardPlayerQuantityPipeline("player_id", "quantity", playerIDs))
+	playerSitones, err := aggregateAllDashboard[dashboardPlayerQuantityStat](ctx, h.db, mongomodel.PlayerSitonesCollection, dashboardPlayerQuantityPipeline("player_id", "sitone_id", "quantity", playerIDs))
 	if err != nil {
 		return dashboardRawData{}, err
 	}
-	playerItems, err := aggregateAllDashboard[dashboardPlayerQuantityStat](ctx, h.db, mongomodel.PlayerItemsCollection, dashboardPlayerQuantityPipeline("player_id", "quantity", playerIDs))
+	playerItems, err := aggregateAllDashboard[dashboardPlayerQuantityStat](ctx, h.db, mongomodel.PlayerItemsCollection, dashboardPlayerQuantityPipeline("player_id", "item_id", "quantity", playerIDs))
 	if err != nil {
 		return dashboardRawData{}, err
 	}
@@ -170,7 +170,8 @@ func dashboardPlayerProjection() bson.D {
 }
 
 type dashboardPlayerQuantityStat struct {
-	PlayerID string `bson:"_id"`
+	PlayerID string `bson:"player_id"`
+	RefID    string `bson:"ref_id"`
 	Quantity int    `bson:"quantity"`
 }
 
@@ -235,15 +236,22 @@ func dashboardPlayerIDs(players []dashboardPlayer) []string {
 	return ids
 }
 
-func dashboardPlayerQuantityPipeline(playerField string, quantityField string, playerIDs []string) mongo.Pipeline {
+func dashboardPlayerQuantityPipeline(playerField string, refField string, quantityField string, playerIDs []string) mongo.Pipeline {
 	return mongo.Pipeline{
 		{{Key: "$match", Value: bson.D{
 			{Key: playerField, Value: bson.D{{Key: "$in", Value: playerIDs}}},
+			{Key: refField, Value: bson.D{{Key: "$exists", Value: true}, {Key: "$ne", Value: ""}}},
 			{Key: quantityField, Value: bson.D{{Key: "$gt", Value: 0}}},
 		}}},
 		{{Key: "$group", Value: bson.D{
-			{Key: "_id", Value: "$" + playerField},
+			{Key: "_id", Value: bson.D{{Key: "player_id", Value: "$" + playerField}, {Key: "ref_id", Value: "$" + refField}}},
 			{Key: "quantity", Value: bson.D{{Key: "$sum", Value: "$" + quantityField}}},
+		}}},
+		{{Key: "$project", Value: bson.D{
+			{Key: "_id", Value: 0},
+			{Key: "player_id", Value: "$_id.player_id"},
+			{Key: "ref_id", Value: "$_id.ref_id"},
+			{Key: "quantity", Value: 1},
 		}}},
 	}
 }
@@ -440,6 +448,8 @@ type dashboardPlayerStats struct {
 	Team                *DashboardTeamSummaryResponse
 	SitoneCount         int
 	ItemCount           int
+	OwnedSitoneIDs      map[string]struct{}
+	ItemQuantities      map[string]int
 	OpenPower           int
 	MatchCount          int
 	CompletedMatchCount int
@@ -483,8 +493,10 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 		}
 		team := dashboardTeamForPlayer(player, teamsByID)
 		statsByPlayer[player.ID] = &dashboardPlayerStats{
-			Player: player,
-			Team:   team,
+			Player:         player,
+			Team:           team,
+			OwnedSitoneIDs: map[string]struct{}{},
+			ItemQuantities: map[string]int{},
 		}
 		if team == nil {
 			ungroupedPlayerCount++
@@ -504,6 +516,9 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 			continue
 		}
 		stats.SitoneCount += record.Quantity
+		if record.RefID != "" {
+			stats.OwnedSitoneIDs[record.RefID] = struct{}{}
+		}
 		if stats.Team != nil {
 			teamStatsByID[stats.Team.TeamID].SitoneCount += record.Quantity
 		}
@@ -515,6 +530,9 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 			continue
 		}
 		stats.ItemCount += record.Quantity
+		if record.RefID != "" {
+			stats.ItemQuantities[record.RefID] += record.Quantity
+		}
 		if stats.Team != nil {
 			teamStatsByID[stats.Team.TeamID].ItemCount += record.Quantity
 		}
@@ -571,7 +589,7 @@ func buildDashboardResponse(now time.Time, store *content.Store, raw dashboardRa
 		touchDashboardPlayer(stats, record.LastActivityAt)
 	}
 
-	players := dashboardPlayerResponses(statsByPlayer)
+	players := dashboardPlayerResponses(statsByPlayer, len(store.ListSitones()))
 	teams := dashboardTeamResponses(teamStatsByID, players)
 
 	return DashboardResponse{
@@ -769,7 +787,7 @@ func dashboardTimePtr(value time.Time) *time.Time {
 	return &value
 }
 
-func dashboardPlayerResponses(statsByPlayer map[string]*dashboardPlayerStats) []DashboardPlayerResponse {
+func dashboardPlayerResponses(statsByPlayer map[string]*dashboardPlayerStats, codexTotalCount int) []DashboardPlayerResponse {
 	players := make([]DashboardPlayerResponse, 0, len(statsByPlayer))
 	for _, stats := range statsByPlayer {
 		player := stats.Player
@@ -781,6 +799,10 @@ func dashboardPlayerResponses(statsByPlayer map[string]*dashboardPlayerStats) []
 			Role:                player.Role,
 			SitoneCount:         stats.SitoneCount,
 			ItemCount:           stats.ItemCount,
+			CodexOwnedCount:     len(stats.OwnedSitoneIDs),
+			CodexTotalCount:     codexTotalCount,
+			CodexCompletion:     dashboardPercent(len(stats.OwnedSitoneIDs), codexTotalCount),
+			ItemQuantities:      stats.ItemQuantities,
 			OpenPower:           stats.OpenPower,
 			MatchCount:          stats.MatchCount,
 			CompletedMatchCount: stats.CompletedMatchCount,

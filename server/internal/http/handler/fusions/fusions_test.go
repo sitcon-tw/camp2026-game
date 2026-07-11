@@ -106,7 +106,7 @@ func TestCanCraftReturnsFalseForLockedShopItem(t *testing.T) {
 	}
 }
 
-func TestTryPurchaseReportsLockedReason(t *testing.T) {
+func TestTryPurchaseReportsInsufficientOpenPower(t *testing.T) {
 	store := loadTestContent(t)
 	state := fillState{
 		handler: &Handler{
@@ -116,7 +116,7 @@ func TestTryPurchaseReportsLockedReason(t *testing.T) {
 			items:   map[string]int{},
 			sitones: map[string]int{},
 		},
-		redeemedItemIDs: map[string]bool{},
+		itemPurchaseCounts: map[string]int{},
 	}
 
 	component := content.FusionComponent{
@@ -128,8 +128,8 @@ func TestTryPurchaseReportsLockedReason(t *testing.T) {
 	if purchased {
 		t.Fatal("expected locked shop item purchase to fail")
 	}
-	if reason != "材料尚未開放購買" {
-		t.Fatalf("expected locked reason, got %q", reason)
+	if reason != "開放力不足，無法購買" {
+		t.Fatalf("expected insufficient open power reason, got %q", reason)
 	}
 }
 

@@ -74,6 +74,10 @@ type DashboardPlayerResponse struct {
 	Role                string                        `json:"role,omitempty" example:"player"`
 	SitoneCount         int                           `json:"sitoneCount" example:"18"`
 	ItemCount           int                           `json:"itemCount" example:"6"`
+	CodexOwnedCount     int                           `json:"codexOwnedCount" example:"12"`
+	CodexTotalCount     int                           `json:"codexTotalCount" example:"48"`
+	CodexCompletion     int                           `json:"codexCompletion" example:"25"`
+	ItemQuantities      map[string]int                `json:"itemQuantities"`
 	OpenPower           int                           `json:"openPower" example:"1188"`
 	MatchCount          int                           `json:"matchCount" example:"12"`
 	CompletedMatchCount int                           `json:"completedMatchCount" example:"10"`

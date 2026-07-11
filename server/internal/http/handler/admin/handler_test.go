@@ -805,13 +805,13 @@ func TestBuildDashboardResponseIncludesStaffWithTeamsAndRanksPlayers(t *testing.
 			{ID: "team-a", Name: "Alpha"},
 		},
 		PlayerSitones: []dashboardPlayerQuantityStat{
-			{PlayerID: "player-a", Quantity: 2},
-			{PlayerID: "player-b", Quantity: 1},
-			{PlayerID: "staff-a", Quantity: 99},
+			{PlayerID: "player-a", RefID: "stone-a", Quantity: 2},
+			{PlayerID: "player-b", RefID: "stone-a", Quantity: 1},
+			{PlayerID: "staff-a", RefID: "stone-a", Quantity: 99},
 		},
 		PlayerItems: []dashboardPlayerQuantityStat{
-			{PlayerID: "player-b", Quantity: 3},
-			{PlayerID: "staff-a", Quantity: 99},
+			{PlayerID: "player-b", RefID: "item-a", Quantity: 3},
+			{PlayerID: "staff-a", RefID: "item-a", Quantity: 99},
 		},
 		SitoneInventory: []dashboardInventoryStat{
 			{ID: "stone-a", Quantity: 102, OwnerCount: 3},
@@ -888,6 +888,9 @@ func TestBuildDashboardResponseIncludesStaffWithTeamsAndRanksPlayers(t *testing.
 	if response.Players[0].PlayerID != "staff-a" || response.Players[0].Rank != 1 {
 		t.Fatalf("expected staff-a to lead sitone ranking, got %#v", response.Players)
 	}
+	if response.Players[0].CodexOwnedCount != 1 || response.Players[0].ItemQuantities["item-a"] != 99 {
+		t.Fatalf("expected per-player collection metrics, got %#v", response.Players[0])
+	}
 	if len(response.Teams) != 1 || response.Teams[0].PlayerCount != 3 || response.Teams[0].SitoneCount != 102 {
 		t.Fatalf("unexpected team summary: %#v", response.Teams)
 	}
@@ -899,5 +902,29 @@ func TestBuildDashboardResponseIncludesStaffWithTeamsAndRanksPlayers(t *testing.
 	}
 	if len(response.TopPlayers.ByAccuracy) != 3 || response.TopPlayers.ByAccuracy[1].PlayerID != "staff-a" {
 		t.Fatalf("unexpected accuracy ranking: %#v", response.TopPlayers.ByAccuracy)
+	}
+}
+
+func TestDashboardPlayerResponsesCalculatesCodexCompletionAndItemQuantities(t *testing.T) {
+	stats := map[string]*dashboardPlayerStats{
+		"player-a": {
+			Player: dashboardPlayer{ID: "player-a", Nickname: "Alice"},
+			OwnedSitoneIDs: map[string]struct{}{
+				"stone-a": {},
+				"stone-b": {},
+			},
+			ItemQuantities: map[string]int{"item-a": 3, "item-b": 1},
+		},
+	}
+
+	players := dashboardPlayerResponses(stats, 5)
+	if len(players) != 1 {
+		t.Fatalf("expected one player, got %#v", players)
+	}
+	if players[0].CodexOwnedCount != 2 || players[0].CodexTotalCount != 5 || players[0].CodexCompletion != 40 {
+		t.Fatalf("unexpected codex completion: %#v", players[0])
+	}
+	if players[0].ItemQuantities["item-a"] != 3 || players[0].ItemQuantities["item-b"] != 1 {
+		t.Fatalf("unexpected item quantities: %#v", players[0].ItemQuantities)
 	}
 }

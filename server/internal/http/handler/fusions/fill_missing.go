@@ -26,15 +26,15 @@ const (
 )
 
 type fillState struct {
-	handler         *Handler
-	playerID        string
-	inventory       inventoryCounts
-	openPower       int
-	redeemedItemIDs map[string]bool
-	producers       map[string]producerRecipe
-	filled          map[string]FillMaterialResult
-	failed          map[string]FillMaterialFailure
-	spent           int
+	handler            *Handler
+	playerID           string
+	inventory          inventoryCounts
+	openPower          int
+	itemPurchaseCounts map[string]int
+	producers          map[string]producerRecipe
+	filled             map[string]FillMaterialResult
+	failed             map[string]FillMaterialFailure
+	spent              int
 }
 
 type producerRecipe struct {
@@ -67,6 +67,12 @@ func (h *Handler) FillMissingMaterials(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, httpx.NotFound("fusion recipe not found"))
 		return
 	}
+	releaseLock, err := openpower.AcquirePlayerLock(r.Context(), h.db, player.ID)
+	if err != nil {
+		httpx.WriteProblem(w, r, httpx.InternalServerError("fill missing materials failed", "fusion_fill_lock_failed", err))
+		return
+	}
+	defer releaseLock()
 
 	inventory, err := h.playerInventory(r.Context(), player.ID)
 	if err != nil {
@@ -80,21 +86,21 @@ func (h *Handler) FillMissingMaterials(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redeemedItemIDs, err := h.redeemedItemIDs(r.Context(), player.ID)
+	itemPurchaseCounts, err := h.itemPurchaseCounts(r.Context(), player.ID)
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("fill missing materials failed", "fusion_fill_redeemed_item_lookup_failed", err))
 		return
 	}
 
 	state := fillState{
-		handler:         h,
-		playerID:        player.ID,
-		inventory:       inventory,
-		openPower:       currentOpenPower,
-		redeemedItemIDs: redeemedItemIDs,
-		producers:       h.producerRecipes(),
-		filled:          map[string]FillMaterialResult{},
-		failed:          map[string]FillMaterialFailure{},
+		handler:            h,
+		playerID:           player.ID,
+		inventory:          inventory,
+		openPower:          currentOpenPower,
+		itemPurchaseCounts: itemPurchaseCounts,
+		producers:          h.producerRecipes(),
+		filled:             map[string]FillMaterialResult{},
+		failed:             map[string]FillMaterialFailure{},
 	}
 
 	missingFound := false
@@ -180,8 +186,8 @@ func (s *fillState) tryPurchase(ctx context.Context, component content.FusionCom
 		return false, "材料無法直接購買"
 	case item.Locked:
 		return false, "材料尚未開放購買"
-	case s.redeemedItemIDs[item.ID]:
-		return false, "材料已經購買過了"
+	case s.itemPurchaseCounts[item.ID] >= content.ShopPurchaseLimit:
+		return false, "材料已達購買上限"
 	case s.openPower < item.PriceOpenPower:
 		return false, "開放力不足，無法購買"
 	}
@@ -189,7 +195,7 @@ func (s *fillState) tryPurchase(ctx context.Context, component content.FusionCom
 		return false, fillPurchaseFailureReason(err)
 	}
 
-	s.redeemedItemIDs[item.ID] = true
+	s.itemPurchaseCounts[item.ID]++
 	s.openPower -= item.PriceOpenPower
 	s.spent += item.PriceOpenPower
 	s.inventory.items[item.ID]++
@@ -386,7 +392,7 @@ func componentDisplayName(store *content.Store, component content.FusionComponen
 	return component.ID
 }
 
-func (h *Handler) redeemedItemIDs(ctx context.Context, playerID string) (map[string]bool, error) {
+func (h *Handler) itemPurchaseCounts(ctx context.Context, playerID string) (map[string]int, error) {
 	cursor, err := h.db.Collection(mongomodel.ShopPurchasesCollection).Find(
 		ctx,
 		bson.M{"player_id": playerID},
@@ -403,9 +409,9 @@ func (h *Handler) redeemedItemIDs(ctx context.Context, playerID string) (map[str
 	if err := cursor.All(ctx, &purchases); err != nil {
 		return nil, err
 	}
-	out := make(map[string]bool, len(purchases))
+	out := make(map[string]int, len(purchases))
 	for _, purchase := range purchases {
-		out[purchase.ItemID] = true
+		out[purchase.ItemID] += max(1, purchase.Quantity)
 	}
 	return out, nil
 }

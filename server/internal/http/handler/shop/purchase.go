@@ -18,13 +18,17 @@ import (
 	"github.com/sitcon-tw/camp2026-game/internal/openpower"
 )
 
-const purchaseQuantity = 1
+const (
+	purchaseQuantity      = 1
+	shopItemPurchaseLimit = content.ShopPurchaseLimit
+)
 
 var errInsufficientOpenPower = errors.New("insufficient open power")
+var errPurchaseLimitReached = errors.New("shop item purchase limit reached")
 
 // Purchase godoc
 // @Summary Purchase shop item
-// @Description Purchases one enabled shop item, deducts open power, and adds it to the current player's item bag.
+// @Description Purchases one enabled shop item, up to five times per player, deducts open power, and adds it to the current player's item bag.
 // @Tags shop
 // @Accept json
 // @Produce json
@@ -72,6 +76,10 @@ func (h *Handler) Purchase(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "insufficient open power"))
 			return
 		}
+		if errors.Is(err, errPurchaseLimitReached) {
+			httpx.WriteProblem(w, r, httpx.NewError(http.StatusConflict, "shop item purchase limit reached"))
+			return
+		}
 		httpx.WriteProblem(w, r, httpx.InternalServerError("purchase failed", "shop_purchase_failed", err))
 		return
 	}
@@ -83,7 +91,7 @@ func (h *Handler) Purchase(w http.ResponseWriter, r *http.Request) {
 		Quantity:       purchaseQuantity,
 		PriceOpenPower: item.PriceOpenPower,
 		OpenPower:      result.openPower,
-		Item:           shopItemResponse(item, true),
+		Item:           shopItemResponse(item, result.purchaseCount),
 	})
 }
 
@@ -107,8 +115,9 @@ func (h *Handler) publishPurchaseEvent(playerID string, item content.Item) {
 }
 
 type purchaseResult struct {
-	purchaseID string
-	openPower  int
+	purchaseID    string
+	openPower     int
+	purchaseCount int
 }
 
 func (h *Handler) purchaseItem(ctx context.Context, playerID string, item content.Item) (purchaseResult, error) {
@@ -167,6 +176,13 @@ func (h *Handler) purchaseItemWithTransaction(ctx context.Context, playerID stri
 }
 
 func (h *Handler) purchaseItemWithoutTransaction(ctx context.Context, playerID string, item content.Item) (purchaseResult, error) {
+	purchaseCount, err := h.itemPurchaseCount(ctx, playerID, item.ID)
+	if err != nil {
+		return purchaseResult{}, err
+	}
+	if purchaseCount >= shopItemPurchaseLimit {
+		return purchaseResult{}, errPurchaseLimitReached
+	}
 	openPower, err := h.sumOpenPower(ctx, playerID)
 	if err != nil {
 		return purchaseResult{}, err
@@ -188,8 +204,9 @@ func (h *Handler) purchaseItemWithoutTransaction(ctx context.Context, playerID s
 	}
 
 	return purchaseResult{
-		purchaseID: purchaseID,
-		openPower:  openPower - item.PriceOpenPower,
+		purchaseID:    purchaseID,
+		openPower:     openPower - item.PriceOpenPower,
+		purchaseCount: purchaseCount + purchaseQuantity,
 	}, nil
 }
 

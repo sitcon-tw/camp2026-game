@@ -4313,7 +4313,7 @@ const docTemplate = `{
                         "AuthCookieAuth": []
                     }
                 ],
-                "description": "Purchases one enabled shop item, deducts open power, and adds it to the current player's item bag.",
+                "description": "Purchases one enabled shop item, up to five times per player, deducts open power, and adds it to the current player's item bag.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5465,6 +5465,18 @@ const docTemplate = `{
                     "type": "string",
                     "example": "https://example.test/avatar/alice.png"
                 },
+                "codexCompletion": {
+                    "type": "integer",
+                    "example": 25
+                },
+                "codexOwnedCount": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "codexTotalCount": {
+                    "type": "integer",
+                    "example": 48
+                },
                 "completedMatchCount": {
                     "type": "integer",
                     "example": 10
@@ -5476,6 +5488,12 @@ const docTemplate = `{
                 "itemCount": {
                     "type": "integer",
                     "example": 6
+                },
+                "itemQuantities": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
                 },
                 "lastActivityAt": {
                     "type": "string"
@@ -9869,6 +9887,14 @@ const docTemplate = `{
                 "priceOpenPower": {
                     "type": "integer",
                     "example": 50
+                },
+                "purchaseCount": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "purchaseLimit": {
+                    "type": "integer",
+                    "example": 5
                 },
                 "rarity": {
                     "type": "string",

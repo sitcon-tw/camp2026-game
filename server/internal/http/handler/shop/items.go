@@ -32,14 +32,14 @@ func (h *Handler) ListItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redeemed, err := h.redeemedItemIDs(r.Context(), player.ID)
+	purchaseCounts, err := h.itemPurchaseCounts(r.Context(), player.ID)
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("shop items unavailable", "shop_items_redeemed_lookup_failed", err))
 		return
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, ItemListResponse{
-		Items: shopItemResponses(shopItems(h.content), redeemed),
+		Items: shopItemResponses(shopItems(h.content), purchaseCounts),
 	})
 }
 
@@ -71,14 +71,14 @@ func (h *Handler) GetItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redeemed, err := h.itemRedeemed(r.Context(), player.ID, item.ID)
+	purchaseCount, err := h.itemPurchaseCount(r.Context(), player.ID, item.ID)
 	if err != nil {
 		httpx.WriteProblem(w, r, httpx.InternalServerError("shop item unavailable", "shop_item_redeemed_lookup_failed", err))
 		return
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, ItemDetailResponse{
-		Item: shopItemResponse(item, redeemed),
+		Item: shopItemResponse(item, purchaseCount),
 	})
 }
 
@@ -101,20 +101,19 @@ func shopItemByID(store *content.Store, itemID string) (content.Item, bool) {
 	return item, true
 }
 
-func shopItemResponses(items []content.Item, redeemed map[string]struct{}) []ShopItemResponse {
+func shopItemResponses(items []content.Item, purchaseCounts map[string]int) []ShopItemResponse {
 	if len(items) == 0 {
 		return nil
 	}
 
 	out := make([]ShopItemResponse, 0, len(items))
 	for _, item := range items {
-		_, isRedeemed := redeemed[item.ID]
-		out = append(out, shopItemResponse(item, isRedeemed))
+		out = append(out, shopItemResponse(item, purchaseCounts[item.ID]))
 	}
 	return out
 }
 
-func shopItemResponse(item content.Item, redeemed bool) ShopItemResponse {
+func shopItemResponse(item content.Item, purchaseCount int) ShopItemResponse {
 	return ShopItemResponse{
 		ID:             item.ID,
 		Name:           item.Name,
@@ -125,12 +124,14 @@ func shopItemResponse(item content.Item, redeemed bool) ShopItemResponse {
 		Source:         item.Source,
 		PriceOpenPower: item.PriceOpenPower,
 		Locked:         item.Locked,
-		Redeemed:       redeemed && !item.Repeatable,
-		Repeatable:     item.Repeatable,
+		Redeemed:       purchaseCount >= shopItemPurchaseLimit,
+		Repeatable:     true,
+		PurchaseCount:  purchaseCount,
+		PurchaseLimit:  shopItemPurchaseLimit,
 	}
 }
 
-func (h *Handler) redeemedItemIDs(ctx context.Context, playerID string) (map[string]struct{}, error) {
+func (h *Handler) itemPurchaseCounts(ctx context.Context, playerID string) (map[string]int, error) {
 	cursor, err := h.db.Collection(mongomodel.ShopPurchasesCollection).Find(
 		ctx,
 		bson.M{"player_id": playerID},
@@ -147,20 +148,20 @@ func (h *Handler) redeemedItemIDs(ctx context.Context, playerID string) (map[str
 	if err := cursor.All(ctx, &purchases); err != nil {
 		return nil, err
 	}
-	out := make(map[string]struct{}, len(purchases))
+	out := make(map[string]int, len(purchases))
 	for _, purchase := range purchases {
-		out[purchase.ItemID] = struct{}{}
+		out[purchase.ItemID] += max(1, purchase.Quantity)
 	}
 	return out, nil
 }
 
-func (h *Handler) itemRedeemed(ctx context.Context, playerID string, itemID string) (bool, error) {
+func (h *Handler) itemPurchaseCount(ctx context.Context, playerID string, itemID string) (int, error) {
 	count, err := h.db.Collection(mongomodel.ShopPurchasesCollection).CountDocuments(ctx, bson.M{
 		"player_id": playerID,
 		"item_id":   itemID,
 	})
 	if err != nil {
-		return false, err
+		return 0, err
 	}
-	return count > 0, nil
+	return int(count), nil
 }
