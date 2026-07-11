@@ -15,6 +15,7 @@ import {
   Save,
   ScanLine,
   Settings,
+  Shirt,
   ShieldCheck,
   SlidersHorizontal,
   Trash2,
@@ -51,6 +52,7 @@ import {
   type AdminRoomTeamAddMemberInput,
   type AdminRoomTeamMember,
   type AdminRoomTeamTokenResponse,
+  type AdminSettlement,
   type AdminStudentChangeEntry,
   type AdminSettings,
   type GiftHistoryEntry,
@@ -1240,6 +1242,117 @@ function AdminDashboardView({
           </TabsContent>
         </Tabs>
       </AdminCollapsibleSection>
+
+      <SettlementPanel />
+    </div>
+  )
+}
+
+function SettlementPanel() {
+  const settlementMutation = useMutation({
+    mutationFn: gameApi.adminSettlement,
+  })
+  const settlement = settlementMutation.data
+
+  return (
+    <section className="border-border grid min-w-0 gap-4 border-t-2 pt-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-xl font-black">
+            <Shirt className="size-5" />
+            衣服券清算
+          </h2>
+          <p className="text-muted-foreground text-sm font-semibold">
+            統計 2026 年會紀念 T 的現有數量，並依目前資料產生得獎名單。
+          </p>
+        </div>
+        <Button
+          type="button"
+          onClick={() => settlementMutation.mutate()}
+          disabled={settlementMutation.isPending}
+        >
+          {settlementMutation.isPending ? <Spinner /> : <Shirt />}
+          {settlement ? "重新清算" : "清算衣服券"}
+        </Button>
+      </div>
+
+      {settlementMutation.error ? (
+        <div className="border-destructive/40 bg-destructive/5 rounded-md border-2 p-4 text-sm font-semibold">
+          {errorMessage(settlementMutation.error, "清算資料讀取失敗")}
+        </div>
+      ) : settlement ? (
+        <SettlementResults settlement={settlement} />
+      ) : (
+        <div className="border-border text-muted-foreground rounded-md border-2 border-dashed p-6 text-center text-sm font-semibold">
+          尚未清算
+        </div>
+      )}
+    </section>
+  )
+}
+
+function SettlementResults({ settlement }: { settlement: AdminSettlement }) {
+  return (
+    <div className="grid min-w-0 gap-4">
+      <div className="bg-primary text-primary-foreground flex min-h-24 items-center justify-between gap-4 rounded-md px-5 py-4">
+        <div>
+          <p className="text-sm font-bold">2026 年會紀念 T</p>
+          <p className="text-3xl font-black">
+            {formatNumber(settlement.tshirtCount)} 個
+          </p>
+        </div>
+        <Shirt className="size-10 shrink-0" />
+      </div>
+      <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {settlement.awards.map((award) => (
+          <Card key={award.key} className="min-w-0 rounded-md py-4">
+            <CardHeader className="gap-1 px-4">
+              <CardTitle className="text-base font-black">
+                {award.title}
+              </CardTitle>
+              {award.metric ? (
+                <CardDescription className="font-bold">
+                  {award.metric}
+                </CardDescription>
+              ) : null}
+            </CardHeader>
+            <CardContent className="grid gap-2 px-4">
+              {award.team ? (
+                <div className="font-black">{award.team.name}</div>
+              ) : null}
+              {award.players.length > 0 ? (
+                award.players.map((player) => (
+                  <div
+                    key={player.playerId}
+                    className="flex min-w-0 items-center gap-2"
+                  >
+                    <PlayerAvatar
+                      nickname={player.nickname}
+                      avatarUrl={player.avatarUrl}
+                      className="size-8 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black">
+                        {player.nickname}
+                      </p>
+                      <p className="text-muted-foreground truncate text-xs font-semibold">
+                        {player.team?.name ?? "未分隊"}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : award.team ? null : (
+                <p className="text-muted-foreground text-sm font-semibold">
+                  沒有符合資料
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <p className="text-muted-foreground text-right text-xs font-semibold">
+        清算時間 {formatDateTime(settlement.generatedAt)}
+      </p>
     </div>
   )
 }

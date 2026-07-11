@@ -55,6 +55,7 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 	api.Post("/admin/login", h.Login)
 	api.Post("/admin/logout", h.Logout)
 	api.Get("/admin/dashboard", h.Dashboard)
+	api.Get("/admin/settlement", h.Settlement)
 	api.Get("/admin/gift-history", h.GiftHistory)
 	api.Get("/admin/history", h.History)
 	api.Get("/admin/student-changes", h.ListStudentChanges)

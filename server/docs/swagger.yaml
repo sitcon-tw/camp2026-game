@@ -876,6 +876,55 @@ definitions:
       sameTeamBattlesEnabled:
         type: boolean
     type: object
+  admin.SettlementAwardResponse:
+    properties:
+      key:
+        type: string
+      metric:
+        type: string
+      players:
+        items:
+          $ref: '#/definitions/admin.SettlementPlayerResponse'
+        type: array
+      team:
+        $ref: '#/definitions/admin.SettlementTeamResponse'
+      title:
+        type: string
+    type: object
+  admin.SettlementPlayerResponse:
+    properties:
+      avatarUrl:
+        type: string
+      nickname:
+        type: string
+      playerId:
+        type: string
+      team:
+        $ref: '#/definitions/admin.DashboardTeamSummaryResponse'
+    type: object
+  admin.SettlementResponse:
+    properties:
+      awards:
+        items:
+          $ref: '#/definitions/admin.SettlementAwardResponse'
+        type: array
+      generatedAt:
+        type: string
+      tshirtCount:
+        example: 12
+        type: integer
+    type: object
+  admin.SettlementTeamResponse:
+    properties:
+      avatarUrl:
+        type: string
+      name:
+        type: string
+      teamId:
+        type: string
+      value:
+        type: number
+    type: object
   admin.StudentChangeEntryResponse:
     properties:
       changeId:
@@ -4446,6 +4495,32 @@ paths:
           schema:
             $ref: '#/definitions/httpx.ProblemDetails'
       summary: Update admin game settings
+      tags:
+      - admin
+  /admin/settlement:
+    get:
+      description: Calculates the current T-shirt item count and final award recipients
+        without modifying inventory.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.SettlementResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httpx.ProblemDetails'
+      summary: Calculate admin final settlement
       tags:
       - admin
   /admin/student-changes:
