@@ -1259,11 +1259,11 @@ function SettlementPanel() {
       <CardHeader className="px-5">
         <div className="min-w-0">
           <CardTitle className="flex items-center gap-2 text-xl font-black">
-            <Shirt className="size-5" />
-            衣服券清算
+            <Activity className="size-5" />
+            活動資料清算
           </CardTitle>
           <CardDescription>
-            統計紀念 T 與各項得獎名單，第 10 小隊不列入清算。
+            統計各項活動指標與得獎名單，第 10 小隊不列入清算。
           </CardDescription>
         </div>
         <CardAction>
@@ -1272,15 +1272,15 @@ function SettlementPanel() {
             onClick={() => settlementMutation.mutate()}
             disabled={settlementMutation.isPending}
           >
-            {settlementMutation.isPending ? <Spinner /> : <Shirt />}
-            {settlement ? "重新清算" : "清算衣服券"}
+            {settlementMutation.isPending ? <Spinner /> : <Activity />}
+            {settlement ? "重新清算" : "開始清算"}
           </Button>
         </CardAction>
       </CardHeader>
       <CardContent className="px-5">
         {settlementMutation.error ? (
           <div className="border-destructive/40 bg-destructive/5 rounded-md border-2 p-4 text-sm font-semibold">
-            {errorMessage(settlementMutation.error, "清算資料讀取失敗")}
+            {errorMessage(settlementMutation.error, "活動資料清算失敗")}
           </div>
         ) : settlement ? (
           <SettlementResults settlement={settlement} />
