@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select"
+import { ZoomableQRCode } from "@/shared/ui/zoomable-qr-code"
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof AppError ? error.message : fallback
@@ -58,11 +59,14 @@ function RoomTeamTokenCard({ token }: { token: StaffRoomTeamTokenResponse }) {
 
   return (
     <div className="border-border grid justify-items-center gap-4 border-t pt-5 text-center">
-      <div className="bg-paper border-ink grid aspect-square w-full max-w-[272px] place-items-center rounded-[18px] border-4 p-4">
+      <ZoomableQRCode
+        label={`${roomLabel} 宿舍 QR Code`}
+        className="bg-paper border-ink hover:bg-paper grid aspect-square w-full max-w-[272px] place-items-center rounded-[18px] border-4 p-4"
+      >
         <QRCodeSVG
           aria-label={`${roomLabel} 宿舍 QR Code`}
           bgColor="var(--paper)"
-          className="h-full w-full"
+          className="size-full"
           fgColor="var(--ink)"
           level="M"
           marginSize={4}
@@ -71,7 +75,7 @@ function RoomTeamTokenCard({ token }: { token: StaffRoomTeamTokenResponse }) {
           title={`${roomLabel} 宿舍 QR Code`}
           value={roomTeamQrValue(token.qrToken)}
         />
-      </div>
+      </ZoomableQRCode>
       <div>
         <h2 className="text-[24px] leading-tight font-black">{roomLabel}</h2>
         <p className="text-muted-foreground mt-1 text-sm font-bold">

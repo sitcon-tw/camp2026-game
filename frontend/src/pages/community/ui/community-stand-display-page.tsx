@@ -16,6 +16,7 @@ import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { GamePageShell } from "@/shared/ui/game-page-shell"
 import { Skeleton } from "@/shared/ui/skeleton"
+import { ZoomableQRCode } from "@/shared/ui/zoomable-qr-code"
 import { toOptimizedImageSrc } from "@/shared/utils/image-src"
 
 type CommunityStandDisplayPageProps = {
@@ -165,11 +166,14 @@ export function CommunityStandDisplayPage({
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 px-5 pb-5 text-center">
-              <div className="bg-paper border-ink mx-auto grid aspect-square w-full max-w-[288px] place-items-center rounded-[18px] border-4 p-4">
+              <ZoomableQRCode
+                label={`${standQuery.data.stand.name} 攤位 QR Code`}
+                className="bg-paper border-ink hover:bg-paper grid aspect-square w-full max-w-[288px] place-items-center rounded-[18px] border-4 p-4"
+              >
                 <QRCodeSVG
                   aria-label={`${standQuery.data.stand.name} 攤位 QR Code`}
                   bgColor="var(--paper)"
-                  className="h-full w-full"
+                  className="size-full"
                   fgColor="var(--ink)"
                   level="M"
                   marginSize={4}
@@ -178,7 +182,7 @@ export function CommunityStandDisplayPage({
                   title={`${standQuery.data.stand.name} 攤位 QR Code`}
                   value={qrValue}
                 />
-              </div>
+              </ZoomableQRCode>
               <Button
                 type="button"
                 variant="secondary"

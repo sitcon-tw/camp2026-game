@@ -1,7 +1,8 @@
 import { useMemo } from "react"
 
-import { createQrMatrix } from "@/features/battle-qr/lib/qr-code"
+import { createQrMatrix, type QrMatrix } from "@/features/battle-qr/lib/qr-code"
 import { cn } from "@/shared/utils"
+import { ZoomableQRCode } from "@/shared/ui/zoomable-qr-code"
 
 type MatchCodeQrProps = {
   value: string
@@ -11,29 +12,13 @@ type MatchCodeQrProps = {
 
 const quietZone = 4
 
-export function MatchCodeQr({
-  value,
-  className,
-  label = "現場配對 QR Code",
-}: MatchCodeQrProps) {
-  const matrix = useMemo(() => {
-    if (!value) return null
-    return createQrMatrix(value)
-  }, [value])
+type QrMatrixSvgProps = {
+  matrix: QrMatrix
+  label: string
+  className?: string
+}
 
-  if (!matrix) {
-    return (
-      <div
-        className={cn(
-          "bg-surface-raised border-ink grid aspect-square place-items-center rounded-lg border-2 text-xs font-black",
-          className,
-        )}
-      >
-        QR
-      </div>
-    )
-  }
-
+function QrMatrixSvg({ matrix, label, className }: QrMatrixSvgProps) {
   const viewBoxSize = matrix.length + quietZone * 2
 
   return (
@@ -63,5 +48,45 @@ export function MatchCodeQr({
         ),
       )}
     </svg>
+  )
+}
+
+export function MatchCodeQr({
+  value,
+  className,
+  label = "現場配對 QR Code",
+}: MatchCodeQrProps) {
+  const matrix = useMemo(() => {
+    if (!value) return null
+    return createQrMatrix(value)
+  }, [value])
+
+  if (!matrix) {
+    return (
+      <div
+        className={cn(
+          "bg-surface-raised border-ink grid aspect-square place-items-center rounded-lg border-2 text-xs font-black",
+          className,
+        )}
+      >
+        QR
+      </div>
+    )
+  }
+
+  return (
+    <ZoomableQRCode
+      label={label}
+      className={cn(
+        "bg-card border-ink hover:bg-card aspect-square rounded-lg border-2 p-1",
+        className,
+      )}
+    >
+      <QrMatrixSvg
+        matrix={matrix}
+        label={label}
+        className="size-full border-0 p-0"
+      />
+    </ZoomableQRCode>
   )
 }
