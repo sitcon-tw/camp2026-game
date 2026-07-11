@@ -26,7 +26,7 @@ func cloneFront(front mongomodel.Front) mongomodel.Front {
 		command := *front.LastCommand
 		command.AffectedCells = append([]mongomodel.FrontCoordinate(nil), command.AffectedCells...)
 		command.SitoneIDs = append([]string(nil), command.SitoneIDs...)
-		command.CapturedGarrisons = cloneCapturedGarrisons(command.CapturedGarrisons)
+		command.DisplacedGarrisons = cloneDisplacedGarrisons(command.DisplacedGarrisons)
 		command.Payload = clonePayload(command.Payload)
 		front.LastCommand = &command
 	}
@@ -43,8 +43,8 @@ func cloneFront(front mongomodel.Front) mongomodel.Front {
 	return front
 }
 
-func cloneCapturedGarrisons(garrisons []mongomodel.FrontCapturedGarrison) []mongomodel.FrontCapturedGarrison {
-	out := append([]mongomodel.FrontCapturedGarrison(nil), garrisons...)
+func cloneDisplacedGarrisons(garrisons []mongomodel.FrontDisplacedGarrison) []mongomodel.FrontDisplacedGarrison {
+	out := append([]mongomodel.FrontDisplacedGarrison(nil), garrisons...)
 	for i := range out {
 		out[i].SitoneIDs = append([]string(nil), out[i].SitoneIDs...)
 	}

@@ -17,11 +17,12 @@ func (h *Handler) applyFrontCommandSitoneEscrow(ctx context.Context, command mon
 	case "withdraw":
 		return h.grantEscrowedSitones(ctx, command.PlayerID, command.SitoneIDs)
 	default:
-		captured := make([]string, 0)
-		for _, garrison := range command.CapturedGarrisons {
-			captured = append(captured, garrison.SitoneIDs...)
+		for _, garrison := range command.DisplacedGarrisons {
+			if err := h.grantEscrowedSitones(ctx, garrison.PlayerID, garrison.SitoneIDs); err != nil {
+				return err
+			}
 		}
-		return h.grantEscrowedSitones(ctx, command.PlayerID, captured)
+		return nil
 	}
 }
 

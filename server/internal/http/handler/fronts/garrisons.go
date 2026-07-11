@@ -105,7 +105,7 @@ func removeFrontGarrison(garrisons []mongomodel.FrontGarrison, garrisonID string
 	return out
 }
 
-func captureFrontGarrisons(front *mongomodel.Front, command *mongomodel.FrontCommand, captured []mongomodel.FrontCoordinate) {
+func displaceFrontGarrisons(front *mongomodel.Front, command *mongomodel.FrontCommand, captured []mongomodel.FrontCoordinate) {
 	if front == nil || command == nil || len(front.Garrisons) == 0 || len(captured) == 0 {
 		return
 	}
@@ -121,7 +121,7 @@ func captureFrontGarrisons(front *mongomodel.Front, command *mongomodel.FrontCom
 			continue
 		}
 		removedIDs[garrison.ID] = struct{}{}
-		command.CapturedGarrisons = append(command.CapturedGarrisons, mongomodel.FrontCapturedGarrison{
+		command.DisplacedGarrisons = append(command.DisplacedGarrisons, mongomodel.FrontDisplacedGarrison{
 			GarrisonID: garrison.ID,
 			PlayerID:   garrison.PlayerID,
 			TeamID:     garrison.TeamID,
@@ -132,7 +132,7 @@ func captureFrontGarrisons(front *mongomodel.Front, command *mongomodel.FrontCom
 	}
 	front.Garrisons = remaining
 	if len(removedIDs) > 0 {
-		reconcileFrontRailNetwork(front, command.CreatedAt, "garrison captured")
+		reconcileFrontRailNetwork(front, command.CreatedAt, "garrison displaced")
 	}
 }
 

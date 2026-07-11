@@ -29,7 +29,7 @@ func TestTerritoryAttackClosesAndCapturesEnclosure(t *testing.T) {
 	if command.CapturedCellCount != 2 || command.EnclosedCellCount != 1 || len(command.AffectedCells) != 2 {
 		t.Fatalf("unexpected capture counts: %#v", command)
 	}
-	if command.ScoreDelta != 20 || command.FrontOpenPowerCost != 15 || command.FrontOpenPowerDelta != -15 {
+	if command.ScoreDelta != 20 || command.FrontOpenPowerCost != 15 || command.FrontOpenPowerReward < 1 || command.FrontOpenPowerReward > 4 || command.FrontOpenPowerDelta != command.FrontOpenPowerReward-command.FrontOpenPowerCost {
 		t.Fatalf("unexpected command accounting: %#v", command)
 	}
 	nextMatrix, err := decodeTerritoryRows(next.Territory)
@@ -150,8 +150,8 @@ func TestTerritoryResourceLandmarkRequiresExplicitOneShotSupport(t *testing.T) {
 	if capturedMatrix[y][x].Owner != "team-001" {
 		t.Fatalf("resource landmark was not captured: %#v", capturedMatrix[y][x])
 	}
-	if captureCommand.FrontOpenPowerCost != 10 || captureCommand.FrontOpenPowerDelta != -10 {
-		t.Fatalf("capturing resource landmark must not grant front power: %#v", captureCommand)
+	if captureCommand.FrontOpenPowerCost != 10 || captureCommand.FrontOpenPowerReward < 1 || captureCommand.FrontOpenPowerDelta != captureCommand.FrontOpenPowerReward-captureCommand.FrontOpenPowerCost {
+		t.Fatalf("capturing resource landmark has wrong open power accounting: %#v", captureCommand)
 	}
 	if activeEventKindAtFrontCell(capturedFront, landmark.ID) != "resource" {
 		t.Fatal("capturing resource landmark removed its explicit support event")
@@ -375,7 +375,7 @@ func TestResetFrontCommandDerivedFieldsClearsRetryRewards(t *testing.T) {
 	command := mongomodel.FrontCommand{
 		ID: "same-command", Kind: "attack", Accepted: true, Applied: true, RejectReason: "stale",
 		AffectedCells: []mongomodel.FrontCoordinate{{X: 1, Y: 2}}, CapturedCellCount: 3,
-		EnclosedCellCount: 2, ScoreDelta: 30, FrontOpenPowerDelta: 15, FrontOpenPowerCost: 15,
+		EnclosedCellCount: 2, ScoreDelta: 30, FrontOpenPowerDelta: -12, FrontOpenPowerCost: 15, FrontOpenPowerReward: 3,
 		RewardSitoneID: "stone_engineering_base", RewardSitoneQuantity: 2,
 	}
 	resetFrontCommandDerivedFields(&command)
@@ -384,7 +384,7 @@ func TestResetFrontCommandDerivedFieldsClearsRetryRewards(t *testing.T) {
 	}
 	if command.Accepted || command.Applied || command.RejectReason != "" || len(command.AffectedCells) != 0 ||
 		command.CapturedCellCount != 0 || command.EnclosedCellCount != 0 || command.ScoreDelta != 0 ||
-		command.FrontOpenPowerDelta != 0 || command.FrontOpenPowerCost != 0 ||
+		command.FrontOpenPowerDelta != 0 || command.FrontOpenPowerCost != 0 || command.FrontOpenPowerReward != 0 ||
 		command.RewardSitoneID != "" || command.RewardSitoneQuantity != 0 {
 		t.Fatalf("retry reset retained derived state: %#v", command)
 	}

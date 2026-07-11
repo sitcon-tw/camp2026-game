@@ -6739,32 +6739,6 @@ const docTemplate = `{
                 }
             }
         },
-        "fronts.FrontCapturedGarrisonResponse": {
-            "type": "object",
-            "properties": {
-                "garrisonId": {
-                    "type": "string"
-                },
-                "playerId": {
-                    "type": "string"
-                },
-                "sitoneIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "teamId": {
-                    "type": "string"
-                },
-                "x": {
-                    "type": "integer"
-                },
-                "y": {
-                    "type": "integer"
-                }
-            }
-        },
         "fronts.FrontCommandOptionResponse": {
             "type": "object",
             "properties": {
@@ -6815,12 +6789,6 @@ const docTemplate = `{
                 "capturedCellCount": {
                     "type": "integer"
                 },
-                "capturedGarrisons": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/fronts.FrontCapturedGarrisonResponse"
-                    }
-                },
                 "clientCommandId": {
                     "type": "string",
                     "example": "front_cmd_7H9K2Q_001"
@@ -6836,6 +6804,15 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "expectedRevision": {
+                    "type": "integer"
+                },
+                "frontOpenPowerCost": {
+                    "type": "integer"
+                },
+                "frontOpenPowerDelta": {
+                    "type": "integer"
+                },
+                "frontOpenPowerReward": {
                     "type": "integer"
                 },
                 "garrisonId": {
@@ -6904,6 +6881,9 @@ const docTemplate = `{
         "fronts.FrontGarrisonResponse": {
             "type": "object",
             "properties": {
+                "attackOpenPowerCost": {
+                    "type": "integer"
+                },
                 "defenseBonus": {
                     "type": "integer"
                 },

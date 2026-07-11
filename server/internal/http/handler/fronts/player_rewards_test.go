@@ -129,6 +129,33 @@ func TestDeductFrontCommandOpenPowerRejectsInsufficientBalance(t *testing.T) {
 	}
 }
 
+func TestGrantFrontCommandOpenPowerWritesCaptureReward(t *testing.T) {
+	db := startFrontMockDatabase(t, bson.D{{Key: "ok", Value: 1}, {Key: "n", Value: int32(1)}})
+	handler := New(Dependencies{MongoDB: db})
+	command := mongomodel.FrontCommand{
+		ID: "command-1", PlayerID: "player-1", FrontOpenPowerReward: 3,
+		CreatedAt: time.Date(2026, time.July, 10, 12, 0, 0, 0, time.UTC),
+	}
+	if err := handler.grantFrontCommandOpenPower(t.Context(), command); err != nil {
+		t.Fatalf("grant capture open power: %v", err)
+	}
+}
+
+func TestDisplacedGarrisonSitonesReturnToOriginalPlayer(t *testing.T) {
+	db := startFrontMockDatabase(t, frontUpdateResponse(1), frontUpdateResponse(1))
+	handler := New(Dependencies{MongoDB: db})
+	command := mongomodel.FrontCommand{
+		Kind: "attack", PlayerID: "attacker",
+		DisplacedGarrisons: []mongomodel.FrontDisplacedGarrison{
+			{PlayerID: "defender-a", SitoneIDs: []string{"stone-a"}},
+			{PlayerID: "defender-b", SitoneIDs: []string{"stone-b"}},
+		},
+	}
+	if err := handler.applyFrontCommandSitoneEscrow(t.Context(), command); err != nil {
+		t.Fatalf("return displaced sitones: %v", err)
+	}
+}
+
 func startFrontMockDatabase(t *testing.T, responses ...bson.D) *mongo.Database {
 	t.Helper()
 	deployment := drivertest.NewMockDeployment(responses...)

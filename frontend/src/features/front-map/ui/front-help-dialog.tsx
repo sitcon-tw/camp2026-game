@@ -63,7 +63,7 @@ export function FrontHelpDialog() {
           <RuleRow icon={MoveUpRight} title="擴張" badge="10 開源力">
             選擇中立區域，從最接近該方向的我方邊界取得相連領土。
           </RuleRow>
-          <RuleRow icon={Swords} title="攻擊" badge="15 開源力">
+          <RuleRow icon={Swords} title="攻擊" badge="15 開源力起">
             選擇已與我方接壤的敵隊領土，削弱或佔領該方向的敵方邊界。
           </RuleRow>
           <RuleRow icon={ShieldPlus} title="防守" badge="最多 8 開源力">
@@ -77,13 +77,14 @@ export function FrontHelpDialog() {
             每隊旗幟是不可佔領的基地核心。攻擊只會影響基地周圍的一般領土。
           </RuleRow>
           <RuleRow icon={Zap} title="開源力">
-            戰線與首頁、商店使用同一份個人開源力。只有執行命令的學員會支付畫面標示的開源力，小隊其他成員不會被扣款。
+            戰線與首頁、商店使用同一份個人開源力。只有執行命令的學員會支付畫面標示的開源力；攻擊駐點時，每顆駐點小石會增加
+            10% 成本。
           </RuleRow>
           <RuleRow icon={Gem} title="前線小石">
             可選擇一到五顆自己擁有的小石。一般命令不會消耗小石；駐點後會暫時離開庫存，撤回才會歸還。
           </RuleRow>
           <RuleRow icon={Castle} title="駐點與失守">
-            在己方非基地領土駐點可提高防禦並開啟自動交易。若領土被攻下，駐點小石會被執行攻擊的學員帶走。
+            在己方非基地領土駐點可提高防禦並開啟自動交易。若領土失守，駐點會解除，小石會回到原玩家庫存。
           </RuleRow>
           <RuleRow icon={Handshake} title="自動交易" badge="每隊 300 / 小時">
             不同小隊的駐點會自動建立 10 到 60
@@ -93,7 +94,9 @@ export function FrontHelpDialog() {
             目前領土每格值 10 戰線分，失地時分數也會下降。小隊歷史最高領土每達
             25
             格，執行該次佔領的學員獲得小石；失地後重搶不會重複發放。救援地標另獎勵
-            1 顆小石。佔領資源地標後可再採集 1 顆小石；戰線獎勵不會增加開源力。
+            1 顆小石。佔領資源地標後可再採集 1
+            顆小石。擴張或攻擊取得領地時，每格有 30% 機率獲得 1 開源力，單次保底
+            1、最多 4。
           </RuleRow>
         </div>
       </DialogContent>

@@ -3,6 +3,7 @@ package fronts
 import (
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,6 +22,9 @@ const (
 	territorySitoneMilestoneSize     = 25
 	frontTradeHourlyLimit            = 300
 	frontGarrisonDefensePerSitone    = 5
+	frontGarrisonAttackCostPercent   = 10
+	frontCaptureRewardChancePercent  = 30
+	frontCaptureRewardMaximum        = 4
 )
 
 var territoryTeamColors = []string{
@@ -322,6 +326,8 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	actionLimit := territoryCommandLimit(command.Kind, command.SitoneEffect.TotalBonusPercent)
 	if command.Kind == "reinforce" {
 		cost = territoryReinforceCost(matrix, command.TeamID, x, y, actionLimit)
+	} else if command.Kind == "attack" {
+		cost = territoryAttackOpenPowerCost(front, x, y)
 	}
 	controlledBefore := territoryControlledCellCount(matrix, command.TeamID)
 	if playerOpenPower < cost {
@@ -355,7 +361,7 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 		enclosed = captureEnclosedTerritory(matrix, command.TeamID, bases)
 		captured = appendUniqueTerritoryCoordinates(captured, enclosed...)
 		affected = appendUniqueTerritoryCoordinates(affected, enclosed...)
-		captureFrontGarrisons(&front, &command, captured)
+		displaceFrontGarrisons(&front, &command, captured)
 	}
 	if len(affected) == 0 {
 		switch command.Kind {
@@ -383,7 +389,8 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	command.CapturedCellCount = len(captured)
 	command.EnclosedCellCount = len(enclosed)
 	command.ScoreDelta = scoreDelta + capturedScoreDelta
-	command.FrontOpenPowerDelta = -cost
+	command.FrontOpenPowerReward = territoryCaptureOpenPowerReward(front.ID, command.ID, captured)
+	command.FrontOpenPowerDelta = command.FrontOpenPowerReward - cost
 	command.FrontOpenPowerCost = cost
 	command.RewardSitoneQuantity += milestonesEarned + landmarkSitoneReward
 	summary := commandSummary(command)
@@ -391,6 +398,41 @@ func applyTerritoryCommand(front mongomodel.Front, command mongomodel.FrontComma
 	syncTerritoryTeamRanks(front.Teams, front.Territory)
 	front.Leaderboard = deriveLeaderboard(front)
 	return front, command, nil
+}
+
+func territoryAttackOpenPowerCost(front mongomodel.Front, x int, y int) int {
+	sitoneCount := 0
+	for _, garrison := range front.Garrisons {
+		if garrison.X == x && garrison.Y == y {
+			sitoneCount = len(garrison.SitoneIDs)
+			break
+		}
+	}
+	return frontAttackOpenPowerCost(sitoneCount)
+}
+
+func frontAttackOpenPowerCost(sitoneCount int) int {
+	base := frontCommandCosts["attack"]
+	if sitoneCount <= 0 {
+		return base
+	}
+	percent := 100 + sitoneCount*frontGarrisonAttackCostPercent
+	return (base*percent + 99) / 100
+}
+
+func territoryCaptureOpenPowerReward(frontID string, commandID string, captured []mongomodel.FrontCoordinate) int {
+	if len(captured) == 0 {
+		return 0
+	}
+	reward := 0
+	for _, coordinate := range captured {
+		hash := fnv.New32a()
+		_, _ = fmt.Fprintf(hash, "%s:%s:%d:%d", frontID, commandID, coordinate.X, coordinate.Y)
+		if int(hash.Sum32()%100) < frontCaptureRewardChancePercent {
+			reward++
+		}
+	}
+	return clampFrontInt(reward, 1, frontCaptureRewardMaximum)
 }
 
 func territoryBaseCommandLimit(kind string) int {

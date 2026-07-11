@@ -138,12 +138,14 @@ func commandResponse(command mongomodel.FrontCommand) FrontCommandResponse {
 		CapturedCellCount:    command.CapturedCellCount,
 		EnclosedCellCount:    command.EnclosedCellCount,
 		ScoreDelta:           command.ScoreDelta,
+		FrontOpenPowerCost:   command.FrontOpenPowerCost,
+		FrontOpenPowerReward: command.FrontOpenPowerReward,
+		FrontOpenPowerDelta:  command.FrontOpenPowerDelta,
 		RewardSitoneID:       command.RewardSitoneID,
 		RewardSitoneQuantity: command.RewardSitoneQuantity,
 		SitoneIDs:            append([]string(nil), command.SitoneIDs...),
 		SitoneEffect:         frontSitoneEffectResponse(command.SitoneEffect),
 		GarrisonID:           command.GarrisonID,
-		CapturedGarrisons:    capturedGarrisonResponses(command.CapturedGarrisons),
 		Payload:              clonePayload(command.Payload),
 		Accepted:             command.Accepted,
 		Applied:              command.Applied,
@@ -170,12 +172,14 @@ func commandSummaryResponse(command *mongomodel.FrontCommandSummary) *FrontComma
 		CapturedCellCount:    command.CapturedCellCount,
 		EnclosedCellCount:    command.EnclosedCellCount,
 		ScoreDelta:           command.ScoreDelta,
+		FrontOpenPowerCost:   command.FrontOpenPowerCost,
+		FrontOpenPowerReward: command.FrontOpenPowerReward,
+		FrontOpenPowerDelta:  command.FrontOpenPowerDelta,
 		RewardSitoneID:       command.RewardSitoneID,
 		RewardSitoneQuantity: command.RewardSitoneQuantity,
 		SitoneIDs:            append([]string(nil), command.SitoneIDs...),
 		SitoneEffect:         frontSitoneEffectResponse(command.SitoneEffect),
 		GarrisonID:           command.GarrisonID,
-		CapturedGarrisons:    capturedGarrisonResponses(command.CapturedGarrisons),
 		Payload:              clonePayload(command.Payload),
 		Accepted:             command.Accepted,
 		Applied:              command.Applied,
@@ -191,9 +195,10 @@ func garrisonResponses(garrisons []mongomodel.FrontGarrison, currentPlayerID str
 			ID: garrison.ID, PlayerID: garrison.PlayerID, TeamID: garrison.TeamID,
 			X: garrison.X, Y: garrison.Y, SitoneIDs: append([]string(nil), garrison.SitoneIDs...),
 			SitoneCount: len(garrison.SitoneIDs), DefenseBonus: garrison.DefenseBonus,
-			TradeBonusPercent: garrison.TradeBonusPercent,
-			Mine:              garrison.PlayerID != "" && garrison.PlayerID == currentPlayerID,
-			StationedAt:       garrison.StationedAt,
+			TradeBonusPercent:   garrison.TradeBonusPercent,
+			AttackOpenPowerCost: frontAttackOpenPowerCost(len(garrison.SitoneIDs)),
+			Mine:                garrison.PlayerID != "" && garrison.PlayerID == currentPlayerID,
+			StationedAt:         garrison.StationedAt,
 		})
 	}
 	return out
@@ -235,17 +240,6 @@ func tradeWaypointResponses(waypoints []mongomodel.FrontTradeWaypoint) []FrontTr
 			GarrisonID: waypoint.GarrisonID, TeamID: waypoint.TeamID, X: waypoint.X, Y: waypoint.Y,
 			ArrivesAt: waypoint.ArrivesAt, PotentialReward: waypoint.PotentialReward,
 			SourceReward: waypoint.SourceReward, TargetReward: waypoint.TargetReward, SettledAt: waypoint.SettledAt,
-		})
-	}
-	return out
-}
-
-func capturedGarrisonResponses(garrisons []mongomodel.FrontCapturedGarrison) []FrontCapturedGarrisonResponse {
-	out := make([]FrontCapturedGarrisonResponse, 0, len(garrisons))
-	for _, garrison := range garrisons {
-		out = append(out, FrontCapturedGarrisonResponse{
-			GarrisonID: garrison.GarrisonID, PlayerID: garrison.PlayerID, TeamID: garrison.TeamID,
-			X: garrison.X, Y: garrison.Y, SitoneIDs: append([]string(nil), garrison.SitoneIDs...),
 		})
 	}
 	return out
