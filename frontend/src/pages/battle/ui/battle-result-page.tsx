@@ -1,12 +1,14 @@
-import { useQuery } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
-import { ChevronDown } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Link, useNavigate } from "@tanstack/react-router"
+import { ChevronDown, RefreshCcw } from "lucide-react"
+import { useMemo, useState } from "react"
+import { toast } from "sonner"
 
 import { useMatchEvents } from "@/features/game/use-match-events"
 import {
   gameApi,
   type MatchQuestionResult,
+  type MatchState,
   type Sitone,
 } from "@/shared/api/game"
 import { Button } from "@/shared/ui/button"
@@ -41,6 +43,12 @@ function clearStoredMatchID() {
   }
 }
 
+function storeMatch(match: MatchState) {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem("camp2026.currentMatchId", match.matchId)
+  }
+}
+
 function choiceText(result: MatchQuestionResult, choice?: string) {
   switch (choice) {
     case "A":
@@ -61,6 +69,8 @@ function isSitone(sitone: Sitone | undefined): sitone is Sitone {
 }
 
 export function BattleResultPage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [matchID] = useState(getStoredMatchID)
   const { data: match, isPending } = useQuery({
     queryKey: ["matches", matchID],
@@ -92,13 +102,18 @@ export function BattleResultPage() {
     (player) => (player.openPowerReward ?? 0) > 0,
   )
   const dropPlayers = players.filter((player) => player.materialDrop != null)
-
-  useEffect(() => {
-    if (match?.status === "completed") {
-      clearStoredMatchID()
-    }
-  }, [match?.status])
-
+  const rematchMutation = useMutation({
+    mutationFn: () => gameApi.rematch(matchID),
+    onSuccess: (nextMatch) => {
+      storeMatch(nextMatch)
+      queryClient.setQueryData(["matches", nextMatch.matchId], nextMatch)
+      queryClient.invalidateQueries({ queryKey: ["matches", "open"] })
+      navigate({ to: "/battle/room" })
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "重新對戰失敗")
+    },
+  })
   return (
     <GamePageShell contentClassName="grid content-start gap-y-2">
       <PageHeader
@@ -358,6 +373,14 @@ export function BattleResultPage() {
       ) : null}
 
       <Separator className="my-2" />
+      <Button
+        type="button"
+        disabled={match?.status !== "completed" || rematchMutation.isPending}
+        onClick={() => rematchMutation.mutate()}
+      >
+        <RefreshCcw className="size-4" aria-hidden />
+        {rematchMutation.isPending ? "建立房間中" : "回到房間重新對戰"}
+      </Button>
       <Button asChild onClick={clearStoredMatchID}>
         <Link to="/">
           <GameFeatureIcon name="home" className="size-4" /> 返回首頁

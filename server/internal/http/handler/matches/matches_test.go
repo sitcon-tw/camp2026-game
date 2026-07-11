@@ -568,6 +568,45 @@ func TestSyncOpenMatchLocks(t *testing.T) {
 	}
 }
 
+func TestNewRematchMatchResetsCompletedState(t *testing.T) {
+	now := time.Date(2026, 7, 11, 12, 0, 0, 0, time.UTC)
+	source := mongomodel.Match{
+		ID:                   "match_done",
+		Mode:                 mongomodel.MatchModeComputer,
+		Status:               mongomodel.MatchStatusCompleted,
+		Phase:                mongomodel.MatchPhaseRevealing,
+		HostPlayerID:         "P1",
+		QuestionIDs:          []string{"quiz-001"},
+		CurrentQuestionIndex: 9,
+		Players: []mongomodel.MatchPlayer{
+			{PlayerID: "P1", Nickname: "Alice", Ready: true, Score: 900, SitoneIDs: []string{"stone_engineering_base"}},
+			{PlayerID: computerPlayerID, Nickname: computerNickname, Kind: mongomodel.MatchPlayerKindComputer, Ready: true, Score: 500},
+		},
+		StartedAt:   now.Add(-time.Minute),
+		CompletedAt: now,
+	}
+
+	rematch := newRematchMatch(source, "match_next", "P1", now.Add(time.Second))
+	if rematch.ID != "match_next" || rematch.RematchSourceMatchID != source.ID {
+		t.Fatalf("unexpected rematch identity: %#v", rematch)
+	}
+	if rematch.Status != mongomodel.MatchStatusWaiting || rematch.Phase != "" || rematch.StartedAt != (time.Time{}) || rematch.CompletedAt != (time.Time{}) {
+		t.Fatalf("expected waiting rematch without completed state, got %#v", rematch)
+	}
+	if len(rematch.QuestionIDs) != 0 || rematch.CurrentQuestionIndex != 0 {
+		t.Fatalf("expected rematch to clear question progress, got %#v", rematch)
+	}
+	if rematch.OpenHostLock != "P1" || strings.Join(rematch.OpenPlayerLocks, ",") != "P1" {
+		t.Fatalf("expected open locks for human rematch player, got host=%q players=%#v", rematch.OpenHostLock, rematch.OpenPlayerLocks)
+	}
+	if len(rematch.Players) != 2 || rematch.Players[0].Ready || rematch.Players[0].Score != 0 {
+		t.Fatalf("expected human rematch player reset, got %#v", rematch.Players)
+	}
+	if !rematch.Players[1].Ready || rematch.Players[1].Score != 0 || len(rematch.Players[1].SitoneIDs) == 0 {
+		t.Fatalf("expected computer rematch player ready with default loadout, got %#v", rematch.Players[1])
+	}
+}
+
 func TestMatchAnswerRecordIDUsesMatchPlayerAndQuestion(t *testing.T) {
 	got := matchAnswerRecordID("match_123", "P1", "quiz-001")
 	if got != "answer_match_123_P1_quiz-001" {

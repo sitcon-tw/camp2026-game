@@ -7,6 +7,7 @@ type OpenMatchResponse = MatchStateResponse
 type ReadyMatchResponse = MatchStateResponse
 type UpdateLoadoutResponse = MatchStateResponse
 type AddComputerPlayerResponse = MatchStateResponse
+type RematchResponse = MatchStateResponse
 
 type ScanMatchPairingRequest struct {
 	Token string `json:"token" validate:"required,min=8,max=24" example:"7H9K2Q8M4RXPA3WZ"`
