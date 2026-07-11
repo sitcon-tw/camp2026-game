@@ -104,48 +104,50 @@ export function AppBottomNav() {
       {battleMenuOpen ? (
         <div
           id="battle-menu"
-          className="animate-in fade-in-0 slide-in-from-bottom-3 fixed bottom-[calc(5.65rem+env(safe-area-inset-bottom))] left-1/2 z-50 grid w-[calc(100%-2rem)] max-w-[398px] -translate-x-1/2 gap-2 duration-200 motion-reduce:animate-none"
+          className="border-ink bg-surface-raised animate-in fade-in-0 slide-in-from-bottom-3 fixed bottom-[calc(5.65rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[min(calc(100%-3rem),18rem)] -translate-x-1/2 rounded-lg border-2 p-2 shadow-[4px_4px_0_rgba(23,35,58,0.2)] duration-200 motion-reduce:animate-none"
           aria-label="選擇戰鬥模式"
         >
-          {battleItems.map((item) => {
-            const active =
-              pathname === item.to || pathname.startsWith(`${item.to}/`)
+          <div className="grid grid-cols-2 gap-2">
+            {battleItems.map((item) => {
+              const active =
+                pathname === item.to || pathname.startsWith(`${item.to}/`)
 
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => setBattleMenuPathname(null)}
-                className={[
-                  "border-ink bg-card focus-visible:outline-power flex items-center gap-3 rounded-lg border-2 px-3 py-2.5 no-underline shadow-[3px_3px_0_rgba(23,35,58,0.2)] transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px motion-reduce:transition-none",
-                  active ? "text-primary" : "text-ink",
-                ].join(" ")}
-              >
-                {item.iconSrc ? (
-                  <img
-                    src={toOptimizedImageSrc(item.iconSrc)}
-                    alt=""
-                    className="size-10 object-contain"
-                    draggable={false}
-                    decoding="async"
-                    aria-hidden
-                  />
-                ) : (
-                  <span className="bg-primary/15 grid size-10 place-items-center rounded-md">
-                    <Swords className="size-5" aria-hidden />
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setBattleMenuPathname(null)}
+                  className={[
+                    "border-ink bg-card focus-visible:outline-power flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg border-2 px-2 py-3 text-center no-underline shadow-[2px_2px_0_rgba(23,35,58,0.2)] transition-transform duration-150 hover:-translate-y-1 focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px motion-reduce:transition-none",
+                    active ? "text-primary" : "text-ink",
+                  ].join(" ")}
+                >
+                  {item.iconSrc ? (
+                    <img
+                      src={toOptimizedImageSrc(item.iconSrc)}
+                      alt=""
+                      className="size-11 object-contain"
+                      draggable={false}
+                      decoding="async"
+                      aria-hidden
+                    />
+                  ) : (
+                    <span className="bg-primary/15 grid size-11 place-items-center rounded-md">
+                      <Swords className="size-6" aria-hidden />
+                    </span>
+                  )}
+                  <span className="grid gap-1">
+                    <span className="text-sm leading-none font-black">
+                      {item.label}
+                    </span>
+                    <span className="text-muted-foreground text-[11px] leading-none font-bold">
+                      {item.description}
+                    </span>
                   </span>
-                )}
-                <span className="grid gap-0.5">
-                  <span className="text-sm leading-none font-black">
-                    {item.label}
-                  </span>
-                  <span className="text-muted-foreground text-xs leading-none font-bold">
-                    {item.description}
-                  </span>
-                </span>
-              </Link>
-            )
-          })}
+                </Link>
+              )
+            })}
+          </div>
         </div>
       ) : null}
 
