@@ -239,6 +239,14 @@ function FrontSnapshotPanel({ frontID }: { frontID: string }) {
       toast.error(option?.reason ?? "這個區域目前不能使用此命令")
       return
     }
+    const commandCost =
+      kind === "attack" && selectedGarrison
+        ? selectedGarrison.attackOpenPowerCost
+        : (option?.cost ?? 0)
+    if (snapshot.currentPlayerOpenPower < commandCost) {
+      toast.error("開源力不足")
+      return
+    }
 
     setSelectedCommand(kind)
     commandMutation.mutate({
@@ -827,6 +835,9 @@ function commandSuccessFeedback(
     details.push(`小石多修復 ${command.sitoneEffect.defenseBonus}`)
   }
   if (command.scoreDelta > 0) details.push(`+${command.scoreDelta} 戰線分`)
+  if (command.frontOpenPowerReward > 0) {
+    details.push(`獲得 ${command.frontOpenPowerReward} 開源力`)
+  }
   if (command.rewardSitoneId && command.rewardSitoneQuantity > 0) {
     const name = sitones.find(
       (sitone) => sitone.sitoneId === command.rewardSitoneId,
@@ -835,11 +846,6 @@ function commandSuccessFeedback(
   }
   if (command.kind === "station") details.push("小石已開始駐守與自動交易")
   if (command.kind === "withdraw") details.push("駐點小石已返回庫存")
-  const capturedSitones = command.capturedGarrisons.reduce(
-    (total, garrison) => total + garrison.sitoneIds.length,
-    0,
-  )
-  if (capturedSitones > 0) details.push(`帶回 ${capturedSitones} 顆駐點小石`)
   return {
     title: `${commandLabel(command.kind)}完成`,
     description: details.length > 0 ? details.join(" · ") : undefined,

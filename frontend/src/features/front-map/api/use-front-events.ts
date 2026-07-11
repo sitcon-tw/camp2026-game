@@ -13,7 +13,6 @@ import { frontSnapshotQueryKey } from "./front.query"
 const frontEventNames = [
   "front_updated",
   "garrison_updated",
-  "garrison_captured",
   "trade_started",
   "trade_completed",
   "rail_updated",

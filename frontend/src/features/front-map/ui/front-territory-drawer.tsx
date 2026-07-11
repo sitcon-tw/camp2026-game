@@ -185,17 +185,22 @@ function TerritoryDrawerContent({
     cell.ownerTeamId === myTeamId && clampPercent(cell.defense) >= 100
   const hasCommandOptions = availableCommands.length > 0
   const disabledCommandReasons = commandList
-    .map(({ item, option }) => ({
-      item,
-      reason:
-        item.kind === "attack" && !canAttackSelectedOwner
-          ? "此小隊尚未與我方領土接壤"
-          : item.kind === "reinforce" && defenseFull
-            ? undefined
-            : option && !option.enabled
-              ? normalizeCommandReason(option.reason)
-              : undefined,
-    }))
+    .map(({ item, option }) => {
+      const cost = commandOpenPowerCost(item.kind, option?.cost, garrison)
+      return {
+        item,
+        reason:
+          item.kind === "attack" && !canAttackSelectedOwner
+            ? "此小隊尚未與我方領土接壤"
+            : item.kind === "reinforce" && defenseFull
+              ? undefined
+              : cost > front.currentPlayerOpenPower
+                ? "開源力不足"
+                : option && !option.enabled
+                  ? normalizeCommandReason(option.reason)
+                  : undefined,
+      }
+    })
     .filter(({ reason }) => Boolean(reason))
   const enabledCommandNotices = commandList
     .filter(({ option }) => option?.enabled && option.reason)
@@ -268,7 +273,11 @@ function TerritoryDrawerContent({
             </div>
             <div className="text-muted-foreground text-xs font-bold">
               防禦 +{garrison.defenseBonus} · 交易 +{garrison.tradeBonusPercent}
-              % · 進行中{" "}
+              %
+              {!garrison.mine
+                ? ` · 攻擊成本 ${garrison.attackOpenPowerCost}`
+                : ""}
+              {" · 進行中 "}
               {
                 front.tradeRoutes.filter(
                   (route) =>
@@ -332,12 +341,19 @@ function TerritoryDrawerContent({
 
             <div className="grid grid-cols-2 gap-2">
               {commandList.map(({ item, option }) => {
+                const cost = commandOpenPowerCost(
+                  item.kind,
+                  option?.cost,
+                  garrison,
+                )
                 const localReason =
                   item.kind === "attack" && !canAttackSelectedOwner
                     ? "此小隊尚未與我方領土接壤"
                     : item.kind === "reinforce" && defenseFull
                       ? "此格防禦已滿"
-                      : undefined
+                      : cost > front.currentPlayerOpenPower
+                        ? "開源力不足"
+                        : undefined
                 const enabled = Boolean(
                   playable &&
                   (item.kind === "withdraw" || selectedSitones.length > 0) &&
@@ -364,10 +380,10 @@ function TerritoryDrawerContent({
                     <span className="truncate">
                       {pending ? "送出中" : (option?.label ?? item.label)}
                     </span>
-                    {option?.cost ? (
+                    {cost > 0 ? (
                       <span className="ml-auto inline-flex items-center gap-1 text-xs">
                         <Zap className="size-3" aria-hidden />
-                        {option.cost}
+                        {cost}
                       </span>
                     ) : null}
                   </Button>
@@ -417,6 +433,17 @@ function TerritoryDrawerContent({
       </div>
     </>
   )
+}
+
+function commandOpenPowerCost(
+  kind: FrontCommandKind,
+  baseCost: number | undefined,
+  garrison: FrontGarrison | null,
+) {
+  if (kind === "attack" && garrison && !garrison.mine) {
+    return garrison.attackOpenPowerCost
+  }
+  return baseCost ?? 0
 }
 
 function sitonePreviewLabel(

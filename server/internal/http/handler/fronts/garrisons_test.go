@@ -1,6 +1,7 @@
 package fronts
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -47,7 +48,7 @@ func TestStationAndWithdrawGarrison(t *testing.T) {
 	}
 }
 
-func TestAttackCapturesGarrisonSitones(t *testing.T) {
+func TestAttackDisplacesGarrisonSitones(t *testing.T) {
 	front := newTerritoryTestFront(3, 1)
 	matrix, _ := decodeTerritoryRows(front.Territory)
 	matrix[0][0] = territoryCell{Playable: true, Owner: "team-001", Defense: 20}
@@ -66,10 +67,79 @@ func TestAttackCapturesGarrisonSitones(t *testing.T) {
 	if err != nil {
 		t.Fatalf("attack garrison: %v", err)
 	}
-	if len(next.Garrisons) != 0 || len(command.CapturedGarrisons) != 1 {
-		t.Fatalf("captured garrison was not removed: front=%#v command=%#v", next.Garrisons, command)
+	if len(next.Garrisons) != 0 || len(command.DisplacedGarrisons) != 1 {
+		t.Fatalf("displaced garrison was not removed: front=%#v command=%#v", next.Garrisons, command)
 	}
-	if got := command.CapturedGarrisons[0].SitoneIDs; len(got) != 3 {
-		t.Fatalf("captured sitones missing: %#v", got)
+	if displaced := command.DisplacedGarrisons[0]; displaced.PlayerID != "defender" || len(displaced.SitoneIDs) != 3 {
+		t.Fatalf("displaced sitones missing their original owner: %#v", displaced)
+	}
+}
+
+func TestGarrisonAttackOpenPowerCostScalesPerSitone(t *testing.T) {
+	tests := []struct {
+		sitoneCount int
+		want        int
+	}{
+		{sitoneCount: 0, want: 15},
+		{sitoneCount: 1, want: 17},
+		{sitoneCount: 2, want: 18},
+		{sitoneCount: 3, want: 20},
+		{sitoneCount: 4, want: 21},
+		{sitoneCount: 5, want: 23},
+	}
+	for _, test := range tests {
+		if got := frontAttackOpenPowerCost(test.sitoneCount); got != test.want {
+			t.Fatalf("%d sitones: got cost %d, want %d", test.sitoneCount, got, test.want)
+		}
+	}
+}
+
+func TestTerritoryAttackCostUsesOnlyTargetGarrison(t *testing.T) {
+	front := newTerritoryTestFront(3, 1)
+	front.Garrisons = []mongomodel.FrontGarrison{
+		{X: 1, Y: 0, SitoneIDs: []string{"stone-a", "stone-b"}},
+		{X: 2, Y: 0, SitoneIDs: []string{"stone-a", "stone-b", "stone-c", "stone-d", "stone-e"}},
+	}
+	if got := territoryAttackOpenPowerCost(front, 1, 0); got != 18 {
+		t.Fatalf("target garrison cost = %d, want 18", got)
+	}
+	if got := territoryAttackOpenPowerCost(front, 0, 0); got != 15 {
+		t.Fatalf("empty target cost = %d, want 15", got)
+	}
+}
+
+func TestTerritoryAttackRejectsBalanceBelowGarrisonCost(t *testing.T) {
+	front := newTerritoryTestFront(2, 1)
+	matrix, _ := decodeTerritoryRows(front.Territory)
+	matrix[0][0] = territoryCell{Playable: true, Owner: "team-001", Defense: 20}
+	matrix[0][1] = territoryCell{Playable: true, Owner: "team-002", Defense: 20}
+	front.Territory.Rows = encodeTerritoryRows(matrix)
+	front.Garrisons = []mongomodel.FrontGarrison{{
+		X: 1, Y: 0, SitoneIDs: []string{"stone-a", "stone-b", "stone-c", "stone-d", "stone-e"},
+	}}
+	x, y := 1, 0
+	_, _, err := applyCommandToFront(front, mongomodel.FrontCommand{
+		ID: "attack-garrison", TeamID: "team-001", Kind: "attack", TargetX: &x, TargetY: &y,
+	}, 22)
+	if err == nil || !strings.Contains(err.Error(), "insufficient open power") {
+		t.Fatalf("expected 23-point garrison attack to reject 22 balance, got %v", err)
+	}
+}
+
+func TestTerritoryCaptureOpenPowerRewardIsDeterministicAndBounded(t *testing.T) {
+	captured := make([]mongomodel.FrontCoordinate, 20)
+	for index := range captured {
+		captured[index] = mongomodel.FrontCoordinate{X: index, Y: index % 3}
+	}
+	first := territoryCaptureOpenPowerReward("front-1", "command-1", captured)
+	second := territoryCaptureOpenPowerReward("front-1", "command-1", captured)
+	if first != second {
+		t.Fatalf("reward changed across identical rolls: %d != %d", first, second)
+	}
+	if first < 1 || first > frontCaptureRewardMaximum {
+		t.Fatalf("reward %d is outside 1..%d", first, frontCaptureRewardMaximum)
+	}
+	if got := territoryCaptureOpenPowerReward("front-1", "command-1", nil); got != 0 {
+		t.Fatalf("empty capture reward = %d, want 0", got)
 	}
 }

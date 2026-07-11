@@ -1283,23 +1283,6 @@ definitions:
           $ref: '#/definitions/fronts.FrontTradeRouteResponse'
         type: array
     type: object
-  fronts.FrontCapturedGarrisonResponse:
-    properties:
-      garrisonId:
-        type: string
-      playerId:
-        type: string
-      sitoneIds:
-        items:
-          type: string
-        type: array
-      teamId:
-        type: string
-      x:
-        type: integer
-      "y":
-        type: integer
-    type: object
   fronts.FrontCommandOptionResponse:
     properties:
       cost:
@@ -1335,10 +1318,6 @@ definitions:
         type: boolean
       capturedCellCount:
         type: integer
-      capturedGarrisons:
-        items:
-          $ref: '#/definitions/fronts.FrontCapturedGarrisonResponse'
-        type: array
       clientCommandId:
         example: front_cmd_7H9K2Q_001
         type: string
@@ -1350,6 +1329,12 @@ definitions:
       enclosedCellCount:
         type: integer
       expectedRevision:
+        type: integer
+      frontOpenPowerCost:
+        type: integer
+      frontOpenPowerDelta:
+        type: integer
+      frontOpenPowerReward:
         type: integer
       garrisonId:
         type: string
@@ -1396,6 +1381,8 @@ definitions:
     type: object
   fronts.FrontGarrisonResponse:
     properties:
+      attackOpenPowerCost:
+        type: integer
       defenseBonus:
         type: integer
       id:

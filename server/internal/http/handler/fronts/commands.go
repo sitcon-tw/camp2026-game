@@ -199,8 +199,8 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 }
 
 func frontCommandEventName(command mongomodel.FrontCommand) string {
-	if len(command.CapturedGarrisons) > 0 {
-		return "garrison_captured"
+	if len(command.DisplacedGarrisons) > 0 {
+		return "garrison_updated"
 	}
 	if command.Kind == "station" || command.Kind == "withdraw" {
 		return "garrison_updated"
@@ -242,13 +242,14 @@ func resetFrontCommandDerivedFields(command *mongomodel.FrontCommand) {
 	command.ScoreDelta = 0
 	command.FrontOpenPowerDelta = 0
 	command.FrontOpenPowerCost = 0
+	command.FrontOpenPowerReward = 0
 	command.RewardSitoneID = ""
 	command.RewardSitoneQuantity = 0
 	command.SitoneEffect.AffectedCellBonus = 0
 	command.SitoneEffect.DefenseBonus = 0
 	command.SitoneEffect.ScoreBonus = 0
 	command.GarrisonID = ""
-	command.CapturedGarrisons = nil
+	command.DisplacedGarrisons = nil
 }
 
 func (h *Handler) writeCommandResponse(w http.ResponseWriter, r *http.Request, status int, front mongomodel.Front, player mongomodel.Player, command mongomodel.FrontCommand) {
@@ -303,6 +304,9 @@ func (h *Handler) recordCommand(ctx context.Context, previousRevision int64, fro
 		if err := h.deductFrontCommandOpenPower(ctx, command); err != nil {
 			return nil, err
 		}
+		if err := h.grantFrontCommandOpenPower(ctx, command); err != nil {
+			return nil, err
+		}
 		if err := h.applyFrontCommandSitoneEscrow(ctx, command); err != nil {
 			return nil, err
 		}
@@ -340,6 +344,21 @@ func (h *Handler) deductFrontCommandOpenPower(ctx context.Context, command mongo
 		PlayerID:  command.PlayerID,
 		Amount:    -command.FrontOpenPowerCost,
 		Reason:    "front_command",
+		Source:    command.ID,
+		CreatedAt: command.CreatedAt,
+	})
+	return err
+}
+
+func (h *Handler) grantFrontCommandOpenPower(ctx context.Context, command mongomodel.FrontCommand) error {
+	if command.FrontOpenPowerReward <= 0 {
+		return nil
+	}
+	_, err := h.db.Collection(mongomodel.OpenPowerRecordsCollection).InsertOne(ctx, mongomodel.OpenPowerRecord{
+		ID:        "front_capture_reward_" + command.ID,
+		PlayerID:  command.PlayerID,
+		Amount:    command.FrontOpenPowerReward,
+		Reason:    "front_capture_reward",
 		Source:    command.ID,
 		CreatedAt: command.CreatedAt,
 	})
@@ -607,12 +626,13 @@ func commandSummary(command mongomodel.FrontCommand) mongomodel.FrontCommandSumm
 		ScoreDelta:           command.ScoreDelta,
 		FrontOpenPowerDelta:  command.FrontOpenPowerDelta,
 		FrontOpenPowerCost:   command.FrontOpenPowerCost,
+		FrontOpenPowerReward: command.FrontOpenPowerReward,
 		RewardSitoneID:       command.RewardSitoneID,
 		RewardSitoneQuantity: command.RewardSitoneQuantity,
 		SitoneIDs:            append([]string(nil), command.SitoneIDs...),
 		SitoneEffect:         command.SitoneEffect,
 		GarrisonID:           command.GarrisonID,
-		CapturedGarrisons:    cloneCapturedGarrisons(command.CapturedGarrisons),
+		DisplacedGarrisons:   cloneDisplacedGarrisons(command.DisplacedGarrisons),
 		Payload:              clonePayload(command.Payload),
 		Accepted:             command.Accepted,
 		Applied:              command.Applied,
