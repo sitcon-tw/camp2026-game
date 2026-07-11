@@ -387,6 +387,15 @@ definitions:
       avatarUrl:
         example: https://example.test/avatar/alice.png
         type: string
+      codexCompletion:
+        example: 25
+        type: integer
+      codexOwnedCount:
+        example: 12
+        type: integer
+      codexTotalCount:
+        example: 48
+        type: integer
       completedMatchCount:
         example: 10
         type: integer
@@ -396,6 +405,10 @@ definitions:
       itemCount:
         example: 6
         type: integer
+      itemQuantities:
+        additionalProperties:
+          type: integer
+        type: object
       lastActivityAt:
         type: string
       matchCount:
@@ -3469,6 +3482,12 @@ definitions:
         type: string
       priceOpenPower:
         example: 50
+        type: integer
+      purchaseCount:
+        example: 2
+        type: integer
+      purchaseLimit:
+        example: 5
         type: integer
       rarity:
         example: common
@@ -6554,8 +6573,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Purchases one enabled shop item, deducts open power, and adds it
-        to the current player's item bag.
+      description: Purchases one enabled shop item, up to five times per player, deducts
+        open power, and adds it to the current player's item bag.
       parameters:
       - description: Purchase request
         in: body

@@ -20,6 +20,8 @@ type ShopItemResponse struct {
 	Locked         bool   `json:"locked" example:"false"`
 	Redeemed       bool   `json:"redeemed" example:"false"`
 	Repeatable     bool   `json:"repeatable" example:"false"`
+	PurchaseCount  int    `json:"purchaseCount" example:"2"`
+	PurchaseLimit  int    `json:"purchaseLimit" example:"5"`
 }
 
 type PurchaseRequest struct {

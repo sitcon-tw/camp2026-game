@@ -26,8 +26,8 @@ func TestShopItemsIncludesAllEnabledPurchasableContentItems(t *testing.T) {
 	if items[0].ID != "item_adventure_backpack" || items[0].PriceOpenPower != 150 {
 		t.Fatalf("unexpected first shop item: %#v", items[0])
 	}
-	if item, ok := shopItemByID(store, "item_polaroid_film"); !ok || !item.Locked {
-		t.Fatalf("expected polaroid film item to be listed as locked, got %#v", item)
+	if item, ok := shopItemByID(store, "item_polaroid_film"); !ok || item.Locked {
+		t.Fatalf("expected polaroid film item to be available, got %#v", item)
 	}
 	if _, ok := shopItemByID(store, "item_wooden_plank"); ok {
 		t.Fatal("expected event-only wooden plank item not to be listed")
@@ -38,8 +38,8 @@ func TestShopItemsIncludesAllEnabledPurchasableContentItems(t *testing.T) {
 	if _, ok := shopItemByID(store, "item_charm_debug"); !ok {
 		t.Fatal("expected charm item to be purchasable")
 	}
-	if _, ok := shopItemByID(store, "item_postcard_sitcon2024"); ok {
-		t.Fatal("expected disabled cosmetic item not to be listed")
+	if _, ok := shopItemByID(store, "item_postcard_sitcon2024"); !ok {
+		t.Fatal("expected enabled cosmetic item to be listed")
 	}
 }
 
@@ -53,9 +53,9 @@ func TestShopItemResponse(t *testing.T) {
 		Source:         "shop",
 		PriceOpenPower: 150,
 		Locked:         true,
-	}, true)
+	}, 5)
 
-	if response.ID != "item_adventure_backpack" || response.Source != "shop" || response.PriceOpenPower != 150 || !response.Locked || !response.Redeemed {
+	if response.ID != "item_adventure_backpack" || response.Source != "shop" || response.PriceOpenPower != 150 || !response.Locked || !response.Redeemed || response.PurchaseCount != 5 || response.PurchaseLimit != 5 {
 		t.Fatalf("unexpected shop item response: %#v", response)
 	}
 }
@@ -64,7 +64,7 @@ func TestShopItemResponsesIncludesRedeemedState(t *testing.T) {
 	responses := shopItemResponses([]content.Item{
 		{ID: "item-a", Name: "A", Type: "material", Rarity: "common", PriceOpenPower: 10},
 		{ID: "item-b", Name: "B", Type: "material", Rarity: "common", PriceOpenPower: 20},
-	}, map[string]struct{}{"item-b": {}})
+	}, map[string]int{"item-b": 5})
 
 	if len(responses) != 2 {
 		t.Fatalf("expected 2 responses, got %#v", responses)

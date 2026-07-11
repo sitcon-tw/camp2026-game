@@ -35,8 +35,10 @@ export function ShopPurchaseConfirmButton({
 }: ShopPurchaseConfirmButtonProps) {
   const queryClient = useQueryClient()
   const isLocked = item.locked
+  const limitReached = item.purchaseCount >= item.purchaseLimit
   const canAfford =
     !isLocked &&
+    !limitReached &&
     (currentOpenPower == null || currentOpenPower >= item.priceOpenPower)
   const purchaseMutation = useMutation({
     mutationFn: gameApi.purchase,
@@ -59,10 +61,14 @@ export function ShopPurchaseConfirmButton({
         <Button
           className={className}
           size={size}
-          disabled={isLocked || purchaseMutation.isPending}
+          disabled={isLocked || limitReached || purchaseMutation.isPending}
         >
           <GameFeatureIcon name="shop" className="size-4" />
-          {purchaseMutation.isPending ? "購買中" : label}
+          {purchaseMutation.isPending
+            ? "購買中"
+            : limitReached
+              ? "已達上限"
+              : label}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent size="sm">
@@ -74,11 +80,13 @@ export function ShopPurchaseConfirmButton({
           <AlertDialogDescription>
             {isLocked
               ? `「${item.name}」暫未開放購買。`
-              : `將使用 ${item.priceOpenPower} 開源力購買「${item.name}」。${
-                  currentOpenPower == null
-                    ? ""
-                    : ` 目前持有 ${currentOpenPower} 開源力。`
-                }`}
+              : limitReached
+                ? `「${item.name}」已購買 ${item.purchaseCount}/${item.purchaseLimit} 次。`
+                : `將使用 ${item.priceOpenPower} 開源力購買「${item.name}」。${
+                    currentOpenPower == null
+                      ? ""
+                      : ` 目前持有 ${currentOpenPower} 開源力。`
+                  }`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {!isLocked && !canAfford ? (
@@ -91,7 +99,12 @@ export function ShopPurchaseConfirmButton({
             取消
           </AlertDialogCancel>
           <AlertDialogAction
-            disabled={isLocked || !canAfford || purchaseMutation.isPending}
+            disabled={
+              isLocked ||
+              limitReached ||
+              !canAfford ||
+              purchaseMutation.isPending
+            }
             onClick={() => purchaseMutation.mutate(item.id)}
           >
             <GameFeatureIcon name="shop" className="size-4" />

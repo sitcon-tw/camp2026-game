@@ -177,6 +177,8 @@ const ShopItemSchema = z.object({
   locked: z.boolean().default(false),
   redeemed: z.boolean(),
   repeatable: z.boolean().default(false),
+  purchaseCount: z.number().default(0),
+  purchaseLimit: z.number().default(5),
 })
 
 const ShopItemsResponseSchema = z.object({
@@ -1086,6 +1088,10 @@ const AdminDashboardPlayerSchema = z.object({
   role: z.string().optional(),
   sitoneCount: z.number(),
   itemCount: z.number(),
+  codexOwnedCount: z.number(),
+  codexTotalCount: z.number(),
+  codexCompletion: z.number(),
+  itemQuantities: z.record(z.string(), z.number()),
   openPower: z.number(),
   matchCount: z.number(),
   completedMatchCount: z.number(),
@@ -1098,6 +1104,10 @@ const AdminDashboardPlayerSchema = z.object({
 
 const AdminDashboardPlayerRankSchema = AdminDashboardPlayerSchema.omit({
   role: true,
+  codexOwnedCount: true,
+  codexTotalCount: true,
+  codexCompletion: true,
+  itemQuantities: true,
 })
 
 const AdminDashboardTeamSchema = z.object({

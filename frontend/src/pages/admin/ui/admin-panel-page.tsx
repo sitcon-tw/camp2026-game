@@ -45,7 +45,6 @@ import {
   type AdminDashboardHistory,
   type AdminDashboardInventoryEntry,
   type AdminDashboardPlayer,
-  type AdminDashboardPlayerRank,
   type AdminDashboardTeam,
   type AdminOpenPowerTransferEntry,
   type AdminRoomTeam,
@@ -1193,6 +1192,8 @@ function AdminDashboardView({
         <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] 2xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
           <TopPlayersPanel
             topPlayers={dashboard.topPlayers}
+            players={dashboard.players}
+            items={dashboard.inventory.items}
             onOpenPlayers={openPlayersStats}
           />
           <TeamsPanel teams={dashboard.teams} />
@@ -2229,16 +2230,57 @@ function MiniStat({ label, value }: { label: string; value: number }) {
 
 function TopPlayersPanel({
   topPlayers,
+  players,
+  items,
   onOpenPlayers,
 }: {
   topPlayers: AdminDashboard["topPlayers"]
+  players: AdminDashboardPlayer[]
+  items: AdminDashboardInventoryEntry[]
   onOpenPlayers: () => void
 }) {
+  const [selectedItemId, setSelectedItemId] = useState("all")
+  const studentPlayers = useMemo(
+    () => players.filter((player) => player.role !== "staff"),
+    [players],
+  )
+  const codexPlayers = useMemo(
+    () =>
+      [...studentPlayers]
+        .sort(
+          (a, b) =>
+            b.codexCompletion - a.codexCompletion ||
+            b.codexOwnedCount - a.codexOwnedCount ||
+            a.nickname.localeCompare(b.nickname, "zh-TW"),
+        )
+        .map((player, index) => ({ ...player, rank: index + 1 })),
+    [studentPlayers],
+  )
+  const itemPlayers = useMemo(
+    () =>
+      [...studentPlayers]
+        .sort((a, b) => {
+          const aQuantity =
+            selectedItemId === "all"
+              ? a.itemCount
+              : (a.itemQuantities[selectedItemId] ?? 0)
+          const bQuantity =
+            selectedItemId === "all"
+              ? b.itemCount
+              : (b.itemQuantities[selectedItemId] ?? 0)
+          return (
+            bQuantity - aQuantity ||
+            a.nickname.localeCompare(b.nickname, "zh-TW")
+          )
+        })
+        .map((player, index) => ({ ...player, rank: index + 1 })),
+    [selectedItemId, studentPlayers],
+  )
   const groups: Array<{
     value: string
     label: string
-    players: AdminDashboardPlayerRank[]
-    metric: (player: AdminDashboardPlayerRank) => string
+    players: RankTablePlayer[]
+    metric: (player: RankTablePlayer) => string
   }> = [
     {
       value: "sitones",
@@ -2251,12 +2293,6 @@ function TopPlayersPanel({
       label: "開源力",
       players: topPlayers.byOpenPower,
       metric: (player) => `${formatNumber(player.openPower)} OP`,
-    },
-    {
-      value: "items",
-      label: "道具",
-      players: topPlayers.byItems,
-      metric: (player) => `${formatNumber(player.itemCount)} 個`,
     },
     {
       value: "score",
@@ -2283,7 +2319,7 @@ function TopPlayersPanel({
               玩家排行
             </CardTitle>
             <CardDescription>
-              從不同維度看目前誰拿最多、誰開源力最高、誰答題表現最好。
+              查看學員的圖鑑完成度、指定道具持有量與各項遊戲表現。
             </CardDescription>
           </div>
           <Button type="button" variant="outline" onClick={onOpenPlayers}>
@@ -2294,30 +2330,91 @@ function TopPlayersPanel({
       </CardHeader>
       <CardContent className="px-5">
         <Tabs defaultValue="sitones" className="min-w-0">
-          <TabsList className="grid w-full max-w-full grid-cols-[repeat(2,minmax(0,1fr))] overflow-x-auto sm:grid-cols-[repeat(5,minmax(5.75rem,1fr))]">
+          <TabsList className="grid w-full max-w-full grid-cols-[repeat(2,minmax(0,1fr))] overflow-x-auto sm:grid-cols-[repeat(6,minmax(5.75rem,1fr))]">
             {groups.map((group) => (
               <TabsTrigger key={group.value} value={group.value}>
                 {group.label}
               </TabsTrigger>
             ))}
+            <TabsTrigger value="codex">圖鑑</TabsTrigger>
+            <TabsTrigger value="items">道具持有</TabsTrigger>
           </TabsList>
           {groups.map((group) => (
             <TabsContent key={group.value} value={group.value}>
               <RankTable players={group.players} metric={group.metric} />
             </TabsContent>
           ))}
+          <TabsContent value="codex">
+            <RankTable
+              players={codexPlayers}
+              metric={(player) => {
+                return `${formatPercent(player.codexCompletion ?? 0)} (${player.codexOwnedCount ?? 0}/${player.codexTotalCount ?? 0})`
+              }}
+            />
+          </TabsContent>
+          <TabsContent value="items">
+            <div className="mb-3 flex justify-end">
+              <Select value={selectedItemId} onValueChange={setSelectedItemId}>
+                <SelectTrigger className="w-full sm:w-64" aria-label="選擇道具">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">所有道具</SelectItem>
+                  {items.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <RankTable
+              players={itemPlayers}
+              metric={(player) => {
+                const quantity =
+                  selectedItemId === "all"
+                    ? (player.itemCount ?? 0)
+                    : (player.itemQuantities?.[selectedItemId] ?? 0)
+                return `${formatNumber(quantity)} 個`
+              }}
+            />
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
   )
 }
 
+type RankTablePlayer = Pick<
+  AdminDashboardPlayer,
+  | "rank"
+  | "playerId"
+  | "nickname"
+  | "avatarUrl"
+  | "team"
+  | "openPower"
+  | "answerAccuracy"
+  | "sitoneCount"
+  | "score"
+  | "answerCount"
+> &
+  Partial<
+    Pick<
+      AdminDashboardPlayer,
+      | "itemCount"
+      | "codexOwnedCount"
+      | "codexTotalCount"
+      | "codexCompletion"
+      | "itemQuantities"
+    >
+  >
+
 function RankTable({
   players,
   metric,
 }: {
-  players: AdminDashboardPlayerRank[]
-  metric: (player: AdminDashboardPlayerRank) => string
+  players: RankTablePlayer[]
+  metric: (player: RankTablePlayer) => string
 }) {
   if (players.length === 0) {
     return <EmptyBlock label="目前沒有可排行的玩家資料" />

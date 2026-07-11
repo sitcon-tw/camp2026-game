@@ -9,6 +9,8 @@ import (
 
 const itemsFile = "items.toml"
 
+const ShopPurchaseLimit = 5
+
 var validItemTypes = map[string]struct{}{
 	"material": {},
 	"charm":    {},
