@@ -1,4 +1,4 @@
-import { ChevronUp, Swords } from "lucide-react"
+import { ChevronUp, Map } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "@tanstack/react-router"
 
@@ -38,15 +38,17 @@ const navItems = [
 const battleItems = [
   {
     label: "知識王",
-    description: "題目對戰",
+    description: "即時答題對戰",
     to: "/battle",
     iconSrc: "/game-icons/nav/nav-battle.png",
+    className: "bg-pebble-play-muted",
   },
   {
     label: "開源戰線",
-    description: "陣營地圖",
+    description: "小隊領地攻防",
     to: "/front",
     iconSrc: undefined,
+    className: "bg-pebble-engineer-muted",
   },
 ] as const
 
@@ -95,7 +97,7 @@ export function AppBottomNav() {
       {battleMenuOpen ? (
         <button
           type="button"
-          className="bg-ink/55 animate-in fade-in-0 fixed inset-0 z-30 cursor-default backdrop-blur-[1px] duration-200 motion-reduce:animate-none"
+          className="bg-ink/45 animate-in fade-in-0 fixed inset-0 z-30 cursor-default backdrop-blur-[2px] duration-200 motion-reduce:animate-none"
           onClick={() => setBattleMenuPathname(null)}
           aria-label="關閉戰鬥選單"
         />
@@ -104,10 +106,18 @@ export function AppBottomNav() {
       {battleMenuOpen ? (
         <div
           id="battle-menu"
-          className="border-ink bg-power animate-in fade-in-0 slide-in-from-bottom-3 fixed bottom-[calc(5.65rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[min(calc(100%-3rem),13rem)] -translate-x-1/2 rounded-lg border-2 p-3 shadow-[5px_5px_0_rgba(23,35,58,0.28)] duration-200 motion-reduce:animate-none"
+          className="border-ink bg-card animate-in fade-in-0 zoom-in-90 slide-in-from-bottom-2 fixed right-[max(0.75rem,calc((100vw-430px)/2+0.75rem))] bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 w-[min(calc(100%-2rem),17rem)] origin-bottom-right rounded-lg border-2 p-2.5 shadow-[5px_5px_0_rgba(23,35,58,0.24)] duration-200 motion-reduce:animate-none"
           aria-label="選擇戰鬥模式"
         >
-          <div className="grid grid-cols-2 gap-3">
+          <span
+            className="border-ink bg-card absolute right-6 -bottom-2 size-4 rotate-45 border-r-2 border-b-2"
+            aria-hidden
+          />
+          <div className="mb-2 flex items-center justify-between px-0.5">
+            <span className="text-ink text-xs font-black">選擇戰鬥模式</span>
+            <span className="bg-ink/15 h-1 w-8 rounded-full" aria-hidden />
+          </div>
+          <div className="relative grid gap-2">
             {battleItems.map((item) => {
               const active =
                 pathname === item.to || pathname.startsWith(`${item.to}/`)
@@ -118,7 +128,8 @@ export function AppBottomNav() {
                   to={item.to}
                   onClick={() => setBattleMenuPathname(null)}
                   className={[
-                    "border-ink bg-card focus-visible:outline-power flex aspect-[4/5] flex-col items-center justify-center gap-2 rounded-md border-2 px-1.5 py-2 text-center no-underline shadow-[3px_3px_0_rgba(23,35,58,0.24)] transition-transform duration-150 hover:-translate-y-1 focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px motion-reduce:transition-none",
+                    "border-ink focus-visible:outline-power flex min-h-16 min-w-0 items-center gap-3 rounded-md border-2 px-3 py-2 text-left no-underline shadow-[2px_2px_0_rgba(23,35,58,0.18)] transition-[transform,box-shadow] duration-200 hover:-translate-x-0.5 hover:shadow-[3px_3px_0_rgba(23,35,58,0.2)] focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-x-px active:translate-y-px active:shadow-none motion-reduce:transition-none",
+                    item.className,
                     active ? "text-primary" : "text-ink",
                   ].join(" ")}
                 >
@@ -126,21 +137,21 @@ export function AppBottomNav() {
                     <img
                       src={toOptimizedImageSrc(item.iconSrc)}
                       alt=""
-                      className="size-10 object-contain"
+                      className="size-9 object-contain"
                       draggable={false}
                       decoding="async"
                       aria-hidden
                     />
                   ) : (
-                    <span className="bg-primary/15 grid size-10 place-items-center rounded-md">
-                      <Swords className="size-5" aria-hidden />
+                    <span className="bg-card/70 grid size-9 place-items-center rounded-md border border-current/15">
+                      <Map className="size-5" aria-hidden />
                     </span>
                   )}
-                  <span className="grid gap-1">
+                  <span className="grid min-w-0 flex-1 gap-1">
                     <span className="text-sm leading-none font-black">
                       {item.label}
                     </span>
-                    <span className="text-muted-foreground text-[11px] leading-none font-bold">
+                    <span className="text-muted-foreground text-[10px] leading-tight font-bold">
                       {item.description}
                     </span>
                   </span>
@@ -152,10 +163,10 @@ export function AppBottomNav() {
       ) : null}
 
       <nav
-        className="bg-surface-raised border-ink fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t-2 px-3 pt-2 pb-[calc(0.65rem+env(safe-area-inset-bottom))] shadow-[0_-4px_0_rgba(23,35,58,0.12)]"
+        className="bg-card/95 border-ink fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t-2 px-2 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))] shadow-[0_-3px_0_rgba(23,35,58,0.1)] backdrop-blur-md"
         aria-label="主要導覽"
       >
-        <ul className="grid grid-cols-5 gap-1.5">
+        <ul className="grid h-[3.8rem] grid-cols-5 gap-1">
           {navItems.map((item) => {
             const active = isActivePath(pathname, item.to)
 
@@ -165,7 +176,7 @@ export function AppBottomNav() {
                   to={item.to}
                   aria-current={active ? "page" : undefined}
                   className={[
-                    "focus-visible:outline-power relative flex min-w-0 flex-col items-center justify-center gap-0.5 px-1 pt-0.5 pb-1 text-[11px] leading-none font-black no-underline transition-transform focus-visible:rounded-[14px] focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px",
+                    "focus-visible:outline-power relative flex h-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[10px] leading-none font-black no-underline transition-[color,transform] duration-200 focus-visible:rounded-md focus-visible:outline-3 focus-visible:outline-offset-1 active:translate-y-px motion-reduce:transition-none",
                     active
                       ? "text-primary"
                       : "text-muted-foreground hover:text-ink",
@@ -175,8 +186,8 @@ export function AppBottomNav() {
                     src={toOptimizedImageSrc(item.iconSrc)}
                     alt=""
                     className={[
-                      "size-11 object-contain transition-transform",
-                      active ? "scale-110" : "",
+                      "size-9 object-contain transition-transform duration-200",
+                      active ? "-translate-y-0.5 scale-110" : "",
                     ].join(" ")}
                     draggable={false}
                     decoding="async"
@@ -187,7 +198,7 @@ export function AppBottomNav() {
                   </span>
                   <span
                     className={[
-                      "mt-1 h-1 rounded-full transition-opacity",
+                      "absolute top-0 h-1 rounded-full transition-[width,opacity] duration-200",
                       active ? "bg-primary w-5 opacity-100" : "w-2 opacity-0",
                     ].join(" ")}
                     aria-hidden
@@ -205,7 +216,7 @@ export function AppBottomNav() {
                 setBattleMenuPathname(battleMenuOpen ? null : pathname)
               }
               className={[
-                "focus-visible:outline-power relative flex w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 pt-0.5 pb-1 text-[11px] leading-none font-black transition-transform focus-visible:rounded-[14px] focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-y-px",
+                "focus-visible:outline-power relative flex h-full w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[10px] leading-none font-black transition-[color,transform] duration-200 focus-visible:rounded-md focus-visible:outline-3 focus-visible:outline-offset-1 active:translate-y-px motion-reduce:transition-none",
                 battleActive || battleMenuOpen
                   ? "text-primary"
                   : "text-muted-foreground hover:text-ink",
@@ -216,8 +227,10 @@ export function AppBottomNav() {
                   src={toOptimizedImageSrc("/game-icons/nav/nav-battle.png")}
                   alt=""
                   className={[
-                    "size-11 object-contain transition-transform duration-200",
-                    battleActive || battleMenuOpen ? "scale-110" : "",
+                    "size-9 object-contain transition-transform duration-200",
+                    battleActive || battleMenuOpen
+                      ? "-translate-y-0.5 scale-110"
+                      : "",
                   ].join(" ")}
                   draggable={false}
                   decoding="async"
@@ -225,7 +238,7 @@ export function AppBottomNav() {
                 />
                 <ChevronUp
                   className={[
-                    "bg-surface-raised border-ink absolute -right-1 -bottom-0.5 size-4 rounded-full border p-0.5 transition-transform duration-200",
+                    "bg-card border-ink absolute -right-1 -bottom-0.5 size-3.5 rounded-full border p-0.5 transition-transform duration-200",
                     battleMenuOpen ? "rotate-180" : "",
                   ].join(" ")}
                   aria-hidden
@@ -234,7 +247,7 @@ export function AppBottomNav() {
               <span className="block max-w-full truncate">戰鬥</span>
               <span
                 className={[
-                  "mt-1 h-1 rounded-full transition-[width,opacity] duration-200",
+                  "absolute top-0 h-1 rounded-full transition-[width,opacity] duration-200",
                   battleActive || battleMenuOpen
                     ? "bg-primary w-5 opacity-100"
                     : "w-2 opacity-0",
