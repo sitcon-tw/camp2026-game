@@ -52,6 +52,7 @@ const detailMessageMap: Record<string, string> = {
   "match lookup failed": "目前無法讀取對戰資料，請稍後再試。",
   "match not found": "找不到這場對戰。",
   "match question is unavailable": "目前無法讀取題目資料，請通知工作人員。",
+  "match rematch failed": "重新對戰失敗，請稍後再試。",
   "match start failed": "開始對戰失敗，請稍後再試。",
   "match state unavailable": "對戰狀態暫時無法更新，請稍後再試。",
   "match was updated; retry": "對戰狀態剛剛更新了，請再試一次。",
@@ -61,6 +62,8 @@ const detailMessageMap: Record<string, string> = {
   "player is already ready": "你已經準備好了。",
   "player pair match limit reached":
     "你和這位玩家的對戰次數已達上限，請找其他玩家對戰。",
+  "rematch participant already has an open match":
+    "有玩家已經在其他對戰房間中，暫時無法重新對戰。",
   "qrcode is unavailable": "玩家 QR Code 暫時無法產生，請稍後再試。",
   "qr code scan cooldown active": "QRCode 掃描冷卻中，請稍後再試。",
   "qr code not found": "找不到這個 QR Code，請確認是否掃描正確。",

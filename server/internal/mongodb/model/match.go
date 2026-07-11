@@ -34,6 +34,7 @@ type Match struct {
 	Status               string                  `bson:"status"`
 	Phase                string                  `bson:"phase,omitempty"`
 	HostPlayerID         string                  `bson:"host_player_id"`
+	RematchSourceMatchID string                  `bson:"rematch_source_match_id,omitempty"`
 	OpenHostLock         string                  `bson:"open_host_lock,omitempty"`
 	OpenPlayerLocks      []string                `bson:"open_player_locks,omitempty"`
 	Players              []MatchPlayer           `bson:"players"`
