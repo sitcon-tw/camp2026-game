@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -363,6 +364,23 @@ func TestEventsStreamsPendingAchievementOnConnect(t *testing.T) {
 	}
 	if !strings.Contains(body, `"delayed":true`) {
 		t.Fatalf("expected delayed achievement payload, got %q", body)
+	}
+}
+
+func TestAchievementNotificationOrderRunsFromLowestTierToComplete(t *testing.T) {
+	records := []mongomodel.Achievement{
+		{Key: "codex_complete", SortOrder: 11},
+		{Key: "codex_tier_10", Tier: 10, SortOrder: 10},
+		{Key: "codex_tier_01", Tier: 1, SortOrder: 1},
+	}
+	sort.SliceStable(records, func(i, j int) bool {
+		return achievementNotificationOrder(records[i]) < achievementNotificationOrder(records[j])
+	})
+
+	got := []string{records[0].Key, records[1].Key, records[2].Key}
+	want := []string{"codex_tier_01", "codex_tier_10", "codex_complete"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected achievement notification order: got %v want %v", got, want)
 	}
 }
 

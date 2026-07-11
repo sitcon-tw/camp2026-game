@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Lock, Trophy } from "lucide-react"
+import { Clock, Lock, Trophy } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { achievementAssetFor } from "@/features/achievements/lib/achievement-assets"
@@ -17,14 +17,6 @@ const achievementTones = [
   "bg-pebble-resonate",
   "bg-pebble-engineer",
   "bg-pebble-play",
-] as const
-
-const achievementStages = [
-  { label: "起步", tiers: [1, 2] },
-  { label: "成長", tiers: [3, 4] },
-  { label: "進階", tiers: [5, 6] },
-  { label: "熟練", tiers: [7, 8] },
-  { label: "圓滿", tiers: [9, 10, 0] },
 ] as const
 
 const dateTimeFormatter = new Intl.DateTimeFormat("zh-TW", {
@@ -67,6 +59,27 @@ export function AchievementGallery() {
     [achievements, mode],
   )
   const unlockedCount = data?.unlockedCount ?? 0
+  const collectedSitoneCount = data?.collectedSitoneCount ?? 0
+  const totalSitoneCount = data?.totalSitoneCount ?? 0
+  const nextAchievement = achievements.find(
+    (achievement) => !achievement.unlocked,
+  )
+  const featuredAchievement =
+    nextAchievement ?? achievements[achievements.length - 1]
+  const featuredAsset = featuredAchievement
+    ? achievementAssetFor(featuredAchievement.key)
+    : null
+  const remainingSitones = nextAchievement
+    ? Math.max(nextAchievement.requiredSitoneCount - collectedSitoneCount, 0)
+    : 0
+  const earnedOpenPower = achievements.reduce(
+    (total, achievement) =>
+      total + (achievement.unlocked ? (achievement.openPowerReward ?? 0) : 0),
+    0,
+  )
+  const collectionProgress = totalSitoneCount
+    ? Math.min(100, (collectedSitoneCount / totalSitoneCount) * 100)
+    : 0
 
   if (error) {
     return (
@@ -82,66 +95,106 @@ export function AchievementGallery() {
 
   return (
     <div>
-      <Card
-        className="bg-surface-raised before:border-ink/25 relative mt-[18px] grid grid-cols-[1fr_116px] gap-3 overflow-hidden rounded-[28px] p-[18px] py-[18px] before:pointer-events-none before:absolute before:inset-2.5 before:rounded-[24px] before:border before:border-dashed"
+      <section
+        className="bg-surface-raised border-ink mt-[18px] overflow-hidden rounded-[22px] border-2"
+        style={{ boxShadow: "4px 4px 0 rgba(23,35,58,.14)" }}
         aria-label="成就收藏摘要"
       >
-        <div className="relative z-10">
-          <span className="text-moss text-[11px] font-extrabold tracking-[0.08em] uppercase">
-            目前成就
-          </span>
-          <strong className="mt-1 block text-[42px] leading-none font-extrabold tracking-normal">
-            {isPending ? "-/-" : `${unlockedCount}/${achievements.length}`}
-          </strong>
-          <p className="text-muted-foreground mt-2 max-w-[190px] text-[13px] leading-5 font-semibold">
-            曾收集 {data?.collectedSitoneCount ?? 0}/
-            {data?.totalSitoneCount ?? 0} 種小石，逐步完成圖鑑里程碑。
-          </p>
+        <div className="grid grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-3 p-4 pb-3">
+          <div
+            className={cn(
+              "border-ink grid size-[58px] place-items-center overflow-hidden rounded-[18px] border-2",
+              featuredAchievement
+                ? toneForAchievement(featuredAchievement)
+                : "bg-pebble-spark",
+            )}
+          >
+            {featuredAsset ? (
+              <GameIcon
+                iconPath={featuredAsset.iconPath}
+                alt=""
+                className="size-full border-0 bg-transparent"
+                imageClassName="p-1.5"
+                fallback={<Trophy className="size-7" aria-hidden />}
+              />
+            ) : (
+              <Trophy className="text-muted-foreground size-7" aria-hidden />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-primary text-[11px] font-black tracking-[0.08em] uppercase">
+              Achievement
+            </p>
+            <strong className="mt-0.5 block truncate text-[19px] leading-tight font-black">
+              {isPending
+                ? "同步成就中"
+                : nextAchievement?.name || "所有成就已完成"}
+            </strong>
+            <p className="text-muted-foreground mt-1 text-xs font-bold">
+              {isPending
+                ? "讀取收藏紀錄"
+                : nextAchievement
+                  ? remainingSitones > 0
+                    ? `再收集 ${remainingSitones} 種小石`
+                    : "已達成，等待解鎖"
+                  : "石全石美"}
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="bg-card border-ink inline-flex min-h-7 items-center rounded-full border-2 px-2.5 text-xs font-black whitespace-nowrap">
+              {isPending ? "-/-" : `${unlockedCount}/${achievements.length}`}
+            </span>
+            <strong className="mt-1 block text-[14px] font-black whitespace-nowrap">
+              {nextAchievement?.openPowerReward
+                ? `${nextAchievement.openPowerReward} OP`
+                : isPending
+                  ? "-"
+                  : "完成"}
+            </strong>
+          </div>
         </div>
-        <div className="relative z-10 h-28 w-[116px]" aria-hidden>
-          <AchievementShape
-            tier={1}
-            unlocked
-            className="absolute top-[12px] right-[42px] z-10 scale-[0.88] -rotate-[8deg]"
-          />
-          <AchievementShape
-            tier={5}
-            unlocked
-            className="absolute top-[32px] right-1 z-20 scale-[0.78] rotate-[13deg]"
-          />
-          <AchievementShape
-            tier={10}
-            unlocked
-            className="absolute top-[58px] right-[30px] z-30 scale-[0.72] -rotate-[3deg]"
-          />
-        </div>
-      </Card>
 
-      <section
-        className="mt-3 grid grid-cols-5 gap-1.5"
-        aria-label="成就階段摘要"
-      >
-        {achievementStages.map((stage) => {
-          const entries = achievements.filter((achievement) =>
-            (stage.tiers as readonly number[]).includes(achievement.tier ?? 0),
-          )
-          const unlocked = entries.filter(
-            (achievement) => achievement.unlocked,
-          ).length
-          return (
+        <div className="px-4 pb-3.5">
+          <div className="mb-1.5 flex items-center justify-between gap-3 text-xs font-bold">
+            <span className="text-muted-foreground">小石圖鑑進度</span>
+            <strong>
+              {isPending
+                ? "-/-"
+                : `${collectedSitoneCount}/${totalSitoneCount}`}
+            </strong>
+          </div>
+          <div
+            className="bg-card border-ink h-3.5 overflow-hidden rounded-full border-2"
+            role="progressbar"
+            aria-label="小石圖鑑進度"
+            aria-valuemin={0}
+            aria-valuemax={totalSitoneCount || 1}
+            aria-valuenow={collectedSitoneCount}
+          >
             <div
-              key={stage.label}
-              className="border-border bg-card grid min-h-[58px] content-center gap-0.5 rounded-2xl border-2 px-1 py-2 text-center"
-            >
-              <span className="text-muted-foreground text-[11px] font-semibold">
-                {stage.label}
-              </span>
-              <strong className="text-[15px] font-extrabold">
-                {unlocked}/{entries.length}
-              </strong>
-            </div>
-          )
-        })}
+              className="bg-primary h-full rounded-full transition-[width]"
+              style={{ width: `${collectionProgress}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="border-border bg-card grid grid-cols-3 border-t-2">
+          <SummaryMetric
+            label="歷史收集"
+            value={
+              isPending ? "-/-" : `${collectedSitoneCount}/${totalSitoneCount}`
+            }
+          />
+          <SummaryMetric
+            label="達成成就"
+            value={isPending ? "-" : `${unlockedCount} 個`}
+            className="border-border border-x-2"
+          />
+          <SummaryMetric
+            label="成就獎勵"
+            value={isPending ? "-" : `${earnedOpenPower} OP`}
+          />
+        </div>
       </section>
 
       <section className="mt-4" aria-label="成就篩選">
@@ -192,7 +245,6 @@ export function AchievementGallery() {
               <AchievementCard
                 key={achievement.key}
                 achievement={achievement}
-                mode={mode}
               />
             ))}
           </div>
@@ -200,6 +252,32 @@ export function AchievementGallery() {
           <EmptyCollection onViewAll={() => setMode("all")} />
         )}
       </section>
+    </div>
+  )
+}
+
+function SummaryMetric({
+  label,
+  value,
+  className,
+}: {
+  label: string
+  value: string
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        "grid min-h-[66px] content-center gap-0.5 px-2 text-center",
+        className,
+      )}
+    >
+      <span className="text-muted-foreground text-[11px] font-bold">
+        {label}
+      </span>
+      <strong className="text-[15px] font-black whitespace-nowrap">
+        {value}
+      </strong>
     </div>
   )
 }
@@ -228,13 +306,7 @@ function SegmentButton({
   )
 }
 
-function AchievementCard({
-  achievement,
-  mode,
-}: {
-  achievement: Achievement
-  mode: DisplayMode
-}) {
+function AchievementCard({ achievement }: { achievement: Achievement }) {
   const complete = achievement.key === "codex_complete"
   const unlockedAt = formatUnlockedAt(achievement.unlockedAt)
   const tone = toneForAchievement(achievement)
@@ -285,14 +357,6 @@ function AchievementCard({
             />
           }
         />
-        {achievement.unlocked && unlockedAt ? (
-          <time
-            dateTime={achievement.unlockedAt}
-            className="bg-ink/90 text-primary-foreground absolute inset-x-0 bottom-0 px-1.5 py-1 text-center text-[10px] leading-tight font-extrabold"
-          >
-            {unlockedAt}
-          </time>
-        ) : null}
       </div>
 
       <div className="grid gap-1">
@@ -314,18 +378,19 @@ function AchievementCard({
       </div>
 
       <div className="border-border mt-auto grid gap-0.5 border-t-2 border-dashed pt-2">
-        <span className="text-[13px] font-extrabold">
-          {achievement.unlocked
-            ? "成就已收錄"
-            : mode === "all"
-              ? "尚未達成"
-              : "未取得"}
-        </span>
-        {!achievement.unlocked ? (
-          <span className="text-muted-foreground text-[11px] font-semibold">
-            剪影狀態
+        {achievement.unlocked && unlockedAt ? (
+          <time
+            dateTime={achievement.unlockedAt}
+            className="flex items-center gap-1 text-[12px] leading-4 font-extrabold"
+          >
+            <Clock className="size-3 shrink-0" aria-hidden />
+            {unlockedAt}
+          </time>
+        ) : (
+          <span className="text-muted-foreground text-[13px] font-extrabold">
+            成就未收錄
           </span>
-        ) : null}
+        )}
       </div>
     </Card>
   )
@@ -369,9 +434,19 @@ function AchievementShape({
 }
 
 function EmptyCollection({ onViewAll }: { onViewAll: () => void }) {
+  const emptyStateAsset = achievementAssetFor("codex_tier_01")
+
   return (
     <section className="border-ink bg-card grid justify-items-center gap-2.5 rounded-[22px] border-2 border-dashed px-[18px] py-6 text-center">
-      <AchievementShape tier={1} unlocked={false} />
+      <div className="border-ink bg-pebble-spark grid size-28 place-items-center overflow-hidden rounded-[22px] border-2">
+        <GameIcon
+          iconPath={emptyStateAsset.iconPath}
+          alt="石來運轉成就"
+          className="size-full border-0 bg-transparent"
+          imageClassName="p-2 opacity-60 grayscale drop-shadow-[0_3px_0_rgba(23,35,58,0.18)]"
+          fallback={<AchievementShape tier={1} unlocked={false} />}
+        />
+      </div>
       <h3 className="text-lg font-extrabold">目前還沒有獲得成就</h3>
       <p className="text-muted-foreground max-w-[260px] text-[13px] leading-6 font-semibold">
         收集不同種類的小石，達成的圖鑑里程碑會收錄在這裡。

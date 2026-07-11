@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -276,6 +277,16 @@ func (h *Handler) pendingOpenPowerTransferEvents(ctx context.Context, playerID s
 	return events, nil
 }
 
+func achievementNotificationOrder(record mongomodel.Achievement) int {
+	if record.SortOrder > 0 {
+		return record.SortOrder
+	}
+	if record.Tier > 0 {
+		return record.Tier
+	}
+	return 11
+}
+
 func (h *Handler) pendingInventoryTrimEvents(ctx context.Context, playerID string, connectedAt time.Time) ([]pendingInventoryTrimEvent, error) {
 	if h.db == nil {
 		return nil, nil
@@ -334,7 +345,7 @@ func (h *Handler) pendingAchievementEvents(ctx context.Context, playerID string,
 			"created_at":           bson.M{"$lte": connectedAt},
 		},
 		options.Find().
-			SetSort(bson.D{{Key: "created_at", Value: 1}, {Key: "_id", Value: 1}}).
+			SetSort(bson.D{{Key: "sort_order", Value: 1}, {Key: "created_at", Value: 1}, {Key: "_id", Value: 1}}).
 			SetLimit(100),
 	)
 	if err != nil {
@@ -348,6 +359,16 @@ func (h *Handler) pendingAchievementEvents(ctx context.Context, playerID string,
 	if err := cursor.All(ctx, &records); err != nil {
 		return nil, err
 	}
+	sort.SliceStable(records, func(i, j int) bool {
+		left, right := achievementNotificationOrder(records[i]), achievementNotificationOrder(records[j])
+		if left != right {
+			return left < right
+		}
+		if !records[i].CreatedAt.Equal(records[j].CreatedAt) {
+			return records[i].CreatedAt.Before(records[j].CreatedAt)
+		}
+		return records[i].ID < records[j].ID
+	})
 
 	events := make([]pendingAchievementEvent, 0, len(records))
 	for _, record := range records {
