@@ -1340,11 +1340,18 @@ function SettlementResults({ settlement }: { settlement: AdminSettlement }) {
           </p>
         )}
       </div>
-      <div className="border-border grid min-w-0 border-t sm:grid-cols-2 xl:grid-cols-3">
+      <div className="border-border grid min-w-0 grid-flow-row-dense border-t sm:grid-cols-2 xl:grid-cols-3">
         {settlement.awards.map((award) => (
           <div
             key={award.key}
-            className="border-border grid min-w-0 content-start gap-2 border-b px-3 py-4 sm:border-r xl:border-l"
+            className={cn(
+              "border-border grid min-w-0 content-start gap-2 border-b px-3 py-4 sm:border-r xl:border-l",
+              award.players.length >= 4
+                ? "sm:col-span-2 xl:col-span-3"
+                : award.players.length >= 2
+                  ? "sm:col-span-2 xl:col-span-2"
+                  : "col-span-1",
+            )}
           >
             <div>
               <p className="text-sm font-black">{award.title}</p>
@@ -1354,7 +1361,16 @@ function SettlementResults({ settlement }: { settlement: AdminSettlement }) {
                 </p>
               ) : null}
             </div>
-            <div className="grid gap-2">
+            <div
+              className={cn(
+                "grid min-w-0 gap-2",
+                award.players.length >= 4
+                  ? "sm:grid-cols-2 xl:grid-cols-3"
+                  : award.players.length >= 2
+                    ? "sm:grid-cols-2"
+                    : "grid-cols-1",
+              )}
+            >
               {award.team ? (
                 <div className="text-sm font-black">{award.team.name}</div>
               ) : null}
