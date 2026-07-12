@@ -1043,16 +1043,17 @@ func TestHomeActions(t *testing.T) {
 	}
 }
 
-func TestHomeActionsDisableBattleWhenOpeningLocked(t *testing.T) {
+func TestHomeActionsDisableBattleModesWhenOpeningLocked(t *testing.T) {
 	settings := gamecontrol.DefaultSettings()
 	settings.BattleOpeningOverride = gamecontrol.BattleOpeningOverrideForceClosed
 
 	actions := homeActions(settings)
 	for _, action := range actions {
-		if action.ID == "battle" && action.Enabled {
-			t.Fatalf("expected battle action to be disabled, got %#v", action)
+		battleMode := action.ID == "battle" || action.ID == "front"
+		if battleMode && action.Enabled {
+			t.Fatalf("expected battle mode action to be disabled, got %#v", action)
 		}
-		if action.ID != "battle" && !action.Enabled {
+		if !battleMode && !action.Enabled {
 			t.Fatalf("expected non-battle action to stay enabled, got %#v", action)
 		}
 	}
