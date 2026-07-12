@@ -475,6 +475,20 @@ ability_count = 0
 ability_description = "對戰勝利時獲得開源力提高 8%。"
 
 [[sitones]]
+id = "stone_pebble"
+name = "Pebble 小石"
+type = "resonance"
+rarity = "limited"
+style = "default"
+description = "vip-666！開源力進帳:)"
+icon_path = "/game-icons/stones/pebble.png"
+ability_name = "開場引路"
+ability_kind = "open_power_bonus"
+ability_value = 300
+ability_count = 0
+ability_description = "對戰勝利時獲得開源力提高 300%。"
+
+[[sitones]]
 id = "stone_prompt"
 name = "Prompt 小石"
 type = "inspiration"

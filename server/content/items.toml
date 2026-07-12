@@ -560,6 +560,18 @@ enabled = true
 price_open_power = 1500
 
 [[items]]
+id = "stone_pebble"
+name = "Pebble 小石"
+type = "sitone"
+rarity = "limited"
+description = "vip-666！開源力進帳:)"
+icon_path = "/game-icons/stones/pebble.png"
+source = "shop"
+purchasable = true
+enabled = true
+price_open_power = 8000
+
+[[items]]
 id = "item_postcard_sitcon2024"
 name = "SITCON 2024 明信片"
 type = "cosmetic"

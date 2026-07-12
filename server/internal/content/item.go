@@ -16,6 +16,7 @@ var validItemTypes = map[string]struct{}{
 	"charm":    {},
 	"cosmetic": {},
 	"event":    {},
+	"sitone":   {},
 }
 
 var validItemSources = map[string]struct{}{

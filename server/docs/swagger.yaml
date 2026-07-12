@@ -6663,8 +6663,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Purchases one enabled shop item, up to five times per player, deducts
-        open power, and adds it to the current player's item bag.
+      description: Purchases one enabled shop item or sitone, up to five times per
+        player, deducts open power, and adds it to the current player's inventory.
       parameters:
       - description: Purchase request
         in: body

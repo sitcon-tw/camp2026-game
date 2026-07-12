@@ -41,6 +41,9 @@ func TestShopItemsIncludesAllEnabledPurchasableContentItems(t *testing.T) {
 	if item, ok := shopItemByID(store, "item_postcard_sitcon2024"); !ok || item.PriceOpenPower != 800 {
 		t.Fatalf("expected SITCON 2024 postcard item to be listed at 800, got %#v", item)
 	}
+	if item, ok := shopItemByID(store, "stone_pebble"); !ok || item.Type != "sitone" || item.PriceOpenPower != 8000 {
+		t.Fatalf("expected Pebble sitone item to be listed at 8000, got %#v", item)
+	}
 }
 
 func TestShopItemResponse(t *testing.T) {

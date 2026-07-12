@@ -28,7 +28,7 @@ var errPurchaseLimitReached = errors.New("shop item purchase limit reached")
 
 // Purchase godoc
 // @Summary Purchase shop item
-// @Description Purchases one enabled shop item, up to five times per player, deducts open power, and adds it to the current player's item bag.
+// @Description Purchases one enabled shop item or sitone, up to five times per player, deducts open power, and adds it to the current player's inventory.
 // @Tags shop
 // @Accept json
 // @Produce json
@@ -99,10 +99,14 @@ func (h *Handler) publishPurchaseEvent(playerID string, item content.Item) {
 	if h.broker == nil {
 		return
 	}
+	kind := "item"
+	if item.Type == "sitone" {
+		kind = "sitone"
+	}
 	h.broker.Publish(playerID, playerevents.Event{
 		Name: "reward_granted",
 		Reward: &playerevents.RewardGrantedEvent{
-			Kind:       "item",
+			Kind:       kind,
 			RefID:      item.ID,
 			Name:       item.Name,
 			Quantity:   purchaseQuantity,
@@ -199,7 +203,7 @@ func (h *Handler) purchaseItemWithoutTransaction(ctx context.Context, playerID s
 	if err := h.insertOpenPowerDeduction(ctx, purchaseID, playerID, item.PriceOpenPower, now); err != nil {
 		return purchaseResult{}, err
 	}
-	if err := h.incrementPlayerItem(ctx, playerID, item.ID); err != nil {
+	if err := h.incrementPurchasedContent(ctx, playerID, item); err != nil {
 		return purchaseResult{}, err
 	}
 
@@ -241,6 +245,13 @@ func (h *Handler) insertOpenPowerDeduction(ctx context.Context, purchaseID strin
 	return err
 }
 
+func (h *Handler) incrementPurchasedContent(ctx context.Context, playerID string, item content.Item) error {
+	if item.Type == "sitone" {
+		return h.incrementPlayerSitone(ctx, playerID, item.ID)
+	}
+	return h.incrementPlayerItem(ctx, playerID, item.ID)
+}
+
 func (h *Handler) incrementPlayerItem(ctx context.Context, playerID string, itemID string) error {
 	_, err := h.db.Collection(mongomodel.PlayerItemsCollection).UpdateOne(
 		ctx,
@@ -253,6 +264,26 @@ func (h *Handler) incrementPlayerItem(ctx context.Context, playerID string, item
 				"_id":       newID("player_item"),
 				"player_id": playerID,
 				"item_id":   itemID,
+			},
+			"$inc": bson.M{"quantity": purchaseQuantity},
+		},
+		options.UpdateOne().SetUpsert(true),
+	)
+	return err
+}
+
+func (h *Handler) incrementPlayerSitone(ctx context.Context, playerID string, sitoneID string) error {
+	_, err := h.db.Collection(mongomodel.PlayerSitonesCollection).UpdateOne(
+		ctx,
+		bson.M{
+			"player_id": playerID,
+			"sitone_id": sitoneID,
+		},
+		bson.M{
+			"$setOnInsert": bson.M{
+				"_id":       newID("player_sitone"),
+				"player_id": playerID,
+				"sitone_id": sitoneID,
 			},
 			"$inc": bson.M{"quantity": purchaseQuantity},
 		},

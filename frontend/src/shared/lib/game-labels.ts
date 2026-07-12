@@ -52,6 +52,7 @@ const itemTypeLabels: Record<string, string> = {
   charm: "御守",
   cosmetic: "外觀",
   event: "活動紀念",
+  sitone: "小石",
 }
 
 const itemTypeClasses: Record<string, string> = {
@@ -59,6 +60,7 @@ const itemTypeClasses: Record<string, string> = {
   charm: "bg-pebble-explore",
   cosmetic: "bg-pebble-spark",
   event: "bg-pebble-resonate",
+  sitone: "bg-pebble-resonate",
 }
 
 const rarityLabels: Record<string, string> = {
