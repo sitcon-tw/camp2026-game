@@ -443,7 +443,7 @@ export function StoneFusionPanel() {
           parts.push(`已合成：${fusionMessages.join("、")}`)
         }
         if (result.priceOpenPowerSpent > 0) {
-          parts.push(`消耗開放力 ${result.priceOpenPowerSpent}`)
+          parts.push(`消耗開源力 ${result.priceOpenPowerSpent}`)
         }
         toast.success(parts.join("；"))
       }

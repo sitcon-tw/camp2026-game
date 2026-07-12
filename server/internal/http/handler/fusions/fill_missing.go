@@ -189,7 +189,7 @@ func (s *fillState) tryPurchase(ctx context.Context, component content.FusionCom
 	case s.itemPurchaseCounts[item.ID] >= content.ShopPurchaseLimit:
 		return false, "材料已達購買上限"
 	case s.openPower < item.PriceOpenPower:
-		return false, "開放力不足，無法購買"
+		return false, "開源力不足，無法購買"
 	}
 	if err := s.handler.purchaseFillItem(ctx, s.playerID, item); err != nil {
 		return false, fillPurchaseFailureReason(err)

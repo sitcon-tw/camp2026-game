@@ -152,9 +152,10 @@ type = "material"
 rarity = "common"
 description = "有限標籤，可用於小石合成。"
 icon_path = "/game-icons/items/item_finite_label.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-price_open_power = 150
+price_open_power = 1650
 
 [[items]]
 id = "item_human_label"
@@ -163,10 +164,10 @@ type = "material"
 rarity = "common"
 description = "人類標籤，可用於小石合成。"
 icon_path = "/game-icons/items/item_human_label.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 1650
 
 [[items]]
 id = "item_infinite_star_map"
@@ -175,10 +176,10 @@ type = "material"
 rarity = "common"
 description = "無限星圖，可用於小石合成。"
 icon_path = "/game-icons/items/item_infinite_star_map.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 1650
 
 [[items]]
 id = "item_lightning_talk_script"
@@ -271,10 +272,10 @@ type = "material"
 rarity = "common"
 description = "前人筆記，可用於小石合成。"
 icon_path = "/game-icons/items/item_predecessor_notes.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 1650
 
 [[items]]
 id = "item_prompt_card"
@@ -283,9 +284,10 @@ type = "material"
 rarity = "common"
 description = "Prompt 卡，可用於小石合成。"
 icon_path = "/game-icons/items/item_prompt_card.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-price_open_power = 150
+price_open_power = 1650
 
 [[items]]
 id = "item_public_key_tag"
@@ -319,10 +321,10 @@ type = "material"
 rarity = "common"
 description = "共筆連結，可用於小石合成。"
 icon_path = "/game-icons/items/item_shared_notes_link.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-locked = true
-price_open_power = 150
+price_open_power = 1650
 
 [[items]]
 id = "item_signature_inkpad"
@@ -368,10 +370,10 @@ type = "material"
 rarity = "common"
 description = "便利貼，可用於小石合成。"
 icon_path = "/game-icons/items/item_sticky_note.png"
-source = "event"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-price_open_power = 150
+price_open_power = 1650
 
 [[items]]
 id = "item_student_community_card"
@@ -479,9 +481,10 @@ type = "material"
 rarity = "common"
 description = "木製算珠，可用於小石合成。"
 icon_path = "/game-icons/items/item_wooden_abacus.png"
-purchasable = false
+source = "shop"
+purchasable = true
 enabled = true
-price_open_power = 150
+price_open_power = 1650
 
 [[items]]
 id = "item_wooden_plank"

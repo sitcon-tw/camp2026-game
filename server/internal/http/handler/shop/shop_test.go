@@ -26,20 +26,20 @@ func TestShopItemsIncludesAllEnabledPurchasableContentItems(t *testing.T) {
 	if items[0].ID != "item_adventure_backpack" || items[0].PriceOpenPower != 150 {
 		t.Fatalf("unexpected first shop item: %#v", items[0])
 	}
-	if item, ok := shopItemByID(store, "item_polaroid_film"); !ok || item.Locked {
-		t.Fatalf("expected polaroid film item to be available, got %#v", item)
+	if item, ok := shopItemByID(store, "item_polaroid_film"); !ok || item.Locked || item.PriceOpenPower != 650 {
+		t.Fatalf("expected polaroid film item to be listed as unlocked at 650, got %#v", item)
 	}
 	if _, ok := shopItemByID(store, "item_wooden_plank"); ok {
 		t.Fatal("expected event-only wooden plank item not to be listed")
 	}
-	if _, ok := shopItemByID(store, "item_shared_notes_link"); ok {
-		t.Fatal("expected non-purchasable shared notes item not to be listed")
+	if item, ok := shopItemByID(store, "item_shared_notes_link"); !ok || item.Locked || item.PriceOpenPower != 1650 {
+		t.Fatalf("expected shared notes item to be listed as unlocked at 1650, got %#v", item)
 	}
 	if _, ok := shopItemByID(store, "item_charm_debug"); !ok {
 		t.Fatal("expected charm item to be purchasable")
 	}
-	if _, ok := shopItemByID(store, "item_postcard_sitcon2024"); !ok {
-		t.Fatal("expected enabled cosmetic item to be listed")
+	if item, ok := shopItemByID(store, "item_postcard_sitcon2024"); !ok || item.PriceOpenPower != 800 {
+		t.Fatalf("expected SITCON 2024 postcard item to be listed at 800, got %#v", item)
 	}
 }
 

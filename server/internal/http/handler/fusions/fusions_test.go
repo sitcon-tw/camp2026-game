@@ -85,7 +85,7 @@ func TestProducerRecipesIncludesCraftableSitone(t *testing.T) {
 	}
 }
 
-func TestCanCraftReturnsFalseForLockedShopItem(t *testing.T) {
+func TestCanCraftReturnsFalseForDirectShopItem(t *testing.T) {
 	store := loadTestContent(t)
 	state := fillState{
 		handler: &Handler{
@@ -102,7 +102,7 @@ func TestCanCraftReturnsFalseForLockedShopItem(t *testing.T) {
 		Quantity: 1,
 	}
 	if state.canCraft(component) {
-		t.Fatal("expected locked shop item not to be craftable")
+		t.Fatal("expected direct shop item not to be craftable")
 	}
 }
 
@@ -126,9 +126,9 @@ func TestTryPurchaseReportsInsufficientOpenPower(t *testing.T) {
 	}
 	purchased, reason := state.tryPurchase(context.Background(), component)
 	if purchased {
-		t.Fatal("expected locked shop item purchase to fail")
+		t.Fatal("expected unaffordable shop item purchase to fail")
 	}
-	if reason != "開放力不足，無法購買" {
+	if reason != "開源力不足，無法購買" {
 		t.Fatalf("expected insufficient open power reason, got %q", reason)
 	}
 }
