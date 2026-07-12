@@ -88,6 +88,10 @@ func (h *Handler) CreateCommand(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
+	if err := h.ensureTerritoryBattleOpeningAllowed(r.Context(), body.Kind); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
 
 	if body.ClientCommandID != "" {
 		existing, found, err := h.findExistingCommand(r.Context(), front.ID, player.ID, body.ClientCommandID)
