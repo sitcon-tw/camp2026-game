@@ -39,11 +39,21 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 }
 
 func dropLegacyShopPurchaseIndex(ctx context.Context, collection *mongo.Collection) error {
-	err := collection.Indexes().DropOne(ctx, "shop_purchases_player_item")
-	if err == nil || ignorableIndexDropError(err) {
-		return nil
+	legacyIndexNames := []string{
+		"shop_purchases_player_item",
+		// Obsolete since shop items became repeatable up to the purchase
+		// limit, which is enforced in the purchase handler under the
+		// per-player open power lock.
+		"shop_purchases_non_repeatable_player_item",
 	}
-	return err
+	for _, name := range legacyIndexNames {
+		err := collection.Indexes().DropOne(ctx, name)
+		if err == nil || ignorableIndexDropError(err) {
+			continue
+		}
+		return err
+	}
+	return nil
 }
 
 func ignorableIndexDropError(err error) bool {
@@ -306,10 +316,7 @@ func shopPurchaseIndexModels() []mongo.IndexModel {
 				{Key: "player_id", Value: 1},
 				{Key: "item_id", Value: 1},
 			},
-			Options: options.Index().
-				SetName("shop_purchases_non_repeatable_player_item").
-				SetUnique(true).
-				SetPartialFilterExpression(bson.M{"repeatable": bson.M{"$in": bson.A{false, nil}}}),
+			Options: options.Index().SetName("shop_purchases_player_item_lookup"),
 		},
 	}
 }
