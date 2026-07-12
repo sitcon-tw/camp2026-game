@@ -1,7 +1,9 @@
-import { ChevronUp, Map } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { ChevronUp, Lock, Map } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "@tanstack/react-router"
 
+import { battleOpeningQueryOptions } from "@/shared/api/battle-opening.query"
 import { toOptimizedImageSrc } from "@/shared/utils/image-src"
 
 const hiddenPathPrefixes = [
@@ -72,6 +74,10 @@ function isBattleActive(pathname: string) {
 
 export function AppBottomNav() {
   const { pathname } = useLocation()
+  const battleOpeningQuery = useQuery({
+    ...battleOpeningQueryOptions(),
+    enabled: !isHiddenPath(pathname),
+  })
   const [battleMenuPathname, setBattleMenuPathname] = useState<string | null>(
     null,
   )
@@ -121,18 +127,11 @@ export function AppBottomNav() {
             {battleItems.map((item) => {
               const active =
                 pathname === item.to || pathname.startsWith(`${item.to}/`)
-
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setBattleMenuPathname(null)}
-                  className={[
-                    "border-ink focus-visible:outline-power flex min-h-16 min-w-0 items-center gap-3 rounded-md border-2 px-3 py-2 text-left no-underline shadow-[2px_2px_0_rgba(23,35,58,0.18)] transition-[transform,box-shadow] duration-200 hover:-translate-x-0.5 hover:shadow-[3px_3px_0_rgba(23,35,58,0.2)] focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-x-px active:translate-y-px active:shadow-none motion-reduce:transition-none",
-                    item.className,
-                    active ? "text-primary" : "text-ink",
-                  ].join(" ")}
-                >
+              const locked =
+                battleOpeningQuery.isPending ||
+                battleOpeningQuery.data?.battleOpeningLocked === true
+              const content = (
+                <>
                   {item.iconSrc ? (
                     <img
                       src={toOptimizedImageSrc(item.iconSrc)}
@@ -152,9 +151,40 @@ export function AppBottomNav() {
                       {item.label}
                     </span>
                     <span className="text-muted-foreground text-[10px] leading-tight font-bold">
-                      {item.description}
+                      {locked ? "上課期間暫停" : item.description}
                     </span>
                   </span>
+                  {locked ? (
+                    <Lock className="size-4 shrink-0" aria-hidden />
+                  ) : null}
+                </>
+              )
+
+              const className = [
+                "border-ink flex min-h-16 min-w-0 items-center gap-3 rounded-md border-2 px-3 py-2 text-left no-underline shadow-[2px_2px_0_rgba(23,35,58,0.18)]",
+                item.className,
+                locked
+                  ? "text-muted-foreground cursor-not-allowed opacity-65"
+                  : "focus-visible:outline-power transition-[transform,box-shadow] duration-200 hover:-translate-x-0.5 hover:shadow-[3px_3px_0_rgba(23,35,58,0.2)] focus-visible:outline-3 focus-visible:outline-offset-2 active:translate-x-px active:translate-y-px active:shadow-none motion-reduce:transition-none",
+                locked ? "" : active ? "text-primary" : "text-ink",
+              ].join(" ")
+
+              if (locked) {
+                return (
+                  <span key={item.to} aria-disabled className={className}>
+                    {content}
+                  </span>
+                )
+              }
+
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setBattleMenuPathname(null)}
+                  className={className}
+                >
+                  {content}
                 </Link>
               )
             })}
